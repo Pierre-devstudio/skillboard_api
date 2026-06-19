@@ -377,8 +377,8 @@
     }
 
     if (sorties > 0 || compImpactHausse > 0 || postesRouges > 0) {
-      const riskScore = postesRouges * 20 + compImpactHausse;
-      const riskCount = sorties + postesRouges + (compImpactHausse > 0 ? 1 : 0);
+      const riskScore = postesRouges + compImpactHausse;
+      const riskCount = sorties + (postesRouges > 0 ? 1 : 0) + (compImpactHausse > 0 ? 1 : 0);
       effects.push({
         key: "perte_savoir_faire",
         title: "Risque de perte de savoir-faire",
@@ -390,7 +390,7 @@
         causes: compactCauseList([
           sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
           compImpactHausse > 0 ? `+${Math.round(compImpactHausse)}% de fragilité moyenne sur les compétences touchées` : "expertise à surveiller dans la durée",
-          postesRouges > 0 ? `${count(postesRouges, "poste peut devenir très fragile", "postes peuvent devenir très fragiles")}` : "relève interne à confirmer",
+          postesRouges > 0 ? `+${Math.round(postesRouges)}% de fragilité moyenne sur les postes touchés` : "relève interne à confirmer",
           "transmission à organiser avant perte de couverture"
         ])
       });
@@ -701,7 +701,7 @@
       <div class="analyse-help-kpi-list">
         ${analyseHelpKpi(`Sorties ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du périmètre sur la période N+X choisie. Le calcul s’appuie sur les informations connues dans Novoskill : départ prévu, retraite, mobilité, fin de présence, indisponibilité ou autre donnée prévisionnelle renseignée.")}
         ${analyseHelpKpi("Hausse fragilité compétences", "Cet indicateur affiche la hausse moyenne de fragilité des compétences directement touchées par les sortants de la période N+X. Une compétence est retenue uniquement si un sortant en est porteur et si son départ augmente réellement la fragilité calculée.")}
-        ${analyseHelpKpi("Postes impactés", "Cet indicateur compte les postes dont la couverture risque de se dégrader dans la projection. Un poste peut être correctement couvert aujourd’hui, mais devenir sensible si une personne clé sort du périmètre ou si une compétence critique perd sa couverture.")}
+        ${analyseHelpKpi("Hausse fragilité postes", "Cet indicateur affiche la hausse moyenne de fragilité des postes touchés par les sortants de la période N+X. Le calcul repart de la fragilité actuelle des postes puis rejoue le même moteur en retirant les sortants identifiés.")}
         ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la période observée. Plus la période est longue, plus l’analyse peut faire apparaître des fragilités futures. La lecture reste une anticipation : elle doit aider à préparer les actions avant que le risque devienne opérationnel.")}
       </div>
       ${analyseHelpNote("Cette carte sert à prendre de l’avance : transmission, relève interne, formation, recrutement ou réorganisation ciblée.")}
@@ -1032,7 +1032,7 @@
     if (item) {
       setText("kpiPrevSorties12", item.sorties);
       setText("kpiPrevCompImpact", formatPrevisionImpactPercent(item.comp_critiques_impactees));
-      setText("kpiPrevPostesRed", item.postes_rouges);
+      setText("kpiPrevPostesRed", formatPrevisionImpactPercent(item.postes_rouges));
       updateAnalyseProjectionSummary(p);
       if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
       return;
@@ -1041,7 +1041,7 @@
     // Fallback: comportement historique (12 mois)
     setText("kpiPrevSorties12", p.sorties_12m);
     setText("kpiPrevCompImpact", formatPrevisionImpactPercent(p.comp_critiques_impactees));
-    setText("kpiPrevPostesRed", p.postes_rouges_12m);
+    setText("kpiPrevPostesRed", formatPrevisionImpactPercent(p.postes_rouges_12m));
     updateAnalyseProjectionSummary(p);
     if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
   }
@@ -5458,8 +5458,8 @@ function renderDetail(mode) {
           function deltaBadge(delta) {
             const d = Math.round(Number(delta || 0));
             const mod = (d > 0) ? "sb-badge--danger" : (d < 0) ? "sb-badge--success" : "sb-badge--warning";
-            const txt = (d > 0 ? `+${d}` : `${d}`) + " pts";
-            return `<span class="sb-badge ${mod}" title="Évolution vs aujourd’hui">${escapeHtml(txt)}</span>`;
+            const txt = (d > 0 ? `+${d}` : `${d}`) + "%";
+            return `<span class="sb-badge ${mod}" title="Hausse de fragilité causée par les sortants">${escapeHtml(txt)}</span>`;
           }
 
           function covBadge(now, future) {
@@ -5504,12 +5504,12 @@ function renderDetail(mode) {
             const codifClient = (r.codif_client || "").toString().trim();
             const codifPoste  = (r.codif_poste || "").toString().trim();
             const codeAffiche = codifClient || codifPoste;
-            const covNow = (r.couverture_now !== null && r.couverture_now !== undefined) ? Number(r.couverture_now) : null;
-            const covH = (r.couverture_future !== null && r.couverture_future !== undefined) ? Number(r.couverture_future) : null;
-            const scoreH = (r.indice_fragilite_horizon !== null && r.indice_fragilite_horizon !== undefined)
-              ? clamp(Number(r.indice_fragilite_horizon || 0), 0, 100)
-              : null;
-            const prio = (r.priorite_label || "").toString().trim() || (scoreH !== null ? priorityLabel(scoreH) : "À traiter");
+            const delta = Number(r.delta_fragilite ?? 0);
+            const lost = Number(r.nb_sortants_lies ?? r.nb_sortants_titulaires ?? 0);
+            const remain = Number(r.nb_titulaires_horizon ?? r.nb_titulaires ?? 0);
+            const cible = Number(r.nb_titulaires_cible ?? 1);
+            const sortants = (r.sortants_label || "").toString().trim() || "—";
+            const nextExit = r.last_exit_date ? formatDateFr(r.last_exit_date) : "—";
 
             return `
               <tr class="prev-red-poste-row" data-id_poste="${escapeHtml(idPoste)}">
@@ -5522,10 +5522,17 @@ function renderDetail(mode) {
                     </div>
                   </div>
                 </td>
-                <td>${escapeHtml(situationText(r))}</td>
-                <td class="col-center">${covBadge(covNow, covH)}</td>
-                <td class="col-center">${priorityPill(prio, scoreH ?? 70)}</td>
-                <td>${escapeHtml(actionText(r))}</td>
+                <td class="col-center" title="Hausse de fragilité causée par les sortants">${deltaBadge(delta)}</td>
+                <td class="col-center" title="Nombre de sortants liés à ce poste ou à ses compétences">
+                  <span class="sb-badge sb-badge--danger">${escapeHtml(String(lost))}</span>
+                </td>
+                <td class="col-center" title="Titulaires projetés après les sorties prévues">
+                  <span class="sb-badge">${escapeHtml(`${remain}/${cible}`)}</span>
+                </td>
+                <td title="Sortants qui expliquent la hausse">
+                  <div style="font-weight:600;">${escapeHtml(sortants)}</div>
+                  <div class="card-sub" style="margin:2px 0 0;">Prochaine sortie : ${escapeHtml(nextExit)}</div>
+                </td>
                 <td class="col-center">
                   <button type="button" class="sb-btn sb-btn--xs sb-btn--soft prev-red-open">Voir détail</button>
                 </td>
@@ -5539,10 +5546,10 @@ function renderDetail(mode) {
                 <thead>
                   <tr>
                     <th>Poste concerné</th>
-                    <th>Situation RH projetée</th>
-                    <th class="col-center" style="width:150px;">Couverture</th>
-                    <th class="col-center" style="width:140px;">Priorité</th>
-                    <th>Point à sécuriser</th>
+                    <th class="col-center" style="width:150px;">Hausse fragilité</th>
+                    <th class="col-center" style="width:130px;">Sortants liés</th>
+                    <th class="col-center" style="width:130px;">Titulaires N+X</th>
+                    <th>Cause</th>
                     <th class="col-center" style="width:120px;">Détail</th>
                   </tr>
                 </thead>
@@ -5552,7 +5559,7 @@ function renderDetail(mode) {
           `;
         } catch (e) {
           if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
-          box.textContent = `Erreur chargement détail postes impactés: ${e?.message || e}`;
+          box.textContent = `Erreur chargement hausse fragilité postes: ${e?.message || e}`;
         }
       }, 0);
 
