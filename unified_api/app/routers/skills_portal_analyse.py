@@ -1498,7 +1498,7 @@ def _fetch_competence_fragility_records_centered(
           AND ec.id_comp = ANY(%s)
         ORDER BY e.nom_effectif, e.prenom_effectif
         """,
-        tuple(cte_params + [period_end, period_start, id_ent, comp_ids]),
+        tuple(cte_params + [period_end, period_start, id_ent] + excluded_filter_params + [comp_ids]),
     )
     carrier_rows = [dict(r) for r in (cur.fetchall() or [])]
 
