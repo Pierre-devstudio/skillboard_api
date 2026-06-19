@@ -2473,6 +2473,28 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return url;
   }
 
+  function buildAnalyseCollaborateurCompetencePdfUrl(portal, id_effectif, id_comp) {
+    const ctx = getPortalContext(portal);
+    const effectifId = String(id_effectif || "").trim();
+    const compId = String(id_comp || "").trim();
+
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+    if (!effectifId) throw new Error("Collaborateur introuvable pour l’impression.");
+    if (!compId) throw new Error("Compétence introuvable pour l’impression.");
+
+    const qs = new URLSearchParams();
+    qs.set("_", String(Date.now()));
+
+    return `${ctx.apiBase}/skills/collaborateurs/competences/fiche_pdf/${encodeURIComponent(ctx.id_contact)}/${encodeURIComponent(effectifId)}/${encodeURIComponent(compId)}?${qs.toString()}`;
+  }
+
+  async function openAnalyseCollaborateurCompetencePdfInBrowser(portal, id_effectif, id_comp) {
+    const url = buildAnalyseCollaborateurCompetencePdfUrl(portal, id_effectif, id_comp);
+    await openAnalysePdfBlob(url, "PDF compétence bloqué");
+    return url;
+  }
+
 
 
 
@@ -2888,7 +2910,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       return `
         <tr data-crit-row="${escapeHtml(uid)}" style="display:none;">
-          <td colspan="7" style="padding:0;">
+          <td colspan="8" style="padding:0;">
             <div style="padding:10px 12px; border-top:1px dashed #e5e7eb; background:#fbfbfb;">
               <table style="width:100%; border-collapse:collapse; font-size:12px; line-height:1.35;">
                 <tbody>${rows}</tbody>
@@ -2902,6 +2924,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const rowsHtml = items.map((it, idx) => {
       const uid = `crit_${idx}`;
       const code = it?.code || it?.id_comp || "—";
+      const compId = String(it?.id_comp || "").trim();
       const intitule = it?.intitule || "";
       const poids = Number(it?.poids_criticite || 0);
       const nivReq = it?.niveau_requis;
@@ -2923,6 +2946,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </button>
       ` : ``;
 
+      const btnCompetencePdf = compId ? `
+        <button type="button"
+                class="sb-icon-btn sb-icon-btn--doc"
+                data-match-competence-pdf="${escapeHtml(compId)}"
+                title="Voir la fiche compétence PDF"
+                aria-label="Voir la fiche compétence PDF">
+          ${analysePdfIconSvg()}
+        </button>
+      ` : ``;
+
       const mainRow = `
         <tr>
           <td style="vertical-align:top;">
@@ -2936,6 +2969,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <td class="col-center" style="border-left:1px solid #d1d5db;"><span class="sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span></td>
           <td class="col-center">${nivBadgeHtml(nivAt)}</td>
           <td class="col-center">${statusBadge(it?.etat)}</td>
+          <td class="col-center">${btnCompetencePdf}</td>
         </tr>
       `;
 
@@ -3118,6 +3152,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                     <th rowspan="2" style="min-width:320px;">Compétence</th>
                     <th colspan="3" class="col-center" style="background:#f9fafb;">BESOIN DU POSTE</th>
                     <th colspan="3" class="col-center" style="background:#f9fafb; border-left:1px solid #d1d5db;">PROFIL ÉVALUÉ</th>
+                    <th rowspan="2" class="col-center" style="width:54px;"></th>
                   </tr>
                   <tr>
                     <th class="col-center" style="width:90px;">Criticité</th>
@@ -3129,7 +3164,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${rowsHtml || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
+                  ${rowsHtml || `<tr><td colspan="8" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
                 </tbody>
               </table>
             </div>
@@ -3181,6 +3216,26 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
         const caret = btn.querySelector("[data-crit-caret]");
         if (caret) caret.textContent = open ? "▾" : "▸";
+      });
+    });
+
+    host.querySelectorAll("[data-match-competence-pdf]").forEach((btn) => {
+      btn.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const compId = (btn.getAttribute("data-match-competence-pdf") || "").trim();
+        const effectifId = String(person.id_effectif || person.id_collaborateur || person.id || "").trim();
+        if (!compId || !effectifId) return;
+
+        try {
+          btn.disabled = true;
+          await openAnalyseCollaborateurCompetencePdfInBrowser(_portalref || window.portal || null, effectifId, compId);
+        } catch (e) {
+          showAnalyseHelp("PDF compétence indisponible", `<p>${escapeHtml(errMsg(e))}</p>`);
+        } finally {
+          btn.disabled = false;
+        }
       });
     });
 

@@ -41,6 +41,34 @@ def _filename_header_value(filename: str) -> str:
     return _pdf_latin1_safe(filename).replace('"', "'")
 
 
+def _collaborateurs_pdf_logo_bytes_for_ent(cur, id_ent: str) -> Optional[bytes]:
+    ent = (id_ent or "").strip()
+    if not ent:
+        return None
+    try:
+        cur.execute(
+            """
+            SELECT logo_bytes
+            FROM public.tbl_studio_owner_logo
+            WHERE id_owner = %s
+              AND COALESCE(archive, FALSE) = FALSE
+            ORDER BY date_maj DESC, date_creation DESC
+            LIMIT 1
+            """,
+            (ent,),
+        )
+        row = cur.fetchone() or {}
+        raw = row.get("logo_bytes")
+        if raw is None:
+            return None
+        try:
+            return bytes(raw)
+        except Exception:
+            return raw
+    except Exception:
+        return None
+
+
 # ======================================================
 # Models
 # ======================================================
@@ -1519,9 +1547,11 @@ def get_collaborateur_competence_fiche_pdf(id_contact: str, id_effectif: str, id
         if not comp_id:
             raise HTTPException(status_code=400, detail="Compétence introuvable.")
 
+        logo_bytes = None
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                logo_bytes = _collaborateurs_pdf_logo_bytes_for_ent(cur, id_ent)
 
                 cur.execute(
                     """
@@ -1624,6 +1654,7 @@ def get_collaborateur_competence_fiche_pdf(id_contact: str, id_effectif: str, id
                 "doc_label": _pdf_latin1_safe("Fiche compétence"),
                 "footer_left": _pdf_latin1_safe("Novoskill Insights • Fiche compétence"),
                 "header_right": _pdf_latin1_safe(header_right),
+                "logo_bytes": logo_bytes,
                 "header_right_font_name": "Helvetica-Bold",
                 "header_right_font_size": 10.5,
             },
