@@ -2473,11 +2473,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return url;
   }
 
-  function buildAnalyseCollaborateurCompetencePdfUrl(portal, id_effectif, id_comp, id_poste) {
+  function buildAnalyseCollaborateurCompetencePdfUrl(portal, id_effectif, id_comp) {
     const ctx = getPortalContext(portal);
     const effectifId = String(id_effectif || "").trim();
     const compId = String(id_comp || "").trim();
-    const posteId = String(id_poste || "").trim();
 
     if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
     if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
@@ -2485,14 +2484,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (!compId) throw new Error("Compétence introuvable pour l’impression.");
 
     const qs = new URLSearchParams();
-    if (posteId) qs.set("id_poste", posteId);
     qs.set("_", String(Date.now()));
 
     return `${ctx.apiBase}/skills/collaborateurs/competences/fiche_pdf/${encodeURIComponent(ctx.id_contact)}/${encodeURIComponent(effectifId)}/${encodeURIComponent(compId)}?${qs.toString()}`;
   }
 
-  async function openAnalyseCollaborateurCompetencePdfInBrowser(portal, id_effectif, id_comp, id_poste) {
-    const url = buildAnalyseCollaborateurCompetencePdfUrl(portal, id_effectif, id_comp, id_poste);
+  async function openAnalyseCollaborateurCompetencePdfInBrowser(portal, id_effectif, id_comp) {
+    const url = buildAnalyseCollaborateurCompetencePdfUrl(portal, id_effectif, id_comp);
     await openAnalysePdfBlob(url, "PDF compétence bloqué");
     return url;
   }
@@ -3228,12 +3226,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
         const compId = (btn.getAttribute("data-match-competence-pdf") || "").trim();
         const effectifId = String(person.id_effectif || person.id_collaborateur || person.id || "").trim();
-        const posteId = String(poste.id_poste || poste.id || "").trim();
         if (!compId || !effectifId) return;
 
         try {
           btn.disabled = true;
-          await openAnalyseCollaborateurCompetencePdfInBrowser(_portalref || window.portal || null, effectifId, compId, posteId);
+          await openAnalyseCollaborateurCompetencePdfInBrowser(_portalref || window.portal || null, effectifId, compId);
         } catch (e) {
           showAnalyseHelp("PDF compétence indisponible", `<p>${escapeHtml(errMsg(e))}</p>`);
         } finally {

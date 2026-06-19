@@ -1532,13 +1532,7 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str, request: Re
 
 
 @router.get("/skills/collaborateurs/competences/fiche_pdf/{id_contact}/{id_effectif}/{id_comp}")
-def get_collaborateur_competence_fiche_pdf(
-    id_contact: str,
-    id_effectif: str,
-    id_comp: str,
-    request: Request,
-    id_poste: Optional[str] = Query(default=None),
-):
+def get_collaborateur_competence_fiche_pdf(id_contact: str, id_effectif: str, id_comp: str, request: Request):
     """
     PDF fiche compétence depuis Insights / Vos collaborateurs.
     Réutilise la trame commune déjà utilisée côté Studio/Learn.
@@ -1546,13 +1540,10 @@ def get_collaborateur_competence_fiche_pdf(
     Sécurité :
     - id_contact résout le périmètre Insights via le token ;
     - le collaborateur doit appartenir à l'entreprise résolue ;
-    - la compétence doit être soit requise par le poste actuel, soit détenue par le collaborateur ;
-    - si id_poste est fourni, la compétence peut aussi provenir du poste analysé
-      (cas matching : compétence non encore détenue par le collaborateur).
+    - la compétence doit être soit requise par le poste actuel, soit détenue par le collaborateur.
     """
     try:
         comp_id = (id_comp or "").strip()
-        poste_analyse_id = (id_poste or "").strip()
         if not comp_id:
             raise HTTPException(status_code=400, detail="Compétence introuvable.")
 
@@ -1601,17 +1592,6 @@ def get_collaborateur_competence_fiche_pdf(
                         WHERE ecc.id_effectif_client = %s
                           AND COALESCE(ecc.actif, TRUE) = TRUE
                           AND COALESCE(ecc.archive, FALSE) = FALSE
-
-                        UNION
-
-                        SELECT fpc_match.id_competence AS id_comp
-                        FROM public.tbl_fiche_poste_competence fpc_match
-                        JOIN public.tbl_fiche_poste fp_match
-                          ON fp_match.id_poste = fpc_match.id_poste
-                        WHERE fpc_match.id_poste = %s
-                          AND fp_match.id_ent = %s
-                          AND COALESCE(fp_match.actif, TRUE) = TRUE
-                          AND COALESCE(fpc_match.masque, FALSE) = FALSE
                     )
                     SELECT
                         c.id_comp,
@@ -1636,11 +1616,11 @@ def get_collaborateur_competence_fiche_pdf(
                       AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
                     LIMIT 1
                     """,
-                    (id_poste, id_effectif, poste_analyse_id or None, id_ent, comp_id),
+                    (id_poste, id_effectif, comp_id),
                 )
                 row = cur.fetchone() or {}
                 if not row:
-                    raise HTTPException(status_code=404, detail="Compétence introuvable pour ce collaborateur ou ce poste analysé.")
+                    raise HTTPException(status_code=404, detail="Compétence introuvable pour ce collaborateur.")
 
                 header_right = (eff.get("nom_ent") or "Novoskill Insights").strip()
 
