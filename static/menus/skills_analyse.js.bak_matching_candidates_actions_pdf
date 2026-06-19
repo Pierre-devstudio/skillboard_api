@@ -2442,36 +2442,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     return `${ctx.apiBase}/skills/analyse/matching/poste/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
   }
-
-  function buildAnalyseMatchingEffectifPdfUrl(portal, id_poste, id_effectif, id_service) {
-    const ctx = getPortalContext(portal);
-    const posteId = String(id_poste || "").trim();
-    const effectifId = String(id_effectif || "").trim();
-
-    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
-    if (!posteId) throw new Error("Sélectionne un poste avant d’imprimer.");
-    if (!effectifId) throw new Error("Collaborateur introuvable pour l’impression.");
-
-    const qs = new URLSearchParams();
-    qs.set("id_poste", posteId);
-    qs.set("id_effectif", effectifId);
-    const svc = String(id_service || "").trim();
-    if (svc) qs.set("id_service", svc);
-    if (typeof getCriticiteMin === "function") qs.set("criticite_min", String(getCriticiteMin()));
-    qs.set("_", String(Date.now()));
-
-    return `${ctx.apiBase}/skills/analyse/matching/effectif/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-  }
-
   async function openAnalyseMatchingPdfInBrowser(portal, id_poste, id_service) {
     const url = buildAnalyseMatchingPdfUrl(portal, id_poste, id_service);
-    await openAnalysePdfBlob(url, "Impression bloquée");
-    return url;
-  }
-
-  async function openAnalyseMatchingEffectifPdfInBrowser(portal, id_poste, id_effectif, id_service) {
-    const url = buildAnalyseMatchingEffectifPdfUrl(portal, id_poste, id_effectif, id_service);
     await openAnalysePdfBlob(url, "Impression bloquée");
     return url;
   }
@@ -3847,9 +3819,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function isTitulaire(c) {
       if (!c) return false;
 
+      // cas idéal: backend fournit un flag
       if (c.is_titulaire === true || c.est_titulaire === true || c.titulaire === true || c.is_on_poste === true) return true;
       if (String(c.is_titulaire || "").toLowerCase() === "true") return true;
 
+      // fallback: comparaison poste actuel / poste sélectionné
       const posteActuel = String(c.id_poste_actuel || "").trim();
       return !!posteCible && !!posteActuel && posteActuel === posteCible;
     }
@@ -3863,55 +3837,84 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const top = _matchRowsExpanded ? rows : rows.slice(0, MATCH_TABLE_PREVIEW_LIMIT);
     renderMatchingHeaderActions(getMatchingCurrentServiceId());
 
-    function scoreBadge(scoreValue) {
-      const raw = Number(scoreValue || 0);
-      const s = Math.max(0, Math.min(100, Math.round(Number.isFinite(raw) ? raw : 0)));
-      const hue = Math.round(12 + (s * 1.08)); // 12=rouge doux, 120=vert doux
-      const bg = `hsl(${hue} 72% 94%)`;
-      const border = `hsl(${hue} 58% 76%)`;
-      const color = `hsl(${hue} 58% 28%)`;
+    function badge(txt, accent) {
+      const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
+      return `<span class="${cls}">${escapeHtml(txt)}</span>`;
+    }
+
+    function gapBadges(absCount, underCount) {
+      const a = Number(absCount || 0);
+      const u = Number(underCount || 0);
+
+      function box(n, bg, title) {
+        const isZero = !n;
+        const style = isZero
+          ? "background:#e5e7eb; color:#6b7280; border:1px solid #d1d5db;"
+          : `background:${bg}; color:#ffffff; border:1px solid rgba(0,0,0,.12);`;
+
+        return `
+          <span title="${escapeHtml(title)}"
+                style="display:inline-flex; align-items:center; justify-content:center;
+                      width:22px; height:18px; border-radius:4px;
+                      font-size:12px; font-weight:800; line-height:1;
+                      ${style}">
+            ${n || 0}
+          </span>
+        `;
+      }
 
       return `
-        <span title="Score d’adéquation au poste"
-              style="display:inline-flex; align-items:center; justify-content:center;
-                     min-width:56px; padding:5px 10px; border-radius:999px;
-                     border:1px solid ${border}; background:${bg}; color:${color};
-                     font-size:12px; font-weight:900; line-height:1; white-space:nowrap;">
-          ${s}<span style="font-size:11px; font-weight:800; margin-left:1px;">%</span>
+        <span style="display:inline-flex; gap:6px; align-items:center; justify-content:center;">
+          ${box(a, "#ef4444", "Manquantes")}
+          ${box(u, "#f59e0b", "À renforcer")}
         </span>
       `;
     }
 
+    const MATCH_LEGEND_HTML = `
+    <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span style="font-size:12px; color:#6b7280;">Badges (gauche / droite) :</span>
+
+        <span style="display:inline-flex; align-items:center; gap:6px;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#ef4444; border:1px solid rgba(0,0,0,.12);"></span>
+          <span style="font-size:12px; color:#6b7280;">Compétences manquantes</span>
+        </span>
+
+        <span style="font-size:12px; color:#9ca3af;">/</span>
+
+        <span style="display:inline-flex; align-items:center; gap:6px;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b; border:1px solid rgba(0,0,0,.12);"></span>
+          <span style="font-size:12px; color:#6b7280;">Compétences à renforcer</span>
+        </span>
+      </div>
+
+      <div style="font-size:12px; color:#6b7280;">
+        Compétence critique : compétence indispensable à la tenue du poste, avec un impact fort sur le résultat et/ou la sécurité.
+      </div>
+    </div>
+  `;
+
     const headerTitle = (v === "titulaire") ? "Adéquation au poste (titulaire" + (titulairesAll.length > 1 ? "s" : "") + ")" : "Top candidats (hors titulaires)";
     const emptyText = (v === "titulaire") ? "Aucun titulaire détecté sur ce poste" : "Aucun candidat (hors titulaires)";
 
+    
     function renderRow(c) {
+      const critHtml = gapBadges(c.crit_missing, c.crit_under);
+      const missHtml = gapBadges(c.nb_missing, c.nb_under);
+
       const score = Number(c.score_pct || 0);
+      const scoreBadge = score >= 80 ? badge(score + "%", true) : badge(score + "%", false);
+
       const ide = String(c.id_effectif || "").trim();
 
       return `
-        <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}">
+        <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}" style="cursor:pointer;">
           <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
           <td>${escapeHtml(c.nom_service || "—")}</td>
-          <td class="col-center">${scoreBadge(score)}</td>
-          <td class="col-center">
-            <div class="sb-icon-actions" style="justify-content:center;">
-              <button type="button"
-                      class="sb-icon-btn match-person-open"
-                      data-match-person-open="${escapeHtml(ide)}"
-                      title="Voir"
-                      aria-label="Voir le détail de la correspondance">
-                ${analyseEyeIconSvg()}
-              </button>
-              <button type="button"
-                      class="sb-icon-btn sb-icon-btn--doc"
-                      data-match-person-pdf="${escapeHtml(ide)}"
-                      title="PDF"
-                      aria-label="Exporter le détail de la correspondance en PDF">
-                ${analysePdfIconSvg()}
-              </button>
-            </div>
-          </td>
+          <td class="col-center">${scoreBadge}</td>
+          <td class="col-center">${critHtml}</td>
+          <td class="col-center">${missHtml}</td>
         </tr>
       `;
     }
@@ -3919,7 +3922,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function renderHeaderRow(title) {
       return `
         <tr class="sb-match-section">
-          <td colspan="4" class="sb-match-section-cell">
+          <td colspan="5" class="sb-match-section-cell"> 
             ${escapeHtml(title)}
           </td>
         </tr>
@@ -3945,16 +3948,29 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th style="width:180px;">Service</th>
               <th class="col-center" style="width:110px;"
                   title="Adéquation globale au poste (synthèse des compétences requises).">Score</th>
-              <th class="col-center" style="width:92px;">Actions</th>
+
+              <th class="col-center" style="width:140px;"
+                  title="Nombre de compétences critiques requises : manquantes / à renforcer.">Critiques</th>
+
+              <th class="col-center" style="width:140px;"
+                  title="Nombre d’écarts sur compétences critiques vs niveau attendu : manquantes / à renforcer.">Écarts</th>
             </tr>
           </thead>
           <tbody>
             ${renderHeaderRow(headerTitle)}
-            ${top.length ? top.map(renderRow).join("") : `<tr><td colspan="4" class="col-center" style="color:#6b7280;">${escapeHtml(emptyText)}</td></tr>`}
+            ${top.length ? top.map(renderRow).join("") : `<tr><td colspan="5" class="col-center" style="color:#6b7280;">${escapeHtml(emptyText)}</td></tr>`}
           </tbody>
         </table>
       </div>
+
+      ${MATCH_LEGEND_HTML}
+
+      <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+        Seuil “compétence critique” : criticité ≥ ${escapeHtml(typeof critMinLabel === "function" ? critMinLabel() : "—")}%.
+      </div>
     `;
+
+
   }
 
 
@@ -7325,35 +7341,14 @@ function bindOnce(portal) {
     }
 
     // ------------------------------
-    // 4) Actions sur PERSONNE (table matching droite)
+    // 4) Click sur PERSONNE (table matching droite)
     // ------------------------------
-    const btnMatchPersonPdf = ev.target.closest("[data-match-person-pdf]");
-    if (btnMatchPersonPdf) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const id_effectif = (btnMatchPersonPdf.getAttribute("data-match-person-pdf") || "").trim();
-      if (!id_effectif || !_matchSelectedPoste) return;
-      try {
-        await openAnalyseMatchingEffectifPdfInBrowser(p, _matchSelectedPoste, id_effectif, id_service);
-      } catch (e) {
-        if (typeof showToast === "function") showToast(e.message || "Impossible d’ouvrir le PDF.", "error");
-        else alert(e.message || "Impossible d’ouvrir le PDF.");
-      }
-      return;
-    }
-
-    const btnMatchPersonOpen = ev.target.closest("[data-match-person-open], .match-person-open");
-    if (btnMatchPersonOpen) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const id_effectif = (btnMatchPersonOpen.getAttribute("data-match-person-open") || btnMatchPersonOpen.closest("tr.match-person-row[data-match-id_effectif]")?.getAttribute("data-match-id_effectif") || "").trim();
-      if (!id_effectif || !_matchSelectedPoste) return;
-      showMatchPersonDetailModal(p, _matchSelectedPoste, id_effectif, id_service);
-      return;
-    }
-
     const trPerson = ev.target.closest("tr.match-person-row[data-match-id_effectif]");
     if (trPerson) {
+      const id_effectif = (trPerson.getAttribute("data-match-id_effectif") || "").trim();
+      if (!id_effectif) return;
+      if (!_matchSelectedPoste) return; // pas de poste sélectionné => pas de drilldown cohérent
+      showMatchPersonDetailModal(p, _matchSelectedPoste, id_effectif, id_service);
       return;
     }
 
