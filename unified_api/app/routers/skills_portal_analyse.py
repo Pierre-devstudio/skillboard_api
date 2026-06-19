@@ -6910,6 +6910,12 @@ def get_analyse_matching_poste_pdf(
             limit=2000,
         )
 
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                company_name = _analyse_pdf_company_name(cur, id_ent)
+                logo_bytes = _analyse_pdf_logo_bytes_for_ent(cur, id_ent)
+
         styles = build_pdf_styles()
         poste = data.poste or {}
         items = list(data.items or [])
@@ -6987,6 +6993,10 @@ def get_analyse_matching_poste_pdf(
                 "title": "Correspondances profils/postes",
                 "doc_label": "Analyse matching",
                 "footer_left": "Novoskill Insights • Correspondances profils/postes",
+                "header_right": company_name,
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 11,
+                "logo_bytes": logo_bytes,
             },
             page_size=landscape(A4),
         )
