@@ -1216,11 +1216,14 @@
   }
 
   function getMatchPosteMode() {
-    return "tous";
+    const v = (localStorage.getItem(STORE_MATCH_POSTE_MODE) || "").trim().toLowerCase();
+    return (v === "tous" || v === "fragiles") ? v : "fragiles";
   }
 
-  function setMatchPosteMode(_mode) {
-    try { localStorage.removeItem(STORE_MATCH_POSTE_MODE); } catch (_) {}
+  function setMatchPosteMode(mode) {
+    const v = (mode || "").toString().trim().toLowerCase();
+    if (v === "tous" || v === "fragiles") localStorage.setItem(STORE_MATCH_POSTE_MODE, v);
+    else localStorage.removeItem(STORE_MATCH_POSTE_MODE);
   }
 
 
@@ -2238,12 +2241,20 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return 0.2;                            // trop bas
   }
 
-  async function fetchMatchingPostes(portal, id_service, _modePostes) {
+  async function fetchMatchingPostes(portal, id_service, modePostes) {
     const svc = (id_service || "").trim();
-    const key = `tous|${svc || "__ALL__"}`;
+
+    const mRaw = (modePostes || getMatchPosteMode() || "fragiles").toString().trim().toLowerCase();
+    const mode = (mRaw === "tous") ? "tous" : "fragiles";
+
+    const key = `${mode}|${svc || "__ALL__"}`;
     if (_matchPostesCache.has(key)) return _matchPostesCache.get(key);
 
-    const data = await fetchRisquesDetail(portal, "postes-scope", svc, 2000);
+    // "fragiles" => KPI existant
+    // "tous"     => nouveau KPI (ajouté au backend au bloc 4)
+    const kpi = (mode === "tous") ? "postes-scope" : "postes-fragiles";
+
+    const data = await fetchRisquesDetail(portal, kpi, svc, 2000);
     const items = Array.isArray(data?.items) ? data.items : [];
 
     _matchPostesCache.set(key, items);
@@ -3636,11 +3647,34 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
 
   function renderMatchingShell() {
+    const modePostes = getMatchPosteMode(); // "fragiles" | "tous"
+    const isFrag = (modePostes === "fragiles");
+
+    const leftTitle = isFrag ? "Postes (priorité: fragiles)" : "Postes (tous)";
+    // Styles du toggle gérés par CSS via .sb-seg--match (pas de couleurs inline ici)
+
     return `
         <div style="display:flex; gap:12px; align-items:stretch; min-height:360px;">
           <div class="card" style="padding:12px; margin:0; width:360px; flex:0 0 auto;">
-            <div class="card-title" style="margin-bottom:0;">Postes</div>
-            <div id="matchPosteList" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div>
+            <div class="card-title" style="margin-bottom:6px;">${escapeHtml(leftTitle)}</div>
+            <div class="card-sub" style="margin:0;">Clique un poste pour obtenir les candidats internes.</div>
+
+            <div class="sb-segbar" style="margin-top:10px; margin-bottom:10px;">
+            <button type="button"
+                    class="sb-seg sb-seg--match ${isFrag ? "is-active" : ""}"
+                    data-match-poste-mode="fragiles"
+                    aria-pressed="${isFrag ? "true" : "false"}">
+                Postes fragiles
+              </button>
+              <button type="button"
+                    class="sb-seg sb-seg--match ${!isFrag ? "is-active" : ""}"
+                    data-match-poste-mode="tous"
+                    aria-pressed="${!isFrag ? "true" : "false"}">
+                Tous les postes
+              </button>
+            </div>
+
+            <div id="matchPosteList" style="margin-top:0; display:flex; flex-direction:column; gap:6px;"></div>
           </div>
 
           <div class="card" style="padding:12px; margin:0; flex:1;">
@@ -3674,21 +3708,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const svc = (r.nom_service || "").trim() || "—";
       const bottom = `${(codeAffiche || "—")}${svc ? " • " : ""}${svc}`.trim();
 
-      const nbRattaches = Number(r.nb_titulaires_rattaches);
-      const sansTitulaire = Number.isFinite(nbRattaches) && nbRattaches <= 0;
-      const liseretStyle = sansTitulaire ? `box-shadow:inset 4px 0 0 #ef4444;` : ``;
-      const titleAttr = sansTitulaire ? ` title="Aucun titulaire affecté sur ce poste"` : ``;
-
       const isActive = selectedId && idp === selectedId;
       const style = isActive
-        ? `border-color:var(--reading-accent); background:color-mix(in srgb, var(--reading-accent) 8%, #fff); ${liseretStyle}`
-        : `border-color:#e5e7eb; background:#fff; ${liseretStyle}`;
+        ? `border-color:var(--reading-accent); background:color-mix(in srgb, var(--reading-accent) 8%, #fff);`
+        : `border-color:#e5e7eb; background:#fff;`;
 
       return `
         <button type="button"
                 class="btn-secondary"
                 data-match-id_poste="${escapeHtml(idp)}"
-                ${titleAttr}
                 style="text-align:left; margin:0; ${style}">
           <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${escapeHtml(intitule)}

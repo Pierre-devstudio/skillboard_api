@@ -4262,7 +4262,6 @@ class AnalyseRisqueItem(BaseModel):
     nb_critiques_sans_porteur: Optional[int] = None
     nb_critiques_porteur_unique: Optional[int] = None
     nb_titulaires: Optional[int] = None
-    nb_titulaires_rattaches: Optional[int] = None
 
     nb_critiques_sans_releve: Optional[int] = None
     nb_critiques_releve_faible: Optional[int] = None
@@ -4646,7 +4645,6 @@ def get_analyse_risques_detail(
                             nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
                             nb_critiques_porteur_unique=int(r.get("nb_critiques_porteur_unique") or 0),
                             nb_titulaires=int(r.get("nb_titulaires") or 0),
-                            nb_titulaires_rattaches=int(r.get("nb_titulaires_rattaches") or 0),
                             nb_critiques_sans_releve=int(r.get("nb_critiques_sans_releve") or 0),
                             nb_critiques_releve_faible=int(r.get("nb_critiques_releve_faible") or 0),
                             nb_titulaires_cible=int(r.get("nb_titulaires_cible") or 1),
