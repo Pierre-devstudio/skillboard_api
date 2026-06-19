@@ -6727,8 +6727,9 @@ def get_analyse_matching_poste(
                     JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                     WHERE fpc.id_poste = %s
                       AND COALESCE(fpc.masque, FALSE) = FALSE
+                      AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     """,
-                    tuple(cte_params + [id_poste]),
+                    tuple(cte_params + [id_poste, int(criticite_min)]),
                 )
                 req_rows = cur.fetchall() or []
                 reqs: List[Dict[str, Any]] = []
@@ -6814,9 +6815,7 @@ def get_analyse_matching_poste(
 
                 # Pré-calcul poids total
                 poids_total = sum(int(x.get("poids") or 1) for x in reqs) or 1
-                # Le matching se calcule sur toutes les compétences du poste.
-                # La criticité reste une information métier, mais le filtre global ne pilote pas ce résultat.
-                crit_min = CRITICITE_MIN_DEFAULT
+                crit_min = int(criticite_min)
 
                 items: List[AnalyseMatchingItem] = []
                 for e in eff_rows:
@@ -6973,7 +6972,7 @@ def get_analyse_matching_poste_pdf(
         story.append(make_spacer(3))
 
         meta = Table([
-            [Paragraph("Périmètre", styles["meta_label"]), Paragraph(safe(perimetre), styles["meta_value"]), Paragraph("Compétences", styles["meta_label"]), Paragraph("Toutes", styles["meta_value"])],
+            [Paragraph("Périmètre", styles["meta_label"]), Paragraph(safe(perimetre), styles["meta_value"]), Paragraph("Criticité", styles["meta_label"]), Paragraph(f"≥ {int(criticite_min)}", styles["meta_value"])],
             [Paragraph("Titulaires", styles["meta_label"]), Paragraph(str(len(titulaires)), styles["meta_value"]), Paragraph("Candidats", styles["meta_label"]), Paragraph(str(len(candidats)), styles["meta_value"])],
         ], colWidths=[28 * mm, 70 * mm, 28 * mm, 70 * mm])
         meta.setStyle(TableStyle([
@@ -7375,8 +7374,9 @@ def get_analyse_matching_effectif_detail(
                      AND COALESCE(d.masque, FALSE) = FALSE
                     WHERE fpc.id_poste = %s
                       AND COALESCE(fpc.masque, FALSE) = FALSE
+                      AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     """,
-                    tuple(cte_params + [id_poste]),
+                    tuple(cte_params + [id_poste, int(criticite_min)]),
                 )
                 req_rows = cur.fetchall() or []
                 if not req_rows:
@@ -7439,8 +7439,7 @@ def get_analyse_matching_effectif_detail(
 
                 # --- Stats + items
                 poids_total = 0
-                # Le détail matching reprend le même périmètre que le tableau principal : toutes les compétences du poste.
-                crit_min = CRITICITE_MIN_DEFAULT
+                crit_min = int(criticite_min)
 
                 sum_ratio = 0.0
                 nb_missing = 0

@@ -2267,6 +2267,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const url = `${portal.apiBase}/skills/analyse/matching/effectif/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     _matchEffDetailCache.set(key, data);
     return data;
   }
@@ -2436,6 +2437,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     qs.set("id_poste", posteId);
     const svc = String(id_service || "").trim();
     if (svc) qs.set("id_service", svc);
+    if (typeof getCriticiteMin === "function") qs.set("criticite_min", String(getCriticiteMin()));
     qs.set("_", String(Date.now()));
 
     return `${ctx.apiBase}/skills/analyse/matching/poste/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
@@ -2456,6 +2458,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     qs.set("id_effectif", effectifId);
     const svc = String(id_service || "").trim();
     if (svc) qs.set("id_service", svc);
+    if (typeof getCriticiteMin === "function") qs.set("criticite_min", String(getCriticiteMin()));
     qs.set("_", String(Date.now()));
 
     return `${ctx.apiBase}/skills/analyse/matching/effectif/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
@@ -2857,14 +2860,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const rawCol = it?.domaine_couleur ?? it?.domaine_color ?? it?.domaine_couleur_hex ?? it?.couleur_domaine;
       const col = normalizeColor(rawCol);
       const style = col ? ` style="--dom-color:${escapeHtml(col)};"` : "";
-      return `<span class="sb-badge-domaine sb-badge-domaine--soft"${style}>${escapeHtml(txt)}</span>`;
+      return `<span class="sb-badge-domaine"${style}>${escapeHtml(txt)}</span>`;
     }
 
     function renderCritDetailsRow(uid, arr) {
       const a = Array.isArray(arr) ? arr : [];
       if (!a.length) return "";
 
-      const rows = a.map((x, i) => {
+      const lis = a.map((x) => {
         const nom = (x?.nom || "").toString().trim();
         const code = (x?.code_critere || "").toString().trim();
         const title = (nom || code || "Critère").trim();
@@ -2872,25 +2875,19 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         const n = (x?.niveau === null || x?.niveau === undefined) ? null : Number(x.niveau);
         const pts = (n !== null && Number.isFinite(n)) ? `${Math.round(n)}/4` : "—";
 
-        const lib = (x?.libelle || "").toString().trim() || "—";
-        const border = (i < a.length - 1) ? "border-bottom:1px solid #eef2f7;" : "";
+        const lib = (x?.libelle || "").toString().trim();
+        const extra = lib ? ` <span style="color:#6b7280;">${escapeHtml(lib)}</span>` : "";
 
-        return `
-          <tr>
-            <td style="padding:7px 8px; ${border} font-weight:500; color:#111827; vertical-align:top;">${escapeHtml(title)}</td>
-            <td style="padding:7px 8px; ${border} width:70px; text-align:center; font-weight:700; color:#111827; vertical-align:top;">${escapeHtml(pts)}</td>
-            <td style="padding:7px 8px; ${border} color:#6b7280; vertical-align:top;">${escapeHtml(lib)}</td>
-          </tr>
-        `;
+        return `<li><b>${escapeHtml(title)}</b> : <span style="font-weight:800;">${escapeHtml(pts)}</span>${extra}</li>`;
       }).join("");
 
       return `
         <tr data-crit-row="${escapeHtml(uid)}" style="display:none;">
           <td colspan="7" style="padding:0;">
             <div style="padding:10px 12px; border-top:1px dashed #e5e7eb; background:#fbfbfb;">
-              <table style="width:100%; border-collapse:collapse; font-size:12px; line-height:1.35;">
-                <tbody>${rows}</tbody>
-              </table>
+              <ul style="margin:0 0 0 18px; color:#374151; font-size:12px; line-height:1.35;">
+                ${lis}
+              </ul>
             </div>
           </td>
         </tr>
@@ -2925,13 +2922,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <tr>
           <td style="vertical-align:top;">
             ${badgesTop}
-            <div style="font-weight:500; font-size:13px; line-height:1.28; color:#111827; margin-top:4px;">${escapeHtml(intitule)}</div>
+            <div style="font-weight:700; color:#111827; margin-top:4px;">${escapeHtml(intitule)}</div>
             ${btnCrit}
           </td>
           <td class="col-center">${critBadgeHtml(poids)}</td>
           <td class="col-center">${nivBadgeHtml(nivReq)}</td>
           <td class="col-center"><span class="sb-badge" title="Note maximale du niveau requis">${escapeHtml(String(noteMax))}</span></td>
-          <td class="col-center" style="border-left:1px solid #d1d5db;"><span class="sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span></td>
+          <td class="col-center"><span class="sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span></td>
           <td class="col-center">${nivBadgeHtml(nivAt)}</td>
           <td class="col-center">${statusBadge(it?.etat)}</td>
         </tr>
@@ -2973,85 +2970,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     });
 
     const radarTop = radarAxesAll.slice(0, RADAR_MAX_AXES);
-    const radarCompEmpty = radarTop.length < 3;
+    const radarEmpty = radarTop.length < 3;
 
-    function normDomainKey(s) {
-      const v = (s ?? "").toString().trim();
-      return v ? v.toLowerCase() : "__non_classe__";
-    }
-
-    function shortRadarLabel(s, maxLen) {
-      const v = (s ?? "").toString().trim();
-      if (!v) return "—";
-      if (v.length <= maxLen) return v;
-      return v.slice(0, Math.max(4, maxLen - 1)) + "…";
-    }
-
-    const domMap = new Map();
-    items.forEach((it) => {
-      const raw = ((it?.domaine_titre_court || it?.domaine || "") ?? "").toString().trim();
-      const label = raw || "Non classé";
-      const key = normDomainKey(label);
-
-      const poidsN = Number(it?.poids_criticite || 1);
-      const w = (Number.isFinite(poidsN) && poidsN > 0) ? poidsN : 1;
-      const scoreN = Number(it?.score_24 ?? it?.score ?? it?.resultat_eval ?? 0);
-      const seuilN = Number(it?.seuil_24 ?? it?.seuil ?? 0);
-      const ratio = (seuilN > 0 && Number.isFinite(scoreN))
-        ? Math.max(0, Math.min(scoreN / seuilN, 1))
-        : 0;
-
-      let g = domMap.get(key);
-      if (!g) {
-        g = { key, label, poids: 0, weightedRatio: 0, attendu: 0, atteint: 0, nb: 0 };
-        domMap.set(key, g);
-      }
-
-      g.poids += w;
-      g.weightedRatio += (w * ratio);
-      g.attendu += (Number.isFinite(seuilN) ? seuilN : 0);
-      g.atteint += (Number.isFinite(scoreN) ? scoreN : 0);
-      g.nb += 1;
-    });
-
-    const domainAxesAll = Array.from(domMap.values()).map((g) => {
-      const ratio = g.poids > 0 ? Math.max(0, Math.min(g.weightedRatio / g.poids, 1)) : 0;
-      return {
-        key: g.key,
-        label: g.label,
-        code: shortRadarLabel(g.label, 15),
-        nb: g.nb || 0,
-        poids: Math.round(Number(g.poids || 0)),
-        attendu: Number(g.attendu || 0),
-        atteint: Number(g.atteint || 0),
-        ratio: ratio,
-      };
-    }).sort((a, b) => {
-      const d1 = (b.poids - a.poids);
-      if (d1) return d1;
-      return String(a.label || "").localeCompare(String(b.label || ""));
-    });
-
-    const domainAxesRadar = domainAxesAll.slice(0, RADAR_MAX_AXES);
-    const radarDomainEmpty = domainAxesRadar.length < 3;
-
-    const radarHtmlComp = radarCompEmpty
+    const radarHtml = radarEmpty
       ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
       : `
         <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
           <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
         </div>
       `;
-
-    const radarHtmlDomain = radarDomainEmpty
-      ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 domaines).</div>`
-      : `
-        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
-          <canvas id="matchDomainRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
-        </div>
-      `;
-
-    let _matchRadarView = "comp";
 
     host.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:10px;">
@@ -3087,12 +3014,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <span data-match-accordion-caret="radar" style="font-weight:900; color:#6b7280;">▾</span>
           </button>
           <div id="matchPersonRadarPanel" data-match-accordion-panel="radar" style="padding:0 12px 12px 12px;">
-            <div class="sb-actions" style="justify-content:flex-start; margin:0 0 10px 0; gap:6px;">
-              <button type="button" id="btnMatchRadarViewComp" class="sb-btn sb-btn--accent sb-btn--xs">Vue compétence</button>
-              <button type="button" id="btnMatchRadarViewDomain" class="sb-btn sb-btn--soft sb-btn--xs">Vue domaine compétence</button>
-            </div>
-            <div id="matchRadarPanelComp">${radarHtmlComp}</div>
-            <div id="matchRadarPanelDomain" style="display:none;">${radarHtmlDomain}</div>
+            ${radarHtml}
           </div>
         </div>
 
@@ -3109,13 +3031,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   <tr>
                     <th rowspan="2" style="min-width:320px;">Compétence</th>
                     <th colspan="3" class="col-center" style="background:#f9fafb;">BESOIN DU POSTE</th>
-                    <th colspan="3" class="col-center" style="background:#f9fafb; border-left:1px solid #d1d5db;">PROFIL ÉVALUÉ</th>
+                    <th colspan="3" class="col-center" style="background:#f9fafb;">PROFIL ÉVALUÉ</th>
                   </tr>
                   <tr>
                     <th class="col-center" style="width:90px;">Criticité</th>
                     <th class="col-center" style="width:130px;">Niveau<br>requis</th>
                     <th class="col-center" style="width:90px;">Note max.</th>
-                    <th class="col-center" style="width:90px; border-left:1px solid #d1d5db;">Atteint</th>
+                    <th class="col-center" style="width:90px;">Atteint</th>
                     <th class="col-center" style="width:140px;">Niveau<br>atteint</th>
                     <th class="col-center" style="width:120px;">Statut</th>
                   </tr>
@@ -3329,53 +3251,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function renderRadarNow() {
       const panel = byId("matchPersonRadarPanel");
-      if (!panel || panel.style.display === "none") return;
-
-      if (_matchRadarView === "domain") {
-        if (radarDomainEmpty) return;
-        const canvasDomain = byId("matchDomainRadarCanvas");
-        if (!canvasDomain) return;
-        drawRadarChart(canvasDomain, domainAxesRadar);
-        return;
-      }
-
-      if (radarCompEmpty) return;
+      if (!panel || panel.style.display === "none" || radarEmpty) return;
       const canvas = byId("matchPersonRadarCanvas");
       if (!canvas) return;
       drawRadarChart(canvas, radarTop);
-    }
-
-    const btnRadarComp = byId("btnMatchRadarViewComp");
-    const btnRadarDomain = byId("btnMatchRadarViewDomain");
-    const radarPanelComp = byId("matchRadarPanelComp");
-    const radarPanelDomain = byId("matchRadarPanelDomain");
-
-    function setRadarView(which) {
-      const isDomain = which === "domain";
-      _matchRadarView = isDomain ? "domain" : "comp";
-
-      if (radarPanelComp) radarPanelComp.style.display = isDomain ? "none" : "";
-      if (radarPanelDomain) radarPanelDomain.style.display = isDomain ? "" : "none";
-
-      if (btnRadarComp) {
-        btnRadarComp.classList.toggle("sb-btn--accent", !isDomain);
-        btnRadarComp.classList.toggle("sb-btn--soft", isDomain);
-      }
-      if (btnRadarDomain) {
-        btnRadarDomain.classList.toggle("sb-btn--accent", isDomain);
-        btnRadarDomain.classList.toggle("sb-btn--soft", !isDomain);
-      }
-
-      setTimeout(renderRadarNow, 0);
-    }
-
-    if (btnRadarComp && !btnRadarComp.dataset.bound) {
-      btnRadarComp.dataset.bound = "1";
-      btnRadarComp.addEventListener("click", () => setRadarView("comp"));
-    }
-    if (btnRadarDomain && !btnRadarDomain.dataset.bound) {
-      btnRadarDomain.dataset.bound = "1";
-      btnRadarDomain.addEventListener("click", () => setRadarView("domain"));
     }
 
     host.querySelectorAll("[data-match-accordion-toggle]").forEach((btn) => {
@@ -3404,7 +3283,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       }
 
       const radarPanel = byId("matchPersonRadarPanel");
-      if (radarPanel && typeof ResizeObserver !== "undefined") {
+      if (!radarEmpty && radarPanel && typeof ResizeObserver !== "undefined") {
         const obs = new ResizeObserver(() => renderRadarNow());
         obs.observe(radarPanel);
         modal.__matchRadarObs = obs;
@@ -3760,12 +3639,17 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const qs = buildQueryString({
       id_poste: (id_poste || "").trim(),
       id_service: svc || null,
+      criticite_min: (typeof getCriticiteMin === "function" ? getCriticiteMin() : null),
       limit: 300
     });
 
     const url = `${portal.apiBase}/skills/analyse/matching/poste/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
+    // garde la cohérence UI si l’API renvoie criticite_min
+    if (typeof syncCriticiteMinFromResponse === "function") {
+      syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
+    }
     return data;
   }
 
