@@ -311,7 +311,7 @@
     const sansRenfort = Number(r.comp_critiques_tombent_zero_auj || 0);
     const compFragiles = Number(r.comp_critiques_fragiles || 0);
     const sorties = Number(item?.sorties || 0);
-    const compImpactees = Number(item?.comp_critiques_impactees || 0);
+    const compImpactHausse = Number(item?.comp_critiques_impactees || 0);
     const postesRouges = Number(item?.postes_rouges || 0);
 
     const effects = [];
@@ -376,9 +376,9 @@
       });
     }
 
-    if (sorties > 0 || compImpactees > 0 || postesRouges > 0) {
-      const riskScore = postesRouges * 20 + compImpactees * 10;
-      const riskCount = sorties + compImpactees + postesRouges;
+    if (sorties > 0 || compImpactHausse > 0 || postesRouges > 0) {
+      const riskScore = postesRouges * 20 + compImpactHausse;
+      const riskCount = sorties + postesRouges + (compImpactHausse > 0 ? 1 : 0);
       effects.push({
         key: "perte_savoir_faire",
         title: "Risque de perte de savoir-faire",
@@ -389,7 +389,7 @@
         causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
           sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
-          compImpactees > 0 ? `${count(compImpactees, "compétence sensible à anticiper", "compétences sensibles à anticiper")}` : "expertise à surveiller dans la durée",
+          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)}% de fragilité moyenne sur les compétences touchées` : "expertise à surveiller dans la durée",
           postesRouges > 0 ? `${count(postesRouges, "poste peut devenir très fragile", "postes peuvent devenir très fragiles")}` : "relève interne à confirmer",
           "transmission à organiser avant perte de couverture"
         ])
@@ -700,7 +700,7 @@
       ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Prévisions. Ils servent à anticiper les fragilités qui peuvent apparaître si le périmètre évolue.")}
       <div class="analyse-help-kpi-list">
         ${analyseHelpKpi(`Sorties ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du périmètre sur la période N+X choisie. Le calcul s’appuie sur les informations connues dans Novoskill : départ prévu, retraite, mobilité, fin de présence, indisponibilité ou autre donnée prévisionnelle renseignée.")}
-        ${analyseHelpKpi("Compétences impactées", "Cet indicateur compte les compétences critiques qui pourraient perdre un porteur ou une partie de leur couverture si les sorties prévues se réalisent. Ces compétences sont à regarder en priorité pour organiser une transmission, une formation ou une sécurisation interne.")}
+        ${analyseHelpKpi("Hausse fragilité compétences", "Cet indicateur affiche la hausse moyenne de fragilité des compétences directement touchées par les sortants de la période N+X. Une compétence est retenue uniquement si un sortant en est porteur et si son départ augmente réellement la fragilité calculée.")}
         ${analyseHelpKpi("Postes impactés", "Cet indicateur compte les postes dont la couverture risque de se dégrader dans la projection. Un poste peut être correctement couvert aujourd’hui, mais devenir sensible si une personne clé sort du périmètre ou si une compétence critique perd sa couverture.")}
         ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la période observée. Plus la période est longue, plus l’analyse peut faire apparaître des fragilités futures. La lecture reste une anticipation : elle doit aider à préparer les actions avant que le risque devienne opérationnel.")}
       </div>
@@ -1014,6 +1014,12 @@
     return list.find(x => Number(x?.horizon_years || 0) === h) || null;
   }
 
+  function formatPrevisionImpactPercent(value) {
+    const n = Math.round(Number(value || 0));
+    if (!Number.isFinite(n) || n <= 0) return "0%";
+    return `+${n}%`;
+  }
+
   function applyPrevisionsKpis(previsions) {
     const p = previsions || {};
     _prevData = p;
@@ -1025,7 +1031,7 @@
 
     if (item) {
       setText("kpiPrevSorties12", item.sorties);
-      setText("kpiPrevCompImpact", item.comp_critiques_impactees);
+      setText("kpiPrevCompImpact", formatPrevisionImpactPercent(item.comp_critiques_impactees));
       setText("kpiPrevPostesRed", item.postes_rouges);
       updateAnalyseProjectionSummary(p);
       if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
@@ -1034,7 +1040,7 @@
 
     // Fallback: comportement historique (12 mois)
     setText("kpiPrevSorties12", p.sorties_12m);
-    setText("kpiPrevCompImpact", p.comp_critiques_impactees);
+    setText("kpiPrevCompImpact", formatPrevisionImpactPercent(p.comp_critiques_impactees));
     setText("kpiPrevPostesRed", p.postes_rouges_12m);
     updateAnalyseProjectionSummary(p);
     if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
@@ -5146,7 +5152,7 @@ function renderDetail(mode) {
       function renderSub() {
         if (!sub) return;
         sub.innerHTML = `
-          <div>Compétences impactées sur ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
+          <div>Hausse de fragilité des compétences causée par les sortants sur ${escapeHtml(horizonLabel)}.</div>
           <div class="sb-badges" style="margin-top:6px;">
             <span class="sb-badge">Criticité min : ${escapeHtml(critMinLabel())}</span>
           </div>
@@ -5158,7 +5164,7 @@ function renderDetail(mode) {
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">
-            Compétences impactées sur ${escapeHtml(horizonLabel)}
+            Hausse fragilité compétences sur ${escapeHtml(horizonLabel)}
           </div>
 
           <div id="prevCritDetailBox" class="card-sub" style="margin:0; margin-top:10px;">Chargement…</div>
@@ -5253,8 +5259,8 @@ function renderDetail(mode) {
           function deltaBadge(delta) {
             const d = Math.round(Number(delta || 0));
             const cls = (d > 0) ? "sb-badge--danger" : (d < 0) ? "sb-badge--success" : "sb-badge--warning";
-            const txt = (d > 0 ? `+${d}` : `${d}`) + " pts";
-            return `<span class="sb-badge ${cls}" title="Évolution vs aujourd’hui">${escapeHtml(txt)}</span>`;
+            const txt = (d > 0 ? `+${d}` : `${d}`) + "%";
+            return `<span class="sb-badge ${cls}" title="Hausse de fragilité causée par les sortants">${escapeHtml(txt)}</span>`;
           }
 
           // Domaine: même look que Risques (sb-badge-domaine)
@@ -5271,23 +5277,20 @@ function renderDetail(mode) {
           const rowsHtml = items.map((it) => {
             const code = (it.code || "—").toString().trim();
             const intit = (it.intitule || it.intitule_competence || "—").toString();
-
             const compKey = (it.id_comp || it.id_competence || code || "").toString().trim();
-
             const nbPostes = Number(it.nb_postes_impactes ?? it.nb_postes ?? 0);
-
-            const scoreH = Number(it.indice_fragilite_horizon ?? it.indice_horizon ?? it.indice_fragilite ?? 0);
             const delta = Number(it.delta_fragilite ?? it.delta ?? 0);
-
-            const prio = ((it.priorite || "") + "").trim().toUpperCase() || prioFromScore(scoreH);
-            const prioTxt = prioLabel(prio);
+            const lost = Number(it.nb_porteurs_sortants ?? 0);
+            const now = Number(it.nb_porteurs_now ?? 0);
+            const remain = Math.max(now - lost, 0);
+            const nextExit = it.last_exit_date ? formatDateFr(it.last_exit_date) : "—";
 
             return `
               <tr class="prev-crit-row" data-comp-key="${escapeHtml(compKey)}">
                 <td class="prev-crit-open" style="cursor:pointer;">
                   <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                     <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
-                    <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    <span style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                       ${escapeHtml(intit)}
                     </span>
                   </div>
@@ -5295,15 +5298,21 @@ function renderDetail(mode) {
 
                 <td>${domPill(it)}</td>
 
-                <td class="col-center" title="Nombre de postes concernés">
+                <td class="col-center" title="Hausse de fragilité causée par les sortants">${deltaBadge(delta)}</td>
+
+                <td class="col-center" title="Nombre de porteurs de la compétence qui sortent sur la période">
+                  <span class="sb-badge sb-badge--danger">${escapeHtml(String(lost))}</span>
+                </td>
+
+                <td class="col-center" title="Porteurs restants après les sorties prévues">
+                  <span class="sb-badge">${escapeHtml(String(remain))}</span>
+                </td>
+
+                <td class="col-center" title="Postes du périmètre qui exigent cette compétence">
                   <span class="sb-badge sb-badge-accent">${escapeHtml(String(nbPostes))}</span>
                 </td>
 
-                <td class="col-center" title="Indice de fragilité projeté (0-100)">${scoreChip(scoreH)}</td>
-
-                <td class="col-center">${deltaBadge(delta)}</td>
-
-                <td class="col-center" title="${escapeHtml(prio)}">${priorityPill(prioTxt, scoreH)}</td>
+                <td class="col-center">${escapeHtml(nextExit)}</td>
 
                 <td class="col-center">
                   <button type="button"
@@ -5322,30 +5331,13 @@ function renderDetail(mode) {
                 <thead>
                   <tr>
                     <th>Code – Compétence</th>
-                    <th style="width:240px;">Domaine</th>
-
-                    <th class="col-center" style="width:140px;">Postes impactés</th>
-
-                    <th class="col-center" style="width:220px;">
-                      <span class="sb-th-with-tip">
-                        <span>Indice<br>de fragilité</span>
-                        <span class="sb-iinfo"
-                              data-sbtip="fragility-index"
-                              tabindex="0"
-                              role="button"
-                              aria-label="Informations sur l'indice de fragilité">i</span>
-                      </span>
-                    </th>
-
-                    <th class="col-center" style="width:140px; line-height:1.1;">
-                      Évolution<br>(vs aujourd’hui)
-                    </th>
-
-                    <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
-                      Priorité de<br>traitement
-                    </th>
-
-                    <th class="col-center" style="width:140px;">Détail</th>
+                    <th style="width:220px;">Domaine</th>
+                    <th class="col-center" style="width:150px;">Hausse fragilité</th>
+                    <th class="col-center" style="width:130px;">Porteurs perdus</th>
+                    <th class="col-center" style="width:130px;">Porteurs restants</th>
+                    <th class="col-center" style="width:140px;">Postes concernés</th>
+                    <th class="col-center" style="width:140px;">Prochaine sortie</th>
+                    <th class="col-center" style="width:120px;">Détail</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -5354,7 +5346,7 @@ function renderDetail(mode) {
           `;
         } catch (e) {
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
-          box.textContent = `Erreur chargement détail compétences impactées: ${e?.message || e}`;
+          box.textContent = `Erreur chargement hausse fragilité compétences: ${e?.message || e}`;
         }
       }, 0);
 
