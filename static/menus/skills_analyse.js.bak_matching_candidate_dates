@@ -2762,8 +2762,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const personLabel = person.full || "—";
     const svc = person.nom_service || "—";
-    const lastCompetenceEval = person.derniere_evaluation_competences || person.last_competence_eval_date || "";
-    const lastEntretienIndividuel = person.dernier_entretien_individuel || person.last_entretien_individuel_date || "";
     const isTit = !!person.is_titulaire;
 
     const pa = person.poste_actuel || {};
@@ -3073,12 +3071,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
               <div class="card-sub" style="margin:4px 0 0 0;">
                 Service : ${escapeHtml(svc)}
-              </div>
-              <div class="card-sub" style="margin:4px 0 0 0;">
-                Dernière évaluation de compétences : ${escapeHtml(lastCompetenceEval ? formatDateFr(lastCompetenceEval) : "—")}
-              </div>
-              <div class="card-sub" style="margin:4px 0 0 0;">
-                Dernier entretien individuel : ${escapeHtml(lastEntretienIndividuel ? formatDateFr(lastEntretienIndividuel) : "—")}
               </div>
             </div>
 

@@ -5313,8 +5313,6 @@ class AnalyseMatchingPerson(BaseModel):
     id_effectif: str
     full: str
     nom_service: str
-    derniere_evaluation_competences: Optional[str] = None
-    dernier_entretien_individuel: Optional[str] = None
 
     id_poste_actuel: Optional[str] = None
     poste_actuel: Optional[Dict[str, Any]] = None
@@ -7323,39 +7321,6 @@ def get_analyse_matching_effectif_detail(
                 poste_actuel = (e.get("id_poste_actuel") or "").strip() or None
                 is_tit = bool(poste_actuel and poste_actuel == id_poste)
 
-                # --- Dernières dates utiles pour le bloc Informations du candidat
-                cur.execute(
-                    """
-                    SELECT MAX(COALESCE(ec.date_derniere_eval, ac.date_audit))::date AS derniere_evaluation_competences
-                    FROM public.tbl_effectif_client_competence ec
-                    LEFT JOIN public.tbl_effectif_client_audit_competence ac
-                      ON ac.id_audit_competence = ec.id_dernier_audit
-                     AND ac.id_effectif_competence = ec.id_effectif_competence
-                    WHERE ec.id_effectif_client = %s
-                      AND COALESCE(ec.archive, FALSE) = FALSE
-                      AND COALESCE(ec.actif, TRUE) = TRUE
-                    """,
-                    (id_effectif,),
-                )
-                last_eval_row = cur.fetchone() or {}
-                derniere_evaluation_competences = last_eval_row.get("derniere_evaluation_competences")
-                derniere_evaluation_competences = str(derniere_evaluation_competences) if derniere_evaluation_competences else None
-
-                cur.execute(
-                    """
-                    SELECT MAX(date_realisee)::date AS dernier_entretien_individuel
-                    FROM public.tbl_entretien_individuel
-                    WHERE id_ent = %s
-                      AND id_effectif_client = %s
-                      AND COALESCE(archive, FALSE) = FALSE
-                      AND date_realisee IS NOT NULL
-                    """,
-                    (id_ent, id_effectif),
-                )
-                last_entretien_row = cur.fetchone() or {}
-                dernier_entretien_individuel = last_entretien_row.get("dernier_entretien_individuel")
-                dernier_entretien_individuel = str(dernier_entretien_individuel) if dernier_entretien_individuel else None
-
                 # --- Poste actuel (affichage dans le modal si candidat)
                 poste_actuel_obj = None
                 poste_actuel_hors_scope = False
@@ -7426,8 +7391,6 @@ def get_analyse_matching_effectif_detail(
                             id_effectif=id_effectif,
                             full=full,
                             nom_service=(e.get("nom_service") or "").strip() or "—",
-                            derniere_evaluation_competences=derniere_evaluation_competences,
-                            dernier_entretien_individuel=dernier_entretien_individuel,
                             id_poste_actuel=poste_actuel,
                             poste_actuel=poste_actuel_obj,
                             poste_actuel_hors_scope=poste_actuel_hors_scope,
@@ -7616,8 +7579,6 @@ def get_analyse_matching_effectif_detail(
                         id_effectif=id_effectif,
                         full=full,
                         nom_service=(e.get("nom_service") or "").strip() or "—",
-                        derniere_evaluation_competences=derniere_evaluation_competences,
-                        dernier_entretien_individuel=dernier_entretien_individuel,
                         id_poste_actuel=poste_actuel,
                         poste_actuel=poste_actuel_obj,
                         poste_actuel_hors_scope=poste_actuel_hors_scope,
