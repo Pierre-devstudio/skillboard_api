@@ -2211,6 +2211,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const _matchPostesCache = new Map(); // key: id_service -> items[]
   let _matchReqSeq = 0;
   let _matchSelectedPoste = "";
+  const MATCH_TABLE_PREVIEW_LIMIT = 10;
+  let _matchRowsExpanded = false;
+  let _matchCurrentPosteId = "";
+  let _matchCurrentPoste = null;
+  let _matchCurrentItems = [];
+  let _matchCurrentRowsCount = 0;
 
   function nivReqToNum(raw) {
     const s = (raw ?? "").toString().trim().toUpperCase();
@@ -2449,135 +2455,20 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
   async function openAnalyseMatchingPdfInBrowser(portal, id_poste, id_service) {
     const url = buildAnalyseMatchingPdfUrl(portal, id_poste, id_service);
-    const title = "Correspondances profils/postes";
-
-    const win = window.open("", "_blank");
-    if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
-
-    const writePdfWindow = (html) => {
-      try {
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
-      } catch (_) {
-        try { win.location.href = "about:blank"; } catch (__){ }
-      }
-    };
-
-    writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(title)}</title>
-<style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;}
-.pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
-.pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.14);border-top-color:#0f9d8f;animation:pdfSpin .8s linear infinite;}
-@keyframes pdfSpin{to{transform:rotate(360deg)}}
-</style>
-</head>
-<body>
-<div class="pdf-loading">
-  <div class="pdf-loading__spinner"></div>
-  <div>Génération du PDF…</div>
-</div>
-</body>
-</html>`);
-
-    try {
-      const headers = new Headers();
-      headers.set("Accept", "application/pdf");
-
-      try {
-        if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
-          const session = await window.PortalAuthCommon.getSession();
-          const token = session?.access_token ? String(session.access_token) : "";
-          if (token) headers.set("Authorization", `Bearer ${token}`);
-        }
-      } catch (_) {
-        // L'API renverra une erreur explicite si le token est réellement absent.
-      }
-
-      const res = await fetch(url, {
-        method: "GET",
-        headers,
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      if (!res.ok) {
-        let detail = `HTTP ${res.status}`;
-        try {
-          const ct = (res.headers.get("content-type") || "").toLowerCase();
-          if (ct.includes("application/json")) {
-            const payload = await res.json();
-            detail = payload?.detail || payload?.message || JSON.stringify(payload) || detail;
-          } else {
-            const text = await res.text();
-            if (text) detail = text;
-          }
-        } catch (_) {}
-
-        writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>Erreur PDF</title>
-<style>
-html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;color:#991b1b;}
-.err{padding:28px;font-size:15px;line-height:1.5;}
-</style>
-</head>
-<body><div class="err">Erreur génération document : ${escapeHtml(detail)}</div></body>
-</html>`);
-        throw new Error(detail);
-      }
-
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const safeTitle = escapeHtml(title);
-
-      writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>${safeTitle}</title>
-<style>
-html,body{height:100%;margin:0;background:#111827;}
-iframe{width:100%;height:100%;border:0;display:block;background:#fff;}
-</style>
-</head>
-<body>
-<iframe src="${blobUrl}" title="${safeTitle}"></iframe>
-</body>
-</html>`);
-
-      const revoke = () => {
-        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-      };
-      try { win.addEventListener("beforeunload", revoke, { once: true }); } catch (_) {}
-      setTimeout(revoke, 5 * 60 * 1000);
-      return url;
-    } catch (e) {
-      const msg = e?.message || String(e || "Erreur inconnue");
-      writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>Erreur PDF</title>
-<style>
-html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;color:#991b1b;}
-.err{padding:28px;font-size:15px;line-height:1.5;}
-</style>
-</head>
-<body><div class="err">Erreur génération document : ${escapeHtml(msg)}</div></body>
-</html>`);
-      throw e;
-    }
+    await openAnalysePdfBlob(url, "Impression bloquée");
+    return url;
   }
 
 
 
+
+  function getMatchingCurrentServiceId() {
+    try {
+      return window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+    } catch (_) {
+      return "";
+    }
+  }
 
   function refreshMatchingPrintButtonState() {
     const btn = byId("btnAnalyseMatchingPrint");
@@ -2587,6 +2478,25 @@ html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;colo
     btn.setAttribute("aria-disabled", hasPoste ? "false" : "true");
     btn.title = hasPoste ? "Imprimer les correspondances du poste sélectionné" : "Sélectionne un poste avant d’imprimer";
   }
+
+  function rerenderCurrentMatchingCandidates() {
+    if (!_matchCurrentPosteId) {
+      renderMatchingHeaderActions(getMatchingCurrentServiceId());
+      return;
+    }
+    renderMatchingCandidates(_matchCurrentPosteId, _matchCurrentPoste || {}, _matchCurrentItems || [], getMatchView());
+  }
+
+  function bindMatchingToggleButton() {
+    const btn = byId("btnAnalyseMatchingToggle");
+    if (!btn || btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", () => {
+      _matchRowsExpanded = !_matchRowsExpanded;
+      rerenderCurrentMatchingCandidates();
+    });
+  }
+
   function bindMatchingPrintButton(id_service) {
     const btn = byId("btnAnalyseMatchingPrint");
     if (!btn || btn.dataset.bound === "1") {
@@ -2608,42 +2518,32 @@ html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;colo
     });
     refreshMatchingPrintButtonState();
   }
+
   function renderMatchingHeaderActions(id_service) {
-    const title = byId("analyseDetailTitle");
-    const meta = byId("analyseDetailMeta");
-    if (!meta) return;
+    const actions = byId("analyseDetailActions");
+    if (!actions) return;
 
-    const titleBox = title ? title.parentElement : null;
-    const headerRow = titleBox ? titleBox.parentElement : null;
+    const rowsCount = Number(_matchCurrentRowsCount || 0);
+    const showToggle = rowsCount > MATCH_TABLE_PREVIEW_LIMIT;
+    const expanded = !!_matchRowsExpanded;
 
-    if (headerRow) {
-      headerRow.style.display = "flex";
-      headerRow.style.justifyContent = "space-between";
-      headerRow.style.alignItems = "center";
-      headerRow.style.gap = "12px";
-      headerRow.style.flexWrap = "nowrap";
-      headerRow.style.width = "100%";
-    }
-
-    if (titleBox) {
-      titleBox.style.flex = "1 1 auto";
-      titleBox.style.minWidth = "0";
-    }
-
-    meta.className = "";
-    meta.style.cssText = "margin:0 0 0 auto; display:flex; align-items:center; justify-content:flex-end; flex:0 0 auto; min-width:auto; align-self:center;";
-    meta.innerHTML = `
+    actions.innerHTML = `
+      ${showToggle ? `
+        <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnAnalyseMatchingToggle">
+          ${expanded ? "Afficher les 10 premiers" : "Afficher tout"}
+        </button>
+      ` : ""}
       <button type="button"
               id="btnAnalyseMatchingPrint"
-              class="sb-btn sb-btn--accent"
-              style="display:inline-flex; align-items:center; justify-content:center; min-height:30px; padding:7px 13px; font-size:12px; font-weight:800; white-space:nowrap;"
+              class="sb-btn sb-btn--accent sb-btn--xs"
               ${String(_matchSelectedPoste || "").trim() ? "" : "disabled"}>
         Imprimer
       </button>
     `;
+
+    bindMatchingToggleButton();
     bindMatchingPrintButton(id_service);
   }
-
 
 
 
@@ -3928,13 +3828,20 @@ html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;colo
     if (!host) return;
 
     const list = Array.isArray(candidates) ? candidates : [];
+    const posteCible = (id_poste_selected || "").toString().trim();
+    const v = (view || getMatchView() || "candidats").toString().trim().toLowerCase();
+
+    _matchCurrentPosteId = posteCible;
+    _matchCurrentPoste = poste || {};
+    _matchCurrentItems = list;
+
     if (!list.length) {
+      _matchCurrentRowsCount = 0;
+      _matchRowsExpanded = false;
+      renderMatchingHeaderActions(getMatchingCurrentServiceId());
       host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat détecté (aucun candidat ne possède les compétences du poste).</div>`;
       return;
     }
-
-    const posteCible = (id_poste_selected || "").toString().trim();
-    const v = (view || getMatchView() || "candidats").toString().trim().toLowerCase();
 
     // --- Titulaires vs Candidats : on s’appuie sur un flag si l’API le donne, sinon sur id_poste_actuel
     function isTitulaire(c) {
@@ -3953,7 +3860,10 @@ html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;colo
     const candidatsAll = list.filter(c => !isTitulaire(c));
 
     const rows = (v === "titulaire") ? titulairesAll : candidatsAll;
-    const top = rows.slice(0, 30);
+    _matchCurrentRowsCount = rows.length;
+    if (_matchCurrentRowsCount <= MATCH_TABLE_PREVIEW_LIMIT) _matchRowsExpanded = false;
+    const top = _matchRowsExpanded ? rows : rows.slice(0, MATCH_TABLE_PREVIEW_LIMIT);
+    renderMatchingHeaderActions(getMatchingCurrentServiceId());
 
     function badge(txt, accent) {
       const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
@@ -5223,10 +5133,16 @@ function renderDetail(mode) {
       sub.textContent = "";
       sub.style.display = "none";
     }
+    if (meta) {
+      meta.textContent = "";
+      meta.innerHTML = "";
+      meta.style.display = "none";
+    }
 
     if (typeof setActiveMatchKpi === "function") setActiveMatchKpi(getMatchView());
 
     const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+    _matchCurrentRowsCount = 0;
     renderMatchingHeaderActions(id_service);
     body.innerHTML = renderMatchingShell();
 
@@ -6959,6 +6875,7 @@ function bindOnce(portal) {
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 
       setMatchView(v);
+      _matchRowsExpanded = false;
 
       const curMode = (localStorage.getItem(STORE_MODE) || "").trim();
       if (curMode !== "matching") {
@@ -7404,9 +7321,14 @@ function bindOnce(portal) {
       if (mode === getMatchPosteMode()) return;
 
       setMatchPosteMode(mode);
+      _matchRowsExpanded = false;
 
       // on reset la sélection poste pour repartir propre
       _matchSelectedPoste = "";
+      _matchCurrentPosteId = "";
+      _matchCurrentPoste = null;
+      _matchCurrentItems = [];
+      _matchCurrentRowsCount = 0;
 
       // rerender + reload via le pipeline standard
       renderDetail("matching");
@@ -7423,6 +7345,7 @@ function bindOnce(portal) {
       if (!id_poste) return;
 
       _matchSelectedPoste = id_poste;
+      _matchRowsExpanded = false;
       refreshMatchingPrintButtonState();
 
       // met à jour le style actif sans rerender complet
