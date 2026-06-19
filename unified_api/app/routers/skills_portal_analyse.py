@@ -2906,7 +2906,16 @@ def _fetch_prevision_competence_impacts(
     )
     SELECT * FROM leave_comp
     """
-    cur.execute(impacted_sql, tuple(cte_params + [cmin, id_ent, leaving_ids]))
+    impacted_params = list(cte_params) + [cmin, id_ent, leaving_ids]
+    missing_impacted_params = impacted_sql.count("%s") - len(impacted_params)
+    if missing_impacted_params == 1:
+        impacted_params.append(horizon)
+    elif missing_impacted_params != 0:
+        raise RuntimeError(
+            f"Paramètres SQL incohérents pour les prévisions compétences : "
+            f"{impacted_sql.count('%s')} placeholders / {len(impacted_params)} paramètres"
+        )
+    cur.execute(impacted_sql, tuple(impacted_params))
     impacted_rows = [dict(r) for r in (cur.fetchall() or [])]
     impacted_comp_ids = sorted({str(r.get("id_comp") or "").strip() for r in impacted_rows if str(r.get("id_comp") or "").strip()})
     if not impacted_comp_ids:
