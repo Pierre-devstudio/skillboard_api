@@ -2151,7 +2151,7 @@ def get_analyse_summary(
 
                     WHERE ee.exit_date >= CURRENT_DATE
 
-                      AND ee.exit_date < (CURRENT_DATE + (h.y || ' years')::interval)
+                      AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + h.y::int, 12, 31)::date
 
                 ),
 
@@ -2589,7 +2589,7 @@ def get_analyse_previsions_sorties_detail(
                     ON p.id_poste = ee.id_poste_actuel
                     WHERE ee.exit_date IS NOT NULL
                     AND ee.exit_date >= CURRENT_DATE
-                    AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                    AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
                     ORDER BY ee.exit_date ASC, ee.nom_effectif ASC, ee.prenom_effectif ASC
                     LIMIT %s
                     """
@@ -2805,7 +2805,7 @@ def get_analyse_previsions_critiques_impactees_detail(
                     FROM effectifs_exit ee
                     WHERE ee.exit_date IS NOT NULL
                       AND ee.exit_date >= CURRENT_DATE
-                      AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                      AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
                 ),
 
                 req_all AS (
@@ -3269,7 +3269,7 @@ def get_analyse_previsions_critiques_modal(
                         CASE
                           WHEN pr.exit_date IS NOT NULL
                            AND pr.exit_date >= CURRENT_DATE
-                           AND pr.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                           AND pr.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
                           THEN TRUE ELSE FALSE
                         END AS is_sortant
                     FROM porteurs pr
@@ -3430,8 +3430,8 @@ def get_analyse_previsions_critiques_modal(
                         try:
                             d0 = r.get("exit_date")
                             if isinstance(d0, date):
-                                horizon_end = date.today().replace(year=date.today().year + int(horizon_years))
-                                if d0 >= date.today() and d0 < horizon_end:
+                                horizon_end = date(date.today().year + int(horizon_years), 12, 31)
+                                if d0 >= date.today() and d0 <= horizon_end:
                                     sortants.append(item)
                                 else:
                                     restants.append(item)
@@ -3594,7 +3594,7 @@ def get_analyse_previsions_postes_rouges_detail(
                     FROM effectifs_exit ee
                     WHERE ee.exit_date IS NOT NULL
                       AND ee.exit_date >= CURRENT_DATE
-                      AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                      AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
                 ),
 
                 titulaires_now AS (
@@ -3936,7 +3936,7 @@ def get_analyse_previsions_postes_rouges_modal(
                                 WHEN ev.retraite_annee IS NOT NULL THEN make_date(ev.retraite_annee, ev.m_entree, 1)
                                 ELSE NULL
                             END
-                          ) < (CURRENT_DATE + (%s::int * interval '1 year'))
+                          ) <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
                           THEN TRUE ELSE FALSE
                         END AS is_sortant
                     FROM effectifs_valid ev

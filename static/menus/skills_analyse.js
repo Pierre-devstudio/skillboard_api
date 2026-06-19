@@ -270,8 +270,8 @@
   }
 
   function analyseHorizonLabel(years) {
-    const h = Number(years || getPrevHorizon() || 1);
-    return h <= 1 ? "1 an" : `${Math.round(h)} ans`;
+    const h = Math.max(1, Math.round(Number(years || getPrevHorizon() || 1)));
+    return `N+${h}`;
   }
   function analyseRiskLevelLabel(value, count) {
     const v = Number(value || 0);
@@ -404,7 +404,7 @@
     const horizon = getPrevHorizon();
     const item = pickPrevHorizonItem(previsions || _prevData || {}, horizon) || null;
     const label = byId("analyseSynthProjectionLabel");
-    if (label) label.textContent = `Projection à ${analyseHorizonLabel(horizon)}`;
+    if (label) label.textContent = `Projection ${analyseHorizonLabel(horizon)}`;
     const postes = Number(item?.postes_rouges ?? NaN);
     setText("analyseSynthProjection", Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste fragilisé", "postes fragilisés") : "—");
   }
@@ -699,10 +699,10 @@
     return `
       ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Prévisions. Ils servent à anticiper les fragilités qui peuvent apparaître si le périmètre évolue.")}
       <div class="analyse-help-kpi-list">
-        ${analyseHelpKpi(`Sorties < ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du périmètre sur l’horizon choisi. Le calcul s’appuie sur les informations connues dans Novoskill : départ prévu, retraite, mobilité, fin de présence, indisponibilité ou autre donnée prévisionnelle renseignée.")}
+        ${analyseHelpKpi(`Sorties ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du périmètre sur la période N+X choisie. Le calcul s’appuie sur les informations connues dans Novoskill : départ prévu, retraite, mobilité, fin de présence, indisponibilité ou autre donnée prévisionnelle renseignée.")}
         ${analyseHelpKpi("Compétences impactées", "Cet indicateur compte les compétences critiques qui pourraient perdre un porteur ou une partie de leur couverture si les sorties prévues se réalisent. Ces compétences sont à regarder en priorité pour organiser une transmission, une formation ou une sécurisation interne.")}
         ${analyseHelpKpi("Postes impactés", "Cet indicateur compte les postes dont la couverture risque de se dégrader dans la projection. Un poste peut être correctement couvert aujourd’hui, mais devenir sensible si une personne clé sort du périmètre ou si une compétence critique perd sa couverture.")}
-        ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la période observée. Plus l’horizon est long, plus l’analyse peut faire apparaître des fragilités futures. La lecture reste une anticipation : elle doit aider à préparer les actions avant que le risque devienne opérationnel.")}
+        ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la période observée. Plus la période est longue, plus l’analyse peut faire apparaître des fragilités futures. La lecture reste une anticipation : elle doit aider à préparer les actions avant que le risque devienne opérationnel.")}
       </div>
       ${analyseHelpNote("Cette carte sert à prendre de l’avance : transmission, relève interne, formation, recrutement ou réorganisation ciblée.")}
     `;
@@ -1005,7 +1005,7 @@
   function setPrevHorizonLabel(n) {
     const el = byId("prevHorizonLabel");
     if (!el) return;
-    el.textContent = (n === 1) ? "1 an" : (String(n) + " ans");
+    el.textContent = analyseHorizonLabel(n);
   }
 
   function pickPrevHorizonItem(previsions, horizonYears) {
@@ -5011,13 +5011,13 @@ function renderDetail(mode) {
     if (typeof setActivePrevKpi === "function") setActivePrevKpi(selectedKpi || "");
 
     if (selectedKpi === "sorties") {
-      const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
-      if (sub) sub.textContent = `Sorties prévues à moins de ${horizonLabel} (périmètre filtré).`;
+      const horizonLabel = analyseHorizonLabel(horizon);
+      if (sub) sub.textContent = `Sorties prévues sur ${horizonLabel} (périmètre filtré).`;
 
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">
-            Effectif sortant prévu sous ${escapeHtml(horizonLabel)}
+            Effectif sortant prévu sur ${escapeHtml(horizonLabel)}
           </div>
 
           <div id="prevSortiesDetailBox" style="margin-top:10px;">
@@ -5053,7 +5053,7 @@ function renderDetail(mode) {
             [];
 
           if (!items.length) {
-            box.textContent = "Aucune sortie détectée dans l’horizon sélectionné.";
+            box.textContent = "Aucune sortie détectée dans la période sélectionnée.";
             return;
           }
 
@@ -5141,12 +5141,12 @@ function renderDetail(mode) {
     }
 
     if (selectedKpi === "critiques") {
-      const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
+      const horizonLabel = analyseHorizonLabel(horizon);
 
       function renderSub() {
         if (!sub) return;
         sub.innerHTML = `
-          <div>Compétences impactées à moins de ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
+          <div>Compétences impactées sur ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
           <div class="sb-badges" style="margin-top:6px;">
             <span class="sb-badge">Criticité min : ${escapeHtml(critMinLabel())}</span>
           </div>
@@ -5158,7 +5158,7 @@ function renderDetail(mode) {
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">
-            Compétences impactées sous ${escapeHtml(horizonLabel)}
+            Compétences impactées sur ${escapeHtml(horizonLabel)}
           </div>
 
           <div id="prevCritDetailBox" class="card-sub" style="margin:0; margin-top:10px;">Chargement…</div>
@@ -5190,7 +5190,7 @@ function renderDetail(mode) {
 
           const items = Array.isArray(data?.items) ? data.items : [];
           if (!items.length) {
-            box.textContent = "Aucune compétence impactée dans l’horizon sélectionné.";
+            box.textContent = "Aucune compétence impactée dans la période sélectionnée.";
             return;
           }
 
@@ -5362,12 +5362,12 @@ function renderDetail(mode) {
     }
 
     if (selectedKpi === "postes-rouges") {
-      const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
+      const horizonLabel = analyseHorizonLabel(horizon);
 
       function renderSub() {
         if (!sub) return;
         sub.innerHTML = `
-          <div>Postes impactés à moins de ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
+          <div>Postes impactés sur ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
           <div class="sb-badges" style="margin-top:6px;">
             <span class="sb-badge">Criticité min : ${escapeHtml(critMinLabel())}</span>
           </div>
@@ -5379,7 +5379,7 @@ function renderDetail(mode) {
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">
-            Postes impactés sous ${escapeHtml(horizonLabel)}
+            Postes impactés sur ${escapeHtml(horizonLabel)}
           </div>
           <div id="prevPostesRedDetailBox" class="card-sub" style="margin:0; margin-top:10px;">Chargement…</div>
         </div>
@@ -5410,7 +5410,7 @@ function renderDetail(mode) {
 
           const items = Array.isArray(data?.items) ? data.items : [];
           if (!items.length) {
-            box.textContent = "Aucun poste impacté dans l’horizon sélectionné.";
+            box.textContent = "Aucun poste impacté dans la période sélectionnée.";
             return;
           }
 
@@ -5491,7 +5491,7 @@ function renderDetail(mode) {
             if (sans > 0) parts.push(`${sans} compétence(s) sans porteur`);
             if (unique > 0) parts.push(`${unique} compétence(s) à porteur unique`);
             if (sansRel > 0) parts.push(`${sansRel} compétence(s) sans relais interne`);
-            return parts.length ? parts.join(" · ") : "Couverture dégradée sur l’horizon sélectionné";
+            return parts.length ? parts.join(" · ") : "Couverture dégradée sur la période sélectionnée";
           }
 
           function actionText(r) {
@@ -6323,7 +6323,7 @@ function renderDetail(mode) {
     setAnalysePrevCritTab("synthese");
 
     const horizon = getPrevHorizon();
-    const horizonTxt = `${horizon} an${horizon > 1 ? "s" : ""}`;
+    const horizonTxt = analyseHorizonLabel(horizon);
     const scope = getScopeLabel();
 
     const title = byId("analysePrevCritModalTitle");
@@ -6407,7 +6407,7 @@ function renderDetail(mode) {
       const postes = Array.isArray(data?.postes) ? data.postes : (Array.isArray(data?.postes_impactes) ? data.postes_impactes : []);
 
       function rhReading() {
-        if (out > 0 && remain <= 0) return "Risque de rupture : les porteurs identifiés sortent du périmètre et aucun relais suffisant n’est confirmé à l’horizon sélectionné.";
+        if (out > 0 && remain <= 0) return "Risque de rupture : les porteurs identifiés sortent du périmètre et aucun relais suffisant n’est confirmé à la période sélectionnée.";
         if (out > 0 && remain === 1) return "Dépendance forte : la compétence resterait couverte par une seule personne. Une transmission ou une montée en compétence doit être organisée.";
         if (out > 0) return "La compétence est exposée par une ou plusieurs sorties prévues. Le relais existe, mais la capacité doit être confirmée.";
         return "Aucune sortie directe de porteur n’est identifiée, mais cette compétence reste à surveiller sur les postes concernés.";
@@ -7261,7 +7261,7 @@ function bindOnce(portal) {
     }
 
     const horizon = getPrevHorizon();
-    const horizonTxt = `${horizon} an${horizon > 1 ? "s" : ""}`;
+    const horizonTxt = analyseHorizonLabel(horizon);
     const full = (d.full || "—").toString().trim();
     const exitDate = (d.date_sortie || d.exit_date || "").toString().trim();
     const poste = (d.poste || "—").toString().trim();
@@ -7750,7 +7750,7 @@ function bindOnce(portal) {
       setAnalysePrevPosteRedTab("synthese");
 
       const horizon = getPrevHorizon();
-      const horizonTxt = `${horizon} an${horizon > 1 ? "s" : ""}`;
+      const horizonTxt = analyseHorizonLabel(horizon);
       const scopeLab = getScopeLabel();
       const seedData = seed || {};
 
@@ -7832,7 +7832,7 @@ function bindOnce(portal) {
         };
 
         function readingText() {
-          if (fSans > 0) return "Ce poste présente un risque de rupture : une ou plusieurs compétences critiques ne seraient plus couvertes à l’horizon sélectionné.";
+          if (fSans > 0) return "Ce poste présente un risque de rupture : une ou plusieurs compétences critiques ne seraient plus couvertes à la période sélectionnée.";
           if (fUniq > 0) return "Ce poste resterait couvert, mais avec une dépendance forte à une seule personne sur certaines compétences critiques.";
           if (fFrag > 0 || hTit < nowTit || covFuture < covNow) return "Ce poste se fragilise à horizon : la couverture baisse ou la capacité de relève doit être confirmée.";
           return "Aucun point de rupture majeur n’est détecté, mais la projection doit être surveillée.";
