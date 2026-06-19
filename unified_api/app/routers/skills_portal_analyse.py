@@ -293,6 +293,19 @@ def _score_seuil_for_niveau(niveau: Optional[str]) -> float:
     return 0.0
 
 
+def _niveau_rank(niveau: Optional[str]) -> int:
+    s = (niveau or "").strip().upper()
+    if s == "A":
+        return 1
+    if s == "B":
+        return 2
+    if s == "C":
+        return 3
+    if s == "D":
+        return 4
+    return 0
+
+
 def _niveau_from_score(score: Optional[float]) -> Optional[str]:
     if score is None:
         return None
@@ -311,6 +324,33 @@ def _niveau_from_score(score: Optional[float]) -> Optional[str]:
     if x <= 24.0:
         return "D"
     return "D"
+
+
+def _matching_state_for_score(score: Optional[float], niveau_requis: Optional[str]) -> Tuple[str, float, Optional[str]]:
+    seuil = _score_seuil_for_niveau(niveau_requis)
+    if score is None:
+        return "missing", 0.0, None
+
+    try:
+        score_f = float(score)
+    except Exception:
+        return "missing", 0.0, None
+
+    ratio = 0.0
+    if seuil > 0:
+        ratio = min(max(score_f / float(seuil), 0.0), 1.0)
+
+    niveau_atteint = _niveau_from_score(score_f)
+    req_rank = _niveau_rank(niveau_requis)
+    att_rank = _niveau_rank(niveau_atteint)
+
+    if req_rank > 0 and att_rank < req_rank:
+        return "under", ratio, niveau_atteint
+
+    if seuil > 0 and score_f < seuil:
+        return "improvable", ratio, niveau_atteint
+
+    return "ok", ratio, niveau_atteint
 
 
 def _clamp_int(v: int, lo: int, hi: int) -> int:
@@ -5263,7 +5303,7 @@ class AnalyseMatchingCompetenceDetail(BaseModel):
     score: Optional[float] = None
     niveau_atteint: Optional[str] = None
 
-    etat: str = "missing"  # ok / under / missing
+    etat: str = "missing"  # ok / improvable / under / missing
     is_critique: bool = False
 
     criteres: List[AnalyseMatchingCritere] = []
@@ -6813,20 +6853,15 @@ def get_analyse_matching_poste(
                         seuil = _score_seuil_for_niveau(lvl_req)
                         score = eff_scores.get(cid) if eff_scores is not None else None
 
-                        if score is None:
+                        etat, ratio, _niveau_atteint = _matching_state_for_score(score, lvl_req)
+                        if etat == "missing":
                             nb_missing += 1
                             if w >= crit_min:
                                 crit_missing += 1
-                            ratio = 0.0
-                        else:
-                            if seuil > 0 and score < seuil:
-                                nb_under += 1
-                                if w >= crit_min:
-                                    crit_under += 1
-
-                            ratio = 0.0
-                            if seuil > 0:
-                                ratio = min(max(score / seuil, 0.0), 1.0)
+                        elif etat == "under":
+                            nb_under += 1
+                            if w >= crit_min:
+                                crit_under += 1
 
                         sum_ratio += (w * ratio)
 
@@ -7079,6 +7114,8 @@ def get_analyse_matching_effectif_pdf(
             s = str(value or "").strip().lower()
             if s == "ok":
                 return "OK"
+            if s == "improvable":
+                return "Améliorable"
             if s == "under":
                 return "À renforcer"
             return "Manquante"
@@ -7142,6 +7179,7 @@ def get_analyse_matching_effectif_pdf(
             Paragraph("Domaine", styles["meta_label"]),
             Paragraph("Crit.", styles["meta_label"]),
             Paragraph("Niveau requis", styles["meta_label"]),
+            Paragraph("Note max.", styles["meta_label"]),
             Paragraph("Score", styles["meta_label"]),
             Paragraph("Niveau atteint", styles["meta_label"]),
             Paragraph("État", styles["meta_label"]),
@@ -7156,14 +7194,15 @@ def get_analyse_matching_effectif_pdf(
                 Paragraph(safe(getattr(item, "domaine_titre_court", None)), styles["body"]),
                 Paragraph(str(int(getattr(item, "poids_criticite", 0) or 0)), styles["body"]),
                 Paragraph(safe(niveau_label(getattr(item, "niveau_requis", None))), styles["body"]),
+                Paragraph(score(getattr(item, "seuil", None)), styles["body"]),
                 Paragraph(score(getattr(item, "score", None)), styles["body"]),
                 Paragraph(safe(niveau_label(getattr(item, "niveau_atteint", None))), styles["body"]),
                 Paragraph(safe(etat_label(getattr(item, "etat", None))), styles["body"]),
             ])
         if len(rows) == 1:
-            rows.append([Paragraph("Aucune compétence à afficher", styles["body"]), "", "", "", "", "", ""])
+            rows.append([Paragraph("Aucune compétence à afficher", styles["body"]), "", "", "", "", "", "", ""])
 
-        table = Table(rows, colWidths=[72 * mm, 32 * mm, 15 * mm, 26 * mm, 20 * mm, 28 * mm, 28 * mm], repeatRows=1)
+        table = Table(rows, colWidths=[64 * mm, 30 * mm, 14 * mm, 24 * mm, 20 * mm, 20 * mm, 28 * mm, 26 * mm], repeatRows=1)
         table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#334155")),
@@ -7334,8 +7373,10 @@ def get_analyse_matching_effectif_detail(
                       ON d.id_domaine_competence = c.domaine
                      AND COALESCE(d.masque, FALSE) = FALSE
                     WHERE fpc.id_poste = %s
+                      AND COALESCE(fpc.masque, FALSE) = FALSE
+                      AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     """,
-                    tuple(cte_params + [id_poste]),
+                    tuple(cte_params + [id_poste, int(criticite_min)]),
                 )
                 req_rows = cur.fetchall() or []
                 if not req_rows:
@@ -7424,22 +7465,15 @@ def get_analyse_matching_effectif_detail(
                     score = srow.get("score", None)
 
                     is_crit = bool(w >= crit_min)
-                    etat = "ok"
-                    if score is None:
-                        etat = "missing"
+                    etat, ratio, niveau_atteint = _matching_state_for_score(score, lvl_req)
+                    if etat == "missing":
                         nb_missing += 1
                         if is_crit:
                             crit_missing += 1
-                        ratio = 0.0
-                    else:
-                        if seuil > 0 and score < seuil:
-                            etat = "under"
-                            nb_under += 1
-                            if is_crit:
-                                crit_under += 1
-                        ratio = 0.0
-                        if seuil > 0:
-                            ratio = min(max(float(score) / float(seuil), 0.0), 1.0)
+                    elif etat == "under":
+                        nb_under += 1
+                        if is_crit:
+                            crit_under += 1
 
                     sum_ratio += (w * ratio)
 
@@ -7510,7 +7544,7 @@ def get_analyse_matching_effectif_detail(
                             niveau_requis=lvl_req or None,
                             seuil=float(seuil or 0.0),
                             score=score,
-                            niveau_atteint=_niveau_from_score(score),
+                            niveau_atteint=niveau_atteint,
                             etat=etat,
                             is_critique=is_crit,
                             criteres=crit_list,

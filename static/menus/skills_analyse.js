@@ -2766,7 +2766,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const personLabel = person.full || "—";
     const svc = person.nom_service || "—";
     const isTit = !!person.is_titulaire;
-    // Poste actuel (utile surtout pour un candidat : la personne n'occupe pas le poste étudié)
+
     const pa = person.poste_actuel || {};
     const paCodifClient = (pa.codif_client || "").trim();
     const paCodifPoste = (pa.codif_poste || "").trim();
@@ -2785,24 +2785,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       }
     }
 
-
-    function box(n, bg, title) {
-      const nn = Number(n || 0);
-      const isZero = !nn;
-      const style = isZero
-        ? "background:#e5e7eb; color:#6b7280; border:1px solid #d1d5db;"
-        : `background:${bg}; color:#ffffff; border:1px solid rgba(0,0,0,.12);`;
-      return `
-        <span title="${escapeHtml(title)}"
-              style="display:inline-flex; align-items:center; justify-content:center;
-                    width:26px; height:20px; border-radius:5px;
-                    font-size:12px; font-weight:900; line-height:1;
-                    ${style}">
-          ${nn || 0}
-        </span>
-      `;
-    }
-
     function matchingRing(score100) {
       const clampLocal = (n, min, max) => Math.max(min, Math.min(max, n));
       const s = clampLocal(Math.round(Number(score100 || 0)), 0, 100);
@@ -2813,7 +2795,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const c = 2 * Math.PI * r;
       const offset = c * (1 - s / 100);
 
-      // Inversé vs ring "Fragilité" : 0=rouge, 100=vert
       const hue = Math.round(120 * (s / 100));
       const fill = `hsl(${hue} 70% 45%)`;
 
@@ -2837,10 +2818,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       `;
     }
 
-
     function statusBadge(etat) {
       const s = String(etat || "").toLowerCase();
       if (s === "ok") return `<span class="sb-badge sb-badge--success">OK</span>`;
+      if (s === "improvable" || s === "ameliorable" || s === "améliorable") return `<span class="sb-badge sb-badge--success">Améliorable</span>`;
       if (s === "under") return `<span class="sb-badge sb-badge--warning">À renforcer</span>`;
       return `<span class="sb-badge sb-badge--danger">Manquante</span>`;
     }
@@ -2852,7 +2833,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return (Math.round(n * 10) / 10).toString();
     }
 
-    // Criticité (poids) -> badge rond (violet), 5 niveaux
     function critLevel(p) {
       const n = Number(p);
       if (!Number.isFinite(n)) return 1;
@@ -2868,14 +2848,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const txt = Number.isFinite(n) ? String(Math.round(n)) : "—";
       const lvl = critLevel(n);
       return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité (poids)">${escapeHtml(txt)}</span>`;
-    }
-
-    function nivKey(v) {
-      return nsLevelCode(v);
-    }
-
-    function nivLabel(v) {
-      return nsLevelLabel(v);
     }
 
     function nivBadgeHtml(v) {
@@ -2922,14 +2894,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       `;
     }
 
-    // 1 ligne "compétence" + (optionnel) 1 ligne "critères" (colspan)
     const rowsHtml = items.map((it, idx) => {
       const uid = `crit_${idx}`;
       const code = it?.code || it?.id_comp || "—";
       const intitule = it?.intitule || "";
       const poids = Number(it?.poids_criticite || 0);
       const nivReq = it?.niveau_requis;
-      const attendu = fmtScore(it?.seuil);
+      const noteMax = fmtScore(it?.seuil);
       const atteint = fmtScore(it?.score);
       const nivAt = it?.niveau_atteint;
 
@@ -2956,8 +2927,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </td>
           <td class="col-center">${critBadgeHtml(poids)}</td>
           <td class="col-center">${nivBadgeHtml(nivReq)}</td>
-          <td class="col-center"><span class="sb-badge" title="Points attendus">${escapeHtml(String(attendu))}</span></td>
-          <td class="col-center"><span class="sb-badge" title="Points atteints">${escapeHtml(String(atteint))}</span></td>
+          <td class="col-center"><span class="sb-badge" title="Note maximale du niveau requis">${escapeHtml(String(noteMax))}</span></td>
+          <td class="col-center"><span class="sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span></td>
           <td class="col-center">${nivBadgeHtml(nivAt)}</td>
           <td class="col-center">${statusBadge(it?.etat)}</td>
         </tr>
@@ -2967,25 +2938,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return mainRow + critRow;
     }).join("");
 
-
-
-
-
-    // ------------------------------------------------------
-    // Radar (vue synthèse)
-    // - Axes = top compétences par poids_criticite
-    // - Valeur = min(score / seuil, 1)
-    // ------------------------------------------------------
     const RADAR_MAX_AXES = 12;
-
     const radarAxesAll = items.map((it) => {
       const w = Number(it.poids || it.poids_criticite || 1);
       const scoreN = Number(it.score_24 ?? it.score ?? it.resultat_eval ?? 0);
       const seuilN = Number(it.seuil_24 ?? it.seuil ?? 0);
-
       const et = String(it.etat || "").toLowerCase();
-      const statusRank = (et === "missing") ? 2 : (et === "under" ? 1 : 0);
-
+      const statusRank = (et === "missing") ? 3 : (et === "under" ? 2 : (et === "improvable" ? 1 : 0));
       const ratio = (seuilN > 0 && isFinite(scoreN))
         ? Math.max(0, Math.min(scoreN / seuilN, 1))
         : 0;
@@ -2999,7 +2958,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ratio: ratio,
         etat: et,
         statusRank: statusRank,
-        domaineHtml: domainPill(it),
       };
     }).filter(a => (a.code || a.intitule));
 
@@ -3014,202 +2972,17 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const radarTop = radarAxesAll.slice(0, RADAR_MAX_AXES);
     const radarEmpty = radarTop.length < 3;
 
-    const radarRows = radarTop.map((a) => {
-    const code = (a.code || "").toString().trim();
-    const title = (a.intitule || "").toString().trim();
+    const radarHtml = radarEmpty
+      ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
+      : `
+        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
+          <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
+        </div>
+      `;
 
-    const pct = Math.round((a.ratio || 0) * 100);
-
-    const atteint = fmtScore(a.score);
-    const attendu = fmtScore(a.seuil);
-
-    const badgesTop = `
-      <div class="sb-badges" style="flex-wrap:wrap;">
-        ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
-        ${a.domaineHtml || ``}
-      </div>
-    `;
-
-    const noteHtml = `
-      <span class="sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span>
-      <span style="color:#9ca3af; font-weight:800; margin:0 6px;">/</span>
-      <span class="sb-badge" title="Note attendue">${escapeHtml(String(attendu))}</span>
-    `;
-
-    return `
-      <tr>
-        <td style="vertical-align:top;">
-          ${badgesTop}
-          <div style="font-weight:600; font-size:15px; color:#111827; margin-top:4px; line-height:1.2;">
-            ${escapeHtml(title || code || "—")}
-          </div>
-        </td>
-
-        <td class="col-center">${critBadgeHtml(a.poids)}</td>
-
-        <td class="col-center" style="white-space:nowrap;">
-          ${noteHtml}
-        </td>
-
-        <td class="col-center">${escapeHtml(String(pct))}%</td>
-
-        <td class="col-center">${statusBadge(a.etat)}</td>
-      </tr>
-    `;
-  }).join("");
-
-    
-  // ------------------------
-  // Vue Radar - 2 sous-vues
-  // ------------------------
-
-  // Vue par compétence (graphique actuel + tableau)
-  const radarHtmlComp = radarEmpty
-  ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
-  : `
-    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
-      <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
-    </div>
-
-    <div class="table-wrap" style="margin-top:10px;">
-      <table class="sb-table sb-table--airy sb-table--hover">
-        <thead>
-          <tr class="sb-th-sub">
-            <th>Compétence</th>
-            <th class="col-center" style="width:90px;">Criticité</th>
-            <th class="col-center" style="width:170px; line-height:1.05;">Note atteinte<br>Note attendue</th>
-            <th class="col-center" style="width:90px;">Ratio</th>
-            <th class="col-center" style="width:120px;">Statut</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          ${radarRows || `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
-        </tbody>
-      </table>
-
-      <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
-        Criticité = importance de la compétence pour le poste. Attendu/Atteint = barème interne d’évaluation.
-      </div>
-
-    </div>
-  `;
-
-  // Vue par domaine (agrégation)
-  function normDomain(s) {
-  const v = (s ?? "").toString().trim();
-  return v ? v.toLowerCase() : "";
-  }
-
-  function shortLabel(s, maxLen) {
-  const v = (s ?? "").toString().trim();
-  if (!v) return "—";
-  if (v.length <= maxLen) return v;
-  return v.slice(0, Math.max(4, maxLen - 1)) + "…";
-  }
-
-  const domMap = new Map();
-  items.forEach((it) => {
-  const raw = ((it.domaine_titre_court || it.domaine || "") ?? "").toString().trim();
-  const key = normDomain(raw) || "__non_classe__";
-  const label = raw || "Non classé";
-
-  const seuilN = Number(it.seuil);
-  const scoreN = Number(it.score);
-  const poidsN = Number(it.poids_criticite || 1);
-
-  let g = domMap.get(key);
-  if (!g) {
-    g = { key: key, label: label, attendu: 0, atteint: 0, poids: 0, nb: 0 };
-    domMap.set(key, g);
-  }
-
-  g.attendu += (Number.isFinite(seuilN) ? seuilN : 0);
-  g.atteint += (Number.isFinite(scoreN) ? scoreN : 0);
-  g.poids += (Number.isFinite(poidsN) ? poidsN : 0);
-  g.nb += 1;
-  });
-
-  const domainAxesAll = Array.from(domMap.values())
-  .map((g) => {
-    const attendu = Number(g.attendu || 0);
-    const atteint = Number(g.atteint || 0);
-    const pct = attendu > 0 ? (atteint / attendu) * 100 : 0;
-
-    const etat = (pct >= 100)
-      ? "ok"
-      : (atteint > 0 ? "under" : "missing");
-
-    return {
-      key: g.key,
-      label: g.label,
-      code: shortLabel(g.label, 14),
-      nb: g.nb || 0,
-      poids: Math.round(Number(g.poids || 0)),
-      attendu: attendu,
-      atteint: atteint,
-      pct: pct,
-      ratio: Math.max(0, Math.min(pct / 100, 1)), // visuel cappé à 100%
-      etat: etat
-    };
-  })
-  .sort((a, b) => {
-    const d1 = (b.attendu - a.attendu);
-    if (d1) return d1;
-    const d2 = (b.poids - a.poids);
-    if (d2) return d2;
-    return (a.label || "").localeCompare(b.label || "");
-  });
-
-  const domainAxesRadar = domainAxesAll.slice(0, RADAR_MAX_AXES); // même plafond que la vue compétence
-  const domainEmpty = domainAxesRadar.length < 3;
-
-  const domainRows = domainAxesAll.map((d) => {
-  const pctInt = Math.round(Number(d.pct || 0));
-  const pts = `${fmtScore(d.atteint)} / ${fmtScore(d.attendu)} pts`;
-  return `
-    <tr>
-      <td>
-        <div style="font-weight:900; color:#111827;">${escapeHtml(d.label)}</div>
-        <div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(String(d.nb || 0))} compétence(s)</div>
-      </td>
-      <td class="col-center">${escapeHtml(String(d.nb || 0))}</td>
-      <td class="col-center">
-        <div style="font-weight:900;">${escapeHtml(String(pctInt))}%</div>
-        <div class="card-sub" style="margin:2px 0 0 0; color:#6b7280;">${escapeHtml(pts)}</div>
-      </td>
-      <td class="col-center">${statusBadge(d.etat)}</td>
-    </tr>
-  `;
-  }).join("");
-
-  const radarHtmlDomain = domainEmpty
-  ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 domaines).</div>`
-  : `
-    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
-      <canvas id="matchDomainRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
-    </div>
-
-    <div class="table-wrap" style="margin-top:10px;">
-      <table class="sb-table">
-        <thead>
-          <tr>
-            <th>Domaine</th>
-            <th class="col-center" style="width:90px;">Nb comp.</th>
-            <th class="col-center" style="width:140px;">Atteinte</th>
-            <th class="col-center" style="width:110px;">Statut</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${domainRows || `<tr><td colspan="4" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
-        </tbody>
-      </table>
-    </div>
-  `;
     host.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:10px;">
 
-        <!-- BLOC 1 : Header (identité + tabs + ring) -->
         <div class="card" style="padding:12px; margin:0;">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
             <div style="min-width:0;">
@@ -3226,11 +2999,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <div class="card-sub" style="margin:4px 0 0 0;">
                 Service : ${escapeHtml(svc)}
               </div>
-
-              <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-                <button type="button" id="btnMatchTabTable" class="sb-btn sb-btn--accent sb-btn--xs">Détail</button>
-                <button type="button" id="btnMatchTabRadar" class="sb-btn sb-btn--soft sb-btn--xs">Radar</button>
-              </div>
             </div>
 
             <div style="flex:0 0 auto;">
@@ -3239,9 +3007,24 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
         </div>
 
-        <!-- BLOC 2 : Contenu (table / radar) -->
-        <div class="card" style="padding:12px; margin:0;">
-          <div id="matchPersonTabTable" style="margin-top:0;">
+        <div class="card" style="padding:0; margin:0; overflow:hidden;">
+          <button type="button" data-match-accordion-toggle="radar" aria-expanded="true"
+                  style="width:100%; border:0; background:transparent; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; text-align:left;">
+            <span class="card-title" style="margin:0;">Radar</span>
+            <span data-match-accordion-caret="radar" style="font-weight:900; color:#6b7280;">▾</span>
+          </button>
+          <div id="matchPersonRadarPanel" data-match-accordion-panel="radar" style="padding:0 12px 12px 12px;">
+            ${radarHtml}
+          </div>
+        </div>
+
+        <div class="card" style="padding:0; margin:0; overflow:hidden;">
+          <button type="button" data-match-accordion-toggle="table" aria-expanded="false"
+                  style="width:100%; border:0; background:transparent; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; text-align:left;">
+            <span class="card-title" style="margin:0;">Détail des compétences</span>
+            <span data-match-accordion-caret="table" style="font-weight:900; color:#6b7280;">▸</span>
+          </button>
+          <div id="matchPersonTablePanel" data-match-accordion-panel="table" style="display:none; padding:0 12px 12px 12px;">
             <div class="table-wrap" style="margin-top:0;">
               <table class="sb-table">
                 <thead>
@@ -3253,7 +3036,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   <tr>
                     <th class="col-center" style="width:90px;">Criticité</th>
                     <th class="col-center" style="width:130px;">Niveau<br>requis</th>
-                    <th class="col-center" style="width:90px;">Attendu</th>
+                    <th class="col-center" style="width:90px;">Note max.</th>
                     <th class="col-center" style="width:90px;">Atteint</th>
                     <th class="col-center" style="width:140px;">Niveau<br>atteint</th>
                     <th class="col-center" style="width:120px;">Statut</th>
@@ -3263,30 +3046,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   ${rowsHtml || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
                 </tbody>
               </table>
-            </div>
-
-            <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-              Criticité = poids de la compétence dans le poste.
-            </div>
-            <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-              Attendu/Atteint = Note mini attendue pour atteindre le niveau / Note obtenue lors du dernier audit.
-            </div>
-
-          </div>
-
-          <div id="matchPersonTabRadar" style="margin-top:0; display:none;">
-            <!-- Radar : on garde ton HTML existant -->
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <button type="button" id="btnMatchRadarViewComp" class="sb-btn sb-btn--soft sb-btn--xs">Par compétences</button>
-              <button type="button" id="btnMatchRadarViewDomain" class="sb-btn sb-btn--soft sb-btn--xs">Par domaines</button>
-            </div>
-
-            <div id="matchRadarPanelComp" style="margin-top:10px;">
-              ${radarHtmlComp}
-            </div>
-
-            <div id="matchRadarPanelDomain" style="margin-top:10px; display:none;">
-              ${radarHtmlDomain}
             </div>
           </div>
         </div>
@@ -3323,7 +3082,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       });
     }
 
-    // Toggle "Voir critères" (affiche une ligne dédiée sous la compétence)
     host.querySelectorAll("[data-crit-toggle]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const uid = btn.getAttribute("data-crit-toggle");
@@ -3340,14 +3098,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       });
     });
 
-
-
- 
-    
-
-    // ------------------------------------------------------
-    // Radar - rendu canvas (JS pur)
-    // ------------------------------------------------------
     function _parsePx(v) {
       const m = /(-?\d+(\.\d+)?)px/.exec(String(v || "").trim());
       return m ? Number(m[1]) : 0;
@@ -3428,7 +3178,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const point = _getCssVar("--radar-point", stroke);
       const label = _getCssVar("--radar-label", "#111827");
 
-      // Grille (5 niveaux)
       ctx.strokeStyle = grid;
       ctx.lineWidth = 1;
       for (let k = 1; k <= 5; k++) {
@@ -3444,7 +3193,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ctx.stroke();
       }
 
-      // Axes
       ctx.strokeStyle = axis;
       for (let i = 0; i < n; i++) {
         const ang = start + i * step;
@@ -3456,7 +3204,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ctx.stroke();
       }
 
-      // Courbe données
       ctx.lineWidth = 2;
       ctx.strokeStyle = stroke;
       ctx.fillStyle = fill;
@@ -3473,7 +3220,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       ctx.fill();
       ctx.stroke();
 
-      // Points
       ctx.fillStyle = point;
       for (let i = 0; i < n; i++) {
         const ang = start + i * step;
@@ -3486,7 +3232,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ctx.fill();
       }
 
-      // Labels (codes)
       ctx.fillStyle = label;
       ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
       for (let i = 0; i < n; i++) {
@@ -3504,101 +3249,32 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       }
     }
 
-    let _matchRadarView = "comp"; // "comp" | "domain"
-
     function renderRadarNow() {
-      // Tab radar doit être visible
-      if (tabRadar && tabRadar.style.display === "none") return;
-
-      if (_matchRadarView === "domain") {
-        if (domainEmpty) return;
-        const canvas = byId("matchDomainRadarCanvas");
-        if (!canvas) return;
-        drawRadarChart(canvas, domainAxesRadar);
-        return;
-      }
-
-      if (radarEmpty) return;
+      const panel = byId("matchPersonRadarPanel");
+      if (!panel || panel.style.display === "none" || radarEmpty) return;
       const canvas = byId("matchPersonRadarCanvas");
       if (!canvas) return;
       drawRadarChart(canvas, radarTop);
     }
 
-  // ------------------------------------------------------
-    // Onglets (Détail / Radar) + rendu radar
-    // ------------------------------------------------------
-    const btnTabTable = byId("btnMatchTabTable");
-    const btnTabRadar = byId("btnMatchTabRadar");
-    const tabTable = byId("matchPersonTabTable");
-    const tabRadar = byId("matchPersonTabRadar");
+    host.querySelectorAll("[data-match-accordion-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = (btn.getAttribute("data-match-accordion-toggle") || "").trim();
+        if (!key) return;
+        const panel = host.querySelector(`[data-match-accordion-panel="${key}"]`);
+        const caret = host.querySelector(`[data-match-accordion-caret="${key}"]`);
+        if (!panel) return;
 
-
-  // Sous-onglets Radar (Compétence / Domaine)
-  const btnRadarComp = byId("btnMatchRadarViewComp");
-  const btnRadarDomain = byId("btnMatchRadarViewDomain");
-  const radarPanelComp = byId("matchRadarPanelComp");
-  const radarPanelDomain = byId("matchRadarPanelDomain");
-
-  function setRadarView(which) {
-    const isDom = (which === "domain");
-    _matchRadarView = isDom ? "domain" : "comp";
-
-    // Panels (IDs réels du HTML)
-    if (radarPanelComp) radarPanelComp.style.display = isDom ? "none" : "";
-    if (radarPanelDomain) radarPanelDomain.style.display = isDom ? "" : "none";
-
-    // Boutons: standard sb-btn (actif = accent, inactif = soft)
-    if (btnRadarComp) {
-      btnRadarComp.classList.add("sb-btn", "sb-btn--xs");
-      btnRadarComp.classList.toggle("sb-btn--accent", !isDom);
-      btnRadarComp.classList.toggle("sb-btn--soft", isDom);
-    }
-    if (btnRadarDomain) {
-      btnRadarDomain.classList.add("sb-btn", "sb-btn--xs");
-      btnRadarDomain.classList.toggle("sb-btn--accent", isDom);
-      btnRadarDomain.classList.toggle("sb-btn--soft", !isDom);
-    }
-  }
-
-  function setActiveTab(which) {
-    const isRadar = (which === "radar");
-    if (tabTable) tabTable.style.display = isRadar ? "none" : "";
-    if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
-
-    // Tabs: on utilise le standard sb-btn (actif = accent, inactif = soft)
-    if (btnTabTable) {
-      btnTabTable.classList.remove("sb-seg", "sb-seg--dark", "is-active");
-      btnTabTable.classList.add("sb-btn", "sb-btn--xs");
-      btnTabTable.classList.toggle("sb-btn--accent", !isRadar);
-      btnTabTable.classList.toggle("sb-btn--soft", isRadar);
-    }
-    if (btnTabRadar) {
-      btnTabRadar.classList.remove("sb-seg", "sb-seg--dark", "is-active");
-      btnTabRadar.classList.add("sb-btn", "sb-btn--xs");
-      btnTabRadar.classList.toggle("sb-btn--accent", isRadar);
-      btnTabRadar.classList.toggle("sb-btn--soft", !isRadar);
-    }
-  }
-
-
-    
-  // Init radar view (compétence)
-  setRadarView("comp");
-  if (btnRadarComp) btnRadarComp.addEventListener("click", () => { setRadarView("comp"); setTimeout(renderRadarNow, 0); });
-  if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarView("domain"); setTimeout(renderRadarNow, 0); });
-
-  // Bind tabs
-    if (btnTabTable) btnTabTable.addEventListener("click", () => setActiveTab("table"));
-    if (btnTabRadar) btnTabRadar.addEventListener("click", () => {
-      setActiveTab("radar");
-      // rendu après affichage
-      setTimeout(renderRadarNow, 0);
+        const open = panel.style.display === "none";
+        panel.style.display = open ? "" : "none";
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        if (caret) caret.textContent = open ? "▾" : "▸";
+        if (open && key === "radar") setTimeout(renderRadarNow, 0);
+      });
     });
 
-    // Défaut: onglet tableau
-    setActiveTab("table");
+    setTimeout(renderRadarNow, 0);
 
-    // ResizeObserver (redraw radar si visible)
     const modal = byId("modalMatchPerson");
     if (modal) {
       if (modal.__matchRadarObs) {
@@ -3606,15 +3282,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         modal.__matchRadarObs = null;
       }
 
-      if ((!radarEmpty || !domainEmpty) && typeof ResizeObserver !== "undefined") {
-  const obs = new ResizeObserver(() => {
-    if (tabRadar && tabRadar.style.display !== "none") renderRadarNow();
-  });
-  if (tabRadar) obs.observe(tabRadar);
-  modal.__matchRadarObs = obs;
-  }
+      const radarPanel = byId("matchPersonRadarPanel");
+      if (!radarEmpty && radarPanel && typeof ResizeObserver !== "undefined") {
+        const obs = new ResizeObserver(() => renderRadarNow());
+        obs.observe(radarPanel);
+        modal.__matchRadarObs = obs;
+      }
     }
-   }
+  }
 
   async function showMatchPersonDetailModal(portal, id_poste, id_effectif, id_service) {
     openMatchPersonModal("Détail matching");
