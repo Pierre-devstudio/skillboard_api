@@ -1357,6 +1357,7 @@ def _fetch_competence_fragility_records_centered(
     period_end: date,
     comp_id: Optional[str] = None,
     limit: int = 200,
+    excluded_effectif_ids: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Moteur centré compétence.
@@ -1377,6 +1378,13 @@ def _fetch_competence_fragility_records_centered(
     if comp_id:
         comp_filter_sql = "AND c.id_comp = %s"
         comp_filter_params.append(comp_id)
+
+    excluded_ids = sorted({str(x or "").strip() for x in (excluded_effectif_ids or []) if str(x or "").strip()})
+    excluded_filter_sql = ""
+    excluded_filter_params: List[Any] = []
+    if excluded_ids:
+        excluded_filter_sql = "AND NOT (e.id_effectif::text = ANY(%s::text[]))"
+        excluded_filter_params.append(excluded_ids)
 
     req_sql = f"""
     WITH
@@ -1484,6 +1492,7 @@ def _fetch_competence_fragility_records_centered(
         WHERE e.id_ent = %s
           AND COALESCE(e.archive, FALSE) = FALSE
           AND COALESCE(e.statut_actif, TRUE) = TRUE
+          {excluded_filter_sql}
           AND COALESCE(ec.actif, TRUE) = TRUE
           AND COALESCE(ec.archive, FALSE) = FALSE
           AND ec.id_comp = ANY(%s)
@@ -2670,6 +2679,7 @@ class AnalysePrevisionCritiqueImpacteeItem(BaseModel):
     # conservés (utile debug / futur)
     nb_porteurs_now: int = 0
     nb_porteurs_sortants: int = 0
+    nb_porteurs_restants: int = 0
     last_exit_date: Optional[str] = None
 
     # NOUVEAU: projection
@@ -2745,8 +2755,15 @@ def _fetch_prevision_competence_impacts(
     limit: int = 200,
 ) -> List[Dict[str, Any]]:
     """
-    Prévisions compétences = hausse de fragilité directement causée par les sortants N+X.
-    Chaîne métier autorisée : sortant -> compétence portée -> postes exigeant cette compétence.
+    Prévisions compétences = même moteur que Risques actuels, rejoué sans les sortants N+X.
+
+    Principe:
+    - fragilité actuelle : _fetch_competence_fragility_records()
+    - fragilité future : même moteur, même périmètre, mêmes filtres, mais porteurs sortants exclus
+    - hausse : fragilité future - fragilité actuelle
+
+    On retient uniquement les compétences portées par au moins un sortant de la période
+    et dont la fragilité augmente réellement.
     """
     scope_id = (id_service or "").strip() or None
     horizon = max(1, min(5, int(horizon_years or 1)))
@@ -2755,14 +2772,18 @@ def _fetch_prevision_competence_impacts(
 
     cte_sql, cte_params = _build_scope_cte(id_ent, scope_id)
 
-    sql = f"""
+    # 1) Sortants N+X dans le périmètre courant.
+    leaving_sql = f"""
     WITH
     {cte_sql},
-
     effectifs_valid AS (
         SELECT
             e.id_effectif,
+            e.prenom_effectif,
+            e.nom_effectif,
             e.id_poste_actuel,
+            COALESCE(p.codif_client, p.codif_poste, '') AS codif_poste,
+            COALESCE(p.intitule_poste, '') AS intitule_poste,
             e.date_sortie_prevue,
             COALESCE(e.havedatefin, FALSE) AS havedatefin,
             e.retraite_estimee::int AS retraite_annee,
@@ -2770,27 +2791,15 @@ def _fetch_prevision_competence_impacts(
             COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
         FROM public.tbl_effectif_client e
         JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE COALESCE(e.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_fiche_poste p ON p.id_poste = e.id_poste_actuel
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
           AND COALESCE(e.is_temp, FALSE) = FALSE
           AND COALESCE(e.statut_actif, TRUE) = TRUE
     ),
-
-    effectifs_dispo AS (
-        SELECT ev.id_effectif
-        FROM effectifs_valid ev
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM public.tbl_effectif_client_break b
-            WHERE b.id_effectif = ev.id_effectif
-              AND b.archive = FALSE
-              AND b.date_debut <= CURRENT_DATE
-              AND b.date_fin >= CURRENT_DATE
-        )
-    ),
-
     effectifs_exit AS (
         SELECT
-            ev.id_effectif,
+            ev.*,
             CASE
                 WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                 WHEN ev.retraite_annee IS NOT NULL THEN
@@ -2811,251 +2820,173 @@ def _fetch_prevision_competence_impacts(
                 ELSE NULL
             END AS exit_date
         FROM effectifs_valid ev
-    ),
+    )
+    SELECT *
+    FROM effectifs_exit ee
+    WHERE ee.exit_date IS NOT NULL
+      AND ee.exit_date >= CURRENT_DATE
+      AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
+    ORDER BY ee.exit_date, ee.nom_effectif, ee.prenom_effectif
+    """
+    cur.execute(leaving_sql, tuple(cte_params + [id_ent, horizon]))
+    leaving_rows = [dict(r) for r in (cur.fetchall() or [])]
+    leaving_ids = sorted({str(r.get("id_effectif") or "").strip() for r in leaving_rows if str(r.get("id_effectif") or "").strip()})
+    if not leaving_ids:
+        return []
 
-    leaving AS (
-        SELECT ee.id_effectif, ee.exit_date
-        FROM effectifs_exit ee
-        WHERE ee.exit_date IS NOT NULL
-          AND ee.exit_date >= CURRENT_DATE
-          AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
-    ),
-
-    req_all AS (
+    # 2) Compétences du périmètre réellement portées par ces sortants.
+    impacted_sql = f"""
+    WITH
+    {cte_sql},
+    req_crit AS (
         SELECT DISTINCT
-            fpc.id_poste,
-            c.id_comp,
-            COALESCE(fpc.poids_criticite, 0)::int AS poids_crit
+            c.id_comp
         FROM public.tbl_fiche_poste_competence fpc
         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
-        JOIN public.tbl_competence c
-          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+        JOIN public.tbl_competence c ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
     ),
-
-    req_crit AS (
-        SELECT ra.id_poste, ra.id_comp, ra.poids_crit
-        FROM req_all ra
-        WHERE ra.poids_crit >= %s
-    ),
-
-    titulaires AS (
-        SELECT ev.id_poste_actuel AS id_poste, COUNT(DISTINCT ev.id_effectif)::int AS nb_titulaires
-        FROM effectifs_valid ev
-        WHERE COALESCE(ev.id_poste_actuel, '') <> ''
-        GROUP BY ev.id_poste_actuel
-    ),
-
-    poste_need AS (
+    leaving AS (
         SELECT
-            ps.id_poste,
-            CASE
-                WHEN prh.nb_titulaires_cible IS NOT NULL AND prh.nb_titulaires_cible::int > 0 THEN prh.nb_titulaires_cible::int
-                WHEN COALESCE(t.nb_titulaires, 0)::int > 0 THEN COALESCE(t.nb_titulaires, 0)::int
-                ELSE 1
-            END AS besoin_poste
-        FROM postes_scope ps
-        LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = ps.id_poste
-        LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
+            e.id_effectif,
+            e.prenom_effectif,
+            e.nom_effectif,
+            e.date_sortie_prevue,
+            COALESCE(e.havedatefin, FALSE) AS havedatefin,
+            e.retraite_estimee::int AS retraite_annee,
+            COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+            COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.is_temp, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND e.id_effectif::text = ANY(%s::text[])
     ),
-
-    comp_need AS (
+    leaving_exit AS (
         SELECT
-            rc.id_comp,
-            MAX(rc.poids_crit)::int AS criticite_max,
-            COUNT(DISTINCT rc.id_poste)::int AS nb_postes_impactes,
-            SUM(pn.besoin_poste)::int AS besoin_total,
-            SUM(CASE WHEN rc.poids_crit >= 80 THEN 1 ELSE 0 END)::int AS nb_postes_crit_80
-        FROM req_crit rc
-        JOIN poste_need pn ON pn.id_poste = rc.id_poste
-        GROUP BY rc.id_comp
-    ),
-
-    porteurs AS (
-        SELECT ec.id_comp, COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
-        FROM public.tbl_effectif_client_competence ec
-        JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
-        WHERE COALESCE(ec.actif, TRUE) = TRUE
-          AND COALESCE(ec.archive, FALSE) = FALSE
-          AND ec.id_comp IN (SELECT id_comp FROM comp_need)
-        GROUP BY ec.id_comp
-    ),
-
-    porteurs_dispo AS (
-        SELECT ec.id_comp, COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
-        FROM public.tbl_effectif_client_competence ec
-        JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
-        WHERE COALESCE(ec.actif, TRUE) = TRUE
-          AND COALESCE(ec.archive, FALSE) = FALSE
-          AND ec.id_comp IN (SELECT id_comp FROM comp_need)
-        GROUP BY ec.id_comp
-    ),
-
-    experts AS (
-        SELECT ec.id_comp, COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
-        FROM public.tbl_effectif_client_competence ec
-        JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
-        WHERE COALESCE(ec.actif, TRUE) = TRUE
-          AND COALESCE(ec.archive, FALSE) = FALSE
-          AND ec.id_comp IN (SELECT id_comp FROM comp_need)
-          AND (
+            l.*,
             CASE
-              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$' THEN trim(ec.niveau_actuel)::int
-              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
-              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-              ELSE 0
-            END
-          ) >= 4
-        GROUP BY ec.id_comp
+                WHEN l.havedatefin = TRUE AND l.date_sortie_prevue IS NOT NULL THEN l.date_sortie_prevue
+                WHEN l.retraite_annee IS NOT NULL THEN
+                    (
+                        make_date(l.retraite_annee, l.m_entree, 1)
+                        + (
+                            (
+                                LEAST(
+                                    l.d_entree,
+                                    EXTRACT(
+                                        DAY
+                                        FROM (date_trunc('month', make_date(l.retraite_annee, l.m_entree, 1)) + interval '1 month - 1 day')
+                                    )::int
+                                ) - 1
+                            )::text || ' days'
+                        )::interval
+                    )::date
+                ELSE NULL
+            END AS exit_date
+        FROM leaving l
     ),
-
-    experts_dispo AS (
-        SELECT ec.id_comp, COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
-        FROM public.tbl_effectif_client_competence ec
-        JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
-        WHERE COALESCE(ec.actif, TRUE) = TRUE
-          AND COALESCE(ec.archive, FALSE) = FALSE
-          AND ec.id_comp IN (SELECT id_comp FROM comp_need)
-          AND (
-            CASE
-              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$' THEN trim(ec.niveau_actuel)::int
-              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
-              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-              ELSE 0
-            END
-          ) >= 4
-        GROUP BY ec.id_comp
-    ),
-
     leave_comp AS (
         SELECT
             ec.id_comp,
-            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_leave,
-            COUNT(DISTINCT CASE WHEN ed.id_effectif IS NOT NULL THEN ec.id_effectif_client END)::int AS nb_leave_dispo,
-            MAX(l.exit_date) AS last_exit_date,
-            COUNT(DISTINCT CASE
-              WHEN (
-                CASE
-                  WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$' THEN trim(ec.niveau_actuel)::int
-                  WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
-                  WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                  WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-                  ELSE 0
-                END
-              ) >= 4 THEN ec.id_effectif_client END
-            )::int AS nb_experts_leave,
-            COUNT(DISTINCT CASE
-              WHEN ed.id_effectif IS NOT NULL AND (
-                CASE
-                  WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$' THEN trim(ec.niveau_actuel)::int
-                  WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
-                  WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                  WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-                  ELSE 0
-                END
-              ) >= 4 THEN ec.id_effectif_client END
-            )::int AS nb_experts_leave_dispo
-        FROM leaving l
-        JOIN public.tbl_effectif_client_competence ec ON ec.id_effectif_client = l.id_effectif
-        LEFT JOIN effectifs_dispo ed ON ed.id_effectif = l.id_effectif
+            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_sortants_porteurs,
+            MAX(le.exit_date) AS last_exit_date,
+            STRING_AGG(DISTINCT TRIM(CONCAT(COALESCE(le.prenom_effectif, ''), ' ', COALESCE(le.nom_effectif, ''))), ', ') AS sortants_label
+        FROM leaving_exit le
+        JOIN public.tbl_effectif_client_competence ec ON ec.id_effectif_client = le.id_effectif
+        JOIN req_crit rc ON rc.id_comp = ec.id_comp
         WHERE COALESCE(ec.actif, TRUE) = TRUE
           AND COALESCE(ec.archive, FALSE) = FALSE
-          AND ec.id_comp IN (SELECT id_comp FROM comp_need)
         GROUP BY ec.id_comp
     )
-
-    SELECT
-        cn.id_comp,
-        c.code,
-        c.intitule,
-        c.domaine AS id_domaine_competence,
-        COALESCE(d.titre_court, d.titre, '') AS domaine_titre_court,
-        COALESCE(d.couleur, '') AS domaine_couleur,
-        cn.nb_postes_impactes::int AS nb_postes_impactes,
-        cn.criticite_max::int AS max_criticite,
-        COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs_now,
-        COALESCE(lc.nb_leave, 0)::int AS nb_porteurs_sortants,
-        lc.last_exit_date,
-        cn.besoin_total::int AS besoin_total,
-        cn.nb_postes_crit_80::int AS nb_postes_crit_80,
-        COALESCE(pd.nb_porteurs, 0)::int AS nb_porteurs_dispo,
-        COALESCE(ex.nb_experts, 0)::int AS nb_experts,
-        COALESCE(exd.nb_experts, 0)::int AS nb_experts_dispo,
-        COALESCE(lc.nb_leave_dispo, 0)::int AS nb_leave_dispo,
-        COALESCE(lc.nb_experts_leave, 0)::int AS nb_experts_leave,
-        COALESCE(lc.nb_experts_leave_dispo, 0)::int AS nb_experts_leave_dispo
-    FROM comp_need cn
-    JOIN public.tbl_competence c ON c.id_comp = cn.id_comp
-    LEFT JOIN public.tbl_domaine_competence d ON d.id_domaine_competence = c.domaine AND COALESCE(d.masque, FALSE) = FALSE
-    LEFT JOIN porteurs p ON p.id_comp = cn.id_comp
-    LEFT JOIN porteurs_dispo pd ON pd.id_comp = cn.id_comp
-    LEFT JOIN experts ex ON ex.id_comp = cn.id_comp
-    LEFT JOIN experts_dispo exd ON exd.id_comp = cn.id_comp
-    LEFT JOIN leave_comp lc ON lc.id_comp = cn.id_comp
-    WHERE COALESCE(lc.nb_leave, 0) > 0
-      AND COALESCE(p.nb_porteurs, 0) > 0
-    ORDER BY COALESCE(lc.nb_leave, 0) DESC, cn.criticite_max DESC, c.code
-    LIMIT %s
+    SELECT * FROM leave_comp
     """
+    cur.execute(impacted_sql, tuple(cte_params + [cmin, id_ent, leaving_ids]))
+    impacted_rows = [dict(r) for r in (cur.fetchall() or [])]
+    impacted_comp_ids = sorted({str(r.get("id_comp") or "").strip() for r in impacted_rows if str(r.get("id_comp") or "").strip()})
+    if not impacted_comp_ids:
+        return []
 
-    cur.execute(sql, tuple(cte_params + [horizon, cmin, lim]))
-    rows = cur.fetchall() or []
+    impacted_meta = {str(r.get("id_comp") or "").strip(): r for r in impacted_rows}
+
+    today = date.today()
+    current_records = _fetch_competence_fragility_records_centered(
+        cur,
+        id_ent,
+        scope_id,
+        cmin,
+        today,
+        today,
+        comp_id=None,
+        limit=10000,
+    )
+    future_records = _fetch_competence_fragility_records_centered(
+        cur,
+        id_ent,
+        scope_id,
+        cmin,
+        today,
+        today,
+        comp_id=None,
+        limit=10000,
+        excluded_effectif_ids=leaving_ids,
+    )
+
+    current_by_comp = {str(r.get("id_comp") or "").strip(): r for r in current_records if str(r.get("id_comp") or "").strip()}
+    future_by_comp = {str(r.get("id_comp") or "").strip(): r for r in future_records if str(r.get("id_comp") or "").strip()}
 
     impacts: List[Dict[str, Any]] = []
-    for r in rows:
-        B = int(r.get("besoin_total") or 0)
-        P = int(r.get("nb_porteurs_now") or 0)
-        Pd = int(r.get("nb_porteurs_dispo") or 0)
-        Pe = int(r.get("nb_experts") or 0)
-        Ped = int(r.get("nb_experts_dispo") or 0)
-        N = int(r.get("nb_postes_impactes") or 0)
-        Cmax = int(r.get("max_criticite") or 0)
-        N80 = int(r.get("nb_postes_crit_80") or 0)
+    for cid in impacted_comp_ids:
+        cur_rec = current_by_comp.get(cid)
+        fut_rec = future_by_comp.get(cid)
+        if not cur_rec or not fut_rec:
+            continue
 
-        leave = int(r.get("nb_porteurs_sortants") or 0)
-        leave_dispo = int(r.get("nb_leave_dispo") or 0)
-        leave_ex = int(r.get("nb_experts_leave") or 0)
-        leave_ex_dispo = int(r.get("nb_experts_leave_dispo") or 0)
-
-        indice_now = _analyse_prevision_comp_fragility_index(B, P, Pd, Pe, Ped, N, Cmax, N80)
-        indice_h = _analyse_prevision_comp_fragility_index(
-            B,
-            max(P - leave, 0),
-            max(Pd - leave_dispo, 0),
-            max(Pe - leave_ex, 0),
-            max(Ped - leave_ex_dispo, 0),
-            N,
-            Cmax,
-            N80,
-        )
-        delta = max(0, int(indice_h - indice_now))
+        indice_now = _clamp_int(int(cur_rec.get("indice_fragilite") or 0), 0, 100)
+        indice_h = _clamp_int(int(fut_rec.get("indice_fragilite") or 0), 0, 100)
+        delta = max(0, indice_h - indice_now)
         if delta <= 0:
             continue
 
-        last_exit_date = r.get("last_exit_date")
+        meta = impacted_meta.get(cid) or {}
+        last_exit_date = meta.get("last_exit_date")
         if hasattr(last_exit_date, "isoformat"):
             last_exit_date = last_exit_date.isoformat()
 
-        item = dict(r)
-        item["last_exit_date"] = last_exit_date
-        item["indice_fragilite_horizon"] = int(indice_h)
-        item["delta_fragilite"] = int(delta)
-        item["priorite_score"] = int(delta)
-        if delta >= 25:
-            item["priorite"] = "P1"
-        elif delta >= 10:
-            item["priorite"] = "P2"
-        else:
-            item["priorite"] = "P3"
-        impacts.append(item)
+        nb_now_declares = int(cur_rec.get("nb_porteurs_declares") or cur_rec.get("nb_porteurs_now") or cur_rec.get("nb_porteurs") or 0)
+        nb_future_declares = int(fut_rec.get("nb_porteurs_declares") or fut_rec.get("nb_porteurs_now") or fut_rec.get("nb_porteurs") or 0)
+        nb_lost = max(nb_now_declares - nb_future_declares, 0)
+        if nb_lost <= 0:
+            nb_lost = int(meta.get("nb_sortants_porteurs") or 0)
 
-    impacts.sort(key=lambda x: (-(int(x.get("delta_fragilite") or 0)), -(int(x.get("nb_porteurs_sortants") or 0)), -(int(x.get("nb_postes_impactes") or 0)), (x.get("code") or "")))
+        impacts.append({
+            "id_comp": cid,
+            "code": cur_rec.get("code"),
+            "intitule": cur_rec.get("intitule"),
+            "id_domaine_competence": cur_rec.get("id_domaine_competence"),
+            "domaine_titre_court": cur_rec.get("domaine_titre_court") or cur_rec.get("domaine_titre"),
+            "domaine_couleur": cur_rec.get("domaine_couleur"),
+            "nb_postes_impactes": int(cur_rec.get("nb_postes_impactes") or 0),
+            "max_criticite": int(cur_rec.get("criticite_max") or cur_rec.get("max_criticite") or 0),
+            "nb_porteurs_now": nb_now_declares,
+            "nb_porteurs_sortants": nb_lost,
+            "nb_porteurs_restants": max(nb_future_declares, 0),
+            "last_exit_date": last_exit_date,
+            "sortants_label": meta.get("sortants_label") or "",
+            "indice_fragilite_now": indice_now,
+            "indice_fragilite_horizon": indice_h,
+            "delta_fragilite": int(delta),
+            "priorite": "P1" if delta >= 25 else ("P2" if delta >= 10 else "P3"),
+            "priorite_score": int(delta),
+        })
+
+    impacts.sort(key=lambda x: (-(int(x.get("delta_fragilite") or 0)), -(int(x.get("indice_fragilite_horizon") or 0)), -(int(x.get("nb_porteurs_sortants") or 0)), (x.get("code") or "")))
     return impacts[:lim]
-
 
 def _analyse_prevision_competence_average_delta(items: List[Dict[str, Any]]) -> int:
     deltas = [int(x.get("delta_fragilite") or 0) for x in (items or []) if int(x.get("delta_fragilite") or 0) > 0]
@@ -3106,6 +3037,7 @@ def get_analyse_previsions_critiques_impactees_detail(
                             max_criticite=int(r.get("max_criticite") or 0),
                             nb_porteurs_now=int(r.get("nb_porteurs_now") or 0),
                             nb_porteurs_sortants=int(r.get("nb_porteurs_sortants") or 0),
+                            nb_porteurs_restants=int(r.get("nb_porteurs_restants") or 0),
                             last_exit_date=r.get("last_exit_date"),
                             indice_fragilite_horizon=int(r.get("indice_fragilite_horizon") or 0),
                             delta_fragilite=int(r.get("delta_fragilite") or 0),

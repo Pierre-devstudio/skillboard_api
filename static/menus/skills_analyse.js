@@ -5282,7 +5282,9 @@ function renderDetail(mode) {
             const delta = Number(it.delta_fragilite ?? it.delta ?? 0);
             const lost = Number(it.nb_porteurs_sortants ?? 0);
             const now = Number(it.nb_porteurs_now ?? 0);
-            const remain = Math.max(now - lost, 0);
+            const remain = Number.isFinite(Number(it.nb_porteurs_restants))
+              ? Math.max(Number(it.nb_porteurs_restants || 0), 0)
+              : Math.max(now - lost, 0);
             const nextExit = it.last_exit_date ? formatDateFr(it.last_exit_date) : "—";
 
             return `
