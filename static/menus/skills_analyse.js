@@ -5497,6 +5497,29 @@ function renderDetail(mode) {
             return "Contrôler la couverture et préparer une hypothèse de relève.";
           }
 
+          function causesRisqueActuelHtml(r) {
+            const causes = Array.isArray(r?.causes_risques_actuels) ? r.causes_risques_actuels : [];
+            if (!causes.length) {
+              return `<div class="card-sub" style="margin:0;">Aucune cause actuelle majeure retournée.</div>`;
+            }
+            return `
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                ${causes.slice(0, 4).map(c => {
+                  const title = (c?.titre || "Cause").toString().trim();
+                  const detail = (c?.detail || "").toString().trim();
+                  const score = Number(c?.score || 0);
+                  const scoreTxt = score > 0 ? ` · score ${Math.round(score)}` : "";
+                  return `
+                    <div>
+                      <strong>${escapeHtml(title)}</strong>
+                      <div class="card-sub" style="margin:2px 0 0;">${escapeHtml(detail + scoreTxt)}</div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            `;
+          }
+
           const rowsHtml = items.map(r => {
             const idPoste = (r.id_poste || "").toString().trim();
             const poste = (r.intitule_poste || "—").toString().trim();
@@ -5533,8 +5556,11 @@ function renderDetail(mode) {
                   <div style="font-weight:600;">${escapeHtml(sortants)}</div>
                   <div class="card-sub" style="margin:2px 0 0;">Prochaine sortie : ${escapeHtml(nextExit)}</div>
                 </td>
+                <td title="Causes issues du moteur Risques actuels poste">
+                  ${causesRisqueActuelHtml(r)}
+                </td>
                 <td class="col-center">
-                  <button type="button" class="sb-btn sb-btn--xs sb-btn--soft prev-red-open">Voir détail</button>
+                  <button type="button" class="sb-btn sb-btn--xs sb-btn--soft prev-red-open">Voir causes</button>
                 </td>
               </tr>
             `;
@@ -5549,7 +5575,8 @@ function renderDetail(mode) {
                     <th class="col-center" style="width:150px;">Hausse fragilité</th>
                     <th class="col-center" style="width:130px;">Sortants liés</th>
                     <th class="col-center" style="width:130px;">Titulaires N+X</th>
-                    <th>Cause</th>
+                    <th>Sortants concernés</th>
+                    <th>Causes risques actuels</th>
                     <th class="col-center" style="width:120px;">Détail</th>
                   </tr>
                 </thead>
@@ -7071,7 +7098,8 @@ function bindOnce(portal) {
 
 
     // ------------------------------
-    // PREVISIONS: clic sur un poste "rouge"
+    // PREVISIONS: clic sur un poste impacté
+    // Source détail = modal Risques actuels poste
     // ------------------------------
     const trPrevRed = ev.target.closest("tr.prev-red-poste-row[data-id_poste]");
     if (trPrevRed) {
@@ -7080,10 +7108,10 @@ function bindOnce(portal) {
 
       const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
 
-      // Modal dédié "Poste rouge" 
-      const fn = window["showAnalysePrevPosteRedModal"];
-      if (typeof fn === "function") {
-        await fn(portal, id_poste, id_service);
+      try {
+        await showAnalysePosteDetailModal(p, id_poste, id_service, "");
+      } catch (e) {
+        console.error(e);
       }
       return;
     }

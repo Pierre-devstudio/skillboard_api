@@ -702,6 +702,7 @@ def _analyse_matching_potential_by_poste(
     period_end: date,
     seuil_immediat: int = 75,
     seuil_a_preparer: int = 60,
+    excluded_effectif_ids: Optional[List[str]] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """
     Renfort potentiel par poste.
@@ -714,6 +715,13 @@ def _analyse_matching_potential_by_poste(
         period_start, period_end = period_end, period_start
     scope_id = (id_service or "").strip() or None
     cte_sql, cte_params = _build_scope_cte(id_ent, scope_id)
+
+    excluded_ids = sorted({str(x or "").strip() for x in (excluded_effectif_ids or []) if str(x or "").strip()})
+    excluded_filter_sql = ""
+    excluded_filter_params: List[Any] = []
+    if excluded_ids:
+        excluded_filter_sql = "AND NOT (e.id_effectif::text = ANY(%s::text[]))"
+        excluded_filter_params.append(excluded_ids)
 
     cur.execute(
         f"""
@@ -775,8 +783,9 @@ def _analyse_matching_potential_by_poste(
               AND b.date_debut <= %s
               AND b.date_fin >= %s
           )
+          {excluded_filter_sql}
         """,
-        tuple(cte_params + [id_ent, period_end, period_end, period_start]),
+        tuple(cte_params + [id_ent, period_end, period_end, period_start] + excluded_filter_params),
     )
     effectifs = [dict(r) for r in (cur.fetchall() or [])]
     effectif_poste = {str(r.get("id_effectif") or "").strip(): str(r.get("id_poste_actuel") or "").strip() for r in effectifs if str(r.get("id_effectif") or "").strip()}
@@ -850,11 +859,20 @@ def _augment_poste_records_with_matching_potential(
     records: List[Dict[str, Any]],
     period_start: date,
     period_end: date,
+    excluded_effectif_ids: Optional[List[str]] = None,
 ) -> None:
     if not records:
         return
     try:
-        match = _analyse_matching_potential_by_poste(cur, id_ent, id_service, criticite_min, period_start, period_end)
+        match = _analyse_matching_potential_by_poste(
+            cur,
+            id_ent,
+            id_service,
+            criticite_min,
+            period_start,
+            period_end,
+            excluded_effectif_ids=excluded_effectif_ids,
+        )
     except Exception:
         match = {}
     for row in records:
@@ -1145,6 +1163,7 @@ def _fetch_postes_fragility_records_projected(
         JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
         WHERE e.id_ent = %s AND COALESCE(e.archive, FALSE) = FALSE AND COALESCE(e.statut_actif, TRUE) = TRUE AND COALESCE(e.id_poste_actuel, '') <> ''
           AND e.date_sortie_prevue IS NOT NULL AND e.date_sortie_prevue >= %s AND e.date_sortie_prevue <= %s
+          {excluded_filter_sql}
         GROUP BY e.id_poste_actuel
     )
     SELECT fp.id_poste, fp.codif_poste, fp.codif_client, fp.intitule_poste, fp.id_service, COALESCE(o.nom_service, '') AS nom_service,
@@ -1174,7 +1193,9 @@ def _fetch_postes_fragility_records_projected(
         + excluded_filter_params
         + [id_ent, period_end, period_start]
         + excluded_filter_params
-        + [id_ent, period_start, period_end, id_ent]
+        + [id_ent, period_start, period_end]
+        + excluded_filter_params
+        + [id_ent]
     )
     if sql_postes.count("%s") != len(sql_postes_params):
         raise RuntimeError(
@@ -1268,7 +1289,16 @@ def _fetch_postes_fragility_records_projected(
             continue
         records.append(rec)
 
-    _augment_poste_records_with_matching_potential(cur, id_ent, id_service, int(criticite_min), records, period_start, period_end)
+    _augment_poste_records_with_matching_potential(
+        cur,
+        id_ent,
+        id_service,
+        int(criticite_min),
+        records,
+        period_start,
+        period_end,
+        excluded_effectif_ids=excluded_effectif_ids,
+    )
     records.sort(key=lambda r: (-int(r.get("indice_fragilite") or 0), int(r.get("nb_titulaires") or 0), -int(r.get("gap_titulaires") or 0), str(r.get("codif_poste") or ""), str(r.get("intitule_poste") or "")))
     return records
 
@@ -3669,6 +3699,93 @@ def _fetch_prevision_poste_impact_causes(
     return {str(r.get("id_poste") or "").strip(): r for r in rows if str(r.get("id_poste") or "").strip()}
 
 
+def _analyse_prevision_poste_causes_from_record(row: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Synthèse courte des causes issues du moteur Risques actuels poste."""
+    r = row or {}
+    causes: List[Dict[str, Any]] = []
+
+    def add(code: str, titre: str, detail: str, count: int = 0, score: int = 0) -> None:
+        causes.append({
+            "code": code,
+            "titre": titre,
+            "detail": detail,
+            "count": max(0, _safe_int(count, 0)),
+            "score": max(0, _safe_int(score, 0)),
+        })
+
+    nb_titulaires = max(_safe_int(r.get("nb_titulaires"), 0), 0)
+    nb_cible = max(_safe_int(r.get("nb_titulaires_cible"), 1), 1)
+    gap = max(_safe_int(r.get("gap_titulaires"), 0), 0)
+    nb_indispo = max(_safe_int(r.get("nb_indisponibles"), 0), 0)
+
+    if bool(r.get("rupture") or False) or gap > 0 or nb_indispo > 0:
+        parts = [f"titulaires disponibles {nb_titulaires}/{nb_cible}"]
+        if gap > 0:
+            parts.append(f"écart de couverture {gap}")
+        if nb_indispo > 0:
+            parts.append(f"{nb_indispo} indisponibilité(s) en cours")
+        add(
+            "STRUCTURE_POSTE",
+            "Structure du poste",
+            " · ".join(parts),
+            count=gap or nb_indispo,
+            score=_safe_int(r.get("score_structurel"), 0),
+        )
+
+    score_efficacite = _safe_int(r.get("score_efficacite"), 0)
+    nb_ecarts = max(_safe_int(r.get("nb_critiques_sans_porteur"), 0), 0)
+    nb_non_confirmees = max(_safe_int(r.get("nb_couvertures_non_confirmees"), 0), 0)
+    if score_efficacite > 0 or nb_ecarts > 0 or nb_non_confirmees > 0:
+        detail = f"{nb_ecarts} compétence(s) avec niveau attendu non atteint"
+        if nb_non_confirmees > 0:
+            detail += f" · {nb_non_confirmees} couverture(s) à confirmer"
+        add(
+            "EFFICACITE_COUVERTURE",
+            "Niveaux attendus non atteints",
+            detail,
+            count=nb_ecarts + nb_non_confirmees,
+            score=score_efficacite,
+        )
+
+    score_dependance = _safe_int(r.get("score_dependance"), 0)
+    nb_dependances = max(_safe_int(r.get("nb_critiques_porteur_unique"), 0), 0)
+    if score_dependance > 0 or nb_dependances > 0:
+        add(
+            "DEPENDANCE_INTERNE",
+            "Dépendance interne",
+            f"{nb_dependances} compétence(s) reposent sur une couverture titulaire unique",
+            count=nb_dependances,
+            score=score_dependance,
+        )
+
+    score_renfort = _safe_int(r.get("score_renfort_potentiel") or r.get("score_transmission"), 0)
+    imm = max(_safe_int(r.get("nb_renforts_immediats"), 0), 0)
+    prep = max(_safe_int(r.get("nb_renforts_a_preparer"), 0), 0)
+    best = max(_safe_int(r.get("meilleur_matching"), 0), 0)
+    if score_renfort > 0:
+        add(
+            "RENFORT_POTENTIEL",
+            "Renfort potentiel insuffisant",
+            f"renforts immédiats {imm} · à préparer {prep} · meilleur matching {best}%",
+            count=max(0, 1 if imm <= 0 else 0),
+            score=score_renfort,
+        )
+
+    score_sorties = _safe_int(r.get("score_sorties_approchantes"), 0)
+    nb_sorties = max(_safe_int(r.get("nb_sorties_approchantes"), 0), 0)
+    if score_sorties > 0 or nb_sorties > 0:
+        add(
+            "SORTIES_APPROCHANTES",
+            "Sorties approchantes",
+            f"{nb_sorties} sortie(s) proche(s) déjà prises en compte dans les risques actuels",
+            count=nb_sorties,
+            score=score_sorties,
+        )
+
+    causes.sort(key=lambda x: (-_safe_int(x.get("score"), 0), -_safe_int(x.get("count"), 0), str(x.get("titre") or "")))
+    return causes
+
+
 def _fetch_prevision_poste_impacts(
     cur,
     id_ent: str,
@@ -3689,7 +3806,6 @@ def _fetch_prevision_poste_impacts(
         return []
 
     today = date.today()
-    period_end = date(today.year + horizon, 12, 31)
 
     current_records = _fetch_postes_fragility_records(cur, id_ent, scope_id, cmin)
     future_records = _fetch_postes_fragility_records_projected(
@@ -3698,15 +3814,9 @@ def _fetch_prevision_poste_impacts(
         scope_id,
         cmin,
         today,
-        period_end,
+        today,
         excluded_effectif_ids=leaving_ids,
     )
-
-    for rec in future_records:
-        rec["nb_sorties_approchantes"] = 0
-        rec["score_sorties_approchantes"] = 0
-        _recompute_poste_score_from_components(rec)
-        rec["base_score"] = rec.get("score_competences", 0)
 
     current_by_poste = {str(r.get("id_poste") or "").strip(): r for r in current_records if str(r.get("id_poste") or "").strip()}
     future_by_poste = {str(r.get("id_poste") or "").strip(): r for r in future_records if str(r.get("id_poste") or "").strip()}
@@ -3750,6 +3860,8 @@ def _fetch_prevision_poste_impacts(
             "sortants_label": meta.get("sortants_label") or "",
             "last_exit_date": last_exit_date,
             "priorite_label": "Critique" if indice_h >= 75 else ("Élevée" if indice_h >= 50 else ("Modérée" if indice_h >= 25 else "Faible")),
+            "causes_risques_actuels": _analyse_prevision_poste_causes_from_record(cur_rec),
+            "causes_detail_source": "risques_actuels_poste",
         })
 
     items.sort(key=lambda x: (-(int(x.get("delta_fragilite") or 0)), -(int(x.get("indice_fragilite_horizon") or 0)), str(x.get("intitule_poste") or "")))
