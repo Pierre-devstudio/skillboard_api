@@ -385,12 +385,12 @@
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: `${count(postesRouges, "poste fragilisé", "postes fragilisés")} à ${analyseHorizonLabel(horizon)}`,
+        metric: `${postesRouges > 0 ? `postes +${Math.round(postesRouges)}%` : "postes stables"} · ${compImpactHausse > 0 ? `compétences +${Math.round(compImpactHausse)}%` : "compétences stables"} à ${analyseHorizonLabel(horizon)}`,
         causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
           sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
-          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)}% de fragilité moyenne sur les compétences touchées` : "expertise à surveiller dans la durée",
-          postesRouges > 0 ? `+${Math.round(postesRouges)}% de fragilité moyenne sur les postes touchés` : "relève interne à confirmer",
+          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)}% d’évolution de fragilité moyenne des compétences` : "expertise à surveiller dans la durée",
+          postesRouges > 0 ? `+${Math.round(postesRouges)}% d’évolution de fragilité moyenne des postes` : "relève interne à confirmer",
           "transmission à organiser avant perte de couverture"
         ])
       });
@@ -700,8 +700,8 @@
       ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Prévisions. Ils servent à anticiper les fragilités qui peuvent apparaître si le périmètre évolue.")}
       <div class="analyse-help-kpi-list">
         ${analyseHelpKpi(`Sorties ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du périmètre sur la période N+X choisie. Le calcul s’appuie sur les informations connues dans Novoskill : départ prévu, retraite, mobilité, fin de présence, indisponibilité ou autre donnée prévisionnelle renseignée.")}
-        ${analyseHelpKpi("Hausse fragilité compétences", "Cet indicateur affiche la hausse moyenne de fragilité des compétences directement touchées par les sortants de la période N+X. Une compétence est retenue uniquement si un sortant en est porteur et si son départ augmente réellement la fragilité calculée.")}
-        ${analyseHelpKpi("Hausse fragilité postes", "Cet indicateur affiche la hausse moyenne de fragilité des postes touchés par les sortants de la période N+X. Le calcul repart de la fragilité actuelle des postes puis rejoue le même moteur en retirant les sortants identifiés.")}
+        ${analyseHelpKpi("Évolution fragilité compétences", "Cet indicateur affiche l’évolution moyenne de fragilité ramenée à toutes les compétences analysées du périmètre. Le calcul repart de la fragilité actuelle puis rejoue le même moteur en retirant les sortants identifiés sur la période N+X.")}
+        ${analyseHelpKpi("Évolution fragilité postes", "Cet indicateur affiche l’évolution moyenne de fragilité ramenée à tous les postes analysés du périmètre. Le calcul repart de la fragilité actuelle puis rejoue le même moteur en retirant les sortants identifiés sur la période N+X.")}
         ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la période observée. Plus la période est longue, plus l’analyse peut faire apparaître des fragilités futures. La lecture reste une anticipation : elle doit aider à préparer les actions avant que le risque devienne opérationnel.")}
       </div>
       ${analyseHelpNote("Cette carte sert à prendre de l’avance : transmission, relève interne, formation, recrutement ou réorganisation ciblée.")}

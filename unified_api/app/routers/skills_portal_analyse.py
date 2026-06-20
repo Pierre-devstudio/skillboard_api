@@ -1911,6 +1911,106 @@ def _analyse_fragility_average(records: List[Dict[str, Any]]) -> int:
         return 0
     return int(round(sum(_safe_int(r.get("indice_fragilite")) for r in analysed) / float(len(analysed))))
 
+
+def _analyse_fragility_average_float(records: List[Dict[str, Any]]) -> float:
+    analysed = _analyse_fragility_records_analyzed(records)
+    if not analysed:
+        return 0.0
+    return sum(_safe_int(r.get("indice_fragilite"), 0) for r in analysed) / float(len(analysed))
+
+
+def _analyse_prevision_delta_between_record_sets(
+    current_records: List[Dict[str, Any]],
+    future_records: List[Dict[str, Any]],
+) -> int:
+    """Évolution globale du périmètre : moyenne future - moyenne actuelle."""
+    now_avg = _analyse_fragility_average_float(current_records)
+    future_avg = _analyse_fragility_average_float(future_records)
+    return max(0, _clamp_int(round(future_avg - now_avg), 0, 100))
+
+
+def _analyse_prevision_leaving_effectif_ids(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    horizon_years: int,
+) -> List[str]:
+    rows = _fetch_prevision_poste_leaving_rows(cur, id_ent, id_service, horizon_years)
+    return sorted({str(r.get("id_effectif") or "").strip() for r in rows if str(r.get("id_effectif") or "").strip()})
+
+
+def _analyse_prevision_competence_global_delta(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    horizon_years: int,
+    criticite_min: int,
+) -> int:
+    """
+    KPI Prévisions compétences : évolution moyenne ramenée à toutes les compétences analysées.
+    Le détail reste porté par _fetch_prevision_competence_impacts().
+    """
+    scope_id = (id_service or "").strip() or None
+    cmin = max(CRITICITE_MIN_MIN, min(CRITICITE_MIN_MAX, int(criticite_min or 0)))
+    leaving_ids = _analyse_prevision_leaving_effectif_ids(cur, id_ent, scope_id, horizon_years)
+    if not leaving_ids:
+        return 0
+
+    today = date.today()
+    current_records = _fetch_competence_fragility_records_centered(
+        cur,
+        id_ent,
+        scope_id,
+        cmin,
+        today,
+        today,
+        comp_id=None,
+        limit=10000,
+    )
+    future_records = _fetch_competence_fragility_records_centered(
+        cur,
+        id_ent,
+        scope_id,
+        cmin,
+        today,
+        today,
+        comp_id=None,
+        limit=10000,
+        excluded_effectif_ids=leaving_ids,
+    )
+    return _analyse_prevision_delta_between_record_sets(current_records, future_records)
+
+
+def _analyse_prevision_poste_global_delta(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    horizon_years: int,
+    criticite_min: int,
+) -> int:
+    """
+    KPI Prévisions postes : évolution moyenne ramenée à tous les postes analysés.
+    Le détail reste porté par _fetch_prevision_poste_impacts().
+    """
+    scope_id = (id_service or "").strip() or None
+    cmin = max(CRITICITE_MIN_MIN, min(CRITICITE_MIN_MAX, int(criticite_min or 0)))
+    leaving_ids = _analyse_prevision_leaving_effectif_ids(cur, id_ent, scope_id, horizon_years)
+    if not leaving_ids:
+        return 0
+
+    today = date.today()
+    current_records = _fetch_postes_fragility_records(cur, id_ent, scope_id, cmin)
+    future_records = _fetch_postes_fragility_records_projected(
+        cur,
+        id_ent,
+        scope_id,
+        cmin,
+        today,
+        today,
+        excluded_effectif_ids=leaving_ids,
+    )
+    return _analyse_prevision_delta_between_record_sets(current_records, future_records)
+
 # ======================================================
 # Endpoint: Summary (tuiles)
 # ======================================================
@@ -2457,25 +2557,21 @@ def get_analyse_summary(
                 comp_delta_by_horizon: Dict[int, int] = {}
                 poste_delta_by_horizon: Dict[int, int] = {}
                 for _h in range(1, HORIZON_MAX + 1):
-                    _impact_items = _fetch_prevision_competence_impacts(
+                    comp_delta_by_horizon[_h] = _analyse_prevision_competence_global_delta(
                         cur,
                         id_ent,
                         scope.id_service,
                         _h,
                         CRITICITE_MIN,
-                        limit=2000,
                     )
-                    comp_delta_by_horizon[_h] = _analyse_prevision_competence_average_delta(_impact_items)
 
-                    _poste_items = _fetch_prevision_poste_impacts(
+                    poste_delta_by_horizon[_h] = _analyse_prevision_poste_global_delta(
                         cur,
                         id_ent,
                         scope.id_service,
                         _h,
                         CRITICITE_MIN,
-                        limit=2000,
                     )
-                    poste_delta_by_horizon[_h] = _analyse_prevision_poste_average_delta(_poste_items)
 
                 horizons = []
 
@@ -3884,7 +3980,7 @@ def get_analyse_previsions_postes_rouges_detail(
     limit: int = Query(default=200, ge=10, le=2000),
 ):
     """
-    Détail KPI "Hausse fragilité postes" (prévisions).
+    Détail KPI "Évolution fragilité postes" (prévisions).
     Même moteur que Risques actuels, rejoué en excluant les sortants N+X.
     """
     try:
