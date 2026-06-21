@@ -20,6 +20,7 @@
   const STORE_RISK_FILTER = "sb_analyse_risk_filter";
   const STORE_MATCH_VIEW = "sb_analyse_match_view"; // "titulaire" | "candidats"
   const STORE_PREV_HORIZON = "sb_analyse_prev_horizon";
+  const STORE_PREV_DETAIL_EXPANDED = "sb_analyse_prev_detail_expanded";
   const STORE_MATCH_POSTE_MODE = "sb_analyse_match_poste_mode"; // "fragiles" | "tous"
   const STORE_CRITICITE_MIN = "sb_analyse_criticite_min";
   const STORE_POSTES_SCOPE_EXPANDED = "sb_analyse_postes_scope_expanded";
@@ -27,6 +28,7 @@
   const STORE_SIM_ANALYSE_HYPOTHESES = "sb_simulations_rh_hypotheses_from_analyse_v1";
   const CRITICITE_MIN_DEFAULT = 70;
   const POSTES_SCOPE_PREVIEW_LIMIT = 10;
+  const PREV_TABLE_PREVIEW_LIMIT = 10;
 
 
   function byId(id) { return document.getElementById(id); }
@@ -653,6 +655,95 @@
       return;
     }
     openAnalysePdfBlob(url, "Impression bloquée");
+  }
+
+
+  function isPrintablePrevisionDetail(kpiKey) {
+    const k = (kpiKey || "").toString().trim().toLowerCase();
+    return k === "sorties" || k === "critiques" || k === "postes-rouges";
+  }
+
+  function getPrevisionDetailExpanded(kpiKey) {
+    const k = (kpiKey || "").toString().trim().toLowerCase();
+    if (!isPrintablePrevisionDetail(k)) return false;
+    return (localStorage.getItem(`${STORE_PREV_DETAIL_EXPANDED}_${k}`) || "0") === "1";
+  }
+
+  function setPrevisionDetailExpanded(kpiKey, value) {
+    const k = (kpiKey || "").toString().trim().toLowerCase();
+    if (!isPrintablePrevisionDetail(k)) return;
+    const storageKey = `${STORE_PREV_DETAIL_EXPANDED}_${k}`;
+    if (value) localStorage.setItem(storageKey, "1");
+    else localStorage.removeItem(storageKey);
+  }
+
+  function getPrevisionDetailLimit(kpiKey) {
+    return getPrevisionDetailExpanded(kpiKey) ? 2000 : PREV_TABLE_PREVIEW_LIMIT;
+  }
+
+  function buildAnalysePrevisionsDetailPdfUrl(kpiKey) {
+    const ctx = getPortalContext(_portalref);
+    const k = (kpiKey || "").toString().trim().toLowerCase();
+    if (!ctx.id_contact || !ctx.apiBase || !isPrintablePrevisionDetail(k)) return "";
+
+    const f = getFilters();
+    const qs = new URLSearchParams();
+    qs.set("kpi", k);
+    qs.set("horizon_years", String(getPrevHorizon()));
+    if (f.id_service) qs.set("id_service", f.id_service);
+    qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
+    qs.set("limit", String(getPrevisionDetailLimit(k)));
+    qs.set("_", String(Date.now()));
+
+    return `${ctx.apiBase}/skills/analyse/previsions/detail/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
+  }
+
+  function openAnalysePrevisionsDetailPdf(kpiKey) {
+    const url = buildAnalysePrevisionsDetailPdfUrl(kpiKey);
+    if (!url) {
+      showAnalyseHelp("Impression indisponible", "<p>Impossible de retrouver la table prévisionnelle à imprimer.</p>");
+      return;
+    }
+    openAnalysePdfBlob(url, "Impression bloquée");
+  }
+
+  function renderPrevisionsHeaderActions(kpiKey, rowsCount = 0) {
+    const actions = byId("analyseDetailActions");
+    if (!actions) return;
+
+    const k = (kpiKey || "").toString().trim().toLowerCase();
+    if (!isPrintablePrevisionDetail(k)) {
+      actions.innerHTML = "";
+      return;
+    }
+
+    const total = Number(rowsCount || 0);
+    const showToggle = total > PREV_TABLE_PREVIEW_LIMIT;
+    const expanded = getPrevisionDetailExpanded(k);
+
+    actions.innerHTML = `
+      ${showToggle ? `
+        <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnPrevisionDetailToggle">
+          ${expanded ? "Afficher les 10 premiers" : "Afficher tout"}
+        </button>
+      ` : ""}
+      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPrevisionDetailPrint">
+        Imprimer
+      </button>
+    `;
+
+    const btnToggle = byId("btnPrevisionDetailToggle");
+    if (btnToggle) {
+      btnToggle.addEventListener("click", () => {
+        setPrevisionDetailExpanded(k, !getPrevisionDetailExpanded(k));
+        renderDetail("previsions");
+      });
+    }
+
+    const btnPrint = byId("btnPrevisionDetailPrint");
+    if (btnPrint) {
+      btnPrint.addEventListener("click", () => openAnalysePrevisionsDetailPdf(k));
+    }
   }
   function analyseHelpKpi(title, text) {
     return `
@@ -2277,7 +2368,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return data;
   }
 
-  async function fetchPrevisionsSortiesDetail(portal, horizonYears, id_service) {
+  async function fetchPrevisionsSortiesDetail(portal, horizonYears, id_service, limit = 2000) {
     const id_contact = String(
       portal?.id_contact ||
       portal?.idContact ||
@@ -2307,6 +2398,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const qs = new URLSearchParams();
     qs.set("horizon_years", String(horizonYears));
     if (id_service) qs.set("id_service", id_service);
+    qs.set("limit", String(limit || 2000));
 
     const url = `${apiBase}/skills/analyse/previsions/sorties/detail/${encodeURIComponent(id_contact)}?${qs.toString()}`;
 
@@ -2596,7 +2688,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   // ======================================================
   // API: détail "Critiques impactées" (prévisions)
   // ======================================================
-  async function fetchPrevisionsCritiquesDetail(portal, horizonYears, id_service) {
+  async function fetchPrevisionsCritiquesDetail(portal, horizonYears, id_service, limit = 2000) {
     const ctx = getPortalContext(portal);
     if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
     if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
@@ -2608,6 +2700,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     // IMPORTANT: alignement avec le reste de la page
     const cmin = getCriticiteMinSafe(null);
     if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
+    qs.set("limit", String(limit || 2000));
 
     const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
@@ -2616,7 +2709,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return data;
   }
 
-  async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service) {
+  async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service, limit = 2000) {
     const portalCtx = getPortalContext(portal);
     if (!portalCtx.id_contact) throw new Error("id_contact introuvable côté UI.");
     if (!portalCtx.apiBase) throw new Error("apiBase introuvable côté UI.");
@@ -2628,6 +2721,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     // Alignement avec le reste de la page
     const cmin = getCriticiteMinSafe(null);
     if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
+    qs.set("limit", String(limit || 2000));
 
     const url = `${portalCtx.apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(portalCtx.id_contact)}?${qs.toString()}`;
 
@@ -5006,27 +5100,35 @@ function renderDetail(mode) {
   // PREVISIONS
   // -----------------------
   if (mode === "previsions") {
-    if (title) title.textContent = "Prévisions";
-
     const horizon = getPrevHorizon();
+    const horizonLabel = analyseHorizonLabel(horizon);
+    if (title) {
+      title.textContent = `Impact prévisionnel sur ${horizonLabel}`;
+      title.style.marginBottom = "0";
+    }
+    if (sub) {
+      sub.textContent = "";
+      sub.innerHTML = "";
+      sub.style.display = "none";
+    }
+    if (meta) {
+      meta.textContent = "";
+      meta.innerHTML = "";
+      meta.style.display = "none";
+    }
+
     const item = _prevData ? pickPrevHorizonItem(_prevData, horizon) : null;
 
     const sorties = item ? item.sorties : (_prevData ? _prevData.sorties_12m : "—");
     const selectedKpi = (localStorage.getItem("sb_analyse_prev_kpi") || "").trim();
 
     if (typeof setActivePrevKpi === "function") setActivePrevKpi(selectedKpi || "");
+    renderPrevisionsHeaderActions(selectedKpi, 0);
 
     if (selectedKpi === "sorties") {
-      const horizonLabel = analyseHorizonLabel(horizon);
-      if (sub) sub.textContent = `Sorties prévues sur ${horizonLabel} (périmètre filtré).`;
-
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">
-            Effectif sortant prévu sur ${escapeHtml(horizonLabel)}
-          </div>
-
-          <div id="prevSortiesDetailBox" style="margin-top:10px;">
+          <div id="prevSortiesDetailBox">
             <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
         </div>
@@ -5049,7 +5151,7 @@ function renderDetail(mode) {
           }
 
           box.textContent = "Chargement…";
-          const data = await fetchPrevisionsSortiesDetail(_portalref, horizon, id_service);
+          const data = await fetchPrevisionsSortiesDetail(_portalref, horizon, id_service, 2000);
 
           if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
 
@@ -5058,12 +5160,14 @@ function renderDetail(mode) {
             (data && Array.isArray(data.effectifs) ? data.effectifs : null) ||
             [];
 
+          renderPrevisionsHeaderActions(selectedKpi, items.length);
           if (!items.length) {
             box.textContent = "Aucune sortie détectée dans la période sélectionnée.";
             return;
           }
 
-          const rowsHtml = items.map((it) => {
+          const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
+          const rowsHtml = itemsToRender.map((it) => {
             const prenom = (it.prenom_effectif || it.prenom || "").trim();
             const nom = (it.nom_effectif || it.nom || "").trim();
             const full = (it.full || `${prenom} ${nom}`.trim() || "—");
@@ -5147,27 +5251,9 @@ function renderDetail(mode) {
     }
 
     if (selectedKpi === "critiques") {
-      const horizonLabel = analyseHorizonLabel(horizon);
-
-      function renderSub() {
-        if (!sub) return;
-        sub.innerHTML = `
-          <div>Hausse de fragilité des compétences causée par les sortants sur ${escapeHtml(horizonLabel)}.</div>
-          <div class="sb-badges" style="margin-top:6px;">
-            <span class="sb-badge">Criticité min : ${escapeHtml(critMinLabel())}</span>
-          </div>
-        `;
-      }
-
-      renderSub();
-
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">
-            Hausse fragilité compétences sur ${escapeHtml(horizonLabel)}
-          </div>
-
-          <div id="prevCritDetailBox" class="card-sub" style="margin:0; margin-top:10px;">Chargement…</div>
+          <div id="prevCritDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
         </div>
       `;
 
@@ -5186,20 +5272,20 @@ function renderDetail(mode) {
           }
 
           box.textContent = "Chargement…";
-          const data = await fetchPrevisionsCritiquesDetail(_portalref, horizon, id_service);
+          const data = await fetchPrevisionsCritiquesDetail(_portalref, horizon, id_service, 2000);
 
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
 
           // badge crit min up-to-date
           syncCriticiteMinFromResponse(data);
-          renderSub();
-
           const items = Array.isArray(data?.items) ? data.items : [];
+          renderPrevisionsHeaderActions(selectedKpi, items.length);
           if (!items.length) {
             box.textContent = "Aucune compétence impactée dans la période sélectionnée.";
             return;
           }
 
+          const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
           const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
           function scoreHue(score) {
@@ -5274,7 +5360,7 @@ function renderDetail(mode) {
             `;
           }
 
-          const rowsHtml = items.map((it) => {
+          const rowsHtml = itemsToRender.map((it) => {
             const code = (it.code || "—").toString().trim();
             const intit = (it.intitule || it.intitule_competence || "—").toString();
             const compKey = (it.id_comp || it.id_competence || code || "").toString().trim();
@@ -5356,26 +5442,9 @@ function renderDetail(mode) {
     }
 
     if (selectedKpi === "postes-rouges") {
-      const horizonLabel = analyseHorizonLabel(horizon);
-
-      function renderSub() {
-        if (!sub) return;
-        sub.innerHTML = `
-          <div>Postes impactés sur ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
-          <div class="sb-badges" style="margin-top:6px;">
-            <span class="sb-badge">Criticité min : ${escapeHtml(critMinLabel())}</span>
-          </div>
-        `;
-      }
-
-      renderSub();
-
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">
-            Postes impactés sur ${escapeHtml(horizonLabel)}
-          </div>
-          <div id="prevPostesRedDetailBox" class="card-sub" style="margin:0; margin-top:10px;">Chargement…</div>
+          <div id="prevPostesRedDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
         </div>
       `;
 
@@ -5395,19 +5464,20 @@ function renderDetail(mode) {
           }
 
           box.textContent = "Chargement…";
-          const data = await fetchPrevisionsPostesRougesDetail(_portalref, horizon, id_service);
+          const data = await fetchPrevisionsPostesRougesDetail(_portalref, horizon, id_service, 2000);
 
           if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
 
           syncCriticiteMinFromResponse(data);
-          renderSub();
 
           const items = Array.isArray(data?.items) ? data.items : [];
+          renderPrevisionsHeaderActions(selectedKpi, items.length);
           if (!items.length) {
             box.textContent = "Aucun poste impacté dans la période sélectionnée.";
             return;
           }
 
+          const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
           const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 
@@ -5520,7 +5590,7 @@ function renderDetail(mode) {
             `;
           }
 
-          const rowsHtml = items.map(r => {
+          const rowsHtml = itemsToRender.map(r => {
             const idPoste = (r.id_poste || "").toString().trim();
             const poste = (r.intitule_poste || "—").toString().trim();
             const svc = (r.nom_service || "—").toString().trim();
@@ -5594,7 +5664,11 @@ function renderDetail(mode) {
     }
 
 
-    if (sub) sub.textContent = "Cliquez sur un KPI dans la tuile Prévisions pour afficher le détail.";
+    renderPrevisionsHeaderActions("", 0);
+    if (sub) {
+      sub.textContent = "";
+      sub.style.display = "none";
+    }
     body.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-title" style="margin-bottom:6px;">Résultats</div>

@@ -4011,6 +4011,194 @@ def get_analyse_previsions_postes_rouges_detail(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
    
+
+def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dict[str, Any]):
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, Table, TableStyle
+
+    body_style = styles.get("small") or styles.get("body")
+    head_style = styles.get("meta_label") or styles.get("small") or body_style
+
+    def as_dict(item: Any) -> Dict[str, Any]:
+        if hasattr(item, "model_dump"):
+            return item.model_dump()
+        if hasattr(item, "dict"):
+            return item.dict()
+        return dict(item or {})
+
+    def p(value: Any, style=None):
+        return Paragraph(_analyse_pdf_esc(value), style or body_style)
+
+    k = (kpi or "").strip().lower()
+    rows: List[List[Any]] = []
+    widths: List[Any] = []
+
+    if k == "sorties":
+        rows.append([p("Collaborateur", head_style), p("Date", head_style), p("Poste", head_style), p("Service", head_style), p("Raison", head_style)])
+        widths = [54 * mm, 24 * mm, 72 * mm, 42 * mm, 52 * mm]
+        for item in (items or []):
+            r = as_dict(item)
+            poste_code = (r.get("codif_client") or r.get("codif_poste") or "").strip()
+            poste = (r.get("intitule_poste") or "—").strip()
+            poste_label = f"{poste_code} - {poste}" if poste_code else poste
+            rows.append([
+                p(r.get("full") or "—"),
+                p(_analyse_date_fr_value(r.get("exit_date"))),
+                p(poste_label),
+                p(r.get("nom_service") or "—"),
+                p(r.get("raison_sortie") or r.get("motif_sortie") or "—"),
+            ])
+    elif k == "critiques":
+        rows.append([p("Code", head_style), p("Compétence", head_style), p("Domaine", head_style), p("Hausse", head_style), p("Porteurs perdus", head_style), p("Restants", head_style), p("Postes", head_style), p("Prochaine sortie", head_style)])
+        widths = [20 * mm, 70 * mm, 34 * mm, 22 * mm, 28 * mm, 24 * mm, 20 * mm, 28 * mm]
+        for item in (items or []):
+            r = as_dict(item)
+            delta = _analyse_pdf_safe_int(r.get("delta_fragilite"))
+            rows.append([
+                p(r.get("code") or "—"),
+                p(r.get("intitule") or "—"),
+                p(r.get("domaine_titre_court") or r.get("domaine_titre") or "—"),
+                p(f"+{delta}%" if delta > 0 else f"{delta}%"),
+                p(r.get("nb_porteurs_sortants") or 0),
+                p(r.get("nb_porteurs_restants") or 0),
+                p(r.get("nb_postes_impactes") or 0),
+                p(_analyse_date_fr_value(r.get("last_exit_date"))),
+            ])
+    else:
+        rows.append([p("Code", head_style), p("Poste", head_style), p("Service", head_style), p("Hausse", head_style), p("Titulaires N+X", head_style), p("Sortants", head_style), p("Causes", head_style)])
+        widths = [22 * mm, 62 * mm, 36 * mm, 22 * mm, 26 * mm, 48 * mm, 58 * mm]
+        for item in (items or []):
+            r = as_dict(item)
+            delta = _analyse_pdf_safe_int(r.get("delta_fragilite"))
+            code = (r.get("codif_client") or r.get("codif_poste") or "—")
+            remain = _analyse_pdf_safe_int(r.get("nb_titulaires_horizon") or r.get("nb_titulaires"))
+            cible = _analyse_pdf_safe_int(r.get("nb_titulaires_cible") or 1)
+            causes = r.get("causes_risques_actuels") or []
+            cause_txt = "\n".join([(c.get("titre") or "Cause") for c in causes[:3] if isinstance(c, dict)]) or "—"
+            rows.append([
+                p(code),
+                p(r.get("intitule_poste") or "—"),
+                p(r.get("nom_service") or "—"),
+                p(f"+{delta}%" if delta > 0 else f"{delta}%"),
+                p(f"{remain}/{cible}"),
+                p(r.get("sortants_label") or "—"),
+                p(cause_txt),
+            ])
+
+    if len(rows) == 1:
+        rows.append([p("Aucun résultat.")] + [p("") for _ in range(max(0, len(rows[0]) - 1))])
+
+    table = Table(rows, colWidths=widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#334155")),
+        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#e2e8f0")),
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#cbd5e1")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return table
+
+
+@router.get("/skills/analyse/previsions/detail/pdf/{id_contact}")
+def get_analyse_previsions_detail_pdf(
+    id_contact: str,
+    request: Request,
+    kpi: str = Query(...),
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
+    limit: int = Query(default=10, ge=1, le=2000),
+):
+    try:
+        from fastapi import Response
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.platypus import Paragraph
+        from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles, make_spacer
+
+        k = (kpi or "").strip().lower()
+        if k not in ("sorties", "critiques", "postes-rouges"):
+            raise HTTPException(status_code=400, detail="Table prévisionnelle non imprimable.")
+
+        if k == "sorties":
+            detail = get_analyse_previsions_sorties_detail(
+                id_contact=id_contact,
+                request=request,
+                horizon_years=horizon_years,
+                id_service=id_service,
+                limit=limit,
+            )
+            items = detail.items or []
+            table_title = "Effectifs sortants"
+            filename = "previsions_sorties.pdf"
+        elif k == "critiques":
+            detail = get_analyse_previsions_critiques_impactees_detail(
+                id_contact=id_contact,
+                request=request,
+                horizon_years=horizon_years,
+                id_service=id_service,
+                criticite_min=criticite_min,
+                limit=limit,
+            )
+            items = detail.items or []
+            table_title = "Évolution fragilité compétences"
+            filename = "previsions_competences.pdf"
+        else:
+            detail = get_analyse_previsions_postes_rouges_detail(
+                id_contact=id_contact,
+                request=request,
+                horizon_years=horizon_years,
+                id_service=id_service,
+                criticite_min=criticite_min,
+                limit=limit,
+            )
+            items = detail.get("items") or [] if isinstance(detail, dict) else []
+            table_title = "Évolution fragilité postes"
+            filename = "previsions_postes.pdf"
+
+        scope_obj = detail.get("scope") if isinstance(detail, dict) else getattr(detail, "scope", None)
+        if isinstance(scope_obj, dict):
+            scope_name = scope_obj.get("nom_service") or "Tous les services"
+        else:
+            scope_name = getattr(scope_obj, "nom_service", None) or "Tous les services"
+
+        company_name = ""
+        logo_bytes = None
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                company_name = _analyse_pdf_company_name(cur, id_ent)
+                logo_bytes = _analyse_pdf_logo_bytes_for_ent(cur, id_ent)
+
+        styles = build_pdf_styles()
+        today = datetime.now().strftime("%d/%m/%Y")
+        horizon_label = f"N+{int(horizon_years)}"
+
+        story = []
+        story.append(Paragraph(f"Impact prévisionnel sur {horizon_label} • {table_title}", styles["title"]))
+        story.append(Paragraph(f"Périmètre analysé : {scope_name} • Date : {today} • Lignes : {len(items or [])}", styles["subtitle"]))
+        story.append(make_spacer(3))
+        story.append(_analyse_previsions_detail_pdf_table(k, items or [], styles))
+
+        pdf = build_pdf_document(story, {
+            "title": f"Prévisions - {table_title}",
+            "footer_left": "Novoskill Insights • Prévisions",
+            "header_right": company_name,
+            "header_right_font_name": "Helvetica-Bold",
+            "header_right_font_size": 11,
+            "logo_bytes": logo_bytes,
+        }, page_size=landscape(A4))
+
+        return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{filename}"'})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur génération PDF prévisions : {e}")
+
 @router.get("/skills/analyse/previsions/postes-rouges/modal/{id_contact}")
 def get_analyse_previsions_postes_rouges_modal(
     id_contact: str,
