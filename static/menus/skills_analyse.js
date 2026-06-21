@@ -5286,152 +5286,8 @@ function renderDetail(mode) {
           }
 
           const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
-          const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+          box.innerHTML = renderPrevisionTableCompetences(itemsToRender);
 
-          function scoreHue(score) {
-            const s = clamp(Number(score || 0), 0, 100) / 100;
-            return Math.round(120 * (1 - s)); // vert -> rouge
-          }
-
-          function scoreChip(score) {
-            const s = clamp(Math.round(Number(score || 0)), 0, 100);
-            const h = scoreHue(s);
-            const fill = `hsl(${h} 70% 45%)`;
-            return `
-              <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
-                <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
-                  <div style="height:100%; width:${s}%; background:${fill};"></div>
-                </div>
-                <div style="min-width:44px; text-align:right; font-weight:800;">
-                  ${s}%
-                </div>
-              </div>
-            `;
-          }
-
-          function prioFromScore(score) {
-            const s = clamp(Number(score || 0), 0, 100);
-            if (s >= 75) return "P1";
-            if (s >= 50) return "P2";
-            return "P3";
-          }
-
-          function prioLabel(prio) {
-            const p = (prio || "").toString().trim().toUpperCase();
-            if (p === "P1") return "Critique";
-            if (p === "P2") return "Élevée";
-            return "Modérée";
-          }
-
-          function priorityPill(label, score) {
-            const s = clamp(Number(score || 0), 0, 100);
-            const h = scoreHue(s);
-            const bg = `hsl(${h} 80% 92%)`;
-            const br = `hsl(${h} 70% 72%)`;
-            const tx = `hsl(${h} 70% 28%)`;
-
-            return `
-              <span style="
-                display:inline-flex; align-items:center; justify-content:center;
-                padding:4px 10px; border-radius:999px;
-                border:1px solid ${br}; background:${bg}; color:${tx};
-                font-weight:800; font-size:12px; white-space:nowrap;
-              ">
-                ${escapeHtml(label)}
-              </span>
-            `;
-          }
-
-          function deltaBadge(delta) {
-            const d = Math.round(Number(delta || 0));
-            const cls = (d > 0) ? "sb-badge--danger" : (d < 0) ? "sb-badge--success" : "sb-badge--warning";
-            const txt = (d > 0 ? `+${d}` : `${d}`) + "%";
-            return `<span class="sb-badge ${cls}" title="Hausse de fragilité causée par les sortants">${escapeHtml(txt)}</span>`;
-          }
-
-          // Domaine: même look que Risques (sb-badge-domaine)
-          function domPill(it) {
-            const lab = (it?.domaine_titre_court || it?.domaine_titre || it?.id_domaine_competence || "—").toString();
-            const col = normalizeColor(it?.domaine_couleur) || "#9ca3af";
-            return `
-              <span class="sb-badge-domaine" style="--dom-color:${escapeHtml(col)};" title="${escapeHtml(lab)}">
-                ${escapeHtml(lab)}
-              </span>
-            `;
-          }
-
-          const rowsHtml = itemsToRender.map((it) => {
-            const code = (it.code || "—").toString().trim();
-            const intit = (it.intitule || it.intitule_competence || "—").toString();
-            const compKey = (it.id_comp || it.id_competence || code || "").toString().trim();
-            const nbPostes = Number(it.nb_postes_impactes ?? it.nb_postes ?? 0);
-            const delta = Number(it.delta_fragilite ?? it.delta ?? 0);
-            const lost = Number(it.nb_porteurs_sortants ?? 0);
-            const now = Number(it.nb_porteurs_now ?? 0);
-            const remain = Number.isFinite(Number(it.nb_porteurs_restants))
-              ? Math.max(Number(it.nb_porteurs_restants || 0), 0)
-              : Math.max(now - lost, 0);
-            const nextExit = it.last_exit_date ? formatDateFr(it.last_exit_date) : "—";
-
-            return `
-              <tr class="prev-crit-row" data-comp-key="${escapeHtml(compKey)}">
-                <td class="prev-crit-open" style="cursor:pointer;">
-                  <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                    <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
-                    <span style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                      ${escapeHtml(intit)}
-                    </span>
-                  </div>
-                </td>
-
-                <td>${domPill(it)}</td>
-
-                <td class="col-center" title="Hausse de fragilité causée par les sortants">${deltaBadge(delta)}</td>
-
-                <td class="col-center" title="Nombre de porteurs de la compétence qui sortent sur la période">
-                  <span class="sb-badge sb-badge--danger">${escapeHtml(String(lost))}</span>
-                </td>
-
-                <td class="col-center" title="Porteurs restants après les sorties prévues">
-                  <span class="sb-badge">${escapeHtml(String(remain))}</span>
-                </td>
-
-                <td class="col-center" title="Postes du périmètre qui exigent cette compétence">
-                  <span class="sb-badge sb-badge-accent">${escapeHtml(String(nbPostes))}</span>
-                </td>
-
-                <td class="col-center">${escapeHtml(nextExit)}</td>
-
-                <td class="col-center">
-                  <button type="button"
-                          class="btn-secondary prev-crit-open"
-                          style="padding:6px 10px; font-size:12px; line-height:1; cursor:pointer;">
-                    Voir détail
-                  </button>
-                </td>
-              </tr>
-            `;
-          }).join("");
-
-          box.innerHTML = `
-            <div class="table-wrap sb-tip-host" style="margin-top:10px;">
-              <table class="sb-table" id="tblPrevCompImpact">
-                <thead>
-                  <tr>
-                    <th>Code – Compétence</th>
-                    <th style="width:220px;">Domaine</th>
-                    <th class="col-center" style="width:150px;">Hausse fragilité</th>
-                    <th class="col-center" style="width:130px;">Porteurs perdus</th>
-                    <th class="col-center" style="width:130px;">Porteurs restants</th>
-                    <th class="col-center" style="width:140px;">Postes concernés</th>
-                    <th class="col-center" style="width:140px;">Prochaine sortie</th>
-                    <th class="col-center" style="width:120px;">Détail</th>
-                  </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-              </table>
-            </div>
-          `;
         } catch (e) {
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
           box.textContent = `Erreur chargement hausse fragilité compétences: ${e?.message || e}`;
@@ -5478,182 +5334,8 @@ function renderDetail(mode) {
           }
 
           const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
-          const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+          box.innerHTML = renderPrevisionTablePostes(itemsToRender);
 
-
-
-          function scoreHue(score) {
-            const s = clamp(Number(score || 0), 0, 100) / 100;
-            return Math.round(120 * (1 - s));
-          }
-
-          function scoreChip(score) {
-            const s = clamp(Math.round(Number(score || 0)), 0, 100);
-            const h = scoreHue(s);
-            const fill = `hsl(${h} 70% 45%)`;
-
-            return `
-              <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
-                <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
-                  <div style="height:100%; width:${s}%; background:${fill};"></div>
-                </div>
-                <div style="min-width:44px; text-align:right; font-weight:800;">
-                  ${s}<span style="font-weight:700; font-size:12px;">%</span>
-                </div>
-              </div>
-            `;
-          }
-
-
-
-          function priorityPill(label, score) {
-            const s = clamp(Math.round(Number(score || 0)), 0, 100);
-            const h = scoreHue(s);
-            const bg = `hsl(${h} 70% 95%)`;
-            const br = `hsl(${h} 70% 80%)`;
-            const tx = `hsl(${h} 70% 28%)`;
-
-            return `
-              <span style="
-                display:inline-flex; align-items:center; justify-content:center;
-                padding:4px 10px; border-radius:999px;
-                border:1px solid ${br}; background:${bg}; color:${tx};
-                font-weight:800; font-size:12px; white-space:nowrap;
-              ">
-                ${escapeHtml(label)}
-              </span>
-            `;
-          }
-
-          function deltaBadge(delta) {
-            const d = Math.round(Number(delta || 0));
-            const mod = (d > 0) ? "sb-badge--danger" : (d < 0) ? "sb-badge--success" : "sb-badge--warning";
-            const txt = (d > 0 ? `+${d}` : `${d}`) + "%";
-            return `<span class="sb-badge ${mod}" title="Hausse de fragilité causée par les sortants">${escapeHtml(txt)}</span>`;
-          }
-
-          function covBadge(now, future) {
-            const n = Number.isFinite(Number(now)) ? Math.round(Number(now)) : null;
-            const f = Number.isFinite(Number(future)) ? Math.round(Number(future)) : null;
-            if (n === null && f === null) return `<span class="card-sub">—</span>`;
-            const delta = (f ?? 0) - (n ?? 0);
-            const cls = delta < 0 ? "sb-badge--danger" : "sb-badge--success";
-            const txt = `${n ?? "—"}% → ${f ?? "—"}%`;
-            return `<span class="sb-badge ${cls}" title="Couverture actuelle puis couverture projetée">${escapeHtml(txt)}</span>`;
-          }
-
-          function situationText(r) {
-            const tNow = Number(r.nb_titulaires_now || 0);
-            const tH = Number(r.nb_titulaires_horizon || 0);
-            const cible = Number(r.nb_titulaires_cible || 1);
-            const sans = Number(r.future_sans_porteur || 0);
-            const unique = Number(r.future_porteur_unique || 0);
-            const sansRel = Number(r.future_sans_releve || 0);
-            const parts = [];
-            if (tH < tNow) parts.push(`${tNow - tH} titulaire(s) sortant(s)`);
-            if (tH < cible) parts.push(`effectif cible non tenu (${tH}/${cible})`);
-            if (sans > 0) parts.push(`${sans} compétence(s) sans porteur`);
-            if (unique > 0) parts.push(`${unique} compétence(s) à porteur unique`);
-            if (sansRel > 0) parts.push(`${sansRel} compétence(s) sans relais interne`);
-            return parts.length ? parts.join(" · ") : "Couverture dégradée sur la période sélectionnée";
-          }
-
-          function actionText(r) {
-            const sans = Number(r.future_sans_porteur || 0);
-            const unique = Number(r.future_porteur_unique || 0);
-            const rel = Number(r.future_sans_releve || 0);
-            if (sans > 0) return "Sécuriser rapidement : couverture complémentaire à tester.";
-            if (unique > 0 || rel > 0) return "Sécuriser : binôme, transmission ou niveau à confirmer.";
-            return "Contrôler la couverture et préparer une hypothèse de relève.";
-          }
-
-          function causesRisqueActuelHtml(r) {
-            const causes = Array.isArray(r?.causes_risques_actuels) ? r.causes_risques_actuels : [];
-            if (!causes.length) {
-              return `<div class="card-sub" style="margin:0;">Aucune cause actuelle majeure retournée.</div>`;
-            }
-            return `
-              <div style="display:flex; flex-direction:column; gap:6px;">
-                ${causes.slice(0, 4).map(c => {
-                  const title = (c?.titre || "Cause").toString().trim();
-                  const detail = (c?.detail || "").toString().trim();
-                  const score = Number(c?.score || 0);
-                  const scoreTxt = score > 0 ? ` · score ${Math.round(score)}` : "";
-                  return `
-                    <div>
-                      <strong>${escapeHtml(title)}</strong>
-                      <div class="card-sub" style="margin:2px 0 0;">${escapeHtml(detail + scoreTxt)}</div>
-                    </div>
-                  `;
-                }).join("")}
-              </div>
-            `;
-          }
-
-          const rowsHtml = itemsToRender.map(r => {
-            const idPoste = (r.id_poste || "").toString().trim();
-            const poste = (r.intitule_poste || "—").toString().trim();
-            const svc = (r.nom_service || "—").toString().trim();
-            const codifClient = (r.codif_client || "").toString().trim();
-            const codifPoste  = (r.codif_poste || "").toString().trim();
-            const codeAffiche = codifClient || codifPoste;
-            const delta = Number(r.delta_fragilite ?? 0);
-            const lost = Number(r.nb_sortants_lies ?? r.nb_sortants_titulaires ?? 0);
-            const remain = Number(r.nb_titulaires_horizon ?? r.nb_titulaires ?? 0);
-            const cible = Number(r.nb_titulaires_cible ?? 1);
-            const sortants = (r.sortants_label || "").toString().trim() || "—";
-            const nextExit = r.last_exit_date ? formatDateFr(r.last_exit_date) : "—";
-
-            return `
-              <tr class="prev-red-poste-row" data-id_poste="${escapeHtml(idPoste)}">
-                <td class="prev-red-open" style="cursor:pointer;">
-                  <div class="sb-prev-poste-cell">
-                    <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
-                    <div class="sb-prev-poste-text">
-                      <strong>${escapeHtml(poste)}</strong>
-                      <span>${escapeHtml(svc)}</span>
-                    </div>
-                  </div>
-                </td>
-                <td class="col-center" title="Hausse de fragilité causée par les sortants">${deltaBadge(delta)}</td>
-                <td class="col-center" title="Nombre de sortants liés à ce poste ou à ses compétences">
-                  <span class="sb-badge sb-badge--danger">${escapeHtml(String(lost))}</span>
-                </td>
-                <td class="col-center" title="Titulaires projetés après les sorties prévues">
-                  <span class="sb-badge">${escapeHtml(`${remain}/${cible}`)}</span>
-                </td>
-                <td title="Sortants qui expliquent la hausse">
-                  <div style="font-weight:600;">${escapeHtml(sortants)}</div>
-                  <div class="card-sub" style="margin:2px 0 0;">Prochaine sortie : ${escapeHtml(nextExit)}</div>
-                </td>
-                <td title="Causes issues du moteur Risques actuels poste">
-                  ${causesRisqueActuelHtml(r)}
-                </td>
-                <td class="col-center">
-                  <button type="button" class="sb-btn sb-btn--xs sb-btn--soft prev-red-open">Voir causes</button>
-                </td>
-              </tr>
-            `;
-          }).join("");
-
-          box.innerHTML = `
-            <div class="sb-prev-table-wrap">
-              <table class="sb-table sb-table--airy sb-table--hover sb-prev-table" id="tblPrevPostesImpactes">
-                <thead>
-                  <tr>
-                    <th>Poste concerné</th>
-                    <th class="col-center" style="width:150px;">Hausse fragilité</th>
-                    <th class="col-center" style="width:130px;">Sortants liés</th>
-                    <th class="col-center" style="width:130px;">Titulaires N+X</th>
-                    <th>Sortants concernés</th>
-                    <th>Causes risques actuels</th>
-                    <th class="col-center" style="width:120px;">Détail</th>
-                  </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-              </table>
-            </div>
-          `;
         } catch (e) {
           if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
           box.textContent = `Erreur chargement hausse fragilité postes: ${e?.message || e}`;
@@ -6004,6 +5686,293 @@ function renderDetail(mode) {
   }
 
 
+
+
+
+  function previsionDeltaBadge(delta) {
+    const d = Math.round(Number(delta || 0));
+    if (d === 0) {
+      return `<span class="sb-badge" title="Aucune évolution détectée">0%</span>`;
+    }
+    const mod = d > 0 ? "sb-badge--danger" : "sb-badge--success";
+    const txt = `${d > 0 ? "+" : ""}${d}%`;
+    return `<span class="sb-badge ${mod}" title="Évolution depuis la situation actuelle">${escapeHtml(txt)}</span>`;
+  }
+
+  function renderPrevisionTablePostes(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    function scoreHue(score) {
+      const s = clamp(Number(score || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - s));
+    }
+
+    function scoreChip(score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+      const fill = `hsl(${h} 70% 45%)`;
+
+      return `
+        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+          <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+            <div style="height:100%; width:${s}%; background:${fill};"></div>
+          </div>
+          <div style="min-width:44px; text-align:right; font-weight:800;">
+            ${s}<span style="font-weight:700; font-size:12px;">%</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function stateLabel(score) {
+      const s = clamp(Number(score || 0), 0, 100);
+      if (s >= 75) return "Critique";
+      if (s >= 50) return "Élevé";
+      if (s >= 25) return "Modéré";
+      return "Faible";
+    }
+
+    function statePill(label, score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+      const bg = `hsl(${h} 70% 95%)`;
+      const br = `hsl(${h} 70% 80%)`;
+      const tx = `hsl(${h} 70% 28%)`;
+
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px;
+          border:1px solid ${br}; background:${bg}; color:${tx};
+          font-weight:800; font-size:12px; white-space:nowrap;
+        ">
+          ${escapeHtml(label)}
+        </span>
+      `;
+    }
+
+    return `
+      <div class="table-wrap sb-tip-host" style="margin-top:10px;">
+        <table class="sb-table" id="tblPrevPostesImpactes">
+          <thead>
+            <tr>
+              <th>Poste</th>
+              <th style="width:180px;">Service</th>
+
+              <th class="col-center" style="width:220px;">
+                <span class="sb-th-with-tip">
+                  <span>Indice<br>de fragilité</span>
+                  <span class="sb-iinfo"
+                        data-sbtip="fragility-index"
+                        tabindex="0"
+                        role="button"
+                        aria-label="Informations sur l'indice de fragilité">i</span>
+                </span>
+              </th>
+
+              <th class="col-center" style="width:120px; white-space:normal; line-height:1.1;">
+                Évolution
+              </th>
+
+              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
+                État
+              </th>
+
+              <th class="col-center" style="width:92px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r => {
+              const intitule = (r.intitule_poste || "").trim() || "—";
+              const codifClient = (r.codif_client || "").trim();
+              const codifPoste  = (r.codif_poste || "").trim();
+              const codeAffiche = codifClient !== "" ? codifClient : codifPoste;
+              const svc = (r.nom_service || "").trim() || "—";
+              const score = clamp(Number(r.indice_fragilite_horizon ?? r.indice_fragilite ?? 0), 0, 100);
+              const delta = Number(r.delta_fragilite ?? 0);
+              const etat = stateLabel(score);
+              const idPoste = (r.id_poste || "").toString().trim();
+
+              return `
+                <tr class="prev-red-poste-row" data-id_poste="${escapeHtml(idPoste)}">
+                  <td class="prev-red-open" style="cursor:pointer;">
+                    <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                      <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
+                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${escapeHtml(intitule)}
+                      </span>
+                    </div>
+                  </td>
+                  <td>${escapeHtml(svc)}</td>
+
+                  <td class="col-center" title="Indice de fragilité projeté du poste">
+                    ${scoreChip(score)}
+                  </td>
+
+                  <td class="col-center" title="Évolution depuis la situation actuelle">
+                    ${previsionDeltaBadge(delta)}
+                  </td>
+
+                  <td class="col-center">${statePill(etat, score)}</td>
+
+                  <td class="col-center">
+                    <div class="sb-icon-actions" style="justify-content:center;">
+                      <button type="button"
+                              class="sb-icon-btn prev-red-open"
+                              title="Voir"
+                              aria-label="Voir l’analyse du poste">
+                        ${analyseEyeIconSvg()}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderPrevisionTableCompetences(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    function scoreHue(score) {
+      const s = clamp(Number(score || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - s));
+    }
+
+    function scoreChip(score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+      const fill = `hsl(${h} 70% 45%)`;
+
+      return `
+        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+          <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+            <div style="height:100%; width:${s}%; background:${fill};"></div>
+          </div>
+          <div style="min-width:44px; text-align:right; font-weight:800;">
+            ${s}<span style="font-weight:700; font-size:12px;">%</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function stateLabel(score) {
+      const s = clamp(Number(score || 0), 0, 100);
+      if (s >= 75) return "Critique";
+      if (s >= 50) return "Élevé";
+      if (s >= 25) return "Modéré";
+      return "Faible";
+    }
+
+    function statePill(label, score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+      const bg = `hsl(${h} 70% 95%)`;
+      const br = `hsl(${h} 70% 80%)`;
+      const tx = `hsl(${h} 70% 28%)`;
+
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px;
+          border:1px solid ${br}; background:${bg}; color:${tx};
+          font-weight:800; font-size:12px; white-space:nowrap;
+        ">
+          ${escapeHtml(label)}
+        </span>
+      `;
+    }
+
+    return `
+      <div class="table-wrap sb-tip-host" style="margin-top:10px;">
+        <table class="sb-table" id="tblPrevCompImpact">
+          <thead>
+            <tr>
+              <th>Code – Compétence</th>
+              <th class="col-center" style="width:220px;">Domaine</th>
+
+              <th class="col-center" style="width:220px;">
+                <span class="sb-th-with-tip">
+                  <span>Indice<br>de fragilité</span>
+                  <span class="sb-iinfo"
+                        data-sbtip="fragility-index-competence"
+                        tabindex="0"
+                        role="button"
+                        aria-label="Informations sur l'indice de fragilité compétence">i</span>
+                </span>
+              </th>
+
+              <th class="col-center" style="width:120px; white-space:normal; line-height:1.1;">
+                Évolution
+              </th>
+
+              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
+                État
+              </th>
+
+              <th class="col-center" style="width:92px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r => {
+              const code = (r.code || "—").toString().trim();
+              const intit = (r.intitule || r.intitule_competence || "—").toString();
+              const idComp = (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
+              const compKey = (idComp || code || "").trim();
+              const score = clamp(Number(r.indice_fragilite_horizon ?? r.indice_fragilite ?? 0), 0, 100);
+              const delta = Number(r.delta_fragilite ?? 0);
+              const etat = stateLabel(score);
+
+              return `
+                <tr class="prev-crit-row"
+                    data-comp-key="${escapeHtml(compKey)}"
+                    data-code="${escapeHtml(code)}"
+                    data-id_comp="${escapeHtml(idComp)}">
+
+                  <td class="prev-crit-open" style="cursor:pointer;">
+                    <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                      <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
+                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${escapeHtml(intit)}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td style="text-align:left;">${renderDomainPill(r)}</td>
+
+                  <td class="col-center" title="Indice de fragilité projeté de la compétence">${scoreChip(score)}</td>
+
+                  <td class="col-center" title="Évolution depuis la situation actuelle">${previsionDeltaBadge(delta)}</td>
+
+                  <td class="col-center">${statePill(etat, score)}</td>
+
+                  <td class="col-center">
+                    <div class="sb-icon-actions" style="justify-content:center;">
+                      <button type="button"
+                              class="sb-icon-btn prev-crit-open"
+                              title="Voir"
+                              aria-label="Voir l’analyse de la compétence">
+                        ${analyseEyeIconSvg()}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
 
   const currentRiskDetailKey = isExpandableRiskDetail(rf) ? rf : "";
 
