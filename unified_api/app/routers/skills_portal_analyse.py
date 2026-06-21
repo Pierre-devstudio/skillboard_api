@@ -1922,12 +1922,41 @@ def _analyse_fragility_average_float(records: List[Dict[str, Any]]) -> float:
 def _analyse_prevision_delta_between_record_sets(
     current_records: List[Dict[str, Any]],
     future_records: List[Dict[str, Any]],
+    key_field: Optional[str] = None,
 ) -> int:
-    """Évolution globale du périmètre : moyenne future - moyenne actuelle."""
+    """
+    Évolution globale du périmètre.
+
+    Lecture KPI : somme des hausses positives constatées, ramenée au nombre total
+    d'éléments analysés du périmètre. Les baisses éventuelles ne masquent pas les
+    hausses causées par les sortants N+X.
+    """
+    current_analysed = _analyse_fragility_records_analyzed(current_records)
+    if not current_analysed:
+        return 0
+
+    total = float(len(current_analysed))
+
+    if key_field:
+        future_by_key = {
+            str(r.get(key_field) or "").strip(): r
+            for r in _analyse_fragility_records_analyzed(future_records)
+            if str(r.get(key_field) or "").strip()
+        }
+        total_delta = 0
+        for cur_rec in current_analysed:
+            key = str(cur_rec.get(key_field) or "").strip()
+            fut_rec = future_by_key.get(key)
+            if not fut_rec:
+                continue
+            now_score = _safe_int(cur_rec.get("indice_fragilite"), 0)
+            future_score = _safe_int(fut_rec.get("indice_fragilite"), 0)
+            total_delta += max(0, future_score - now_score)
+        return max(0, _clamp_int(round(total_delta / total), 0, 100))
+
     now_avg = _analyse_fragility_average_float(current_records)
     future_avg = _analyse_fragility_average_float(future_records)
     return max(0, _clamp_int(round(future_avg - now_avg), 0, 100))
-
 
 def _analyse_prevision_leaving_effectif_ids(
     cur,
@@ -1978,7 +2007,7 @@ def _analyse_prevision_competence_global_delta(
         limit=10000,
         excluded_effectif_ids=leaving_ids,
     )
-    return _analyse_prevision_delta_between_record_sets(current_records, future_records)
+    return _analyse_prevision_delta_between_record_sets(current_records, future_records, "id_comp")
 
 
 def _analyse_prevision_poste_global_delta(
@@ -1999,6 +2028,7 @@ def _analyse_prevision_poste_global_delta(
         return 0
 
     today = date.today()
+    period_end = date(today.year + max(1, min(5, int(horizon_years or 1))), 12, 31)
     current_records = _fetch_postes_fragility_records(cur, id_ent, scope_id, cmin)
     future_records = _fetch_postes_fragility_records_projected(
         cur,
@@ -2006,10 +2036,10 @@ def _analyse_prevision_poste_global_delta(
         scope_id,
         cmin,
         today,
-        today,
+        period_end,
         excluded_effectif_ids=leaving_ids,
     )
-    return _analyse_prevision_delta_between_record_sets(current_records, future_records)
+    return _analyse_prevision_delta_between_record_sets(current_records, future_records, "id_poste")
 
 # ======================================================
 # Endpoint: Summary (tuiles)
@@ -2209,7 +2239,7 @@ def get_analyse_summary(
 
                 # Règles:
 
-                # - Référence sortie = date_sortie_prevue si havedatefin=TRUE et date_sortie_prevue non NULL, sinon retraite_estimee
+                # - Référence sortie = date_sortie_prevue si renseignée, sinon retraite_estimee
 
                 #   (année) + jour/mois de date_entree_entreprise_effectif.
 
@@ -2274,7 +2304,7 @@ def get_analyse_summary(
 
                         CASE
 
-                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                            WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
 
                             WHEN ev.retraite_annee IS NOT NULL THEN
 
@@ -2729,7 +2759,7 @@ def get_analyse_previsions_sorties_detail(
                         SELECT
                             ev.*,
                             CASE
-                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                                 WHEN ev.retraite_annee IS NOT NULL THEN
                                     (
                                         make_date(ev.retraite_annee, ev.m_entree, 1)
@@ -2972,7 +3002,7 @@ def _fetch_prevision_competence_impacts(
         SELECT
             ev.*,
             CASE
-                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                 WHEN ev.retraite_annee IS NOT NULL THEN
                     (
                         make_date(ev.retraite_annee, ev.m_entree, 1)
@@ -3042,7 +3072,7 @@ def _fetch_prevision_competence_impacts(
         SELECT
             l.*,
             CASE
-                WHEN l.havedatefin = TRUE AND l.date_sortie_prevue IS NOT NULL THEN l.date_sortie_prevue
+                WHEN l.date_sortie_prevue IS NOT NULL THEN l.date_sortie_prevue
                 WHEN l.retraite_annee IS NOT NULL THEN
                     (
                         make_date(l.retraite_annee, l.m_entree, 1)
@@ -3327,7 +3357,7 @@ def get_analyse_previsions_critiques_modal(
                     SELECT
                         ev.*,
                         CASE
-                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                            WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                             WHEN ev.retraite_annee IS NOT NULL THEN
                                 (
                                     make_date(ev.retraite_annee, ev.m_entree, 1)
@@ -3452,7 +3482,7 @@ def get_analyse_previsions_critiques_modal(
                         SELECT
                             ev.*,
                             CASE
-                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                                 WHEN ev.retraite_annee IS NOT NULL THEN
                                     (
                                         make_date(ev.retraite_annee, ev.m_entree, 1)
@@ -3473,8 +3503,12 @@ def get_analyse_previsions_critiques_modal(
                                 ELSE NULL
                             END AS exit_date,
                             CASE
-                                WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
-                                ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
+                                WHEN ev.date_sortie_prevue IS NOT NULL THEN COALESCE(
+                                    NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''),
+                                    CASE WHEN COALESCE(ev.havedatefin, FALSE) THEN 'Fin de contrat / sortie prévue' ELSE 'Sortie prévue' END
+                                )
+                                WHEN ev.retraite_annee IS NOT NULL THEN 'Retraite estimée'
+                                ELSE NULL
                             END AS raison_sortie
                         FROM effectifs_valid ev
                     ),
@@ -3654,7 +3688,7 @@ def _fetch_prevision_poste_leaving_rows(
         SELECT
             ev.*,
             CASE
-                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                 WHEN ev.retraite_annee IS NOT NULL THEN
                     (
                         make_date(ev.retraite_annee, ev.m_entree, 1)
@@ -3717,7 +3751,7 @@ def _fetch_prevision_poste_impact_causes(
         SELECT
             l.*,
             CASE
-                WHEN l.havedatefin = TRUE AND l.date_sortie_prevue IS NOT NULL THEN l.date_sortie_prevue
+                WHEN l.date_sortie_prevue IS NOT NULL THEN l.date_sortie_prevue
                 WHEN l.retraite_annee IS NOT NULL THEN
                     (
                         make_date(l.retraite_annee, l.m_entree, 1)
@@ -4291,7 +4325,7 @@ def get_analyse_previsions_postes_rouges_modal(
                     SELECT
                         ev.*,
                         CASE
-                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                            WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                             WHEN ev.retraite_annee IS NOT NULL THEN
                                 (
                                     make_date(ev.retraite_annee, ev.m_entree, 1)
@@ -4318,21 +4352,21 @@ def get_analyse_previsions_postes_rouges_modal(
                         CASE
                           WHEN (
                             CASE
-                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                                 WHEN ev.retraite_annee IS NOT NULL THEN make_date(ev.retraite_annee, ev.m_entree, 1)
                                 ELSE NULL
                             END
                           ) IS NOT NULL
                           AND (
                             CASE
-                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                                 WHEN ev.retraite_annee IS NOT NULL THEN make_date(ev.retraite_annee, ev.m_entree, 1)
                                 ELSE NULL
                             END
                           ) >= CURRENT_DATE
                           AND (
                             CASE
-                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
                                 WHEN ev.retraite_annee IS NOT NULL THEN make_date(ev.retraite_annee, ev.m_entree, 1)
                                 ELSE NULL
                             END
