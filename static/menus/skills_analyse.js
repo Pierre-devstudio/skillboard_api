@@ -84,6 +84,18 @@
   }
 
 
+  function analyseRequiredLevelBadgeHtml(value, title) {
+    const raw = (value ?? "").toString().trim();
+    const code = nsLevelCode(raw);
+    const labelByCode = { A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" };
+    let label = labelByCode[code] || nsLevelLabel(raw);
+    label = (label || "").toString().trim().replace(/^[A-D]\s*[-–—: ]\s*/i, "");
+    if (!label) label = "—";
+    const cls = ({ A: "sb-badge-niv-a", B: "sb-badge-niv-b", C: "sb-badge-niv-c", D: "sb-badge-niv-d" }[code]) || "";
+    return `<span class="sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau attendu")}">${escapeHtml(label)}</span>`;
+  }
+
+
   function formatDateFr(iso) {
   const s = (iso || "").toString().trim();
   // attend du "YYYY-MM-DD" (ce que ton API renvoie)
@@ -637,6 +649,18 @@
     openAnalysePdfBlob(url, "PDF compétence bloqué");
   }
 
+
+
+  /* NOVOSKILL_POSTE_DEP_COMP_PDF_HANDLER_START */
+  document.addEventListener("click", function (ev) {
+    const btn = ev.target && ev.target.closest ? ev.target.closest("[data-poste-dep-comp-pdf]") : null;
+    if (!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const compKey = (btn.getAttribute("data-poste-dep-comp-pdf") || "").trim();
+    if (compKey) openAnalyseCompetenceAnalysisPdf(compKey);
+  }, true);
+  /* NOVOSKILL_POSTE_DEP_COMP_PDF_HANDLER_END */
 
 
 
@@ -1861,7 +1885,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th style="width:110px;">Code</th>
               <th>Compétence</th>
               <th class="col-center" style="width:90px;">Criticité</th>
-              <th class="col-center" style="width:180px;">Niveau attendu</th>
+              <th class="col-center" style="width:150px;">Niveau attendu</th>
+              <th class="col-center" style="width:64px;"></th>
             </tr>
           </thead>
           <tbody>
@@ -1870,11 +1895,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               const compId = String(r?.id_comp || r?.id_competence || "").trim();
               const intit = escapeHtml(r?.intitule || "—");
               const crit = critBadgeHtml(r?.poids_criticite);
-              const niveau = nsLevelBadgeHtml(r?.niveau_requis || "—", "Niveau attendu");
+              const niveau = analyseRequiredLevelBadgeHtml(r?.niveau_requis || r?.niveau_attendu || r?.niveau || "", "Niveau attendu");
               const btnCompetencePdf = compId ? `
                 <button type="button"
                         class="sb-icon-btn sb-icon-btn--doc"
-                        data-risk-comp-pdf="${escapeHtml(compId)}"
+                        data-poste-dep-comp-pdf="${escapeHtml(compId)}"
                         title="Voir la fiche compétence PDF"
                         aria-label="Voir la fiche compétence PDF">
                   ${analysePdfIconSvg()}
@@ -1888,12 +1913,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                     <div style="font-size:14px; font-weight:700; color:#111827;">${intit}</div>
                   </td>
                   <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                  <td class="col-center" style="white-space:nowrap;">
-                    <span style="display:inline-flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap;">
-                      ${niveau}
-                      ${btnCompetencePdf}
-                    </span>
-                  </td>
+                  <td class="col-center" style="white-space:nowrap;">${niveau}</td>
+                  <td class="col-center" style="white-space:nowrap;">${btnCompetencePdf}</td>
                 </tr>
               `;
             }).join("")}
@@ -7401,11 +7422,11 @@ function bindOnce(portal) {
     // ------------------------------
     // PDF compétence fragile
     // ------------------------------
-    const btnCompPdf = ev.target.closest("[data-risk-comp-pdf]");
+    const btnCompPdf = ev.target.closest("[data-risk-comp-pdf], [data-poste-dep-comp-pdf]");
     if (btnCompPdf) {
       ev.preventDefault();
       ev.stopPropagation();
-      const compKey = (btnCompPdf.getAttribute("data-risk-comp-pdf") || "").trim();
+      const compKey = (btnCompPdf.getAttribute("data-risk-comp-pdf") || btnCompPdf.getAttribute("data-poste-dep-comp-pdf") || "").trim();
       if (compKey) openAnalyseCompetenceAnalysisPdf(compKey);
       return;
     }

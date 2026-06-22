@@ -3212,6 +3212,7 @@ class AnalysePosteDependanceItem(BaseModel):
     code_comp: Optional[str] = None
     intitule: Optional[str] = None
     poids_criticite: Optional[int] = None
+    niveau_requis: Optional[str] = None
 
     nb_porteurs_ok: int = 0
     seuil_couverture: int = 2
@@ -4222,6 +4223,7 @@ def get_analyse_risques_poste_diagnostic(
                                 code_comp=r.get("code"),
                                 intitule=r.get("intitule"),
                                 poids_criticite=int(r.get("poids_criticite") or 0),
+                                niveau_requis=r.get("niveau_requis"),
                                 nb_porteurs_ok=1,
                                 seuil_couverture=2,
                                 type_risque="PORTEUR_UNIQUE",
