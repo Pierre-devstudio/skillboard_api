@@ -1861,31 +1861,38 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th style="width:110px;">Code</th>
               <th>Compétence</th>
               <th class="col-center" style="width:90px;">Criticité</th>
-              <th class="col-center" style="width:150px;">Porteurs titulaires</th>
-              <th class="col-center" style="width:170px;">Lecture</th>
+              <th class="col-center" style="width:180px;">Niveau attendu</th>
             </tr>
           </thead>
           <tbody>
             ${list.map(r => {
               const code = String(r?.code_comp || r?.code || "—");
+              const compId = String(r?.id_comp || r?.id_competence || "").trim();
               const intit = escapeHtml(r?.intitule || "—");
               const crit = critBadgeHtml(r?.poids_criticite);
-              const nb = Number(r?.nb_porteurs_ok || 0);
-              const depLabel = depRiskLabel(r);
-              const depCls = depRiskBadgeClass(r);
+              const niveau = nsLevelBadgeHtml(r?.niveau_requis || "—", "Niveau attendu");
+              const btnCompetencePdf = compId ? `
+                <button type="button"
+                        class="sb-icon-btn sb-icon-btn--doc"
+                        data-risk-comp-pdf="${escapeHtml(compId)}"
+                        title="Voir la fiche compétence PDF"
+                        aria-label="Voir la fiche compétence PDF">
+                  ${analysePdfIconSvg()}
+                </button>
+              ` : ``;
 
               return `
                 <tr>
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
                   <td style="min-width:280px;">
-                    <div style="font-size:14px; font-weight:700;">${intit}</div>
+                    <div style="font-size:14px; font-weight:700; color:#111827;">${intit}</div>
                   </td>
                   <td class="col-center" style="white-space:nowrap;">${crit}</td>
                   <td class="col-center" style="white-space:nowrap;">
-                    <span class="sb-badge">${escapeHtml(String(nb))}</span>
-                  </td>
-                  <td class="col-center" style="white-space:nowrap;">
-                    <span class="sb-badge ${depCls}">${escapeHtml(depLabel)}</span>
+                    <span style="display:inline-flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap;">
+                      ${niveau}
+                      ${btnCompetencePdf}
+                    </span>
                   </td>
                 </tr>
               `;
@@ -2155,7 +2162,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-                ${causeDot("main")}<span>Couverture trop dépendante d’une personne</span>
+                ${causeDot("main")}<span>Compétence trop dépendante d'une personne</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
