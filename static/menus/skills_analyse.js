@@ -670,7 +670,14 @@
 
   function isPrintablePrevisionDetail(kpiKey) {
     const k = (kpiKey || "").toString().trim().toLowerCase();
-    return k === "sorties" || k === "critiques" || k === "postes-rouges";
+    return [
+      "sorties-confirmees",
+      "sorties-potentielles",
+      "transmissions",
+      "sorties",
+      "critiques",
+      "postes-rouges"
+    ].includes(k);
   }
 
   function getPrevisionDetailExpanded(kpiKey) {

@@ -1763,7 +1763,38 @@ def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dic
     rows: List[List[Any]] = []
     widths: List[Any] = []
 
-    if k == "sorties":
+    if k in ("sorties-confirmees", "sorties-potentielles"):
+        date_header = "Date" if k == "sorties-confirmees" else "Horizon"
+        rows.append([p("Collaborateur", head_style), p("Poste", head_style), p(date_header, head_style), p("Impact", head_style), p("Priorité", head_style)])
+        widths = [56 * mm, 78 * mm, 30 * mm, 48 * mm, 32 * mm]
+        for item in (items or []):
+            r = as_dict(item)
+            poste_code = (r.get("codif_client") or r.get("codif_poste") or "").strip()
+            poste = (r.get("intitule_poste") or "—").strip()
+            poste_label = f"{poste_code} - {poste}" if poste_code else poste
+            rows.append([
+                p(r.get("full") or "—"),
+                p(poste_label),
+                p(_analyse_date_fr_value(r.get("exit_date")) if k == "sorties-confirmees" else (r.get("horizon_label") or _analyse_date_fr_value(r.get("exit_date")))),
+                p(r.get("impact_label") or "—"),
+                p(r.get("priorite_label") or r.get("vigilance_label") or "—"),
+            ])
+    elif k == "transmissions":
+        rows.append([p("Compétence", head_style), p("Porteur", head_style), p("Échéance", head_style), p("Impact", head_style), p("Priorité", head_style)])
+        widths = [88 * mm, 54 * mm, 30 * mm, 46 * mm, 28 * mm]
+        for item in (items or []):
+            r = as_dict(item)
+            code = (r.get("code") or "").strip()
+            comp = (r.get("intitule") or "—").strip()
+            comp_label = f"{code} - {comp}" if code else comp
+            rows.append([
+                p(comp_label),
+                p(r.get("full") or "—"),
+                p(_analyse_date_fr_value(r.get("exit_date"))),
+                p(r.get("impact_label") or "—"),
+                p(r.get("priorite_label") or "—"),
+            ])
+    elif k == "sorties":
         rows.append([p("Collaborateur", head_style), p("Date", head_style), p("Poste", head_style), p("Service", head_style), p("Raison", head_style)])
         widths = [54 * mm, 24 * mm, 72 * mm, 42 * mm, 52 * mm]
         for item in (items or []):
@@ -1850,10 +1881,46 @@ def get_analyse_previsions_detail_pdf(
         from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles, make_spacer
 
         k = (kpi or "").strip().lower()
-        if k not in ("sorties", "critiques", "postes-rouges"):
+        if k not in ("sorties-confirmees", "sorties-potentielles", "transmissions", "sorties", "critiques", "postes-rouges"):
             raise HTTPException(status_code=400, detail="Table prévisionnelle non imprimable.")
 
-        if k == "sorties":
+        if k == "sorties-confirmees":
+            detail = get_analyse_previsions_sorties_confirmees_detail(
+                id_contact=id_contact,
+                request=request,
+                horizon_years=horizon_years,
+                id_service=id_service,
+                criticite_min=criticite_min,
+                limit=limit,
+            )
+            items = detail.get("items") or [] if isinstance(detail, dict) else []
+            table_title = "Sorties confirmées"
+            filename = "previsions_sorties_confirmees.pdf"
+        elif k == "sorties-potentielles":
+            detail = get_analyse_previsions_sorties_potentielles_detail(
+                id_contact=id_contact,
+                request=request,
+                horizon_years=horizon_years,
+                id_service=id_service,
+                criticite_min=criticite_min,
+                limit=limit,
+            )
+            items = detail.get("items") or [] if isinstance(detail, dict) else []
+            table_title = "Sorties potentielles"
+            filename = "previsions_sorties_potentielles.pdf"
+        elif k == "transmissions":
+            detail = get_analyse_previsions_transmissions_detail(
+                id_contact=id_contact,
+                request=request,
+                horizon_years=horizon_years,
+                id_service=id_service,
+                criticite_min=criticite_min,
+                limit=limit,
+            )
+            items = detail.get("items") or [] if isinstance(detail, dict) else []
+            table_title = "Transmissions à préparer"
+            filename = "previsions_transmissions.pdf"
+        elif k == "sorties":
             detail = get_analyse_previsions_sorties_detail(
                 id_contact=id_contact,
                 request=request,
