@@ -1,3 +1,13 @@
+/* NOVOSKILL_PREVISION_KPI_VALIDATOR_GLOBAL_START */
+(function () {
+  const validPrevKpis = ["sorties-confirmees", "sorties-potentielles", "transmissions"];
+  window.analysePrevisionValidKpi = function (key) {
+    const k = (key || "").toString().trim().toLowerCase();
+    return validPrevKpis.includes(k) ? k : "sorties-confirmees";
+  };
+})();
+/* NOVOSKILL_PREVISION_KPI_VALIDATOR_GLOBAL_END */
+
 /* ======================================================
    static/menus/skills_analyse.js
    - Menu "Analyse des compétences"
@@ -1249,7 +1259,7 @@
     } else if (finalMode === "previsions") {
       setActiveRiskKpi(""); // reset
       setActiveMatchKpi(""); // reset
-      setActivePrevKpi(analysePrevisionValidKpi(localStorage.getItem("sb_analyse_prev_kpi") || "sorties-confirmees"));
+      setActivePrevKpi(window.analysePrevisionValidKpi(localStorage.getItem("sb_analyse_prev_kpi") || "sorties-confirmees"));
     } else {
       setActiveRiskKpi("");
       setActiveMatchKpi("");
@@ -5116,7 +5126,7 @@ function renderDetail(mode) {
       meta.style.display = "";
     }
 
-    let selectedKpi = analysePrevisionValidKpi(localStorage.getItem("sb_analyse_prev_kpi") || "sorties-confirmees");
+    let selectedKpi = window.analysePrevisionValidKpi(localStorage.getItem("sb_analyse_prev_kpi") || "sorties-confirmees");
     localStorage.setItem("sb_analyse_prev_kpi", selectedKpi);
     if (typeof setActivePrevKpi === "function") setActivePrevKpi(selectedKpi);
     renderPrevisionsHeaderActions(selectedKpi, 0);
@@ -6922,7 +6932,7 @@ function bindOnce(portal) {
       if (!el || !tilePrevisions.contains(el)) return false;
 
       const rawKey = (el.getAttribute("data-prev-kpi") || "").trim();
-      const key = analysePrevisionValidKpi(rawKey);
+      const key = window.analysePrevisionValidKpi(rawKey);
       if (!key) return false;
 
       if (ev) {
