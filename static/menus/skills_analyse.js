@@ -1094,9 +1094,11 @@
   }
 
   function setPrevHorizonLabel(n) {
+    const label = analyseHorizonLabel(n);
     const el = byId("prevHorizonLabel");
-    if (!el) return;
-    el.textContent = analyseHorizonLabel(n);
+    if (el) el.textContent = label;
+    const title = byId("prevTileTitle");
+    if (title) title.textContent = `Prévisions à ${label}`;
   }
 
   function pickPrevHorizonItem(previsions, horizonYears) {
@@ -1121,18 +1123,17 @@
     const item = pickPrevHorizonItem(p, horizon);
 
     if (item) {
-      setText("kpiPrevSorties12", item.sorties);
-      setText("kpiPrevCompImpact", formatPrevisionImpactPercent(item.comp_critiques_impactees));
-      setText("kpiPrevPostesRed", formatPrevisionImpactPercent(item.postes_rouges));
+      setText("kpiPrevSortiesConfirmees", item.sorties_confirmees ?? item.sorties ?? 0);
+      setText("kpiPrevSortiesPotentielles", item.sorties_potentielles ?? 0);
+      setText("kpiPrevTransmissions", item.transmissions_a_preparer ?? 0);
       updateAnalyseProjectionSummary(p);
       if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
       return;
     }
 
-    // Fallback: comportement historique (12 mois)
-    setText("kpiPrevSorties12", p.sorties_12m);
-    setText("kpiPrevCompImpact", formatPrevisionImpactPercent(p.comp_critiques_impactees));
-    setText("kpiPrevPostesRed", formatPrevisionImpactPercent(p.postes_rouges_12m));
+    setText("kpiPrevSortiesConfirmees", p.sorties_confirmees_12m ?? p.sorties_12m ?? 0);
+    setText("kpiPrevSortiesPotentielles", p.sorties_potentielles_12m ?? 0);
+    setText("kpiPrevTransmissions", p.transmissions_a_preparer_12m ?? 0);
     updateAnalyseProjectionSummary(p);
     if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
   }
@@ -5103,261 +5104,102 @@ function renderDetail(mode) {
     const horizon = getPrevHorizon();
     const horizonLabel = analyseHorizonLabel(horizon);
     if (title) {
-      title.textContent = `Impact prévisionnel sur ${horizonLabel}`;
+      title.textContent = `Prévisions à ${horizonLabel}`;
       title.style.marginBottom = "0";
     }
     if (sub) {
-      sub.textContent = "";
-      sub.innerHTML = "";
-      sub.style.display = "none";
+      sub.textContent = "Départs à absorber et transmissions à préparer.";
+      sub.style.display = "";
     }
     if (meta) {
-      meta.textContent = "";
-      meta.innerHTML = "";
-      meta.style.display = "none";
+      meta.textContent = `Service : ${scope}`;
+      meta.style.display = "";
     }
 
-    const item = _prevData ? pickPrevHorizonItem(_prevData, horizon) : null;
-
-    const sorties = item ? item.sorties : (_prevData ? _prevData.sorties_12m : "—");
-    const selectedKpi = (localStorage.getItem("sb_analyse_prev_kpi") || "").trim();
-
-    if (typeof setActivePrevKpi === "function") setActivePrevKpi(selectedKpi || "");
+    let selectedKpi = analysePrevisionValidKpi(localStorage.getItem("sb_analyse_prev_kpi") || "sorties-confirmees");
+    localStorage.setItem("sb_analyse_prev_kpi", selectedKpi);
+    if (typeof setActivePrevKpi === "function") setActivePrevKpi(selectedKpi);
     renderPrevisionsHeaderActions(selectedKpi, 0);
 
-    if (selectedKpi === "sorties") {
-      body.innerHTML = `
-        <div class="card" style="padding:12px; margin:0;">
-          <div id="prevSortiesDetailBox">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
-          </div>
-        </div>
-      `;
+    const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+    const detailTitle = selectedKpi === "sorties-potentielles"
+      ? "Sorties potentielles"
+      : (selectedKpi === "transmissions" ? "Transmissions à préparer" : "Sorties confirmées");
 
-      window.__sbPrevSortiesReqId = (window.__sbPrevSortiesReqId || 0) + 1;
-      const reqId = window.__sbPrevSortiesReqId;
-
-      setTimeout(async () => {
-        const box = byId("prevSortiesDetailBox");
-        if (!box) return;
-
-        try {
-          const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-
-
-          if (!_portalref) {
-            box.textContent = "Contexte portail indisponible (_portalref manquant).";
-            return;
-          }
-
-          box.textContent = "Chargement…";
-          const data = await fetchPrevisionsSortiesDetail(_portalref, horizon, id_service, 2000);
-
-          if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
-
-          const items =
-            (data && Array.isArray(data.items) ? data.items : null) ||
-            (data && Array.isArray(data.effectifs) ? data.effectifs : null) ||
-            [];
-
-          renderPrevisionsHeaderActions(selectedKpi, items.length);
-          if (!items.length) {
-            box.textContent = "Aucune sortie détectée dans la période sélectionnée.";
-            return;
-          }
-
-          const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
-          const rowsHtml = itemsToRender.map((it) => {
-            const prenom = (it.prenom_effectif || it.prenom || "").trim();
-            const nom = (it.nom_effectif || it.nom || "").trim();
-            const full = (it.full || `${prenom} ${nom}`.trim() || "—");
-            const fullHtml = `<span style="font-weight:700;">${escapeHtml(full)}</span>`;
-
-            function fmtDateFR(v) {
-              const s = (v || "").toString().trim();
-              if (!s) return "—";
-              const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-              if (!m) return escapeHtml(s);
-              return `${m[3]}-${m[2]}-${m[1]}`;
-            }
-
-            const exitDate = (it.exit_date || it.date_sortie || it.date_sortie_prevue || it.sortie_prevue || "").toString();
-            const exitTxt = fmtDateFR(exitDate);
-
-            const service = (it.nom_service || it.service || "").toString().trim() || "—";
-            const posteTitle = (it.intitule_poste || it.poste || "").toString().trim() || "—";
-
-            // Badge code poste : codif_client si existant sinon codif_poste
-            const codifClient = (it.codif_client || "").toString().trim();
-            const codifPoste = (it.codif_poste || "").toString().trim();
-            const posteCode = codifClient || codifPoste;
-
-            const posteHtml = posteCode
-              ? `
-                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-                  <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(posteCode)}</span>
-                  <span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(posteTitle)}</span>
-                </div>
-              `
-              : escapeHtml(posteTitle);
-
-            // Raison (priorité: API si dispo)
-            const hdf = (it.havedatefin === true || it.havedatefin === "true" || it.havedatefin === 1);
-            const motif = (it.motif_sortie || "").toString().trim();
-            const reason = (it.raison_sortie || "").toString().trim()
-              || (exitDate ? (motif || (hdf ? "Fin de contrat / sortie prévue" : "Sortie prévue")) : "Retraite estimée");
-            const reasonTxt = reason ? escapeHtml(reason) : "—";
-
-            const idEff = (it.id_effectif || "").toString().trim();
-            const idPoste = (it.id_poste_actuel || "").toString().trim();
-
-            return `
-              <tr class="prev-sortie-row sb-row-click"
-                  data-id_effectif="${escapeHtml(idEff)}"
-                  data-id_poste_actuel="${escapeHtml(idPoste)}"
-                  data-exit_date="${escapeHtml(exitDate)}"
-                  data-reason="${escapeHtml(reason)}">
-                <td>${fullHtml}</td>
-                <td>${exitTxt}</td>
-                <td>${posteHtml}</td>
-                <td>${escapeHtml(service)}</td>
-                <td>${reasonTxt}</td>
-              </tr>
-            `;
-          }).join("");
-
-          box.innerHTML = `
-            <div style="overflow:auto;">
-              <table class="sb-table">
-                <thead>
-                  <tr>
-                    <th>Effectif sortant</th>
-                    <th style="line-height:1.05;">Date de sortie<br>prévue</th>
-                    <th>Poste</th>
-                    <th>Service</th>
-                    <th>Raison de la sortie</th>
-                  </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-              </table>
-            </div>
-          `;
-        } catch (e) {
-          if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
-          box.textContent = `Erreur chargement détail sorties: ${e?.message || e}`;
-        }
-      }, 0);
-
-      return;
-    }
-
-    if (selectedKpi === "critiques") {
-      body.innerHTML = `
-        <div class="card" style="padding:12px; margin:0;">
-          <div id="prevCritDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
-        </div>
-      `;
-
-      window.__sbPrevCritReqId = (window.__sbPrevCritReqId || 0) + 1;
-      const reqId = window.__sbPrevCritReqId;
-
-      setTimeout(async () => {
-        const box = byId("prevCritDetailBox");
-        if (!box) return;
-
-        try {
-          const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-          if (!_portalref) {
-            box.textContent = "Contexte portail indisponible (_portalref manquant).";
-            return;
-          }
-
-          box.textContent = "Chargement…";
-          const data = await fetchPrevisionsCritiquesDetail(_portalref, horizon, id_service, 2000);
-
-          if ((window.__sbPrevCritReqId || 0) !== reqId) return;
-
-          // badge crit min up-to-date
-          syncCriticiteMinFromResponse(data);
-          const items = Array.isArray(data?.items) ? data.items : [];
-          renderPrevisionsHeaderActions(selectedKpi, items.length);
-          if (!items.length) {
-            box.textContent = "Aucune compétence impactée dans la période sélectionnée.";
-            return;
-          }
-
-          const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
-          box.innerHTML = renderPrevisionTableCompetences(itemsToRender);
-
-        } catch (e) {
-          if ((window.__sbPrevCritReqId || 0) !== reqId) return;
-          box.textContent = `Erreur chargement hausse fragilité compétences: ${e?.message || e}`;
-        }
-      }, 0);
-
-      return;
-    }
-
-    if (selectedKpi === "postes-rouges") {
-      body.innerHTML = `
-        <div class="card" style="padding:12px; margin:0;">
-          <div id="prevPostesRedDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
-        </div>
-      `;
-
-      window.__sbPrevPostesRedReqId = (window.__sbPrevPostesRedReqId || 0) + 1;
-      const reqId = window.__sbPrevPostesRedReqId;
-
-      setTimeout(async () => {
-        const box = byId("prevPostesRedDetailBox");
-        if (!box) return;
-
-        try {
-          const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-
-          if (!_portalref) {
-            box.textContent = "Contexte portail indisponible (_portalref manquant).";
-            return;
-          }
-
-          box.textContent = "Chargement…";
-          const data = await fetchPrevisionsPostesRougesDetail(_portalref, horizon, id_service, 2000);
-
-          if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
-
-          syncCriticiteMinFromResponse(data);
-
-          const items = Array.isArray(data?.items) ? data.items : [];
-          renderPrevisionsHeaderActions(selectedKpi, items.length);
-          if (!items.length) {
-            box.textContent = "Aucun poste impacté dans la période sélectionnée.";
-            return;
-          }
-
-          const itemsToRender = items.slice(0, getPrevisionDetailLimit(selectedKpi));
-          box.innerHTML = renderPrevisionTablePostes(itemsToRender);
-
-        } catch (e) {
-          if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
-          box.textContent = `Erreur chargement hausse fragilité postes: ${e?.message || e}`;
-        }
-      }, 0);
-
-      return;
-    }
-
-
-    renderPrevisionsHeaderActions("", 0);
-    if (sub) {
-      sub.textContent = "";
-      sub.style.display = "none";
-    }
     body.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:6px;">Résultats</div>
-        <div class="card-sub" style="margin:0;">Aucune vue sélectionnée.</div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">${escapeHtml(detailTitle)} à ${escapeHtml(horizonLabel)}</div>
+            <div class="card-sub" style="margin:0;">Première lecture rapide. Ouvrez une ligne pour voir l’impact et les éléments à préparer.</div>
+          </div>
+        </div>
+        <div id="prevTransitionDetailBox" class="card-sub" style="margin-top:12px;">Chargement…</div>
       </div>
     `;
+
+    window.__sbPrevTransitionReqId = (window.__sbPrevTransitionReqId || 0) + 1;
+    const reqId = window.__sbPrevTransitionReqId;
+
+    setTimeout(async () => {
+      const box = byId("prevTransitionDetailBox");
+      if (!box) return;
+      try {
+        if (!_portalref) {
+          box.textContent = "Contexte portail indisponible (_portalref manquant).";
+          return;
+        }
+
+        let data = null;
+        if (selectedKpi === "transmissions") {
+          data = await fetchPrevisionsTransmissionsDetail(_portalref, horizon, id_service, 2000);
+        } else {
+          data = await fetchPrevisionsTransitionDetail(_portalref, selectedKpi === "sorties-potentielles" ? "potential" : "confirmed", horizon, id_service, 2000);
+        }
+        if ((window.__sbPrevTransitionReqId || 0) !== reqId) return;
+
+        const items = Array.isArray(data?.items) ? data.items : [];
+        renderPrevisionsHeaderActions(selectedKpi, items.length);
+        if (!items.length) {
+          box.textContent = selectedKpi === "transmissions"
+            ? "Aucune transmission critique à préparer dans l’horizon sélectionné."
+            : "Aucune sortie détectée dans l’horizon sélectionné.";
+          return;
+        }
+
+        const itemsToRender = items.slice(0, PREV_TABLE_PREVIEW_LIMIT);
+        if (selectedKpi === "transmissions") {
+          box.innerHTML = renderPrevisionTableTransmissionItems(itemsToRender);
+          box.querySelectorAll(".prev-transmission-row, .prev-transmission-open").forEach((el) => {
+            el.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              const tr = el.closest("tr");
+              const idx = Number(tr?.getAttribute("data-index") || -1);
+              const row = (window.__sbPrevTransmissionRows || [])[idx];
+              if (row) openAnalysePrevisionTransmissionModal(row);
+            });
+          });
+        } else {
+          const potential = selectedKpi === "sorties-potentielles";
+          box.innerHTML = renderPrevisionTableTransitionEvents(itemsToRender, potential ? "potential" : "confirmed");
+          box.querySelectorAll(".prev-transition-row, .prev-transition-open").forEach((el) => {
+            el.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              const tr = el.closest("tr");
+              const idx = Number(tr?.getAttribute("data-index") || -1);
+              const row = (window.__sbPrevTransitionRows || [])[idx];
+              if (row) openAnalysePrevisionTransitionModal(row, potential ? "Alerte potentielle" : "Transition confirmée");
+            });
+          });
+        }
+      } catch (e) {
+        if ((window.__sbPrevTransitionReqId || 0) !== reqId) return;
+        box.textContent = `Erreur chargement prévisions: ${e?.message || e}`;
+      }
+    }, 0);
+
     return;
   }
 
@@ -5698,6 +5540,292 @@ function renderDetail(mode) {
     const mod = d > 0 ? "sb-badge--danger" : "sb-badge--success";
     const txt = `${d > 0 ? "+" : ""}${d}%`;
     return `<span class="sb-badge ${mod}" title="Évolution depuis la situation actuelle">${escapeHtml(txt)}</span>`;
+  }
+
+
+
+  // ======================================================
+  // Prévisions RH - transition console helpers
+  // ======================================================
+  function analysePrevisionValidKpi(key) {
+    const k = (key || "").toString().trim().toLowerCase();
+    return ["sorties-confirmees", "sorties-potentielles", "transmissions"].includes(k) ? k : "sorties-confirmees";
+  }
+
+  function analysePriorityBadge(label) {
+    const txt = (label || "—").toString();
+    const k = txt.toLowerCase();
+    const tone = k.includes("crit") ? "#991b1b" : (k.includes("élev") || k.includes("elev") ? "#9a3412" : (k.includes("mod") ? "#854d0e" : "#166534"));
+    const bg = k.includes("crit") ? "#fee2e2" : (k.includes("élev") || k.includes("elev") ? "#ffedd5" : (k.includes("mod") ? "#fef3c7" : "#dcfce7"));
+    const br = k.includes("crit") ? "#fecaca" : (k.includes("élev") || k.includes("elev") ? "#fed7aa" : (k.includes("mod") ? "#fde68a" : "#bbf7d0"));
+    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid ${br}; background:${bg}; color:${tone}; font-weight:800; font-size:12px; white-space:nowrap;">${escapeHtml(txt)}</span>`;
+  }
+
+  function analysePrevisionDate(v) {
+    const s = (v || "").toString().trim();
+    if (!s) return "—";
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return escapeHtml(s);
+    return `${m[3]}/${m[2]}/${m[1]}`;
+  }
+
+  async function fetchPrevisionsTransitionDetail(portal, kind, horizonYears, id_service, limit = 2000) {
+    const ctx = getPortalContext(portal);
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+
+    const k = kind === "potential" ? "sorties-potentielles" : "sorties-confirmees";
+    const qs = new URLSearchParams();
+    qs.set("horizon_years", String(horizonYears || 1));
+    if (id_service) qs.set("id_service", String(id_service).trim());
+    const cmin = getCriticiteMinSafe(null);
+    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
+    qs.set("limit", String(limit || 2000));
+
+    const url = `${ctx.apiBase}/skills/analyse/previsions/${k}/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
+    const data = await analyseApiJson(portal, url);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
+    return data;
+  }
+
+  async function fetchPrevisionsTransmissionsDetail(portal, horizonYears, id_service, limit = 2000) {
+    const ctx = getPortalContext(portal);
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+
+    const qs = new URLSearchParams();
+    qs.set("horizon_years", String(horizonYears || 1));
+    if (id_service) qs.set("id_service", String(id_service).trim());
+    const cmin = getCriticiteMinSafe(null);
+    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
+    qs.set("limit", String(limit || 2000));
+
+    const url = `${ctx.apiBase}/skills/analyse/previsions/transmissions/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
+    const data = await analyseApiJson(portal, url);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
+    return data;
+  }
+
+  function ensureAnalysePrevisionActionModal() {
+    let modal = byId("modalAnalysePrevisionAction");
+    if (modal) return modal;
+    document.body.insertAdjacentHTML("beforeend", `
+      <div class="modal" id="modalAnalysePrevisionAction" aria-hidden="true">
+        <div class="modal-card modal-card--wide">
+          <div class="modal-header">
+            <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <div style="font-weight:700;" id="analysePrevisionActionTitle">Détail prévisionnel</div>
+              <div class="card-sub" id="analysePrevisionActionSub" style="margin:0;"></div>
+            </div>
+            <button type="button" class="modal-x" id="btnCloseAnalysePrevisionActionModal" aria-label="Fermer">×</button>
+          </div>
+          <div class="modal-body" id="analysePrevisionActionBody"></div>
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionActionHypothesis">Tester un scénario RH</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnAnalysePrevisionActionClose">Fermer</button>
+          </div>
+        </div>
+      </div>
+    `);
+    modal = byId("modalAnalysePrevisionAction");
+    const close = () => {
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+    };
+    byId("btnCloseAnalysePrevisionActionModal")?.addEventListener("click", close);
+    byId("btnAnalysePrevisionActionClose")?.addEventListener("click", close);
+    byId("btnAnalysePrevisionActionHypothesis")?.addEventListener("click", () => {
+      close();
+      setStatus("Scénario RH à créer depuis Simulation RH avec les éléments prévisionnels sélectionnés.");
+    });
+    modal.addEventListener("click", (ev) => { if (ev.target === modal) close(); });
+    return modal;
+  }
+
+  function openAnalysePrevisionTransitionModal(row, modeLabel) {
+    const r = row || {};
+    const modal = ensureAnalysePrevisionActionModal();
+    const title = byId("analysePrevisionActionTitle");
+    const sub = byId("analysePrevisionActionSub");
+    const body = byId("analysePrevisionActionBody");
+    const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Collaborateur";
+    const poste = r.intitule_poste || "Poste non renseigné";
+    const dateTxt = analysePrevisionDate(r.exit_date);
+    const cible = Number(r.nb_titulaires_cible || 0) || 0;
+    const now = Number(r.nb_titulaires_now || 0) || 0;
+    const after = Number(r.nb_titulaires_after || 0) || 0;
+    const ecart = Number(r.ecart_titulaires || 0) || 0;
+    const indirect = Number(r.nb_postes_indirects || 0) || 0;
+    const comps = Number(r.nb_competences_critiques || 0) || 0;
+
+    if (title) title.textContent = `${modeLabel || "Transition à préparer"} — ${full}`;
+    if (sub) sub.textContent = `${poste} · ${dateTxt}`;
+    if (body) {
+      body.innerHTML = `
+        <div class="sb-prev-modal-grid">
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">Événement RH</div>
+            <div class="sb-prev-action-list">
+              <div><strong>${escapeHtml(full)}</strong> · ${escapeHtml(r.raison_sortie || r.event_kind_label || "Sortie prévue")}</div>
+              <div>Date / horizon : <strong>${dateTxt}</strong></div>
+              <div>Poste actuel : <strong>${escapeHtml(poste)}</strong></div>
+            </div>
+          </div>
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">Impact direct sur le poste</div>
+            <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
+              <div class="sb-prev-kpi"><span>Cible RH</span><strong>${escapeHtml(String(cible || "—"))}</strong></div>
+              <div class="sb-prev-kpi"><span>Avant sortie</span><strong>${escapeHtml(String(now || 0))}</strong></div>
+              <div class="sb-prev-kpi"><span>Après sortie</span><strong>${escapeHtml(String(after || 0))}</strong></div>
+              <div class="sb-prev-kpi"><span>Écart à couvrir</span><strong>${escapeHtml(String(ecart || 0))}</strong></div>
+            </div>
+          </div>
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">Impact indirect</div>
+            <div class="sb-prev-action-list">
+              <div>${escapeHtml(String(indirect))} poste(s) indirectement impacté(s)</div>
+              <div>${escapeHtml(String(comps))} compétence(s) critique(s) à sécuriser</div>
+            </div>
+          </div>
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">À préparer</div>
+            <div class="sb-prev-action-list">
+              ${ecart > 0 ? `<div>Préparer un relais, une mobilité ou un recrutement pour couvrir l’écart titulaire.</div>` : `<div>Confirmer que la capacité poste reste suffisante après la sortie.</div>`}
+              ${comps > 0 ? `<div>Organiser la transmission des compétences critiques portées par le collaborateur.</div>` : `<div>Vérifier les compétences réellement portées avant arbitrage.</div>`}
+              ${indirect > 0 ? `<div>Contrôler les postes indirectement dépendants de ces compétences.</div>` : ``}
+              <div>Tester un scénario RH : transmission, mobilité, recrutement ou scénario mixte.</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function openAnalysePrevisionTransmissionModal(row) {
+    const r = row || {};
+    const modal = ensureAnalysePrevisionActionModal();
+    const title = byId("analysePrevisionActionTitle");
+    const sub = byId("analysePrevisionActionSub");
+    const body = byId("analysePrevisionActionBody");
+    const comp = `${r.code ? r.code + " — " : ""}${r.intitule || "Compétence"}`;
+    const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Porteur";
+    const dateTxt = analysePrevisionDate(r.exit_date);
+    if (title) title.textContent = `Transmission à préparer — ${comp}`;
+    if (sub) sub.textContent = `${full} · ${dateTxt}`;
+    if (body) {
+      body.innerHTML = `
+        <div class="sb-prev-modal-grid">
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">Ce qui doit être transmis</div>
+            <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
+              <div class="sb-prev-kpi"><span>Niveau porteur</span><strong>${escapeHtml(r.niveau_actuel || "—")}</strong></div>
+              <div class="sb-prev-kpi"><span>Niveau cible</span><strong>${escapeHtml(r.niveau_a_transmettre || "—")}</strong></div>
+              <div class="sb-prev-kpi"><span>Postes concernés</span><strong>${escapeHtml(String(r.nb_postes_impactes || 0))}</strong></div>
+              <div class="sb-prev-kpi"><span>Capacité à transmettre</span><strong>${escapeHtml(r.titulaire_transmet_label || "À confirmer")}</strong></div>
+            </div>
+          </div>
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">Porteur sortant</div>
+            <div class="sb-prev-action-list">
+              <div><strong>${escapeHtml(full)}</strong> · ${escapeHtml(r.raison_sortie || r.event_kind_label || "Sortie prévue")}</div>
+              <div>Échéance : <strong>${dateTxt}</strong></div>
+              <div>Poste actuel : <strong>${escapeHtml(r.intitule_poste || "—")}</strong></div>
+            </div>
+          </div>
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">Relais possibles</div>
+            <div class="sb-prev-action-list">
+              <div>${escapeHtml(String(r.receveurs_potentiels_count || 0))} collaborateur(s) disposent déjà d’une base sur cette compétence.</div>
+              <div>${escapeHtml(r.receveurs_potentiels_label || "Aucun relais identifié dans le périmètre.")}</div>
+            </div>
+          </div>
+          <div class="sb-prev-actions-card">
+            <div class="sb-prev-modal-title">Scénarios à tester</div>
+            <div class="sb-prev-action-list">
+              <div>Transmission accélérée vers un relais interne.</div>
+              <div>Binôme temporaire avant la sortie.</div>
+              <div>Formation ciblée sur le niveau à transmettre.</div>
+              <div>Recrutement avec niveau cible ${escapeHtml(r.niveau_a_transmettre || "attendu")} si aucun relais n’est disponible.</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function renderPrevisionTableTransitionEvents(rows, kind) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+    const isPotential = kind === "potential";
+    window.__sbPrevTransitionRows = list;
+    return `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table" id="tblPrevTransitions">
+          <thead>
+            <tr>
+              <th>Collaborateur</th>
+              <th>Poste</th>
+              <th style="width:120px;">${isPotential ? "Horizon" : "Date"}</th>
+              <th style="width:190px;">Impact</th>
+              <th class="col-center" style="width:110px;">Priorité</th>
+              <th class="col-center" style="width:82px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>${list.map((r, idx) => {
+            const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "—";
+            const code = (r.codif_client || r.codif_poste || "").toString().trim();
+            const poste = (r.intitule_poste || "—").toString();
+            return `<tr class="prev-transition-row" data-index="${idx}">
+              <td><strong>${escapeHtml(full)}</strong></td>
+              <td>${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(poste)}</td>
+              <td>${analysePrevisionDate(r.exit_date)}</td>
+              <td>${escapeHtml(r.impact_label || "—")}</td>
+              <td class="col-center">${analysePriorityBadge(r.priorite_label || "—")}</td>
+              <td class="col-center"><button type="button" class="sb-icon-btn prev-transition-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderPrevisionTableTransmissionItems(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+    window.__sbPrevTransmissionRows = list;
+    return `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table" id="tblPrevTransmissions">
+          <thead>
+            <tr>
+              <th>Compétence</th>
+              <th>Porteur</th>
+              <th style="width:120px;">Échéance</th>
+              <th style="width:140px;">Impact</th>
+              <th class="col-center" style="width:110px;">Priorité</th>
+              <th class="col-center" style="width:82px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>${list.map((r, idx) => {
+            const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "—";
+            const code = (r.code || "").toString().trim();
+            const comp = (r.intitule || "—").toString();
+            return `<tr class="prev-transmission-row" data-index="${idx}">
+              <td>${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span> ` : ""}<strong>${escapeHtml(comp)}</strong></td>
+              <td>${escapeHtml(full)}</td>
+              <td>${analysePrevisionDate(r.exit_date)}</td>
+              <td>${escapeHtml(r.impact_label || "—")}</td>
+              <td class="col-center">${analysePriorityBadge(r.priorite_label || "—")}</td>
+              <td class="col-center"><button type="button" class="sb-icon-btn prev-transmission-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+    `;
   }
 
   function renderPrevisionTablePostes(rows) {
@@ -6790,7 +6918,7 @@ function bindOnce(portal) {
     const prevKpis = tilePrevisions.querySelectorAll(".mini-kpi[data-prev-kpi]");
 
     function openPrevKpi(el, ev) {
-      const key = (el?.getAttribute("data-prev-kpi") || "").trim();
+      const key = analysePrevisionValidKpi((el?.getAttribute("data-prev-kpi") || "").trim());
       if (!key) return;
 
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }

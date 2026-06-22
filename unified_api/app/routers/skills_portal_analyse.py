@@ -69,6 +69,9 @@ from app.services.skills_analyse_engine import (
     _analyse_prevision_poste_causes_from_record,
     _fetch_prevision_poste_impacts,
     _analyse_prevision_poste_average_delta,
+    _fetch_prevision_transition_events,
+    _fetch_prevision_transmission_items,
+    _fetch_prevision_transition_counts,
 )
 
 
@@ -126,11 +129,21 @@ class AnalysePrevisionsHorizonItem(BaseModel):
     comp_critiques_impactees: int = 0
     postes_rouges: int = 0
 
+    # Console de prévision RH orientée transition
+    sorties_confirmees: int = 0
+    sorties_potentielles: int = 0
+    transmissions_a_preparer: int = 0
+
 
 class AnalysePrevisionsTile(BaseModel):
     sorties_12m: int = 0
     comp_critiques_impactees: int = 0
     postes_rouges_12m: int = 0
+
+    # Nouveaux KPI prévisions orientés sécurisation
+    sorties_confirmees_12m: int = 0
+    sorties_potentielles_12m: int = 0
+    transmissions_a_preparer_12m: int = 0
 
     # Détail par horizon (1 à 5 ans) pour un slider côté UI.
     horizons: Optional[List[AnalysePrevisionsHorizonItem]] = None
@@ -790,6 +803,13 @@ def get_analyse_summary(
 
                 comp_delta_by_horizon: Dict[int, int] = {}
                 poste_delta_by_horizon: Dict[int, int] = {}
+                transition_counts_by_horizon = _fetch_prevision_transition_counts(
+                    cur,
+                    id_ent,
+                    scope.id_service,
+                    CRITICITE_MIN,
+                    HORIZON_MAX,
+                )
                 for _h in range(1, HORIZON_MAX + 1):
                     comp_delta_by_horizon[_h] = _analyse_prevision_competence_global_delta(
                         cur,
@@ -811,6 +831,7 @@ def get_analyse_summary(
 
                 for row in prev_rows:
                     _h_years = int(row.get("horizon_years") or 0)
+                    _transition_counts = transition_counts_by_horizon.get(_h_years, {})
 
                     horizons.append(
 
@@ -823,6 +844,12 @@ def get_analyse_summary(
                             comp_critiques_impactees=int(comp_delta_by_horizon.get(_h_years, 0)),
 
                             postes_rouges=int(poste_delta_by_horizon.get(_h_years, 0)),
+
+                            sorties_confirmees=int(_transition_counts.get("sorties_confirmees", 0)),
+
+                            sorties_potentielles=int(_transition_counts.get("sorties_potentielles", 0)),
+
+                            transmissions_a_preparer=int(_transition_counts.get("transmissions_a_preparer", 0)),
 
                         )
 
@@ -839,6 +866,12 @@ def get_analyse_summary(
                     comp_critiques_impactees=(h1.comp_critiques_impactees if h1 else 0),
 
                     postes_rouges_12m=(h1.postes_rouges if h1 else 0),
+
+                    sorties_confirmees_12m=(h1.sorties_confirmees if h1 else 0),
+
+                    sorties_potentielles_12m=(h1.sorties_potentielles if h1 else 0),
+
+                    transmissions_a_preparer_12m=(h1.transmissions_a_preparer if h1 else 0),
 
                     horizons=horizons,
 
@@ -1613,6 +1646,100 @@ def get_analyse_previsions_postes_rouges_detail(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
    
+
+
+
+# ======================================================
+# Endpoints Prévisions RH - transitions / transmissions
+# ======================================================
+@router.get("/skills/analyse/previsions/sorties-confirmees/detail/{id_contact}")
+def get_analyse_previsions_sorties_confirmees_detail(
+    id_contact: str,
+    request: Request,
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
+    limit: int = Query(default=200, ge=1, le=2000),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                items = _fetch_prevision_transition_events(
+                    cur, id_ent, scope.id_service, int(horizon_years), int(criticite_min), "confirmed", int(limit)
+                )
+                return {
+                    "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
+                    "horizon_years": int(horizon_years),
+                    "criticite_min": int(criticite_min),
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "items": items,
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.get("/skills/analyse/previsions/sorties-potentielles/detail/{id_contact}")
+def get_analyse_previsions_sorties_potentielles_detail(
+    id_contact: str,
+    request: Request,
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
+    limit: int = Query(default=200, ge=1, le=2000),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                items = _fetch_prevision_transition_events(
+                    cur, id_ent, scope.id_service, int(horizon_years), int(criticite_min), "potential", int(limit)
+                )
+                return {
+                    "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
+                    "horizon_years": int(horizon_years),
+                    "criticite_min": int(criticite_min),
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "items": items,
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.get("/skills/analyse/previsions/transmissions/detail/{id_contact}")
+def get_analyse_previsions_transmissions_detail(
+    id_contact: str,
+    request: Request,
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
+    limit: int = Query(default=200, ge=1, le=2000),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                items = _fetch_prevision_transmission_items(
+                    cur, id_ent, scope.id_service, int(horizon_years), int(criticite_min), int(limit)
+                )
+                return {
+                    "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
+                    "horizon_years": int(horizon_years),
+                    "criticite_min": int(criticite_min),
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "items": items,
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
 def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dict[str, Any]):
     from reportlab.lib import colors

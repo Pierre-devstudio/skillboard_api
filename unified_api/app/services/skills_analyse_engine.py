@@ -2559,3 +2559,424 @@ def _analyse_prevision_poste_average_delta(items: List[Dict[str, Any]]) -> int:
     if not deltas:
         return 0
     return int(round(sum(deltas) / float(len(deltas))))
+
+# ======================================================
+# Prévisions RH - console transitions / transmissions
+# ======================================================
+def _prevision_exit_kind_label(kind: str) -> str:
+    k = (kind or "").strip().lower()
+    if k == "confirmed":
+        return "Sortie confirmée"
+    if k == "potential":
+        return "Sortie potentielle"
+    return "Sortie prévue"
+
+
+def _prevision_transition_priority_label(row: Dict[str, Any]) -> str:
+    ecart = _safe_int(row.get("ecart_titulaires"), 0)
+    indirect = _safe_int(row.get("nb_postes_indirects"), 0)
+    comps = _safe_int(row.get("nb_competences_critiques"), 0)
+    if ecart > 0 or comps >= 10 or indirect >= 3:
+        return "Critique"
+    if comps >= 5 or indirect >= 1:
+        return "Élevée"
+    if comps > 0:
+        return "Modérée"
+    return "Faible"
+
+
+def _prevision_transition_impact_label(row: Dict[str, Any]) -> str:
+    ecart = _safe_int(row.get("ecart_titulaires"), 0)
+    indirect = _safe_int(row.get("nb_postes_indirects"), 0)
+    comps = _safe_int(row.get("nb_competences_critiques"), 0)
+    if ecart > 0:
+        return "Poste sous cible"
+    if indirect > 0:
+        return f"{indirect} poste(s) indirectement impacté(s)"
+    if comps > 0:
+        return f"{comps} compétence(s) à sécuriser"
+    return "Impact limité"
+
+
+def _fetch_prevision_transition_events(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    horizon_years: int,
+    criticite_min: int,
+    event_kind: Optional[str] = None,
+    limit: int = 200,
+) -> List[Dict[str, Any]]:
+    """
+    Lecture prévisionnelle orientée événement RH.
+    - confirmed = date_sortie_prevue renseignée.
+    - potential = retraite_estimee sans date_sortie_prevue.
+    Le calcul reste centralisé ici : périmètre, filtres actifs/archive/masque, impact direct et impact indirect.
+    """
+    scope_id = (id_service or "").strip() or None
+    horizon = max(1, min(5, int(horizon_years or 1)))
+    cmin = max(CRITICITE_MIN_MIN, min(CRITICITE_MIN_MAX, int(criticite_min or 0)))
+    lim = max(1, min(2000, int(limit or 200)))
+    kind = (event_kind or "").strip().lower()
+    if kind not in ("confirmed", "potential"):
+        kind = ""
+
+    cte_sql, cte_params = _build_scope_cte(id_ent, scope_id)
+    kind_filter = "AND ee.exit_kind = %s" if kind else ""
+
+    sql = f"""
+    WITH
+    {cte_sql},
+    effectifs_valid AS (
+        SELECT
+            e.id_effectif,
+            e.prenom_effectif,
+            e.nom_effectif,
+            e.id_service,
+            e.id_poste_actuel,
+            e.date_sortie_prevue,
+            COALESCE(e.havedatefin, FALSE) AS havedatefin,
+            e.motif_sortie,
+            e.retraite_estimee::int AS retraite_annee,
+            COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+            COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.is_temp, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+    ),
+    effectifs_exit AS (
+        SELECT
+            ev.*,
+            CASE
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                WHEN ev.date_sortie_prevue IS NULL AND ev.retraite_annee IS NOT NULL THEN
+                    (
+                        make_date(ev.retraite_annee, ev.m_entree, 1)
+                        + ((LEAST(ev.d_entree, EXTRACT(DAY FROM (date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1)) + interval '1 month - 1 day'))::int) - 1)::text || ' days')::interval
+                    )::date
+                ELSE NULL
+            END AS exit_date,
+            CASE
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN 'confirmed'
+                WHEN ev.date_sortie_prevue IS NULL AND ev.retraite_annee IS NOT NULL THEN 'potential'
+                ELSE NULL
+            END AS exit_kind,
+            CASE
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN COALESCE(
+                    NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''),
+                    CASE WHEN COALESCE(ev.havedatefin, FALSE) THEN 'Fin de contrat / sortie prévue' ELSE 'Sortie prévue' END
+                )
+                WHEN ev.date_sortie_prevue IS NULL AND ev.retraite_annee IS NOT NULL THEN 'Retraite estimée'
+                ELSE NULL
+            END AS raison_sortie
+        FROM effectifs_valid ev
+    ),
+    filtered_exit AS (
+        SELECT *
+        FROM effectifs_exit ee
+        WHERE ee.exit_date IS NOT NULL
+          AND ee.exit_date >= CURRENT_DATE
+          AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
+          {kind_filter}
+    ),
+    titulaires_poste AS (
+        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires_now
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.is_temp, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND COALESCE(e.id_poste_actuel, '') <> ''
+        GROUP BY e.id_poste_actuel
+    ),
+    comp_portees AS (
+        SELECT DISTINCT fe.id_effectif, ec.id_comp
+        FROM filtered_exit fe
+        JOIN public.tbl_effectif_client_competence ec
+          ON ec.id_effectif_client = fe.id_effectif
+         AND COALESCE(ec.actif, TRUE) = TRUE
+         AND COALESCE(ec.archive, FALSE) = FALSE
+    ),
+    comp_impact AS (
+        SELECT
+            cp.id_effectif,
+            COUNT(DISTINCT fpc.id_competence)::int AS nb_competences_critiques,
+            COUNT(DISTINCT CASE WHEN fpc.id_poste <> fe.id_poste_actuel THEN fpc.id_poste END)::int AS nb_postes_indirects,
+            MAX(COALESCE(fpc.poids_criticite, 0))::int AS max_criticite
+        FROM comp_portees cp
+        JOIN filtered_exit fe ON fe.id_effectif = cp.id_effectif
+        JOIN public.tbl_fiche_poste_competence fpc
+          ON fpc.id_competence = cp.id_comp
+         AND COALESCE(fpc.masque, FALSE) = FALSE
+         AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+        JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+        JOIN public.tbl_competence c ON c.id_comp = fpc.id_competence
+        WHERE COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(c.etat, 'active') = 'active'
+        GROUP BY cp.id_effectif
+    )
+    SELECT
+        fe.id_effectif,
+        fe.prenom_effectif,
+        fe.nom_effectif,
+        TRIM(CONCAT(COALESCE(fe.prenom_effectif, ''), ' ', COALESCE(fe.nom_effectif, ''))) AS full,
+        fe.id_service,
+        COALESCE(o.nom_service, '') AS nom_service,
+        fe.id_poste_actuel,
+        COALESCE(fp.intitule_poste, '') AS intitule_poste,
+        COALESCE(fp.codif_poste, '') AS codif_poste,
+        COALESCE(fp.codif_client, '') AS codif_client,
+        fe.exit_date,
+        fe.exit_kind,
+        fe.havedatefin,
+        fe.motif_sortie,
+        fe.raison_sortie,
+        (fe.exit_date - CURRENT_DATE)::int AS days_left,
+        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
+        COALESCE(tp.nb_titulaires_now, 0)::int AS nb_titulaires_now,
+        GREATEST(COALESCE(tp.nb_titulaires_now, 0)::int - CASE WHEN COALESCE(fe.id_poste_actuel, '') <> '' THEN 1 ELSE 0 END, 0)::int AS nb_titulaires_after,
+        GREATEST(COALESCE(prh.nb_titulaires_cible, 1)::int - GREATEST(COALESCE(tp.nb_titulaires_now, 0)::int - CASE WHEN COALESCE(fe.id_poste_actuel, '') <> '' THEN 1 ELSE 0 END, 0), 0)::int AS ecart_titulaires,
+        COALESCE(ci.nb_competences_critiques, 0)::int AS nb_competences_critiques,
+        COALESCE(ci.nb_postes_indirects, 0)::int AS nb_postes_indirects,
+        COALESCE(ci.max_criticite, 0)::int AS max_criticite
+    FROM filtered_exit fe
+    LEFT JOIN public.tbl_entreprise_organigramme o ON o.id_ent = %s AND o.id_service = fe.id_service AND o.archive = FALSE
+    LEFT JOIN public.tbl_fiche_poste fp ON fp.id_poste = fe.id_poste_actuel
+    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fe.id_poste_actuel
+    LEFT JOIN titulaires_poste tp ON tp.id_poste = fe.id_poste_actuel
+    LEFT JOIN comp_impact ci ON ci.id_effectif = fe.id_effectif
+    ORDER BY
+        CASE WHEN GREATEST(COALESCE(prh.nb_titulaires_cible, 1)::int - GREATEST(COALESCE(tp.nb_titulaires_now, 0)::int - CASE WHEN COALESCE(fe.id_poste_actuel, '') <> '' THEN 1 ELSE 0 END, 0), 0)::int > 0 THEN 0 ELSE 1 END,
+        COALESCE(ci.max_criticite, 0)::int DESC,
+        COALESCE(ci.nb_postes_indirects, 0)::int DESC,
+        fe.exit_date ASC,
+        fe.nom_effectif ASC,
+        fe.prenom_effectif ASC
+    LIMIT %s
+    """
+    params: List[Any] = list(cte_params) + [id_ent, horizon]
+    if kind:
+        params.append(kind)
+    params += [id_ent, cmin, id_ent, lim]
+
+    cur.execute(sql, tuple(params))
+    rows = [dict(r) for r in (cur.fetchall() or [])]
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        exit_date = r.get("exit_date")
+        if hasattr(exit_date, "isoformat"):
+            exit_date = exit_date.isoformat()
+        item = dict(r)
+        item["exit_date"] = exit_date
+        item["event_kind"] = item.get("exit_kind") or ""
+        item["event_kind_label"] = _prevision_exit_kind_label(item.get("exit_kind") or "")
+        item["impact_label"] = _prevision_transition_impact_label(item)
+        item["priorite_label"] = _prevision_transition_priority_label(item)
+        out.append(item)
+    return out
+
+
+def _fetch_prevision_transmission_items(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    horizon_years: int,
+    criticite_min: int,
+    limit: int = 200,
+) -> List[Dict[str, Any]]:
+    """
+    Compétences à transmettre ou couvrir avant une sortie confirmée/potentielle.
+    Les lignes sont volontairement orientées action : compétence + porteur + échéance + relais possibles.
+    """
+    scope_id = (id_service or "").strip() or None
+    horizon = max(1, min(5, int(horizon_years or 1)))
+    cmin = max(CRITICITE_MIN_MIN, min(CRITICITE_MIN_MAX, int(criticite_min or 0)))
+    lim = max(1, min(2000, int(limit or 200)))
+    cte_sql, cte_params = _build_scope_cte(id_ent, scope_id)
+
+    sql = f"""
+    WITH
+    {cte_sql},
+    effectifs_valid AS (
+        SELECT
+            e.id_effectif,
+            e.prenom_effectif,
+            e.nom_effectif,
+            e.id_service,
+            e.id_poste_actuel,
+            e.date_sortie_prevue,
+            COALESCE(e.havedatefin, FALSE) AS havedatefin,
+            e.motif_sortie,
+            e.retraite_estimee::int AS retraite_annee,
+            COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+            COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.is_temp, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+    ),
+    effectifs_exit AS (
+        SELECT
+            ev.*,
+            CASE
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                WHEN ev.date_sortie_prevue IS NULL AND ev.retraite_annee IS NOT NULL THEN
+                    (
+                        make_date(ev.retraite_annee, ev.m_entree, 1)
+                        + ((LEAST(ev.d_entree, EXTRACT(DAY FROM (date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1)) + interval '1 month - 1 day'))::int) - 1)::text || ' days')::interval
+                    )::date
+                ELSE NULL
+            END AS exit_date,
+            CASE
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN 'confirmed'
+                WHEN ev.date_sortie_prevue IS NULL AND ev.retraite_annee IS NOT NULL THEN 'potential'
+                ELSE NULL
+            END AS exit_kind,
+            CASE
+                WHEN ev.date_sortie_prevue IS NOT NULL THEN COALESCE(
+                    NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''),
+                    CASE WHEN COALESCE(ev.havedatefin, FALSE) THEN 'Fin de contrat / sortie prévue' ELSE 'Sortie prévue' END
+                )
+                WHEN ev.date_sortie_prevue IS NULL AND ev.retraite_annee IS NOT NULL THEN 'Retraite estimée'
+                ELSE NULL
+            END AS raison_sortie
+        FROM effectifs_valid ev
+    ),
+    leaving AS (
+        SELECT *
+        FROM effectifs_exit ee
+        WHERE ee.exit_date IS NOT NULL
+          AND ee.exit_date >= CURRENT_DATE
+          AND ee.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
+    ),
+    leaving_comp AS (
+        SELECT
+            l.*,
+            ec.id_comp,
+            ec.niveau_actuel
+        FROM leaving l
+        JOIN public.tbl_effectif_client_competence ec
+          ON ec.id_effectif_client = l.id_effectif
+         AND COALESCE(ec.actif, TRUE) = TRUE
+         AND COALESCE(ec.archive, FALSE) = FALSE
+    ),
+    impacted_req AS (
+        SELECT
+            lc.id_effectif,
+            lc.id_comp,
+            COUNT(DISTINCT fpc.id_poste)::int AS nb_postes_impactes,
+            MAX(COALESCE(fpc.poids_criticite, 0))::int AS max_criticite,
+            MAX(CASE COALESCE(fpc.niveau_requis, '') WHEN 'D' THEN 4 WHEN 'C' THEN 3 WHEN 'B' THEN 2 WHEN 'A' THEN 1 ELSE 0 END)::int AS niveau_requis_rank
+        FROM leaving_comp lc
+        JOIN public.tbl_fiche_poste_competence fpc
+          ON fpc.id_competence = lc.id_comp
+         AND COALESCE(fpc.masque, FALSE) = FALSE
+         AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+        JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+        JOIN public.tbl_competence c ON c.id_comp = fpc.id_competence
+        WHERE COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(c.etat, 'active') = 'active'
+        GROUP BY lc.id_effectif, lc.id_comp
+    ),
+    receveurs AS (
+        SELECT
+            ec.id_comp,
+            COUNT(DISTINCT e.id_effectif)::int AS receveurs_potentiels_count,
+            STRING_AGG(DISTINCT TRIM(CONCAT(COALESCE(e.prenom_effectif, ''), ' ', COALESCE(e.nom_effectif, ''))), ', ') AS receveurs_potentiels_label
+        FROM public.tbl_effectif_client_competence ec
+        JOIN public.tbl_effectif_client e ON e.id_effectif = ec.id_effectif_client
+        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.is_temp, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND COALESCE(ec.actif, TRUE) = TRUE
+          AND COALESCE(ec.archive, FALSE) = FALSE
+          AND NOT EXISTS (SELECT 1 FROM leaving l WHERE l.id_effectif = e.id_effectif)
+        GROUP BY ec.id_comp
+    )
+    SELECT
+        lc.id_effectif,
+        lc.prenom_effectif,
+        lc.nom_effectif,
+        TRIM(CONCAT(COALESCE(lc.prenom_effectif, ''), ' ', COALESCE(lc.nom_effectif, ''))) AS full,
+        lc.id_service,
+        COALESCE(o.nom_service, '') AS nom_service,
+        lc.id_poste_actuel,
+        COALESCE(fp.intitule_poste, '') AS intitule_poste,
+        COALESCE(fp.codif_poste, '') AS codif_poste,
+        COALESCE(fp.codif_client, '') AS codif_client,
+        lc.exit_date,
+        lc.exit_kind,
+        lc.raison_sortie,
+        lc.id_comp,
+        COALESCE(c.code, '') AS code,
+        COALESCE(c.intitule, '') AS intitule,
+        COALESCE(c.domaine, '') AS domaine,
+        COALESCE(lc.niveau_actuel, '') AS niveau_actuel,
+        CASE COALESCE(ir.niveau_requis_rank, 0) WHEN 4 THEN 'D' WHEN 3 THEN 'C' WHEN 2 THEN 'B' WHEN 1 THEN 'A' ELSE '' END AS niveau_a_transmettre,
+        COALESCE(ir.nb_postes_impactes, 0)::int AS nb_postes_impactes,
+        COALESCE(ir.max_criticite, 0)::int AS max_criticite,
+        COALESCE(r.receveurs_potentiels_count, 0)::int AS receveurs_potentiels_count,
+        COALESCE(r.receveurs_potentiels_label, '') AS receveurs_potentiels_label
+    FROM leaving_comp lc
+    JOIN impacted_req ir ON ir.id_effectif = lc.id_effectif AND ir.id_comp = lc.id_comp
+    JOIN public.tbl_competence c ON c.id_comp = lc.id_comp
+    LEFT JOIN public.tbl_entreprise_organigramme o ON o.id_ent = %s AND o.id_service = lc.id_service AND o.archive = FALSE
+    LEFT JOIN public.tbl_fiche_poste fp ON fp.id_poste = lc.id_poste_actuel
+    LEFT JOIN receveurs r ON r.id_comp = lc.id_comp
+    ORDER BY ir.max_criticite DESC, ir.nb_postes_impactes DESC, lc.exit_date ASC, c.code ASC
+    LIMIT %s
+    """
+    params = list(cte_params) + [id_ent, horizon, cmin, id_ent, id_ent, lim]
+    cur.execute(sql, tuple(params))
+    rows = [dict(r) for r in (cur.fetchall() or [])]
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        exit_date = r.get("exit_date")
+        if hasattr(exit_date, "isoformat"):
+            exit_date = exit_date.isoformat()
+        item = dict(r)
+        item["exit_date"] = exit_date
+        current_rank = _niveau_rank(item.get("niveau_actuel"))
+        target_rank = _niveau_rank(item.get("niveau_a_transmettre"))
+        item["titulaire_transmet_label"] = "Oui" if current_rank >= target_rank and target_rank > 0 else "À confirmer"
+        if _safe_int(item.get("max_criticite"), 0) >= 75 or _safe_int(item.get("receveurs_potentiels_count"), 0) <= 0:
+            item["priorite_label"] = "Critique"
+        elif _safe_int(item.get("max_criticite"), 0) >= 50:
+            item["priorite_label"] = "Élevée"
+        else:
+            item["priorite_label"] = "Modérée"
+        item["impact_label"] = f"{_safe_int(item.get('nb_postes_impactes'), 0)} poste(s)"
+        item["event_kind_label"] = _prevision_exit_kind_label(item.get("exit_kind") or "")
+        out.append(item)
+    return out
+
+
+def _fetch_prevision_transition_counts(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+    horizon_max: int = 5,
+) -> Dict[int, Dict[str, int]]:
+    """Compteurs de la tuile Prévisions, calculés depuis le moteur transition central."""
+    out: Dict[int, Dict[str, int]] = {}
+    max_h = max(1, min(5, int(horizon_max or 5)))
+    for h in range(1, max_h + 1):
+        confirmed = _fetch_prevision_transition_events(cur, id_ent, id_service, h, criticite_min, "confirmed", 2000)
+        potential = _fetch_prevision_transition_events(cur, id_ent, id_service, h, criticite_min, "potential", 2000)
+        transmissions = _fetch_prevision_transmission_items(cur, id_ent, id_service, h, criticite_min, 2000)
+        out[h] = {
+            "sorties_confirmees": len(confirmed),
+            "sorties_potentielles": len(potential),
+            "transmissions_a_preparer": len(transmissions),
+        }
+    return out
+

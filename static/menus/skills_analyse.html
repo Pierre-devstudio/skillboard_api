@@ -132,31 +132,38 @@
       <!-- Tuile Prévisions -->
       <div class="card analyse-tile sb-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir Prévisions">
         <div class="analyse-card-head">
-          <div class="card-title" style="margin-bottom:2px;">Prévisions</div>
+          <div class="card-title" id="prevTileTitle" style="margin-bottom:2px;">Prévisions à N+1</div>
           <button type="button" class="analyse-help-dot" data-analyse-help="previsions" aria-label="Comprendre la carte Prévisions">?</button>
         </div>
-        <div class="tile-sub sb-tile-sub">Anticiper les fragilités liées aux sorties et à la perte de couverture.</div>
+        <div class="tile-sub sb-tile-sub">Anticiper les départs, mesurer leurs impacts et préparer les transmissions.</div>
+
+        <div class="sb-prev-horizon-control" style="margin:10px 0 12px 0;" data-prev-slider-host>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:#6b7280;">
+            <span>Horizon de prévision</span>
+            <strong id="prevHorizonLabel">N+1</strong>
+          </div>
+          <input type="range" id="prevHorizonSlider" min="1" max="5" step="1" value="1"
+                 aria-label="Période de prévision N plus X" style="width:100%; margin-top:6px;">
+        </div>
 
         <div class="mini-kpis sb-mini-kpis">
-          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="sorties" role="button" tabindex="0" aria-label="Afficher sorties">
-            <div class="label">Sorties <span id="prevHorizonLabel">N+1</span></div>
-            <div class="value" id="kpiPrevSorties12">—</div>
-            <input type="range" id="prevHorizonSlider" min="1" max="5" step="1" value="1"
-                   aria-label="Période de prévision N plus X" style="width:100%; margin-top:8px;">
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="sorties-confirmees" role="button" tabindex="0" aria-label="Afficher les sorties confirmées">
+            <div class="label">Sorties confirmées</div>
+            <div class="value" id="kpiPrevSortiesConfirmees">—</div>
           </div>
 
-          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="critiques" role="button" tabindex="0" aria-label="Afficher l’évolution de fragilité des compétences">
-            <div class="label">Évolution fragilité compétences</div>
-            <div class="value" id="kpiPrevCompImpact">—</div>
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="sorties-potentielles" role="button" tabindex="0" aria-label="Afficher les sorties potentielles">
+            <div class="label">Sorties potentielles</div>
+            <div class="value" id="kpiPrevSortiesPotentielles">—</div>
           </div>
 
-          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="postes-rouges" role="button" tabindex="0" aria-label="Afficher l’évolution de fragilité des postes">
-            <div class="label">Évolution fragilité postes</div>
-            <div class="value" id="kpiPrevPostesRed">—</div>
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="transmissions" role="button" tabindex="0" aria-label="Afficher les transmissions à préparer">
+            <div class="label">Transmissions à préparer</div>
+            <div class="value" id="kpiPrevTransmissions">—</div>
           </div>
         </div>
 
-        <div class="tile-hint sb-tile-hint">Anticipation : points à sécuriser selon l’horizon choisi.</div>
+        <div class="tile-hint sb-tile-hint">Prévisions : identifier les transitions à préparer, puis tester les scénarios RH.</div>
       </div>
 
     </div>
