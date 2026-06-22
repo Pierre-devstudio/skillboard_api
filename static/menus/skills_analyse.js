@@ -5138,7 +5138,10 @@ function renderDetail(mode) {
       : (selectedKpi === "transmissions" ? "Transmissions à préparer" : "Sorties confirmées");
 
     body.innerHTML = `
-      <div id="prevTransitionDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
+      <div class="card" style="padding:12px; margin:0;">
+        <div class="card-title" style="margin-bottom:10px;">${escapeHtml(detailTitle)} à ${escapeHtml(horizonLabel)}</div>
+        <div id="prevTransitionDetailBox" class="card-sub" style="margin-top:0;">Chargement…</div>
+      </div>
     `;
 
     window.__sbPrevTransitionReqId = (window.__sbPrevTransitionReqId || 0) + 1;
