@@ -5147,7 +5147,7 @@ function renderDetail(mode) {
     body.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-title" style="margin-bottom:10px;">${escapeHtml(detailTitle)} à ${escapeHtml(horizonLabel)}</div>
-        <div id="prevTransitionDetailBox" class="card-sub" style="margin-top:0;">Chargement…</div>
+        <div id="prevTransitionDetailBox" style="margin-top:0;">Chargement…</div>
       </div>
     `;
 
@@ -5784,8 +5784,9 @@ function renderDetail(mode) {
               <th>Collaborateur</th>
               <th>Poste</th>
               <th style="width:120px;">${isPotential ? "Horizon" : "Date"}</th>
-              <th style="width:190px;">Impact</th>
-              <th class="col-center" style="width:110px;">Priorité</th>
+              ${isPotential
+                ? `<th style="width:170px;">Signal</th><th class="col-center" style="width:110px;">Vigilance</th>`
+                : `<th style="width:190px;">Motif de départ</th>`}
               <th class="col-center" style="width:82px;">Actions</th>
             </tr>
           </thead>
@@ -5793,12 +5794,16 @@ function renderDetail(mode) {
             const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "—";
             const code = (r.codif_client || r.codif_poste || "").toString().trim();
             const poste = (r.intitule_poste || "—").toString();
+            const motif = (r.raison_sortie || r.event_kind_label || "Sortie prévue").toString();
+            const signal = (r.signal_label || r.event_kind_label || r.raison_sortie || "Alerte").toString();
+            const vigilance = (r.vigilance_label || r.priorite_label || "—").toString();
             return `<tr class="prev-transition-row" data-index="${idx}">
               <td><strong>${escapeHtml(full)}</strong></td>
               <td>${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(poste)}</td>
-              <td>${analysePrevisionDate(r.exit_date)}</td>
-              <td>${escapeHtml(r.impact_label || "—")}</td>
-              <td class="col-center">${analysePriorityBadge(r.priorite_label || "—")}</td>
+              <td>${isPotential ? escapeHtml(r.horizon_label || analysePrevisionDate(r.exit_date)) : analysePrevisionDate(r.exit_date)}</td>
+              ${isPotential
+                ? `<td>${escapeHtml(signal)}</td><td class="col-center">${analysePriorityBadge(vigilance)}</td>`
+                : `<td>${escapeHtml(motif)}</td>`}
               <td class="col-center"><button type="button" class="sb-icon-btn prev-transition-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
             </tr>`;
           }).join("")}</tbody>
@@ -5806,7 +5811,6 @@ function renderDetail(mode) {
       </div>
     `;
   }
-
   function renderPrevisionTableTransmissionItems(rows) {
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;

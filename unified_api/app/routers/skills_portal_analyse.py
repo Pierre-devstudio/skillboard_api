@@ -1763,9 +1763,22 @@ def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dic
     rows: List[List[Any]] = []
     widths: List[Any] = []
 
-    if k in ("sorties-confirmees", "sorties-potentielles"):
-        date_header = "Date" if k == "sorties-confirmees" else "Horizon"
-        rows.append([p("Collaborateur", head_style), p("Poste", head_style), p(date_header, head_style), p("Impact", head_style), p("Priorité", head_style)])
+    if k == "sorties-confirmees":
+        rows.append([p("Collaborateur", head_style), p("Poste", head_style), p("Date", head_style), p("Motif de départ", head_style)])
+        widths = [64 * mm, 86 * mm, 30 * mm, 64 * mm]
+        for item in (items or []):
+            r = as_dict(item)
+            poste_code = (r.get("codif_client") or r.get("codif_poste") or "").strip()
+            poste = (r.get("intitule_poste") or "—").strip()
+            poste_label = f"{poste_code} - {poste}" if poste_code else poste
+            rows.append([
+                p(r.get("full") or "—"),
+                p(poste_label),
+                p(_analyse_date_fr_value(r.get("exit_date"))),
+                p(r.get("raison_sortie") or r.get("event_kind_label") or "Sortie prévue"),
+            ])
+    elif k == "sorties-potentielles":
+        rows.append([p("Collaborateur", head_style), p("Poste", head_style), p("Horizon", head_style), p("Signal", head_style), p("Vigilance", head_style)])
         widths = [56 * mm, 78 * mm, 30 * mm, 48 * mm, 32 * mm]
         for item in (items or []):
             r = as_dict(item)
@@ -1775,9 +1788,9 @@ def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dic
             rows.append([
                 p(r.get("full") or "—"),
                 p(poste_label),
-                p(_analyse_date_fr_value(r.get("exit_date")) if k == "sorties-confirmees" else (r.get("horizon_label") or _analyse_date_fr_value(r.get("exit_date")))),
-                p(r.get("impact_label") or "—"),
-                p(r.get("priorite_label") or r.get("vigilance_label") or "—"),
+                p(r.get("horizon_label") or _analyse_date_fr_value(r.get("exit_date"))),
+                p(r.get("signal_label") or r.get("event_kind_label") or r.get("raison_sortie") or "Alerte"),
+                p(r.get("vigilance_label") or r.get("priorite_label") or "—"),
             ])
     elif k == "transmissions":
         rows.append([p("Compétence", head_style), p("Porteur", head_style), p("Échéance", head_style), p("Impact", head_style), p("Priorité", head_style)])
