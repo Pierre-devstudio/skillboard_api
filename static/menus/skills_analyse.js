@@ -650,6 +650,27 @@
   }
 
 
+  function buildAnalyseCompetenceFichePdfUrl(compKey) {
+    const ctx = getPortalContext(_portalref);
+    const key = String(compKey || "").trim();
+    if (!ctx.id_contact || !ctx.apiBase || !key) return "";
+
+    const qs = new URLSearchParams();
+    qs.set("_", String(Date.now()));
+    return `${ctx.apiBase}/skills/analyse/competences/fiche_pdf/${encodeURIComponent(ctx.id_contact)}/${encodeURIComponent(key)}?${qs.toString()}`;
+  }
+
+  function openAnalyseCompetenceFichePdf(compKey) {
+    const url = buildAnalyseCompetenceFichePdfUrl(compKey);
+    if (!url) {
+      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver la fiche compétence à exporter.</p>");
+      return;
+    }
+    openAnalysePdfBlob(url, "PDF fiche compétence bloqué");
+  }
+
+
+
 
   /* NOVOSKILL_POSTE_DEP_COMP_PDF_HANDLER_START */
   document.addEventListener("click", function (ev) {
@@ -658,7 +679,7 @@
     ev.preventDefault();
     ev.stopPropagation();
     const compKey = (btn.getAttribute("data-poste-dep-comp-pdf") || "").trim();
-    if (compKey) openAnalyseCompetenceAnalysisPdf(compKey);
+    if (compKey) openAnalyseCompetenceFichePdf(compKey);
   }, true);
   /* NOVOSKILL_POSTE_DEP_COMP_PDF_HANDLER_END */
 
@@ -7420,13 +7441,25 @@ function bindOnce(portal) {
 
 
     // ------------------------------
-    // PDF compétence fragile
+    // PDF fiche compétence depuis le détail poste
     // ------------------------------
-    const btnCompPdf = ev.target.closest("[data-risk-comp-pdf], [data-poste-dep-comp-pdf]");
+    const btnPosteDepCompPdf = ev.target.closest("[data-poste-dep-comp-pdf]");
+    if (btnPosteDepCompPdf) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const compKey = (btnPosteDepCompPdf.getAttribute("data-poste-dep-comp-pdf") || "").trim();
+      if (compKey) openAnalyseCompetenceFichePdf(compKey);
+      return;
+    }
+
+    // ------------------------------
+    // PDF analyse compétence fragile
+    // ------------------------------
+    const btnCompPdf = ev.target.closest("[data-risk-comp-pdf]");
     if (btnCompPdf) {
       ev.preventDefault();
       ev.stopPropagation();
-      const compKey = (btnCompPdf.getAttribute("data-risk-comp-pdf") || btnCompPdf.getAttribute("data-poste-dep-comp-pdf") || "").trim();
+      const compKey = (btnCompPdf.getAttribute("data-risk-comp-pdf") || "").trim();
       if (compKey) openAnalyseCompetenceAnalysisPdf(compKey);
       return;
     }

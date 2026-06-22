@@ -4783,6 +4783,146 @@ def _analyse_comp_pdf_porteurs_table(detail: Dict[str, Any], styles: Dict[str, A
     ]))
     return table
 
+
+@router.get("/skills/analyse/competences/fiche_pdf/{id_contact}/{id_comp}")
+def get_analyse_competence_fiche_pdf(
+    id_contact: str,
+    id_comp: str,
+    request: Request,
+):
+    """
+    PDF fiche compétence depuis Insights / Analyse.
+    Le rendu est strictement celui du builder commun, pas un PDF d'analyse de fragilité.
+    """
+    try:
+        from fastapi import Response
+        from app.routers.skills_portal_pdf_common import build_pdf_document, build_competence_pdf_story
+
+        comp_id = (id_comp or "").strip()
+        if not comp_id:
+            raise HTTPException(status_code=400, detail="Compétence introuvable.")
+
+        def _safe_pdf_part(value: Any, max_len: int = 80) -> str:
+            raw = str(value or "").strip() or "competence"
+            raw = re.sub(r"[^A-Za-z0-9À-ÖØ-öø-ÿ _.-]+", "_", raw)
+            raw = re.sub(r"\s+", " ", raw).strip(" ._-")
+            return (raw[:max_len].strip(" ._-") or "competence")
+
+        def _latin1_safe(value: Any) -> str:
+            return str(value or "").encode("latin-1", "replace").decode("latin-1")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                header_right = _analyse_pdf_company_name(cur, id_ent)
+                logo_bytes = _analyse_pdf_logo_bytes_for_ent(cur, id_ent)
+
+                cur.execute(
+                    """
+                    WITH visible AS (
+                        SELECT fpc.id_competence AS id_comp
+                        FROM public.tbl_fiche_poste_competence fpc
+                        JOIN public.tbl_fiche_poste fp
+                          ON fp.id_poste = fpc.id_poste
+                        WHERE fp.id_ent = %s
+                          AND COALESCE(fp.actif, TRUE) = TRUE
+                          AND COALESCE(fpc.masque, FALSE) = FALSE
+
+                        UNION
+
+                        SELECT ecc.id_comp AS id_comp
+                        FROM public.tbl_effectif_client_competence ecc
+                        JOIN public.tbl_effectif_client ec
+                          ON ec.id_effectif = ecc.id_effectif_client
+                        WHERE ec.id_ent = %s
+                          AND COALESCE(ec.archive, FALSE) = FALSE
+                          AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                          AND COALESCE(ecc.actif, TRUE) = TRUE
+                          AND COALESCE(ecc.archive, FALSE) = FALSE
+
+                        UNION
+
+                        SELECT c_owner.id_comp AS id_comp
+                        FROM public.tbl_competence c_owner
+                        WHERE c_owner.id_owner = %s
+                    )
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.description,
+                        c.domaine,
+                        c.niveaua,
+                        c.niveaub,
+                        c.niveauc,
+                        c.niveaud,
+                        c.grille_evaluation,
+                        dc.titre_court AS domaine_titre_court,
+                        dc.titre AS domaine_titre
+                    FROM public.tbl_competence c
+                    JOIN visible v ON v.id_comp = c.id_comp
+                    LEFT JOIN public.tbl_domaine_competence dc
+                      ON dc.id_domaine_competence = c.domaine
+                     AND COALESCE(dc.masque, FALSE) = FALSE
+                    WHERE c.id_comp = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                    LIMIT 1
+                    """,
+                    (id_ent, id_ent, id_ent, comp_id),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(status_code=404, detail="Compétence introuvable dans le référentiel accessible.")
+
+        skill = {
+            "id_comp": row.get("id_comp"),
+            "code": (row.get("code") or "").strip(),
+            "intitule": (row.get("intitule") or "").strip(),
+            "description": row.get("description") or "",
+            "niveaua": row.get("niveaua") or "",
+            "niveaub": row.get("niveaub") or "",
+            "niveauc": row.get("niveauc") or "",
+            "niveaud": row.get("niveaud") or "",
+            "grille_evaluation": row.get("grille_evaluation"),
+            "domaine": row.get("domaine") or "",
+            "domaine_titre": (
+                (row.get("domaine_titre_court") or "").strip()
+                or (row.get("domaine_titre") or "").strip()
+            ),
+        }
+
+        code_label = skill.get("code") or "Compétence"
+        intitule_label = skill.get("intitule") or "Compétence"
+        filename = _latin1_safe(f"Fiche compétence {_safe_pdf_part(code_label, 32)} - {_safe_pdf_part(intitule_label, 80)}.pdf")
+
+        pdf_bytes = build_pdf_document(
+            build_competence_pdf_story(skill),
+            meta={
+                "title": _latin1_safe(f"Fiche compétence - {code_label} - {intitule_label}"),
+                "doc_label": _latin1_safe("Fiche compétence"),
+                "footer_left": _latin1_safe("Novoskill Insights • Fiche compétence"),
+                "header_right": _latin1_safe(header_right),
+                "logo_bytes": logo_bytes,
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur génération fiche compétence : {e}")
+
 @router.get("/skills/analyse/risques/competence/pdf/{id_contact}")
 def get_analyse_risques_competence_pdf(
     id_contact: str,
