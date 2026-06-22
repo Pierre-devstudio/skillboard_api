@@ -7863,14 +7863,14 @@ function bindOnce(portal) {
       const paneVois = byId("analysePrevPosteRedTabVoisins");
 
       if (title) title.textContent = seedData.intitule_poste || "Détail poste";
-      if (sub) sub.textContent = `Projection RH à horizon ${horizonTxt}`;
+      if (sub) sub.textContent = `Impact prévisionnel à horizon ${horizonTxt}`;
       _badge(bSvc, `Service : ${seedData.nom_service || scopeLab || "—"}`);
       _badge(bHor, `Horizon : ${horizonTxt}`);
       _badge(bNext, `Prochaine bascule : ${seedData.next_exit_date ? fmtDateFR(seedData.next_exit_date) : "—"}`);
       if (kFutureFrag) kFutureFrag.textContent = "—";
       if (kFutureSans) kFutureSans.textContent = "—";
       if (kFutureUniq) kFutureUniq.textContent = "—";
-      if (decision) decision.textContent = "Chargement du diagnostic RH…";
+      if (decision) decision.textContent = "Chargement du diagnostic prévisionnel…";
       if (paneSyn) paneSyn.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
       if (paneCauses) paneCauses.innerHTML = "";
       if (paneOut) paneOut.innerHTML = "";
@@ -7894,24 +7894,27 @@ function bindOnce(portal) {
         const intit = (poste.intitule_poste || seedData.intitule_poste || "—").toString().trim();
         const svc = (poste.nom_service || seedData.nom_service || scopeLab || "—").toString().trim();
         const code = (poste.codif_client || poste.codif_poste || "").toString().trim();
-        const fFrag = _num(kpis.future_fragiles ?? data?.future_fragiles ?? 0);
-        const fSans = _num(kpis.future_sans_porteur ?? data?.future_sans_porteur ?? 0);
-        const fUniq = _num(kpis.future_porteur_unique ?? data?.future_porteur_unique ?? 0);
-        const next = (kpis.next_exit_date || data?.next_exit_date || "").toString().trim();
+        const fFrag = _num(kpis.future_fragiles ?? data?.future_fragiles ?? seedData.future_fragiles ?? 0);
+        const fSans = _num(kpis.future_sans_porteur ?? data?.future_sans_porteur ?? seedData.future_sans_porteur ?? 0);
+        const fUniq = _num(kpis.future_porteur_unique ?? data?.future_porteur_unique ?? seedData.future_porteur_unique ?? 0);
+        const next = (kpis.next_exit_date || data?.next_exit_date || seedData.next_exit_date || "").toString().trim();
         const nowTit = _num(kpis.nb_titulaires_now);
         const hTit = _num(kpis.nb_titulaires_horizon);
         const cible = _num(kpis.nb_titulaires_cible || poste.nb_titulaires_cible || 1);
         const covNow = _num(kpis.couverture_now);
         const covFuture = _num(kpis.couverture_future);
+        const firstSortant = sortants.find(r => (r.exit_date || "").toString().trim()) || sortants[0] || null;
 
         if (title) title.innerHTML = `${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(intit)}`;
-        if (sub) sub.textContent = `Impact prévisionnel du poste à horizon ${horizonTxt}`;
+        if (sub) sub.textContent = `Risque prévisionnel du poste à horizon ${horizonTxt}`;
         _badge(bSvc, `Service : ${svc}`);
         _badge(bNext, `Prochaine bascule : ${next ? fmtDateFR(next) : "—"}`);
-        if (kFutureFrag) kFutureFrag.textContent = String(fFrag);
-        if (kFutureSans) kFutureSans.textContent = String(fSans);
-        if (kFutureUniq) kFutureUniq.textContent = String(fUniq);
-        if (decision) decision.textContent = _decisionText(fFrag, fSans, fUniq);
+
+        // Les 3 KPI du bandeau haut sont volontairement réordonnés pour une lecture RH : rupture, dépendance, total.
+        if (kFutureFrag) kFutureFrag.textContent = String(fSans);
+        if (kFutureSans) kFutureSans.textContent = String(fUniq);
+        if (kFutureUniq) kFutureUniq.textContent = String(fFrag);
+
         window.__sbPrevPosteRedHypothesis = {
           type: "securiser_poste_prevision",
           title: `Anticiper le poste ${code ? code + " · " : ""}${intit}`,
@@ -7924,50 +7927,115 @@ function bindOnce(portal) {
           criticite: null
         };
 
-        function readingText() {
-          if (fSans > 0) return "Ce poste présente un risque de rupture : une ou plusieurs compétences critiques ne seraient plus couvertes à la période sélectionnée.";
-          if (fUniq > 0) return "Ce poste resterait couvert, mais avec une dépendance forte à une seule personne sur certaines compétences critiques.";
-          if (fFrag > 0 || hTit < nowTit || covFuture < covNow) return "Ce poste se fragilise à horizon : la couverture baisse ou la capacité de relève doit être confirmée.";
-          return "Aucun point de rupture majeur n’est détecté, mais la projection doit être surveillée.";
+        function riskLevelText() {
+          if (fSans > 0) return "risque de rupture de couverture";
+          if (fUniq > 0) return "risque de dépendance à un porteur unique";
+          if (fFrag > 0) return "fragilité prévisionnelle à surveiller";
+          return "point de vigilance prévisionnel";
+        }
+
+        function mainDecisionText() {
+          const datePart = next ? `À partir du ${fmtDateFR(next)}, ` : "À l’horizon sélectionné, ";
+          if (fSans > 0) return `${datePart}ce poste présente un risque de rupture : ${fSans} compétence${fSans > 1 ? "s" : ""} critique${fSans > 1 ? "s" : ""} sans porteur projeté.`;
+          if (fUniq > 0) return `${datePart}ce poste reste couvert, mais dépend d’un porteur unique sur ${fUniq} compétence${fUniq > 1 ? "s" : ""} critique${fUniq > 1 ? "s" : ""}.`;
+          if (fFrag > 0) return `${datePart}ce poste présente ${fFrag} compétence${fFrag > 1 ? "s" : ""} critique${fFrag > 1 ? "s" : ""} à sécuriser.`;
+          return `${datePart}aucune rupture majeure n’est détectée, mais la couverture doit rester suivie.`;
+        }
+
+        function causeBasculeText() {
+          if (firstSortant) {
+            const full = (firstSortant.full || `${(firstSortant.prenom_effectif || "").trim()} ${(firstSortant.nom_effectif || "").trim()}`.trim() || "un porteur").toString().trim();
+            const exit = (firstSortant.exit_date || next || "").toString().trim();
+            const reason = (firstSortant.raison_sortie || "Sortie prévue").toString().trim();
+            return `${reason} de ${full}${exit ? ` le ${fmtDateFR(exit)}` : ""}. Cette sortie réduit la robustesse du poste et fragilise les compétences critiques couvertes par ce porteur.`;
+          }
+          if (hTit < nowTit) return `Le nombre de titulaires passe de ${nowTit} à ${hTit}. La couverture du poste devient plus concentrée et moins robuste.`;
+          if (covFuture < covNow) return `La couverture critique baisse de ${Math.round(covNow)} % à ${Math.round(covFuture)} %. Certaines compétences doivent être sécurisées avant l’échéance.`;
+          return "La projection fait apparaître une concentration de couverture ou une absence de relais sur des compétences critiques du poste.";
+        }
+
+        function couvertureText() {
+          if (covFuture === covNow && (fSans > 0 || fUniq > 0)) {
+            return "Couverture globale stable, mais robustesse insuffisante : le risque vient surtout de l’absence de relais ou de la concentration sur un porteur.";
+          }
+          if (covFuture < covNow) return `Couverture critique en baisse : ${Math.round(covNow)} % → ${Math.round(covFuture)} %.`;
+          if (covFuture > covNow) return `Couverture critique en hausse : ${Math.round(covNow)} % → ${Math.round(covFuture)} %, mais certains points restent à confirmer.`;
+          return `Couverture critique : ${Math.round(covNow)} % → ${Math.round(covFuture)} %.`;
+        }
+
+        function impactLabel(now, rem) {
+          if (rem <= 0) return "Rupture";
+          if (rem === 1) return "Porteur unique";
+          if (rem < now) return "Couverture réduite";
+          return "À confirmer";
+        }
+
+        function impactClass(now, rem) {
+          if (rem <= 0) return "sb-prev-impact-badge--critical";
+          if (rem === 1) return "sb-prev-impact-badge--warning";
+          return "";
         }
 
         function actionList() {
           const arr = [];
-          if (fSans > 0) arr.push("Créer une hypothèse de sécurisation immédiate à tester.");
-          if (fUniq > 0) arr.push("Organiser un binôme et une transmission formalisée sur les compétences à porteur unique.");
-          if (sortants.length) arr.push("Planifier les actions avant la prochaine sortie prévue.");
+          if (fSans > 0) arr.push(`Sécuriser les ${fSans} compétence${fSans > 1 ? "s" : ""} sans porteur avant ${next ? fmtDateFR(next) : "l’échéance projetée"}.`);
+          if (fUniq > 0) arr.push(`Réduire la dépendance sur les ${fUniq} compétence${fUniq > 1 ? "s" : ""} à porteur unique.`);
+          if (sortants.length) arr.push("Formaliser la transmission avec les porteurs sortants avant la bascule.");
+          if (causes.length) arr.push("Prioriser les compétences ci-dessous avant de créer l’hypothèse de sécurisation.");
           if (!arr.length) arr.push("Contrôler la couverture et confirmer les relais internes disponibles.");
           return arr.map(x => `<div>${escapeHtml(x)}</div>`).join("");
         }
 
+        if (decision) decision.textContent = mainDecisionText();
+
         if (paneSyn) {
-          const top = causes.slice(0, 5).map(c => {
+          const top = causes.slice(0, 8).map(c => {
             const compKey = (c.id_comp || c.id_competence || c.code || "").toString().trim();
             const codeC = (c.code || "—").toString().trim();
             const label = (c.intitule || c.intitule_competence || "—").toString().trim();
             const now = _num(c.nb_now ?? c.porteurs_now);
             const rem = _num(c.nb_remain ?? c.porteurs_remain);
             const crit = _num(c.criticite ?? c.poids_criticite);
-            return `<div class="sb-prev-impact-line prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}"><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span><div class="sb-prev-impact-main"><strong>${escapeHtml(label)}</strong><span>Criticité ${escapeHtml(String(crit || "—"))} · couverture ${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</span></div></div>`;
+            const impact = impactLabel(now, rem);
+            return `<div class="sb-prev-impact-line prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}"><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span><div class="sb-prev-impact-main"><strong>${escapeHtml(label)}</strong><span>Criticité ${escapeHtml(String(crit || "—"))} · couverture projetée ${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</span></div><span class="sb-prev-impact-badge ${impactClass(now, rem)}">${escapeHtml(impact)}</span></div>`;
           }).join("");
 
           paneSyn.innerHTML = `
-            <div class="sb-prev-rh-summary"><div class="sb-prev-rh-title">Lecture RH</div><div class="sb-prev-rh-text">${escapeHtml(readingText())}</div></div>
-            <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
-              <div class="sb-prev-kpi"><span>Titulaires poste</span><strong>${escapeHtml(String(nowTit))} → ${escapeHtml(String(hTit))}</strong></div>
-              <div class="sb-prev-kpi"><span>Cible RH</span><strong>${escapeHtml(String(cible || "—"))}</strong></div>
-              <div class="sb-prev-kpi"><span>Couverture critique</span><strong>${escapeHtml(String(Math.round(covNow)))}% → ${escapeHtml(String(Math.round(covFuture)))}%</strong></div>
-              <div class="sb-prev-kpi"><span>Compétences fragilisées</span><strong>${escapeHtml(String(fFrag))}</strong></div>
+            <div class="sb-prev-rh-summary sb-prev-rh-summary--decision">
+              <div class="sb-prev-rh-title">Lecture RH</div>
+              <div class="sb-prev-rh-text"><strong>${escapeHtml(mainDecisionText())}</strong></div>
+              <div class="sb-prev-rh-note">${escapeHtml(couvertureText())}</div>
             </div>
-            <div class="sb-prev-actions-card"><div class="sb-prev-modal-title">Points à sécuriser</div><div class="sb-prev-action-list">${actionList()}</div></div>
-            <div class="sb-prev-actions-card"><div class="sb-prev-modal-title">Compétences à sécuriser en priorité</div>${top || `<div class="sb-prev-empty">Aucune compétence prioritaire retournée.</div>`}</div>
+
+            <div class="sb-prev-section-title">Ce qui change</div>
+            <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
+              <div class="sb-prev-kpi"><span>Titulaires du poste</span><strong>${escapeHtml(String(nowTit))} → ${escapeHtml(String(hTit))}</strong></div>
+              <div class="sb-prev-kpi"><span>Sans porteur projeté</span><strong>${escapeHtml(String(fSans))}</strong></div>
+              <div class="sb-prev-kpi"><span>Porteur unique projeté</span><strong>${escapeHtml(String(fUniq))}</strong></div>
+              <div class="sb-prev-kpi"><span>Total impacté</span><strong>${escapeHtml(String(fFrag))}</strong></div>
+            </div>
+
+            <div class="sb-prev-actions-card">
+              <div class="sb-prev-modal-title">Cause de la bascule</div>
+              <div class="sb-prev-reading"><strong>${escapeHtml(riskLevelText())}</strong><br>${escapeHtml(causeBasculeText())}</div>
+            </div>
+
+            <div class="sb-prev-actions-card">
+              <div class="sb-prev-modal-title">Priorités de sécurisation</div>
+              <div class="sb-prev-action-list">${actionList()}</div>
+            </div>
+
+            <div class="sb-prev-actions-card">
+              <div class="sb-prev-modal-title">Compétences à sécuriser en priorité</div>
+              ${top || `<div class="sb-prev-empty">Aucune compétence prioritaire retournée.</div>`}
+            </div>
           `;
         }
 
         if (paneCauses) {
           if (!causes.length) paneCauses.innerHTML = `<div class="sb-prev-empty">Aucune cause compétence retournée.</div>`;
           else paneCauses.innerHTML = `
-            <div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-table--hover sb-prev-table"><thead><tr><th>Compétence critique</th><th class="col-center">Niveau requis</th><th class="col-center">Criticité</th><th class="col-center">Porteurs</th><th>Prochaine sortie</th><th>Point à sécuriser</th></tr></thead><tbody>${causes.map(c => {
+            <div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-table--hover sb-prev-table"><thead><tr><th>Compétence critique</th><th class="col-center">Niveau requis</th><th class="col-center">Criticité</th><th class="col-center">Porteurs</th><th>Prochaine sortie</th><th>Impact</th></tr></thead><tbody>${causes.map(c => {
               const compKey = (c.id_comp || c.id_competence || c.code || "").toString().trim();
               const codeC = (c.code || "—").toString().trim();
               const label = (c.intitule || c.intitule_competence || "—").toString().trim();
@@ -7976,8 +8044,8 @@ function bindOnce(portal) {
               const now = _num(c.nb_now ?? c.porteurs_now);
               const rem = _num(c.nb_remain ?? c.porteurs_remain);
               const nxt = (c.next_exit_comp || c.next_exit_date || "").toString().trim();
-              const decision = rem <= 0 ? "Couverture à créer" : (rem === 1 ? "Porteur à dédoubler" : "Relais à confirmer");
-              return `<tr class="prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}"><td><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span> <strong>${escapeHtml(label)}</strong></td><td class="col-center"><span class="sb-badge">${escapeHtml(niv)}</span></td><td class="col-center">${escapeHtml(String(crit || "—"))}</td><td class="col-center"><strong>${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</strong></td><td>${escapeHtml(nxt ? fmtDateFR(nxt) : "—")}</td><td>${escapeHtml(decision)}</td></tr>`;
+              const impact = impactLabel(now, rem);
+              return `<tr class="prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}"><td><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span> <strong>${escapeHtml(label)}</strong></td><td class="col-center"><span class="sb-badge">${escapeHtml(niv)}</span></td><td class="col-center">${escapeHtml(String(crit || "—"))}</td><td class="col-center"><strong>${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</strong></td><td>${escapeHtml(nxt ? fmtDateFR(nxt) : "—")}</td><td><span class="sb-prev-impact-badge ${impactClass(now, rem)}">${escapeHtml(impact)}</span></td></tr>`;
             }).join("")}</tbody></table></div>`;
         }
 

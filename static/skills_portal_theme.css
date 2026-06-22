@@ -7384,3 +7384,60 @@ body{
     font-size: 15px !important;
   }
 }
+
+
+/* Novoskill - lisibilite modal poste previsionnel */
+#modalAnalysePrevPosteRed .sb-prev-rh-summary--decision{
+  border-color:color-mix(in srgb, var(--reading-accent) 42%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--reading-accent) 8%, #ffffff);
+}
+
+#modalAnalysePrevPosteRed .sb-prev-rh-note{
+  margin-top:8px;
+  font-size:12px;
+  line-height:1.35;
+  color:var(--sb-gray-600);
+}
+
+#modalAnalysePrevPosteRed .sb-prev-section-title{
+  margin:10px 0 8px 0;
+  font-size:13px;
+  font-weight:750;
+  color:var(--sb-gray-900);
+}
+
+#modalAnalysePrevPosteRed .sb-prev-impact-line{
+  align-items:center;
+}
+
+#modalAnalysePrevPosteRed .sb-prev-impact-main{
+  flex:1;
+}
+
+#modalAnalysePrevPosteRed .sb-prev-impact-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  border:1px solid var(--sb-gray-300);
+  border-radius:999px;
+  padding:3px 8px;
+  font-size:11px;
+  font-weight:750;
+  color:var(--sb-gray-700);
+  background:#fff;
+  white-space:nowrap;
+}
+
+#modalAnalysePrevPosteRed .sb-prev-impact-badge--critical{
+  border-color:#fecaca;
+  background:#fff1f2;
+  color:#b91c1c;
+}
+
+#modalAnalysePrevPosteRed .sb-prev-impact-badge--warning{
+  border-color:#fed7aa;
+  background:#fff7ed;
+  color:#c2410c;
+}
+
