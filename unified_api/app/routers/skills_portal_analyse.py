@@ -987,8 +987,12 @@ def get_analyse_previsions_sorties_detail(
 
                             -- "Raison de la sortie" (UI)
                             CASE
-                                WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
-                                ELSE COALESCE(NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''), '—')
+                                WHEN ev.date_sortie_prevue IS NOT NULL THEN COALESCE(
+                                    NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''),
+                                    CASE WHEN COALESCE(ev.havedatefin, FALSE) THEN 'Fin de contrat / sortie prévue' ELSE 'Sortie prévue' END
+                                )
+                                WHEN ev.retraite_annee IS NOT NULL THEN 'Retraite estimée'
+                                ELSE NULL
                             END AS raison_sortie
                         FROM effectifs_valid ev
                     )
@@ -1280,8 +1284,12 @@ def get_analyse_previsions_critiques_modal(
                             ELSE NULL
                         END AS exit_date,
                         CASE
-                            WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
-                            ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
+                            WHEN ev.date_sortie_prevue IS NOT NULL THEN COALESCE(
+                                NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''),
+                                CASE WHEN COALESCE(ev.havedatefin, FALSE) THEN 'Fin de contrat / sortie prévue' ELSE 'Sortie prévue' END
+                            )
+                            WHEN ev.retraite_annee IS NOT NULL THEN 'Retraite estimée'
+                            ELSE NULL
                         END AS raison_sortie
                     FROM effectifs_valid ev
                 ),
@@ -1906,8 +1914,12 @@ def get_analyse_previsions_postes_rouges_modal(
                             ELSE NULL
                         END AS exit_date,
                         CASE
-                            WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
-                            ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
+                            WHEN ev.date_sortie_prevue IS NOT NULL THEN COALESCE(
+                                NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''),
+                                CASE WHEN COALESCE(ev.havedatefin, FALSE) THEN 'Fin de contrat / sortie prévue' ELSE 'Sortie prévue' END
+                            )
+                            WHEN ev.retraite_annee IS NOT NULL THEN 'Retraite estimée'
+                            ELSE NULL
                         END AS raison_sortie,
                         CASE
                           WHEN (

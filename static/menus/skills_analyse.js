@@ -5204,7 +5204,8 @@ function renderDetail(mode) {
             // Raison (priorité: API si dispo)
             const hdf = (it.havedatefin === true || it.havedatefin === "true" || it.havedatefin === 1);
             const motif = (it.motif_sortie || "").toString().trim();
-            const reason = (it.raison_sortie || "").toString().trim() || (hdf ? motif : "Retraite estimée");
+            const reason = (it.raison_sortie || "").toString().trim()
+              || (exitDate ? (motif || (hdf ? "Fin de contrat / sortie prévue" : "Sortie prévue")) : "Retraite estimée");
             const reasonTxt = reason ? escapeHtml(reason) : "—";
 
             const idEff = (it.id_effectif || "").toString().trim();
@@ -5797,7 +5798,13 @@ function renderDetail(mode) {
               const idPoste = (r.id_poste || "").toString().trim();
 
               return `
-                <tr class="prev-red-poste-row" data-id_poste="${escapeHtml(idPoste)}">
+                <tr class="prev-red-poste-row"
+                    data-id_poste="${escapeHtml(idPoste)}"
+                    data-intitule_poste="${escapeHtml(intitule)}"
+                    data-nom_service="${escapeHtml(svc)}"
+                    data-indice_fragilite_horizon="${escapeHtml(String(score))}"
+                    data-delta_fragilite="${escapeHtml(String(delta))}"
+                    data-next_exit_date="${escapeHtml((r.last_exit_date || r.next_exit_date || "").toString())}">
                   <td class="prev-red-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                       <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
@@ -7142,17 +7149,31 @@ function bindOnce(portal) {
 
     // ------------------------------
     // PREVISIONS: clic sur un poste impacté
-    // Source détail = modal Risques actuels poste
+    // Source détail = modal prévisionnel poste, pas diagnostic risques actuels
     // ------------------------------
     const trPrevRed = ev.target.closest("tr.prev-red-poste-row[data-id_poste]");
     if (trPrevRed) {
+      const hit = ev.target.closest(".prev-red-open");
+      if (!hit) return;
+
       const id_poste = (trPrevRed.getAttribute("data-id_poste") || "").trim();
       if (!id_poste) return;
 
       const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+      const seed = {
+        intitule_poste: (trPrevRed.getAttribute("data-intitule_poste") || "").trim(),
+        nom_service: (trPrevRed.getAttribute("data-nom_service") || "").trim(),
+        indice_fragilite_horizon: (trPrevRed.getAttribute("data-indice_fragilite_horizon") || "").trim(),
+        delta_fragilite: (trPrevRed.getAttribute("data-delta_fragilite") || "").trim(),
+        next_exit_date: (trPrevRed.getAttribute("data-next_exit_date") || "").trim(),
+      };
 
       try {
-        await showAnalysePosteDetailModal(p, id_poste, id_service, "");
+        if (typeof window.showAnalysePrevPosteRedModal === "function") {
+          await window.showAnalysePrevPosteRedModal(p, id_poste, id_service, seed);
+        } else {
+          await showAnalysePosteDetailModal(p, id_poste, id_service, "");
+        }
       } catch (e) {
         console.error(e);
       }
