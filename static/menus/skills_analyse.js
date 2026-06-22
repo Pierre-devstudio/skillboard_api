@@ -5118,12 +5118,13 @@ function renderDetail(mode) {
       title.style.marginBottom = "0";
     }
     if (sub) {
-      sub.textContent = "Départs à absorber et transmissions à préparer.";
-      sub.style.display = "";
+      sub.textContent = "";
+      sub.style.display = "none";
     }
     if (meta) {
-      meta.textContent = `Service : ${scope}`;
-      meta.style.display = "";
+      meta.textContent = "";
+      meta.innerHTML = "";
+      meta.style.display = "none";
     }
 
     let selectedKpi = window.analysePrevisionValidKpi(localStorage.getItem("sb_analyse_prev_kpi") || "sorties-confirmees");
@@ -5137,15 +5138,7 @@ function renderDetail(mode) {
       : (selectedKpi === "transmissions" ? "Transmissions à préparer" : "Sorties confirmées");
 
     body.innerHTML = `
-      <div class="card" style="padding:12px; margin:0;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-          <div>
-            <div class="card-title" style="margin-bottom:2px;">${escapeHtml(detailTitle)} à ${escapeHtml(horizonLabel)}</div>
-            <div class="card-sub" style="margin:0;">Première lecture rapide. Ouvrez une ligne pour voir l’impact et les éléments à préparer.</div>
-          </div>
-        </div>
-        <div id="prevTransitionDetailBox" class="card-sub" style="margin-top:12px;">Chargement…</div>
-      </div>
+      <div id="prevTransitionDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
     `;
 
     window.__sbPrevTransitionReqId = (window.__sbPrevTransitionReqId || 0) + 1;
@@ -5177,7 +5170,8 @@ function renderDetail(mode) {
           return;
         }
 
-        const itemsToRender = items.slice(0, PREV_TABLE_PREVIEW_LIMIT);
+        const expanded = getPrevisionDetailExpanded(selectedKpi);
+        const itemsToRender = expanded ? items : items.slice(0, PREV_TABLE_PREVIEW_LIMIT);
         if (selectedKpi === "transmissions") {
           box.innerHTML = renderPrevisionTableTransmissionItems(itemsToRender);
           box.querySelectorAll(".prev-transmission-row, .prev-transmission-open").forEach((el) => {
