@@ -1249,7 +1249,7 @@
     } else if (finalMode === "previsions") {
       setActiveRiskKpi(""); // reset
       setActiveMatchKpi(""); // reset
-      setActivePrevKpi((localStorage.getItem("sb_analyse_prev_kpi") || "").trim());
+      setActivePrevKpi(analysePrevisionValidKpi(localStorage.getItem("sb_analyse_prev_kpi") || "sorties-confirmees"));
     } else {
       setActiveRiskKpi("");
       setActiveMatchKpi("");
@@ -6913,27 +6913,38 @@ function bindOnce(portal) {
   }
 
   // KPI Prévisions cliquables => sélection + bascule mode Prévisions
+  // Délégation en capture : le clic sur un mini-KPI ne retombe jamais sur le clic générique de la tuile.
   const tilePrevisions = byId("tilePrevisions");
   if (tilePrevisions) {
-    const prevKpis = tilePrevisions.querySelectorAll(".mini-kpi[data-prev-kpi]");
+    function openPrevKpiFromEvent(ev) {
+      const target = ev?.target;
+      const el = target?.closest?.(".mini-kpi[data-prev-kpi]");
+      if (!el || !tilePrevisions.contains(el)) return false;
 
-    function openPrevKpi(el, ev) {
-      const key = analysePrevisionValidKpi((el?.getAttribute("data-prev-kpi") || "").trim());
-      if (!key) return;
+      const rawKey = (el.getAttribute("data-prev-kpi") || "").trim();
+      const key = analysePrevisionValidKpi(rawKey);
+      if (!key) return false;
 
-      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+      }
 
       localStorage.setItem("sb_analyse_prev_kpi", key);
       setActivePrevKpi(key);
       setMode("previsions");
+      return true;
     }
 
-    prevKpis.forEach((el) => {
-      el.addEventListener("click", (ev) => openPrevKpi(el, ev));
-      el.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") openPrevKpi(el, ev);
-      });
-    });
+    tilePrevisions.addEventListener("click", (ev) => {
+      openPrevKpiFromEvent(ev);
+    }, true);
+
+    tilePrevisions.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter" && ev.key !== " ") return;
+      openPrevKpiFromEvent(ev);
+    }, true);
   }
 
   // Filtres service / criticité / reset
