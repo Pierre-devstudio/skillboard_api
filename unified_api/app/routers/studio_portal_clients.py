@@ -12,7 +12,7 @@ from datetime import date
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner, studio_require_min_role, studio_fetch_role_code
-from app.routers.skills_portal_analyse import _fetch_service_label
+from app.services.skills_analyse_engine import _fetch_service_label
 from app.routers.skills_portal_dashboard import (
     DashboardAccess,
     DashboardRiskOverview,

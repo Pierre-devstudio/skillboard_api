@@ -11,14 +11,12 @@ from app.routers.skills_portal_dashboard import (
     DASHBOARD_DANGER_MIN,
     DASHBOARD_WATCH_MIN,
     DashboardScope,
-    _compute_risks_without_action,
-    _compute_transmission,
     _enrich_records_poste_criticite,
     DashboardAccess,
     build_dashboard_risk_overview_for_scope,
     _service_options,
 )
-from app.routers.skills_portal_analyse import _fetch_postes_fragility_records, _fetch_service_label
+from app.services.skills_analyse_engine import _fetch_postes_fragility_records, _fetch_service_label
 
 router = APIRouter()
 
@@ -482,54 +480,6 @@ def _studio_empty_main_for_missing_structure(current: Dict[str, Any]) -> Dict[st
         }],
     }
 
-def _studio_records_summary(cur, id_ent: str, records: List[Dict[str, Any]], id_service: Optional[str] = None) -> Dict[str, Any]:
-    nb_postes = len(records or [])
-    danger_records = [r for r in (records or []) if _studio_i(r.get("indice_fragilite")) >= DASHBOARD_DANGER_MIN]
-    watch_records = [r for r in (records or []) if DASHBOARD_WATCH_MIN <= _studio_i(r.get("indice_fragilite")) < DASHBOARD_DANGER_MIN]
-    stable_records = max(nb_postes - len(danger_records) - len(watch_records), 0)
-    critical_danger = [r for r in danger_records if _studio_i(r.get("criticite_poste"), 2) >= DASHBOARD_CRITICAL_POSTE_MIN]
-    risk_pct = round(sum(_studio_f(r.get("indice_fragilite")) for r in (records or [])) / nb_postes, 1) if nb_postes else 0.0
-    health_pct = max(0.0, round(100.0 - risk_pct, 1))
-    health_label = "Sous contrôle"
-    if health_pct < 40:
-        health_label = "Critique"
-    elif health_pct < 70:
-        health_label = "Sous surveillance"
-
-    no_action_total = 0
-    try:
-        scope = DashboardScope(id_service=id_service, nom_service="Service" if id_service else "Tout")
-        no_action = _compute_risks_without_action(cur, id_ent, scope, records or [])
-        no_action_total = _studio_i(getattr(no_action, "total", 0))
-    except Exception:
-        no_action_total = len(danger_records)
-
-    tr_pct = 0.0
-    tr_total = 0
-    tr_ok = 0
-    try:
-        tr = _compute_transmission(records or [])
-        tr_total = _studio_i(getattr(tr, "postes_total", 0))
-        tr_ok = _studio_i(getattr(tr, "postes_transmissibles", 0))
-        tr_pct = round((tr_ok / tr_total * 100.0), 1) if tr_total else 0.0
-    except Exception:
-        pass
-
-    return {
-        "postes_total": nb_postes,
-        "postes_danger": len(danger_records),
-        "postes_surveillance": len(watch_records),
-        "postes_stables": stable_records,
-        "postes_critiques_danger": len(critical_danger),
-        "risk_pct": risk_pct,
-        "health_pct": health_pct,
-        "health_label": health_label,
-        "risques_sans_action": no_action_total,
-        "items_danger": 0,
-        "items_surveillance": 0,
-        "items_stables": 0,
-        "transmission": {"pct": tr_pct, "postes_total": tr_total, "postes_transmissibles": tr_ok, "postes_risque": max(tr_total - tr_ok, 0)},
-    }
 
 
 def _studio_risk_items_by_service(cur, id_ent: str, services: List[Dict[str, Any]], criticite_min: int) -> List[Dict[str, Any]]:
@@ -539,27 +489,36 @@ def _studio_risk_items_by_service(cur, id_ent: str, services: List[Dict[str, Any
         if not sid:
             continue
         try:
-            records = _fetch_postes_fragility_records(cur, id_ent, sid, criticite_min)
-            _enrich_records_poste_criticite(cur, records)
+            overview = _studio_fetch_insights_overview(cur, id_ent, sid, criticite_min)
         except Exception:
-            records = []
-        summary = _studio_records_summary(cur, id_ent, records, sid)
-        priority, priority_label = _studio_priority_from_risk(summary["risk_pct"], summary["postes_danger"], summary["postes_critiques_danger"])
+            overview = {}
+
+        health = overview.get("health") or {}
+        watch = overview.get("postes_watch") or {}
+        no_action = overview.get("risks_without_action") or {}
+
+        postes_total = _studio_i(watch.get("total_postes"))
+        postes_danger = _studio_i(watch.get("postes_danger"))
+        postes_surveillance = _studio_i(watch.get("postes_surveillance"))
+        postes_critiques = _studio_i(watch.get("postes_critiques_danger"))
+        health_pct = round(_studio_f(health.get("pct")), 1)
+        risk_pct = round(max(0.0, 100.0 - health_pct), 1) if postes_total else 0.0
+        priority, priority_label = _studio_priority_from_risk(risk_pct, postes_danger, postes_critiques)
+
         items.append({
             "kind": "service",
             "id_service": sid,
             "label": s.get("nom_service") or "Service",
             "nom_service": s.get("nom_service") or "Service",
-            "postes_total": summary["postes_total"],
-            "postes_danger": summary["postes_danger"],
-            "postes_surveillance": summary["postes_surveillance"],
-            "risques_sans_action": summary["risques_sans_action"],
-            "risk_pct": summary["risk_pct"],
+            "postes_total": postes_total,
+            "postes_danger": postes_danger,
+            "postes_surveillance": postes_surveillance,
+            "risques_sans_action": _studio_i(no_action.get("total")),
+            "risk_pct": risk_pct,
             "priority": priority,
             "priority_label": priority_label,
         })
     return sorted(items, key=lambda x: (0 if x.get("priority") == "danger" else 1 if x.get("priority") == "surveillance" else 2, -_studio_f(x.get("risk_pct")), x.get("label") or ""))
-
 
 def _studio_risk_items_by_poste(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []

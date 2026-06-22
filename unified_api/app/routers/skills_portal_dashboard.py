@@ -10,9 +10,11 @@ from app.routers.skills_portal_common import (
     fetch_contact_with_entreprise,
     resolve_insights_effectif_for_request,
 )
-from app.routers.skills_portal_analyse import (
+from app.services.skills_analyse_engine import (
     CRITICITE_MIN_DEFAULT,
     NON_LIE_ID,
+    _analyse_fragility_average,
+    _analyse_fragility_records_analyzed,
     _build_scope_cte,
     _compute_poste_fragility_record,
     _fetch_postes_fragility_records,
@@ -274,18 +276,7 @@ def _month_bounds(base: date, months: int) -> Tuple[date, date]:
     start = date(d.year, d.month, 1)
     end = _month_add(start, 1) - timedelta(days=1)
     return start, end
-def _dashboard_fragility_records_analyzed(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Retourne uniquement les postes réellement analysés pour les moyennes et compteurs.
 
-    Les postes non analysés ne doivent pas être comptés comme des postes stables à 0 %.
-    """
-    return [r for r in (records or []) if not bool(r.get("is_non_analyse") or False)]
-
-def _avg_fragility(records: List[Dict[str, Any]]) -> int:
-    analysed = _dashboard_fragility_records_analyzed(records)
-    if not analysed:
-        return 0
-    return int(round(sum(int(r.get("indice_fragilite") or 0) for r in analysed) / float(len(analysed))))
 
 def _is_danger_record(r: Dict[str, Any]) -> bool:
     return int(r.get("indice_fragilite") or 0) >= DASHBOARD_DANGER_MIN
@@ -391,285 +382,6 @@ def _compute_health(cur, id_ent: str, scope: DashboardScope, criticite_min: int)
     )
 
 
-def _fetch_postes_fragility_records_at(
-    cur,
-    id_ent: str,
-    id_service: Optional[str],
-    criticite_min: int,
-    as_of: date,
-) -> List[Dict[str, Any]]:
-    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
-
-    sql_postes = f"""
-    WITH
-    {cte_sql},
-    effectifs_dispo AS (
-        SELECT es.id_effectif
-        FROM effectifs_scope es
-        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-        WHERE COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
-          AND NOT EXISTS (
-            SELECT 1
-            FROM public.tbl_effectif_client_break b
-            WHERE b.id_effectif = e.id_effectif
-              AND COALESCE(b.archive, FALSE) = FALSE
-              AND b.date_debut <= %s
-              AND b.date_fin >= %s
-          )
-    ),
-    titulaires AS (
-        SELECT
-            e.id_poste_actuel AS id_poste,
-            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
-        WHERE COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.id_poste_actuel, '') <> ''
-        GROUP BY e.id_poste_actuel
-    )
-    SELECT
-        fp.id_poste,
-        fp.codif_poste,
-        fp.codif_client,
-        fp.intitule_poste,
-        fp.id_service,
-        COALESCE(o.nom_service, '') AS nom_service,
-        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
-        COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
-        COALESCE(prh.criticite_poste, 2)::int AS criticite_poste,
-        CASE
-            WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
-                THEN trim(fp.niveau_education_minimum)::int
-            ELSE 0
-        END AS edu_min_rank,
-        (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
-        COALESCE(nd.titre, '')::text AS nsf_domaine_titre,
-        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
-    FROM postes_scope ps
-    JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
-    LEFT JOIN public.tbl_entreprise_organigramme o
-      ON o.id_ent = %s
-     AND o.id_service = fp.id_service
-     AND COALESCE(o.archive, FALSE) = FALSE
-    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
-    LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
-    LEFT JOIN titulaires t ON t.id_poste = fp.id_poste
-    """
-    cur.execute(sql_postes, tuple(cte_params + [as_of, as_of, as_of, id_ent]))
-    poste_rows = cur.fetchall() or []
-    if not poste_rows:
-        return []
-
-    postes_map: Dict[str, Dict[str, Any]] = {str(r.get("id_poste") or ""): dict(r) for r in poste_rows}
-
-    sql_emps = f"""
-    WITH
-    {cte_sql},
-    effectifs_dispo AS (
-        SELECT es.id_effectif
-        FROM effectifs_scope es
-        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-        WHERE COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
-          AND NOT EXISTS (
-            SELECT 1
-            FROM public.tbl_effectif_client_break b
-            WHERE b.id_effectif = e.id_effectif
-              AND COALESCE(b.archive, FALSE) = FALSE
-              AND b.date_debut <= %s
-              AND b.date_fin >= %s
-          )
-    )
-    SELECT
-        e.id_effectif,
-        e.id_poste_actuel,
-        COALESCE(e.niveau_education, '') AS niveau_education,
-        COALESCE(e.domaine_education, '') AS domaine_education
-    FROM public.tbl_effectif_client e
-    JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
-    WHERE COALESCE(e.archive, FALSE) = FALSE
-    """
-    cur.execute(sql_emps, tuple(cte_params + [as_of, as_of, as_of]))
-    employees = [dict(r) for r in (cur.fetchall() or [])]
-
-    sql_comp = f"""
-    WITH
-    {cte_sql},
-    effectifs_dispo AS (
-        SELECT es.id_effectif
-        FROM effectifs_scope es
-        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-        WHERE COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
-          AND NOT EXISTS (
-            SELECT 1
-            FROM public.tbl_effectif_client_break b
-            WHERE b.id_effectif = e.id_effectif
-              AND COALESCE(b.archive, FALSE) = FALSE
-              AND b.date_debut <= %s
-              AND b.date_fin >= %s
-          )
-    ),
-    poste_info AS (
-        SELECT
-            fp.id_poste,
-            CASE
-                WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
-                    THEN trim(fp.niveau_education_minimum)::int
-                ELSE 0
-            END AS edu_min_rank,
-            (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
-            COALESCE(nd.titre, '')::text AS nsf_domaine_titre
-        FROM postes_scope ps
-        JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
-        LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
-    ),
-    req AS (
-        SELECT DISTINCT
-            pi.id_poste,
-            c.id_comp,
-            c.code,
-            c.intitule,
-            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
-            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
-            pi.edu_min_rank,
-            pi.nsf_domain_required,
-            pi.nsf_domaine_titre
-        FROM poste_info pi
-        JOIN public.tbl_fiche_poste_competence fpc ON fpc.id_poste = pi.id_poste
-        JOIN public.tbl_competence c
-          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
-        WHERE c.etat = 'active'
-          AND COALESCE(c.masque, FALSE) = FALSE
-          AND COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
-    ),
-    pool_all_effectifs AS (
-        SELECT
-            e.id_effectif,
-            e.id_poste_actuel,
-            COALESCE(e.niveau_education, '') AS niveau_education,
-            COALESCE(e.domaine_education, '') AS domaine_education
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
-        WHERE COALESCE(e.archive, FALSE) = FALSE
-    ),
-    ec_raw AS (
-        SELECT
-            r.id_poste,
-            r.id_comp,
-            r.code,
-            r.intitule,
-            r.poids_criticite,
-            r.niveau_requis,
-            pe.id_effectif,
-            pe.id_poste_actuel,
-            CASE upper(trim(COALESCE(r.niveau_requis, '')))
-                WHEN 'A' THEN 1
-                WHEN 'B' THEN 2
-                WHEN 'C' THEN 3
-                WHEN 'D' THEN 4
-                ELSE 0
-            END AS req_rank,
-            CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
-                WHEN 'a' THEN 1
-                WHEN 'initial' THEN 1
-                WHEN 'b' THEN 2
-                WHEN 'avance' THEN 2
-                WHEN 'avancé' THEN 2
-                WHEN 'avancee' THEN 2
-                WHEN 'avancée' THEN 2
-                WHEN 'c' THEN 3
-                WHEN 'expert' THEN 3
-                ELSE 0
-            END AS act_rank,
-            CASE
-                WHEN a.id_audit_competence IS NOT NULL AND a.resultat_eval IS NOT NULL THEN TRUE
-                WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
-                ELSE FALSE
-            END AS is_evaluee,
-            CASE
-              WHEN (
-                r.edu_min_rank = 0
-                OR (
-                  CASE
-                    WHEN trim(COALESCE(pe.niveau_education, '')) ~ '^[0-9]+$' THEN trim(pe.niveau_education)::int
-                    ELSE 0
-                  END
-                ) >= r.edu_min_rank
-              )
-              AND (
-                r.nsf_domain_required = FALSE
-                OR (
-                  lower(trim(COALESCE(pe.domaine_education, ''))) = lower(trim(COALESCE(r.nsf_domaine_titre, '')))
-                  AND COALESCE(r.nsf_domaine_titre, '') <> ''
-                )
-              )
-              THEN TRUE ELSE FALSE
-            END AS is_eligible
-        FROM req r
-        JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = r.id_comp
-        LEFT JOIN public.tbl_effectif_client_audit_competence a
-          ON a.id_audit_competence = ec.id_dernier_audit
-         AND a.id_effectif_competence = ec.id_effectif_competence
-        JOIN pool_all_effectifs pe ON pe.id_effectif = ec.id_effectif_client
-        WHERE COALESCE(ec.actif, TRUE) = TRUE
-          AND COALESCE(ec.archive, FALSE) = FALSE
-    ),
-    ec_ok AS (
-        SELECT
-            *,
-            CASE
-                WHEN req_rank > 0 THEN (is_evaluee AND act_rank >= req_rank)
-                ELSE (is_evaluee AND act_rank > 0)
-            END AS is_ok
-        FROM ec_raw
-    )
-    SELECT
-        r.id_poste,
-        r.id_comp,
-        r.code,
-        r.intitule,
-        r.poids_criticite,
-        r.niveau_requis,
-        COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_any,
-        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_ok,
-        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok_all
-    FROM req r
-    LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
-    GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
-    """
-    cur.execute(sql_comp, tuple(cte_params + [as_of, as_of, as_of, int(criticite_min)]))
-    comp_rows = cur.fetchall() or []
-
-    comp_by_poste: Dict[str, List[Dict[str, Any]]] = {}
-    for r in comp_rows:
-        comp_by_poste.setdefault(str(r.get("id_poste") or ""), []).append(dict(r))
-
-    records: List[Dict[str, Any]] = []
-    for poste_id, poste in postes_map.items():
-        rec = _compute_poste_fragility_record(poste, comp_by_poste.get(poste_id, []), employees)
-        if rec.get("is_excluded"):
-            continue
-        records.append(rec)
-
-    records.sort(
-        key=lambda r: (
-            -int(r.get("indice_fragilite") or 0),
-            int(r.get("nb_titulaires") or 0),
-            -int(r.get("nb_critiques_sans_porteur") or 0),
-            -int(r.get("gap_titulaires") or 0),
-            -int(r.get("nb_critiques_porteur_unique") or 0),
-            -int(r.get("nb_critiques_sans_releve") or 0),
-            str(r.get("codif_poste") or ""),
-            str(r.get("intitule_poste") or ""),
-        )
-    )
-    return records
 
 def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: List[Dict[str, Any]], criticite_min: int) -> List[DashboardRiskTimelinePoint]:
     today = date.today()
@@ -688,13 +400,13 @@ def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: 
                 period_start,
                 period_end,
             )
-        analysed_records = _dashboard_fragility_records_analyzed(records)
+        analysed_records = _analyse_fragility_records_analyzed(records)
         fragile = [r for r in analysed_records if bool(r.get("is_fragile"))]
         out.append(
             DashboardRiskTimelinePoint(
                 date_ref=d.isoformat(),
                 label=d.strftime("%m/%y"),
-                indice_fragilite=_avg_fragility(records),
+                indice_fragilite=_analyse_fragility_average(records),
                 nb_postes_fragiles=len(fragile),
                 nb_postes_total=len(analysed_records),
             )
@@ -702,7 +414,7 @@ def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: 
     return out
 
 def _compute_postes_watch(records: List[Dict[str, Any]]) -> DashboardPostesWatch:
-    analysed_records = _dashboard_fragility_records_analyzed(records)
+    analysed_records = _analyse_fragility_records_analyzed(records)
     total = len(analysed_records)
     danger = [r for r in analysed_records if _is_danger_record(r)]
     watch = [r for r in analysed_records if _is_watch_record(r)]

@@ -7,9 +7,8 @@ import uuid
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn
-from app.routers.skills_portal_analyse import (
-    _resolve_id_ent_for_request,
+from app.routers.skills_portal_common import get_conn, resolve_insights_id_ent_for_request
+from app.services.skills_analyse_engine import (
     _fetch_service_label,
     _build_scope_cte,
     CRITICITE_MIN_DEFAULT,
@@ -21,6 +20,10 @@ STATUT_ENVOYE = "envoye_studio"
 STATUT_PRIS_EN_CHARGE = "pris_en_charge"
 STATUT_TRAITE = "traite"
 STATUTS = {STATUT_ENVOYE, STATUT_PRIS_EN_CHARGE, STATUT_TRAITE}
+
+
+def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
+    return resolve_insights_id_ent_for_request(cur, id_contact, request)
 
 
 class BesoinFormationSendItem(BaseModel):

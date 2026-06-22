@@ -6,14 +6,17 @@ from datetime import datetime
 from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import get_conn, resolve_insights_id_ent_for_request
-from app.routers.skills_portal_analyse import (
+from app.services.skills_analyse_engine import (
     NON_LIE_ID,
     CRITICITE_MIN_DEFAULT,
     CRITICITE_MIN_MIN,
     CRITICITE_MIN_MAX,
     ServiceScope,
-    _fetch_service_label,
+    _analyse_fragility_average,
+    _analyse_fragility_records_analyzed,
     _build_scope_cte,
+    _compute_poste_fragility_record,
+    _fetch_service_label,
 )
 
 router = APIRouter()
@@ -418,74 +421,70 @@ def _compute_poste_records(dataset: Dict[str, Any], state: Dict[str, Any]) -> Li
     for (eid, cid), skill in skills.items():
         if eid not in effectifs:
             continue
-        rank = _level_rank(skill.get("niveau_actuel"))
-        if rank > 0:
+        if _level_rank(skill.get("niveau_actuel")) > 0:
             global_qualified_by_comp[cid] = global_qualified_by_comp.get(cid, 0) + 1
 
+    employees = [dict(e) for e in effectifs.values()]
     out = []
     for poste in postes:
         pid = str(poste.get("id_poste") or "")
         holders = holders_by_poste.get(pid, [])
         cible = max(1, _safe_int(poste.get("nb_titulaires_cible"), 1))
-        nb_titulaires = len(holders)
         reqs = reqs_by_poste.get(pid, [])
 
-        structure_score = int(round(_ratio(max(0, cible - nb_titulaires), cible) * 35.0))
-
-        weighted_total = 0.0
-        weighted_gap = 0.0
-        dep_total = 0.0
-        dep_gap = 0.0
+        comp_rows: List[Dict[str, Any]] = []
         missing = []
         under = []
         unique = []
 
         for req in reqs:
             cid = str(req.get("id_comp") or "")
-            weight = max(1, _safe_int(req.get("poids_criticite"), 0))
             req_rank = _level_rank(req.get("niveau_requis"))
-            weighted_total += weight
-            best_rank = 0
+            nb_tit_any = 0
+            nb_tit_ok = 0
             for eid in holders:
                 s = skills.get((eid, cid))
-                best_rank = max(best_rank, _level_rank(s.get("niveau_actuel") if s else None))
+                rank = _level_rank(s.get("niveau_actuel") if s else None)
+                if rank > 0:
+                    nb_tit_any += 1
+                if req_rank > 0 and rank >= req_rank:
+                    nb_tit_ok += 1
 
-            if req_rank > 0 and best_rank <= 0:
-                weighted_gap += weight
+            if req_rank > 0 and nb_tit_any <= 0:
                 missing.append(req)
-            elif req_rank > 0 and best_rank < req_rank:
-                weighted_gap += weight * 0.55
+            elif req_rank > 0 and nb_tit_ok <= 0:
                 under.append(req)
 
-            global_count = int(global_qualified_by_comp.get(cid, 0) or 0)
-            if global_count <= 0:
-                dep_gap += weight
-            elif global_count == 1:
-                dep_gap += weight * 0.55
+            if int(global_qualified_by_comp.get(cid, 0) or 0) == 1:
                 unique.append(req)
-            dep_total += weight
 
-        competence_score = int(round(_ratio(weighted_gap, weighted_total) * 45.0)) if weighted_total else 0
-        dependence_score = int(round(_ratio(dep_gap, dep_total) * 20.0)) if dep_total else 0
-        score = max(0, min(100, structure_score + competence_score + dependence_score))
+            comp_rows.append({
+                "id_comp": cid,
+                "poids_criticite": _safe_int(req.get("poids_criticite"), 0),
+                "niveau_requis": req.get("niveau_requis") or "",
+                "nb_tit_any": nb_tit_any,
+                "nb_tit_ok": nb_tit_ok,
+            })
 
-        out.append({
-            "id_poste": pid,
-            "codif_poste": poste.get("codif_poste") or "",
-            "codif_client": poste.get("codif_client") or "",
-            "intitule_poste": poste.get("intitule_poste") or "Poste",
-            "nom_service": poste.get("nom_service") or "",
-            "nb_titulaires": nb_titulaires,
+        base_poste = dict(poste)
+        base_poste.update({
+            "nb_titulaires": len(holders),
+            "nb_titulaires_rattaches": len(holders),
+            "nb_indisponibles": 0,
+            "nb_sorties_approchantes": 0,
             "nb_titulaires_cible": cible,
-            "nb_competences_critiques": len(reqs),
+            "edu_min_rank": 0,
+            "nsf_domain_required": False,
+        })
+        row = _compute_poste_fragility_record(base_poste, comp_rows, employees)
+        score = _safe_int(row.get("indice_fragilite"), 0)
+        row.update({
+            "niveau_risque": _risk_label(score),
             "competences_non_couvertes": len(missing),
             "competences_sous_niveau": len(under),
             "competences_porteur_unique": len(unique),
-            "score_structure": structure_score,
-            "score_competences": competence_score,
-            "score_dependance": dependence_score,
-            "indice_fragilite": score,
-            "niveau_risque": _risk_label(score),
+            "score_structure": _safe_int(row.get("score_structurel"), 0),
+            "score_dependance": _safe_int(row.get("score_dependance"), 0),
             "missing_competences": [
                 {
                     "id_comp": r.get("id_comp"),
@@ -517,21 +516,21 @@ def _compute_poste_records(dataset: Dict[str, Any], state: Dict[str, Any]) -> Li
                 for r in unique[:20]
             ],
         })
+        out.append(row)
     return sorted(out, key=lambda x: int(x.get("indice_fragilite") or 0), reverse=True)
 
-
 def _compute_summary(records: List[Dict[str, Any]]) -> Dict[str, Any]:
-    total = len(records)
-    avg = int(round(sum(int(r.get("indice_fragilite") or 0) for r in records) / total)) if total else 0
-    rouges = len([r for r in records if int(r.get("indice_fragilite") or 0) >= 70])
-    surveiller = len([r for r in records if 45 <= int(r.get("indice_fragilite") or 0) < 70])
+    analysed = _analyse_fragility_records_analyzed(records or [])
+    total = len(analysed)
+    avg = _analyse_fragility_average(analysed)
+    rouges = len([r for r in analysed if int(r.get("indice_fragilite") or 0) >= 70])
+    surveiller = len([r for r in analysed if 45 <= int(r.get("indice_fragilite") or 0) < 70])
     return {
         "postes_total": total,
         "fragilite_moyenne": avg,
         "postes_rouges": rouges,
         "postes_surveillance": surveiller,
     }
-
 
 def _compute_impacts(current: List[Dict[str, Any]], simulated: List[Dict[str, Any]]) -> Dict[str, Any]:
     cur = {str(r.get("id_poste") or ""): r for r in current}
