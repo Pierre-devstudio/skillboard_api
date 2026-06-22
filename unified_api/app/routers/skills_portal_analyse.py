@@ -1778,8 +1778,18 @@ def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dic
                 p(r.get("raison_sortie") or r.get("event_kind_label") or "Sortie prévue"),
             ])
     elif k == "sorties-potentielles":
-        rows.append([p("Collaborateur", head_style), p("Poste", head_style), p("Horizon", head_style), p("Signal", head_style), p("Vigilance", head_style)])
-        widths = [56 * mm, 78 * mm, 30 * mm, 48 * mm, 32 * mm]
+        def _prev_year_only(value):
+            raw = str(value or "").strip()
+            if not raw:
+                return "—"
+            for i in range(0, max(0, len(raw) - 3)):
+                part = raw[i:i + 4]
+                if part.isdigit() and part[:2] in ("19", "20"):
+                    return part
+            return raw
+
+        rows.append([p("Collaborateur", head_style), p("Poste", head_style), p("Horizon", head_style), p("Motif", head_style)])
+        widths = [64 * mm, 86 * mm, 30 * mm, 64 * mm]
         for item in (items or []):
             r = as_dict(item)
             poste_code = (r.get("codif_client") or r.get("codif_poste") or "").strip()
@@ -1788,9 +1798,8 @@ def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dic
             rows.append([
                 p(r.get("full") or "—"),
                 p(poste_label),
-                p(r.get("horizon_label") or _analyse_date_fr_value(r.get("exit_date"))),
-                p(r.get("signal_label") or r.get("event_kind_label") or r.get("raison_sortie") or "Alerte"),
-                p(r.get("vigilance_label") or r.get("priorite_label") or "—"),
+                p(_prev_year_only(r.get("horizon_year") or r.get("annee") or r.get("exit_date") or r.get("retraite_estimee") or r.get("date_sortie_prevue") or r.get("horizon_label"))),
+                p("Retraite estimée"),
             ])
     elif k == "transmissions":
         rows.append([p("Compétence", head_style), p("Porteur", head_style), p("Échéance", head_style), p("Impact", head_style), p("Priorité", head_style)])

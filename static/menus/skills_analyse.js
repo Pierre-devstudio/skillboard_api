@@ -5775,6 +5775,21 @@ function renderDetail(mode) {
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
     const isPotential = kind === "potential";
+
+    const yearOnly = (value) => {
+      const raw = (value || "").toString().trim();
+      if (!raw) return "—";
+      for (let i = 0; i <= raw.length - 4; i += 1) {
+        const part = raw.slice(i, i + 4);
+        if (/^(19|20)\d{2}$/.test(part)) return part;
+      }
+      return raw;
+    };
+
+    const potentialYear = (r) => yearOnly(
+      r.horizon_year || r.annee || r.exit_date || r.retraite_estimee || r.date_sortie_prevue || r.horizon_label
+    );
+
     window.__sbPrevTransitionRows = list;
     return `
       <div class="table-wrap" style="margin-top:10px;">
@@ -5785,7 +5800,7 @@ function renderDetail(mode) {
               <th>Poste</th>
               <th style="width:120px;">${isPotential ? "Horizon" : "Date"}</th>
               ${isPotential
-                ? `<th style="width:170px;">Signal</th><th class="col-center" style="width:110px;">Vigilance</th>`
+                ? `<th style="width:190px;">Motif</th>`
                 : `<th style="width:190px;">Motif de départ</th>`}
               <th class="col-center" style="width:82px;">Actions</th>
             </tr>
@@ -5794,16 +5809,12 @@ function renderDetail(mode) {
             const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "—";
             const code = (r.codif_client || r.codif_poste || "").toString().trim();
             const poste = (r.intitule_poste || "—").toString();
-            const motif = (r.raison_sortie || r.event_kind_label || "Sortie prévue").toString();
-            const signal = (r.signal_label || r.event_kind_label || r.raison_sortie || "Alerte").toString();
-            const vigilance = (r.vigilance_label || r.priorite_label || "—").toString();
+            const motif = isPotential ? "Retraite estimée" : (r.raison_sortie || r.event_kind_label || "Sortie prévue").toString();
             return `<tr class="prev-transition-row" data-index="${idx}">
               <td><strong>${escapeHtml(full)}</strong></td>
               <td>${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(poste)}</td>
-              <td>${isPotential ? escapeHtml(r.horizon_label || analysePrevisionDate(r.exit_date)) : analysePrevisionDate(r.exit_date)}</td>
-              ${isPotential
-                ? `<td>${escapeHtml(signal)}</td><td class="col-center">${analysePriorityBadge(vigilance)}</td>`
-                : `<td>${escapeHtml(motif)}</td>`}
+              <td>${isPotential ? escapeHtml(potentialYear(r)) : analysePrevisionDate(r.exit_date)}</td>
+              <td>${escapeHtml(motif)}</td>
               <td class="col-center"><button type="button" class="sb-icon-btn prev-transition-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
             </tr>`;
           }).join("")}</tbody>
