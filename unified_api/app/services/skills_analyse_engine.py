@@ -2790,7 +2790,8 @@ def _fetch_prevision_transmission_items(
 ) -> List[Dict[str, Any]]:
     """
     Compétences à transmettre ou couvrir avant une sortie confirmée/potentielle.
-    Les lignes sont volontairement orientées action : compétence + porteur + échéance + relais possibles.
+    La sortie est agrégée par compétence : une seule ligne, même si plusieurs collaborateurs concernés existent.
+    Les indicateurs d'expertise sont calculés ici pour garder la page front en lecture simple.
     """
     scope_id = (id_service or "").strip() or None
     horizon = max(1, min(5, int(horizon_years or 1)))
@@ -2859,7 +2860,14 @@ def _fetch_prevision_transmission_items(
         SELECT
             l.*,
             ec.id_comp,
-            ec.niveau_actuel
+            ec.niveau_actuel,
+            CASE UPPER(COALESCE(ec.niveau_actuel, ''))
+                WHEN 'D' THEN 4
+                WHEN 'C' THEN 3
+                WHEN 'B' THEN 2
+                WHEN 'A' THEN 1
+                ELSE 0
+            END AS niveau_actuel_rank
         FROM leaving l
         JOIN public.tbl_effectif_client_competence ec
           ON ec.id_effectif_client = l.id_effectif
@@ -2868,12 +2876,11 @@ def _fetch_prevision_transmission_items(
     ),
     impacted_req AS (
         SELECT
-            lc.id_effectif,
             lc.id_comp,
             COUNT(DISTINCT fpc.id_poste)::int AS nb_postes_impactes,
             MAX(COALESCE(fpc.poids_criticite, 0))::int AS max_criticite,
             MAX(CASE COALESCE(fpc.niveau_requis, '') WHEN 'D' THEN 4 WHEN 'C' THEN 3 WHEN 'B' THEN 2 WHEN 'A' THEN 1 ELSE 0 END)::int AS niveau_requis_rank
-        FROM leaving_comp lc
+        FROM (SELECT DISTINCT id_comp FROM leaving_comp) lc
         JOIN public.tbl_fiche_poste_competence fpc
           ON fpc.id_competence = lc.id_comp
          AND COALESCE(fpc.masque, FALSE) = FALSE
@@ -2882,7 +2889,32 @@ def _fetch_prevision_transmission_items(
         JOIN public.tbl_competence c ON c.id_comp = fpc.id_competence
         WHERE COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(c.etat, 'active') = 'active'
-        GROUP BY lc.id_effectif, lc.id_comp
+        GROUP BY lc.id_comp
+    ),
+    leaving_summary AS (
+        SELECT
+            lc.id_comp,
+            MIN(lc.exit_date) AS first_exit_date,
+            COUNT(DISTINCT lc.id_effectif)::int AS sortants_count,
+            STRING_AGG(TRIM(CONCAT(COALESCE(lc.prenom_effectif, ''), ' ', COALESCE(lc.nom_effectif, ''))), ', ') AS sortants_label,
+            MAX(lc.niveau_actuel_rank)::int AS niveau_actuel_rank
+        FROM leaving_comp lc
+        GROUP BY lc.id_comp
+    ),
+    first_exit AS (
+        SELECT DISTINCT ON (lc.id_comp)
+            lc.id_comp,
+            lc.id_effectif,
+            lc.prenom_effectif,
+            lc.nom_effectif,
+            TRIM(CONCAT(COALESCE(lc.prenom_effectif, ''), ' ', COALESCE(lc.nom_effectif, ''))) AS full,
+            lc.id_service,
+            lc.id_poste_actuel,
+            lc.exit_date,
+            lc.exit_kind,
+            lc.raison_sortie
+        FROM leaving_comp lc
+        ORDER BY lc.id_comp, lc.exit_date ASC, lc.nom_effectif ASC, lc.prenom_effectif ASC
     ),
     receveurs AS (
         SELECT
@@ -2900,41 +2932,95 @@ def _fetch_prevision_transmission_items(
           AND COALESCE(ec.archive, FALSE) = FALSE
           AND NOT EXISTS (SELECT 1 FROM leaving l WHERE l.id_effectif = e.id_effectif)
         GROUP BY ec.id_comp
+    ),
+    expertise AS (
+        SELECT
+            ec.id_comp,
+            COUNT(DISTINCT CASE WHEN UPPER(COALESCE(ec.niveau_actuel, '')) IN ('D', 'EXPERT', '4') THEN e.id_effectif END)::int AS experts_total,
+            COUNT(DISTINCT CASE WHEN UPPER(COALESCE(ec.niveau_actuel, '')) IN ('D', 'EXPERT', '4') AND l.id_effectif IS NULL THEN e.id_effectif END)::int AS experts_restants,
+            COUNT(DISTINCT CASE WHEN UPPER(COALESCE(ec.niveau_actuel, '')) IN ('D', 'EXPERT', '4') AND l.id_effectif IS NOT NULL THEN e.id_effectif END)::int AS experts_sortants
+        FROM public.tbl_effectif_client_competence ec
+        JOIN public.tbl_effectif_client e ON e.id_effectif = ec.id_effectif_client
+        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+        LEFT JOIN leaving l ON l.id_effectif = e.id_effectif
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.is_temp, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND COALESCE(ec.actif, TRUE) = TRUE
+          AND COALESCE(ec.archive, FALSE) = FALSE
+        GROUP BY ec.id_comp
     )
     SELECT
-        lc.id_effectif,
-        lc.prenom_effectif,
-        lc.nom_effectif,
-        TRIM(CONCAT(COALESCE(lc.prenom_effectif, ''), ' ', COALESCE(lc.nom_effectif, ''))) AS full,
-        lc.id_service,
+        fe.id_effectif,
+        fe.prenom_effectif,
+        fe.nom_effectif,
+        COALESCE(NULLIF(BTRIM(ls.sortants_label), ''), fe.full) AS full,
+        COALESCE(NULLIF(BTRIM(ls.sortants_label), ''), fe.full) AS sortants_label,
+        COALESCE(ls.sortants_count, 0)::int AS sortants_count,
+        fe.id_service,
         COALESCE(o.nom_service, '') AS nom_service,
-        lc.id_poste_actuel,
+        fe.id_poste_actuel,
         COALESCE(fp.intitule_poste, '') AS intitule_poste,
         COALESCE(fp.codif_poste, '') AS codif_poste,
         COALESCE(fp.codif_client, '') AS codif_client,
-        lc.exit_date,
-        lc.exit_kind,
-        lc.raison_sortie,
-        lc.id_comp,
+        ls.first_exit_date AS exit_date,
+        fe.exit_kind,
+        fe.raison_sortie,
+        ir.id_comp,
         COALESCE(c.code, '') AS code,
         COALESCE(c.intitule, '') AS intitule,
         COALESCE(c.domaine, '') AS domaine,
-        COALESCE(lc.niveau_actuel, '') AS niveau_actuel,
+        CASE COALESCE(ls.niveau_actuel_rank, 0) WHEN 4 THEN 'D' WHEN 3 THEN 'C' WHEN 2 THEN 'B' WHEN 1 THEN 'A' ELSE '' END AS niveau_actuel,
         CASE COALESCE(ir.niveau_requis_rank, 0) WHEN 4 THEN 'D' WHEN 3 THEN 'C' WHEN 2 THEN 'B' WHEN 1 THEN 'A' ELSE '' END AS niveau_a_transmettre,
         COALESCE(ir.nb_postes_impactes, 0)::int AS nb_postes_impactes,
         COALESCE(ir.max_criticite, 0)::int AS max_criticite,
         COALESCE(r.receveurs_potentiels_count, 0)::int AS receveurs_potentiels_count,
-        COALESCE(r.receveurs_potentiels_label, '') AS receveurs_potentiels_label
-    FROM leaving_comp lc
-    JOIN impacted_req ir ON ir.id_effectif = lc.id_effectif AND ir.id_comp = lc.id_comp
-    JOIN public.tbl_competence c ON c.id_comp = lc.id_comp
-    LEFT JOIN public.tbl_entreprise_organigramme o ON o.id_ent = %s AND o.id_service = lc.id_service AND o.archive = FALSE
-    LEFT JOIN public.tbl_fiche_poste fp ON fp.id_poste = lc.id_poste_actuel
-    LEFT JOIN receveurs r ON r.id_comp = lc.id_comp
-    ORDER BY ir.max_criticite DESC, ir.nb_postes_impactes DESC, lc.exit_date ASC, c.code ASC
+        COALESCE(r.receveurs_potentiels_label, '') AS receveurs_potentiels_label,
+        COALESCE(x.experts_total, 0)::int AS experts_total,
+        COALESCE(x.experts_restants, 0)::int AS experts_restants,
+        COALESCE(x.experts_sortants, 0)::int AS experts_sortants,
+        CASE
+            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 'green'
+            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 'orange'
+            ELSE 'red'
+        END AS expertise_status,
+        CASE
+            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 2
+            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 1
+            ELSE 0
+        END AS expertise_order,
+        CASE
+            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 'Expert disponible'
+            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 'Expert concerné par une sortie'
+            ELSE 'Aucun expert identifié'
+        END AS expertise_label,
+        CASE
+            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 'Un expert reste disponible après les sorties prévues.'
+            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 'Un expert existe, mais il est concerné par une sortie prévue.'
+            ELSE 'Aucun expert n’est identifié sur cette compétence.'
+        END AS expertise_tooltip
+    FROM impacted_req ir
+    JOIN leaving_summary ls ON ls.id_comp = ir.id_comp
+    JOIN first_exit fe ON fe.id_comp = ir.id_comp
+    JOIN public.tbl_competence c ON c.id_comp = ir.id_comp
+    LEFT JOIN public.tbl_entreprise_organigramme o ON o.id_ent = %s AND o.id_service = fe.id_service AND o.archive = FALSE
+    LEFT JOIN public.tbl_fiche_poste fp ON fp.id_poste = fe.id_poste_actuel
+    LEFT JOIN receveurs r ON r.id_comp = ir.id_comp
+    LEFT JOIN expertise x ON x.id_comp = ir.id_comp
+    ORDER BY
+        CASE
+            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 2
+            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 1
+            ELSE 0
+        END ASC,
+        COALESCE(ir.max_criticite, 0)::int DESC,
+        COALESCE(ir.nb_postes_impactes, 0)::int DESC,
+        ls.first_exit_date ASC,
+        c.code ASC
     LIMIT %s
     """
-    params = list(cte_params) + [id_ent, horizon, cmin, id_ent, id_ent, lim]
+    params = list(cte_params) + [id_ent, horizon, cmin, id_ent, id_ent, id_ent, lim]
     cur.execute(sql, tuple(params))
     rows = [dict(r) for r in (cur.fetchall() or [])]
     out: List[Dict[str, Any]] = []
@@ -2944,20 +3030,16 @@ def _fetch_prevision_transmission_items(
             exit_date = exit_date.isoformat()
         item = dict(r)
         item["exit_date"] = exit_date
+        item["first_exit_date"] = exit_date
         current_rank = _niveau_rank(item.get("niveau_actuel"))
         target_rank = _niveau_rank(item.get("niveau_a_transmettre"))
         item["titulaire_transmet_label"] = "Oui" if current_rank >= target_rank and target_rank > 0 else "À confirmer"
-        if _safe_int(item.get("max_criticite"), 0) >= 75 or _safe_int(item.get("receveurs_potentiels_count"), 0) <= 0:
-            item["priorite_label"] = "Critique"
-        elif _safe_int(item.get("max_criticite"), 0) >= 50:
-            item["priorite_label"] = "Élevée"
-        else:
-            item["priorite_label"] = "Modérée"
         item["impact_label"] = f"{_safe_int(item.get('nb_postes_impactes'), 0)} poste(s)"
         item["event_kind_label"] = _prevision_exit_kind_label(item.get("exit_kind") or "")
+        item["expertise_color"] = item.get("expertise_status") or "red"
+        item["expertise_order"] = _safe_int(item.get("expertise_order"), 0)
         out.append(item)
     return out
-
 
 def _fetch_prevision_transition_counts(
     cur,

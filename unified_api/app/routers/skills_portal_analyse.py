@@ -1802,8 +1802,8 @@ def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dic
                 p("Retraite estimée"),
             ])
     elif k == "transmissions":
-        rows.append([p("Compétence", head_style), p("Porteur", head_style), p("Échéance", head_style), p("Impact", head_style), p("Priorité", head_style)])
-        widths = [88 * mm, 54 * mm, 30 * mm, 46 * mm, 28 * mm]
+        rows.append([p("Compétence", head_style), p("Échéance", head_style), p("Impact", head_style), p("Expertise", head_style)])
+        widths = [106 * mm, 34 * mm, 50 * mm, 54 * mm]
         for item in (items or []):
             r = as_dict(item)
             code = (r.get("code") or "").strip()
@@ -1811,10 +1811,9 @@ def _analyse_previsions_detail_pdf_table(kpi: str, items: List[Any], styles: Dic
             comp_label = f"{code} - {comp}" if code else comp
             rows.append([
                 p(comp_label),
-                p(r.get("full") or "—"),
-                p(_analyse_date_fr_value(r.get("exit_date"))),
+                p(_analyse_date_fr_value(r.get("exit_date") or r.get("first_exit_date"))),
                 p(r.get("impact_label") or "—"),
-                p(r.get("priorite_label") or "—"),
+                p(r.get("expertise_label") or "—"),
             ])
     elif k == "sorties":
         rows.append([p("Collaborateur", head_style), p("Date", head_style), p("Poste", head_style), p("Service", head_style), p("Raison", head_style)])

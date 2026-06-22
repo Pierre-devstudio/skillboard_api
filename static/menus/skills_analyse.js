@@ -5823,32 +5823,61 @@ function renderDetail(mode) {
     `;
   }
   function renderPrevisionTableTransmissionItems(rows) {
-    const list = Array.isArray(rows) ? rows : [];
+    const list = (Array.isArray(rows) ? rows.slice() : []).sort((a, b) => {
+      const ao = Number(a.expertise_order ?? (String(a.expertise_status || a.expertise_color || "red").toLowerCase() === "red" ? 0 : String(a.expertise_status || a.expertise_color || "").toLowerCase() === "orange" ? 1 : 2));
+      const bo = Number(b.expertise_order ?? (String(b.expertise_status || b.expertise_color || "red").toLowerCase() === "red" ? 0 : String(b.expertise_status || b.expertise_color || "").toLowerCase() === "orange" ? 1 : 2));
+      if (ao !== bo) return ao - bo;
+      const bc = Number(b.max_criticite || 0) - Number(a.max_criticite || 0);
+      if (bc !== 0) return bc;
+      const bp = Number(b.nb_postes_impactes || 0) - Number(a.nb_postes_impactes || 0);
+      if (bp !== 0) return bp;
+      return String(a.exit_date || "").localeCompare(String(b.exit_date || ""));
+    });
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
     window.__sbPrevTransmissionRows = list;
+
+    const expertiseDot = (r) => {
+      const status = String(r.expertise_status || r.expertise_color || "red").toLowerCase();
+      const cfg = status === "green"
+        ? { color: "#16a34a", label: "Expert disponible", title: "Un expert reste disponible après les sorties prévues." }
+        : status === "orange"
+          ? { color: "#f59e0b", label: "Expert concerné par une sortie", title: "Un expert existe, mais il est concerné par une sortie prévue." }
+          : { color: "#dc2626", label: "Aucun expert identifié", title: "Aucun expert n’est identifié sur cette compétence." };
+      const title = r.expertise_tooltip || cfg.title;
+      return `<span title="${escapeHtml(title)}" aria-label="${escapeHtml(cfg.label)}" style="display:inline-flex; align-items:center; justify-content:center; width:100%;">
+        <span style="display:inline-block; width:12px; height:12px; border-radius:999px; background:${cfg.color}; box-shadow:0 0 0 3px rgba(148,163,184,.16);"></span>
+      </span>`;
+    };
+
     return `
-      <div class="table-wrap" style="margin-top:10px;">
+      <div class="table-wrap sb-tip-host" style="margin-top:10px;">
         <table class="sb-table" id="tblPrevTransmissions">
           <thead>
             <tr>
               <th>Compétence</th>
-              <th>Porteur</th>
               <th style="width:120px;">Échéance</th>
               <th style="width:140px;">Impact</th>
-              <th class="col-center" style="width:110px;">Priorité</th>
+              <th class="col-center" style="width:120px;">
+                <span class="sb-th-with-tip">
+                  <span>Expertise</span>
+                  <span class="sb-iinfo"
+                        data-sbtip="prevision-transmission-expertise"
+                        tabindex="0"
+                        role="button"
+                        aria-label="Informations sur l’expertise">i</span>
+                </span>
+              </th>
               <th class="col-center" style="width:82px;">Actions</th>
             </tr>
           </thead>
           <tbody>${list.map((r, idx) => {
-            const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "—";
             const code = (r.code || "").toString().trim();
             const comp = (r.intitule || "—").toString();
             return `<tr class="prev-transmission-row" data-index="${idx}">
               <td>${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span> ` : ""}<strong>${escapeHtml(comp)}</strong></td>
-              <td>${escapeHtml(full)}</td>
-              <td>${analysePrevisionDate(r.exit_date)}</td>
+              <td>${analysePrevisionDate(r.exit_date || r.first_exit_date)}</td>
               <td>${escapeHtml(r.impact_label || "—")}</td>
-              <td class="col-center">${analysePriorityBadge(r.priorite_label || "—")}</td>
+              <td class="col-center">${expertiseDot(r)}</td>
               <td class="col-center"><button type="button" class="sb-icon-btn prev-transmission-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
             </tr>`;
           }).join("")}</tbody>
@@ -5856,7 +5885,6 @@ function renderDetail(mode) {
       </div>
     `;
   }
-
   function renderPrevisionTablePostes(rows) {
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
@@ -7166,6 +7194,20 @@ function bindOnce(portal) {
         </div>
       `;
     }
+    if (key === "prevision-transmission-expertise") {
+      return `
+        <div class="sb-tip-title">Expertise</div>
+        <div class="sb-tip-text">
+          Cet indicateur signale si un niveau expert reste disponible pour sécuriser la transmission de la compétence.
+        </div>
+        <div class="sb-tip-block">
+          <div class="sb-tip-scale"><b style="color:#16a34a;">Point vert</b> : un expert reste disponible.</div>
+          <div class="sb-tip-scale"><b style="color:#f59e0b;">Point orange</b> : l’expert identifié est concerné par une sortie prévue.</div>
+          <div class="sb-tip-scale"><b style="color:#dc2626;">Point rouge</b> : aucun expert n’est identifié.</div>
+        </div>
+      `;
+    }
+
     return `<div class="sb-tip-title">Info</div><div class="sb-tip-text">Aucune aide définie.</div>`;
   }
 
