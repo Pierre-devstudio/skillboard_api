@@ -1595,23 +1595,22 @@ function iconPdf(){
 
     function buildCompetenceAiContext(target, proposal){
         const p = proposal || {};
+        const source = (p.source || p.intitule || "").trim();
         const roleMetier = target === "formateur"
-            ? "compétence requise pour le formateur : transmettre, adapter, animer et évaluer correctement la formation"
-            : "compétence visée pour les stagiaires : acquérir ou renforcer une capacité opérationnelle";
+            ? "Compétence attendue chez un formateur pour transmettre, adapter et accompagner l’appropriation d’un sujet."
+            : "Compétence attendue chez un professionnel en situation de travail.";
 
         return [
-            `Formation : ${readCatalogueField("formTitre") || "Non renseignée"}`,
-            `Rôle dans la formation : ${roleMetier}`,
-            `Compétence proposée : ${(p.source || "").trim()}`,
+            "Objectif : créer une compétence catalogue Novoskill réutilisable, formulée pour un référentiel de compétences et non pour une fiche formation isolée.",
+            `Usage professionnel attendu : ${roleMetier}`,
+            source ? `Intitulé proposé : ${source}` : "",
             (p.description || "").trim() ? `Description proposée : ${(p.description || "").trim()}` : "",
-            (p.domaine_hint || "").trim() ? `Domaine proposé : ${(p.domaine_hint || "").trim()}` : "",
-            p.role ? `Importance : ${competenceRoleLabel(p.role)}` : "",
+            (p.domaine_hint || "").trim() ? `Domaine indicatif : ${(p.domaine_hint || "").trim()}` : "",
+            p.role ? `Importance dans le parcours : ${competenceRoleLabel(p.role)}` : "",
             p.type_competence ? `Nature catalogue : ${competenceTypeLabel(p.type_competence)}` : "",
-            (p.justification || "").trim() ? `Pourquoi cette compétence est utile : ${(p.justification || "").trim()}` : "",
-            readCatalogueField("formObjectifs") ? `Objectif pédagogique : ${readCatalogueField("formObjectifs")}` : "",
-            readCatalogueField("formPresentation") ? `Présentation : ${readCatalogueField("formPresentation")}` : "",
-            (byId("formPublic")?.value || "").trim() ? `Public cible : ${(byId("formPublic")?.value || "").trim()}` : "",
-            "Règle Novoskill : une compétence commence par un verbe d’action, n’est pas une tâche isolée, et doit rester compatible avec les 4 niveaux de maîtrise A/B/C/D du catalogue commun Studio / Learn."
+            (p.justification || "").trim() ? `Finalité professionnelle : ${(p.justification || "").trim()}` : "",
+            "Consigne : ne pas ancrer la compétence dans le titre, le contenu, le public ou le programme de la formation en cours. Utiliser la formation uniquement comme indice de contexte métier large.",
+            "Règle Novoskill : une compétence commence par un verbe d’action, décrit une capacité professionnelle observable, n’est pas une tâche isolée, et doit rester compatible avec les 4 niveaux de maîtrise Débutant / Intermédiaire / Avancé / Expert."
         ].filter(Boolean).join("\n\n");
     }
 
@@ -1772,6 +1771,7 @@ function iconPdf(){
         closePendingCompetenceCreate();
 
         renderCompetences();
+        await persistAiBrouillonIfPossible(portal);
         setSuccess("Compétence créée et rattachée à la formation");
     }
 
@@ -2059,6 +2059,9 @@ function iconPdf(){
             }
 
             renderCompetences();
+            persistAiBrouillonIfPossible(window.portal).catch(err => {
+                console.warn("Sauvegarde du brouillon IA impossible", err);
+            });
             });
 
             actions.appendChild(btnRemove);
@@ -4182,6 +4185,7 @@ function renderContentCompBadges(l){
     _selectedEval = normalizeIdArray(d.methode_eval_ids);
     _selectedCompStag = normalizeIdArray(d.competences_stagiaires_ids);
     _selectedCompForm = normalizeIdArray(d.competences_formateurs_ids);
+    restoreAiBrouillonFromFormation(d);
 
     normalizePrerequis(d.prerequis || []);
 
@@ -4266,6 +4270,90 @@ function renderContentCompBadges(l){
             matches: Array.isArray(r.matches) ? r.matches : []
             }))
             .filter(r => r.source);
+    }
+
+    function normalizePendingAiProposals(rows){
+        return (Array.isArray(rows) ? rows : [])
+            .map(r => ({
+                source: (r?.source || r?.intitule || r?.titre || "").toString().trim(),
+                description: (r?.description || "").toString().trim(),
+                domaine_hint: (r?.domaine_hint || r?.domaine || r?.domaine_label || "").toString().trim(),
+                domaine_id: (r?.domaine_id || "").toString().trim(),
+                role: (r?.role || "complementaire").toString().trim(),
+                type_competence: (r?.type_competence || "generique").toString().trim(),
+                justification: (r?.justification || "").toString().trim(),
+                usage: (r?.usage || "").toString().trim(),
+                status: r?.status || "à créer",
+                matches: Array.isArray(r?.matches) ? r.matches : []
+            }))
+            .filter(r => r.source);
+    }
+
+    function hasAiBrouillonMatter(){
+        return !!(
+            _aiGenerationDraft ||
+            (_pendingCompStagCreate || []).length ||
+            (_pendingCompFormCreate || []).length
+        );
+    }
+
+    function buildAiBrouillonPayload(){
+        if (!hasAiBrouillonMatter()) return null;
+
+        return {
+            type_brouillon: "generation_formation",
+            cadrage_json: _aiGenerationDraft?.cadrage_json || {},
+            fiche_json: _aiGenerationDraft || {},
+            competences_stagiaires_proposees: normalizePendingAiProposals(_pendingCompStagCreate),
+            competences_formateurs_proposees: normalizePendingAiProposals(_pendingCompFormCreate),
+            contenus_json: Array.isArray(_pendingImportContenus) ? _pendingImportContenus : [],
+            rapport_ia: (_aiGenerationDraft?.rapport_ia || "").toString()
+        };
+    }
+
+    function restoreAiBrouillonFromFormation(d){
+        const b = d?.ai_brouillon || null;
+
+        if (!b){
+            _aiGenerationDraft = null;
+            _pendingCompStagCreate = [];
+            _pendingCompFormCreate = [];
+            return;
+        }
+
+        const fiche = b.fiche_json && typeof b.fiche_json === "object" ? b.fiche_json : null;
+        _aiGenerationDraft = fiche || null;
+
+        _pendingCompStagCreate = normalizePendingAiProposals(
+            b.competences_stagiaires_proposees_json || b.competences_stagiaires_proposees || []
+        );
+        _pendingCompFormCreate = normalizePendingAiProposals(
+            b.competences_formateurs_proposees_json || b.competences_formateurs_proposees || []
+        );
+
+        if (_aiGenerationDraft && b.rapport_ia && !_aiGenerationDraft.rapport_ia){
+            _aiGenerationDraft.rapport_ia = b.rapport_ia;
+        }
+    }
+
+    async function persistAiBrouillonIfPossible(portal){
+        if (!_editingId || !hasAiBrouillonMatter()) return;
+
+        const effectifId = getEffectifId();
+        const payload = {
+            ai_brouillon: buildAiBrouillonPayload(),
+            competences_stagiaires: _selectedCompStag,
+            competences_formateurs: _selectedCompForm
+        };
+
+        await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+        );
     }
 
         function buildImportSelectedMap(draft){
@@ -5166,6 +5254,7 @@ function renderContentCompBadges(l){
         _pendingImportContenus = [];
         _pendingCompStagCreate = [];
         _pendingCompFormCreate = [];
+        _aiGenerationDraft = null;
 
         renderRefChecks();
         renderPrerequis();
@@ -5226,6 +5315,10 @@ function renderContentCompBadges(l){
         _detailPlans = [];
         _lmsPlanSessions = [];
         _lmsPlanStatus = null;
+        _pendingImportContenus = [];
+        _pendingCompStagCreate = [];
+        _pendingCompFormCreate = [];
+        _aiGenerationDraft = null;
 
         renderRefChecks();
         renderPrerequis();
@@ -5271,7 +5364,8 @@ function renderContentCompBadges(l){
       methode_eval: _selectedEval,
       competences_stagiaires: _selectedCompStag,
       competences_formateurs: _selectedCompForm,
-      prerequis: buildPrerequisPayload()
+      prerequis: buildPrerequisPayload(),
+      ai_brouillon: buildAiBrouillonPayload()
     };
   }
 
@@ -6024,7 +6118,15 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormAiReview")?.addEventListener("click", () => {
       window.portal?.showAlert?.("", "");
-      setFormInfo("La révision IA des textes sera ciblée après finalisation du modal formation.");
+
+      if (!_aiGenerationDraft){
+        setFormInfo("Aucun brouillon IA enregistré pour cette fiche.");
+        return;
+      }
+
+      renderGenerationPreview(_aiGenerationDraft);
+      openModal("modalFormGenerateAi");
+      setLocalStatus("aiFormStatus", "info", "Brouillon IA enregistré chargé.");
     });
 
     byId("btnFormX")?.addEventListener("click", () => {

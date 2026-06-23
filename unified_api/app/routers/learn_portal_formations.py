@@ -430,6 +430,216 @@ def _ensure_competences_owner(cur, oid: str, ids: list) -> list:
     return [cid for cid in clean_ids if cid in valid]
 
 
+def _json_obj_param(value: Any) -> str:
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False)
+    return "{}"
+
+
+def _json_arr_param(value: Any) -> str:
+    if isinstance(value, list):
+        return json.dumps(value, ensure_ascii=False)
+    return "[]"
+
+
+def _normalize_ai_pending_competences(value: Any) -> list:
+    items = value if isinstance(value, list) else []
+    out = []
+    seen = set()
+
+    for raw in items:
+        if not isinstance(raw, dict):
+            source = _clean_text(raw, 240)
+            node = {"source": source}
+        else:
+            source = _clean_text(raw.get("source") or raw.get("intitule") or raw.get("titre"), 240)
+            node = {
+                "source": source,
+                "description": _clean_text(raw.get("description"), 1200),
+                "domaine_hint": _clean_text(raw.get("domaine_hint") or raw.get("domaine") or raw.get("domaine_label"), 240),
+                "domaine_id": _clean_text(raw.get("domaine_id"), 80),
+                "role": _clean_text(raw.get("role") or "complementaire", 80),
+                "type_competence": _clean_text(raw.get("type_competence") or "generique", 80),
+                "justification": _clean_text(raw.get("justification"), 1200),
+                "usage": _clean_text(raw.get("usage"), 80),
+                "status": _clean_text(raw.get("status") or "à créer", 80),
+                "matches": raw.get("matches") if isinstance(raw.get("matches"), list) else [],
+            }
+
+        if not source:
+            continue
+
+        key = _norm_match_text(source)
+        if not key or key in seen:
+            continue
+
+        seen.add(key)
+        out.append(node)
+
+    return out
+
+
+def _normalize_ai_brouillon_payload(value: Any) -> Optional[dict]:
+    if not isinstance(value, dict):
+        return None
+
+    fiche_json = value.get("fiche_json") if isinstance(value.get("fiche_json"), dict) else {}
+    cadrage_json = value.get("cadrage_json") if isinstance(value.get("cadrage_json"), dict) else {}
+    contenus_json = value.get("contenus_json") if isinstance(value.get("contenus_json"), list) else []
+
+    comp_stag = _normalize_ai_pending_competences(
+        value.get("competences_stagiaires_proposees_json")
+        or value.get("competences_stagiaires_proposees")
+        or []
+    )
+    comp_form = _normalize_ai_pending_competences(
+        value.get("competences_formateurs_proposees_json")
+        or value.get("competences_formateurs_proposees")
+        or []
+    )
+
+    rapport = _clean_text(value.get("rapport_ia"), 12000)
+
+    if not fiche_json and not cadrage_json and not contenus_json and not comp_stag and not comp_form and not rapport:
+        return None
+
+    return {
+        "type_brouillon": "generation_formation",
+        "cadrage_json": cadrage_json,
+        "fiche_json": fiche_json,
+        "competences_stagiaires_proposees_json": comp_stag,
+        "competences_formateurs_proposees_json": comp_form,
+        "contenus_json": contenus_json,
+        "rapport_ia": rapport,
+    }
+
+
+def _save_formation_ai_brouillon(cur, oid: str, id_form: str, payload: Any) -> None:
+    data = _normalize_ai_brouillon_payload(payload)
+
+    if data is None:
+        return
+
+    cur.execute(
+        """
+        SELECT id_brouillon_ia
+        FROM public.tbl_fiche_formation_brouillon_ia
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND type_brouillon = 'generation_formation'
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(etat, 'actif') = 'actif'
+        ORDER BY date_modification DESC, date_creation DESC
+        LIMIT 1
+        """,
+        (oid, id_form),
+    )
+
+    existing = cur.fetchone() or {}
+    bid = str(existing.get("id_brouillon_ia") or "").strip()
+
+    if bid:
+        cur.execute(
+            """
+            UPDATE public.tbl_fiche_formation_brouillon_ia
+            SET cadrage_json = %s::jsonb,
+                fiche_json = %s::jsonb,
+                competences_stagiaires_proposees_json = %s::jsonb,
+                competences_formateurs_proposees_json = %s::jsonb,
+                contenus_json = %s::jsonb,
+                rapport_ia = %s,
+                etat = 'actif',
+                archive = FALSE,
+                date_modification = NOW()
+            WHERE id_owner = %s
+              AND id_form = %s
+              AND id_brouillon_ia = %s
+            """,
+            (
+                _json_obj_param(data.get("cadrage_json")),
+                _json_obj_param(data.get("fiche_json")),
+                _json_arr_param(data.get("competences_stagiaires_proposees_json")),
+                _json_arr_param(data.get("competences_formateurs_proposees_json")),
+                _json_arr_param(data.get("contenus_json")),
+                data.get("rapport_ia") or None,
+                oid,
+                id_form,
+                bid,
+            ),
+        )
+        return
+
+    cur.execute(
+        """
+        INSERT INTO public.tbl_fiche_formation_brouillon_ia
+          (
+            id_brouillon_ia,
+            id_owner,
+            id_form,
+            type_brouillon,
+            cadrage_json,
+            fiche_json,
+            competences_stagiaires_proposees_json,
+            competences_formateurs_proposees_json,
+            contenus_json,
+            rapport_ia,
+            etat,
+            archive,
+            date_creation,
+            date_modification
+          )
+        VALUES
+          (
+            %s, %s, %s, 'generation_formation',
+            %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
+            %s, 'actif', FALSE, NOW(), NOW()
+          )
+        """,
+        (
+            str(uuid.uuid4()),
+            oid,
+            id_form,
+            _json_obj_param(data.get("cadrage_json")),
+            _json_obj_param(data.get("fiche_json")),
+            _json_arr_param(data.get("competences_stagiaires_proposees_json")),
+            _json_arr_param(data.get("competences_formateurs_proposees_json")),
+            _json_arr_param(data.get("contenus_json")),
+            data.get("rapport_ia") or None,
+        ),
+    )
+
+
+def _fetch_formation_ai_brouillon(cur, oid: str, id_form: str) -> Optional[dict]:
+    cur.execute(
+        """
+        SELECT
+          id_brouillon_ia,
+          type_brouillon,
+          cadrage_json,
+          fiche_json,
+          competences_stagiaires_proposees_json,
+          competences_formateurs_proposees_json,
+          contenus_json,
+          rapport_ia,
+          etat,
+          date_creation,
+          date_modification
+        FROM public.tbl_fiche_formation_brouillon_ia
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND type_brouillon = 'generation_formation'
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(etat, 'actif') = 'actif'
+        ORDER BY date_modification DESC, date_creation DESC
+        LIMIT 1
+        """,
+        (oid, id_form),
+    )
+
+    row = cur.fetchone()
+    return row or None
+
+
 def _fetch_contenu_row(cur, oid: str, id_form: str, id_ligne_contenu: str) -> dict:
     cur.execute(
         """
@@ -1063,6 +1273,7 @@ def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
         p["blocs"] = cur.fetchall() or []
 
     form["plans"] = plans
+    form["ai_brouillon"] = _fetch_formation_ai_brouillon(cur, oid, id_form)
     return form
 
 
@@ -2718,6 +2929,7 @@ class FormationPayload(BaseModel):
     domaine: Optional[str] = None
     tarif_mini: Optional[Any] = None
     etat: Optional[str] = None
+    ai_brouillon: Optional[dict] = None
 
 
 class FormationUpdatePayload(BaseModel):
@@ -2739,6 +2951,7 @@ class FormationUpdatePayload(BaseModel):
     domaine: Optional[str] = None
     tarif_mini: Optional[Any] = None
     etat: Optional[str] = None
+    ai_brouillon: Optional[dict] = None
 
 class FormationContenuPayload(BaseModel):
     titre_sequence: str
@@ -3435,6 +3648,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                 )
 
                 _sync_formation_prerequis(cur, oid, fid, payload.prerequis)
+                _save_formation_ai_brouillon(cur, oid, fid, payload.ai_brouillon)
 
                 conn.commit()
 
@@ -3543,8 +3757,15 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
                     cols.append("etat = %s")
                     vals.append((payload.etat or "à valider").strip())
 
+                needs_commit = False
+
                 if "prerequis" in patch_fields:
                     _sync_formation_prerequis(cur, oid, fid, payload.prerequis)
+                    needs_commit = True
+
+                if "ai_brouillon" in patch_fields:
+                    _save_formation_ai_brouillon(cur, oid, fid, payload.ai_brouillon)
+                    needs_commit = True
 
                 if cols:
                     cols.append("date_modification = NOW()")
@@ -3559,7 +3780,9 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
                         """,
                         tuple(vals),
                     )
+                    needs_commit = True
 
+                if needs_commit:
                     conn.commit()
 
         return {"ok": True}
