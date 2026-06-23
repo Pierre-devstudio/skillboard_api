@@ -2011,23 +2011,14 @@ function iconPdf(){
             const left = document.createElement("div");
             left.className = "sb-row-left";
 
-            const badge = document.createElement("span");
-            badge.className = "sb-badge sb-badge--state";
-            badge.textContent = "À créer";
-
             const title = document.createElement("div");
             title.className = "sb-row-title";
             title.textContent = p.source || "";
 
-            left.appendChild(badge);
             left.appendChild(title);
 
             const right = document.createElement("div");
             right.className = "sb-row-right";
-
-            const hint = document.createElement("span");
-            hint.className = "card-sub lf-comp-proposal-hint";
-            hint.textContent = ["Proposition issue de l’import", p.role ? competenceRoleLabel(p.role) : ""].filter(Boolean).join(" · ");
 
             const actions = document.createElement("div");
             actions.className = "sb-icon-actions";
@@ -2071,14 +2062,6 @@ function iconPdf(){
             });
 
             actions.appendChild(btnRemove);
-
-            if (p.description){
-                const desc = document.createElement("span");
-                desc.className = "card-sub lf-comp-proposal-hint";
-                desc.textContent = p.description;
-                right.appendChild(desc);
-            }
-            right.appendChild(hint);
             right.appendChild(actions);
 
             row.appendChild(left);
@@ -2445,30 +2428,14 @@ function renderContentCompBadges(l){
         if (_pendingImportContenus.length){
             _pendingImportContenus.forEach((l, idx) => {
             const div = document.createElement("div");
-            div.className = "lf-content-card lf-content-card--pending";
-
-            const compItems = (l.competences_liees || [])
-                .map(id => findCompetence(id))
-                .filter(Boolean);
-
-            const badges = compItems.length
-                ? compItems.map(c => `
-                    <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(c.intitule || "")}">
-                    ${htmlEsc(c.code || "—")}
-                    </span>
-                `).join("")
-                : `<span class="card-sub" style="margin:0;">Compétences à confirmer</span>`;
+            div.className = "lf-content-card lf-content-card--pending lf-content-card--simple";
 
             div.innerHTML = `
                 <div class="lf-content-main">
                 <div class="lf-mini-title">${htmlEsc(l.titre_sequence || `Contenu ${idx + 1}`)}</div>
                 <div class="card-sub">${htmlEsc(l.objectif || "")}</div>
+                <div class="lf-mini-subtitle">Sujets abordés</div>
                 <div class="lf-mini-body">${htmlEsc(l.contenu || "—").replaceAll("\n", "<br>")}</div>
-                </div>
-
-                <div class="lf-content-side">
-                <div class="lf-content-comp-badges">${badges}</div>
-                <span class="sb-badge sb-badge--state">En attente d’enregistrement</span>
                 </div>
             `;
 
@@ -4321,6 +4288,116 @@ function renderContentCompBadges(l){
         return map;
     }
 
+    function normalizeSubjectKey(value){
+        return String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function cleanGeneratedSubjectLine(value){
+        let txt = String(value || "").trim();
+        txt = txt.replace(/^[-•–—*]+\s*/g, "").trim();
+        txt = txt.replace(/^\d+[.)]\s*/g, "").trim();
+        return txt;
+    }
+
+    function generatedContentSubjectLines(item){
+        const preferred = Array.isArray(item?.sous_themes)
+            ? item.sous_themes
+            : [];
+
+        const subjects = [];
+        const seen = new Set();
+
+        const headingKeys = new Set([
+            "sujets abordes",
+            "sous themes",
+            "sous theme",
+            "contenu",
+            "contenus",
+            "competences travaillees",
+            "competences associees",
+            "competences liees",
+            "competences sources",
+            "situations professionnelles traitees",
+            "situations terrain",
+            "exercices ou mises en pratique",
+            "exercices",
+            "mises en pratique",
+            "livrable possible",
+            "livrable",
+            "duree indicative"
+        ]);
+
+        const add = (value) => {
+            const txt = cleanGeneratedSubjectLine(value);
+            if (!txt) return;
+
+            const key = normalizeSubjectKey(txt.replace(/:$/, ""));
+            if (!key || headingKeys.has(key) || seen.has(key)) return;
+
+            seen.add(key);
+            subjects.push(txt);
+        };
+
+        preferred.forEach(add);
+
+        if (subjects.length){
+            return subjects;
+        }
+
+        let capture = true;
+        String(item?.contenu || "")
+            .split(/\r?\n/)
+            .forEach(raw => {
+                const txt = cleanGeneratedSubjectLine(raw);
+                const key = normalizeSubjectKey(txt.replace(/:$/, ""));
+
+                if (!txt) return;
+
+                if (key === "sujets abordes" || key === "sous themes"){
+                    capture = true;
+                    return;
+                }
+
+                if (headingKeys.has(key)){
+                    capture = false;
+                    return;
+                }
+
+                if (capture) add(txt);
+            });
+
+        return subjects;
+    }
+
+    function normalizeGeneratedContenusForFiche(rows){
+        return (rows || [])
+            .map((c, idx) => {
+                if (!c || typeof c !== "object"){
+                    c = { titre_sequence: `Contenu ${idx + 1}`, objectif: "", contenu: String(c || "") };
+                }
+
+                const subjects = generatedContentSubjectLines(c);
+                const contenu = subjects.length
+                    ? subjects.map(x => `- ${x}`).join("\n")
+                    : String(c.contenu || "").trim();
+
+                return {
+                    ...c,
+                    titre_sequence: String(c.titre_sequence || `Contenu ${idx + 1}`).trim(),
+                    objectif: String(c.objectif || c.intention_pedagogique || "").trim(),
+                    contenu,
+                    competences_liees: []
+                };
+            })
+            .filter(c => c.titre_sequence || c.objectif || c.contenu);
+    }
+
     function enrichImportContenusWithCompetences(rows, draft){
         const map = buildImportSelectedMap(draft);
 
@@ -4581,9 +4658,8 @@ function renderContentCompBadges(l){
         _pendingCompStagCreate = importRowsToCreate(d.competences_stagiaires_import || []);
         _pendingCompFormCreate = importRowsToCreate(d.competences_formateurs_import || []);
 
-        _pendingImportContenus = enrichImportContenusWithCompetences(
-            Array.isArray(d.contenus) ? d.contenus : [],
-            d
+        _pendingImportContenus = normalizeGeneratedContenusForFiche(
+            Array.isArray(d.contenus) ? d.contenus : []
         );
 
         renderRefChecks();
@@ -5001,9 +5077,8 @@ function renderContentCompBadges(l){
         _pendingCompStagCreate = importRowsToCreate(d.competences_stagiaires_import || []);
         _pendingCompFormCreate = importRowsToCreate(d.competences_formateurs_import || []);
 
-        _pendingImportContenus = enrichImportContenusWithCompetences(
-            Array.isArray(d.contenus) ? d.contenus : [],
-            d
+        _pendingImportContenus = normalizeGeneratedContenusForFiche(
+            Array.isArray(d.contenus) ? d.contenus : []
         );
 
         renderRefChecks();
