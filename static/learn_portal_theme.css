@@ -2363,8 +2363,8 @@
 }
 
 .lf-comp-section-title{
-  font-size:14px;
-  font-weight:800;
+  font-size:13px;
+  font-weight:650;
   color:#111827;
   line-height:1.25;
 }
@@ -2376,11 +2376,11 @@
 
 .lf-comp-level-row{
   display:grid;
-  grid-template-columns:170px minmax(0, 1fr);
-  gap:16px;
-  align-items:start;
-  padding:10px 0;
-  border-top:1px solid rgba(17,24,39,.10);
+  grid-template-columns:150px minmax(0, 1fr);
+  gap:12px;
+  align-items:center;
+  padding:7px 0;
+  border-top:1px solid rgba(17,24,39,.08);
 }
 
 .lf-comp-level-row:first-of-type{
@@ -2388,23 +2388,31 @@
 }
 
 .lf-comp-level-badge{
-  min-height:22px;
-  border:1px solid #ff9f73;
+  width:118px;
+  min-height:24px;
+  border:1px solid #ff8a5c;
   border-radius:999px;
   color:#ff6b35;
-  background:#fff;
+  background:transparent;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:3px 16px;
-  font-size:12px;
-  font-weight:750;
+  padding:2px 10px;
+  font-size:11px;
+  font-weight:650;
   line-height:1.1;
+  box-sizing:border-box;
 }
 
 .lf-comp-level-row textarea{
-  min-height:44px;
-  resize:vertical;
+  height:34px;
+  min-height:34px;
+  max-height:34px;
+  resize:none;
+  font-size:12.5px;
+  line-height:1.25;
+  padding:7px 9px;
+  overflow-y:auto;
 }
 
 .lf-comp-criteria-editor .sb-field-head{
@@ -2429,8 +2437,8 @@
 }
 
 .lf-comp-crit-title{
-  font-size:15px;
-  font-weight:800;
+  font-size:13.5px;
+  font-weight:650;
   color:#111827;
   white-space:normal;
   overflow:visible;
@@ -2438,13 +2446,13 @@
 }
 
 .lf-comp-crit-badge{
-  border:1px solid #9a5a40;
-  color:#b45309;
-  background:#fff7ed;
+  border:1px solid #ff8a5c;
+  color:#ff6b35;
+  background:transparent;
   border-radius:999px;
-  padding:3px 10px;
-  font-size:11px;
-  font-weight:750;
+  padding:2px 9px;
+  font-size:10.5px;
+  font-weight:650;
   white-space:nowrap;
 }
 
@@ -2457,7 +2465,7 @@
   padding-left:18px;
   display:grid;
   gap:7px;
-  font-size:13px;
+  font-size:12.5px;
   line-height:1.35;
   color:#111827;
 }
@@ -2473,7 +2481,7 @@
   }
 
   .lf-comp-level-badge{
-    justify-content:flex-start;
-    width:max-content;
+    justify-content:center;
+    width:118px;
   }
 }
