@@ -427,7 +427,7 @@ def _build_ai_schema() -> dict:
                 "type": "array",
                 "minItems": 4,
                 "maxItems": 4,
-                "items": {"type": "string", "maxLength": 120},
+                "items": {"type": "string", "maxLength": 180},
             },
         },
     }
@@ -552,8 +552,14 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         "Rédige chaque niveau comme si tu décrivais ce que sait faire une personne, mais sans écrire le pronom ni le sujet. "
         "Chaque niveau commence directement par un verbe conjugué à la 3e personne du singulier : Identifie, Analyse, Adapte, Formalise, Pilote, Optimise, Transmet. "
         "Interdiction de commencer les niveaux par un verbe à l'infinitif : Identifier, Analyser, Adapter, Formaliser, Piloter, Optimiser. "
-        "Les critères d'évaluation doivent être distincts, progressifs, observables et utilisables en formation. "
-        "Chaque point d'évaluation doit être court, 1 phrase, commencer par un verbe conjugué à la 3e personne du singulier, sans pronom : Liste, Décrit, Analyse, Justifie, Adapte, Fiabilise, Transmet. "
+        "Les critères d'évaluation doivent être distincts, observables et utilisables par un formateur pour positionner un stagiaire. "
+        "Règle impérative : pour un même critère, les 4 lignes Eval ne sont pas 4 sous-actions différentes. "
+        "Elles décrivent 4 degrés de maîtrise du même critère, du niveau fragile au niveau expert. "
+        "Eval[0] = réalisation partielle, guidée, incomplète ou fragile. "
+        "Eval[1] = réalisation simple, correcte, autonome dans un cas courant. "
+        "Eval[2] = réalisation fiable, structurée et adaptée au contexte. "
+        "Eval[3] = réalisation experte, optimisée, justifiée, transmissible ou améliorable. "
+        "Chaque point d'évaluation doit être court, 1 phrase, commencer par un verbe conjugué à la 3e personne du singulier, sans pronom : Repère, Identifie, Analyse, Justifie, Adapte, Fiabilise, Transmet. "
         "N'écris jamais 'il', 'elle', 'le stagiaire', 'l'apprenant' ou 'la personne' dans les niveaux ou les évaluations. "
         "Si un document est fourni, utilise-le comme source de contexte, sans recopier de longs passages."
     )
@@ -579,8 +585,12 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         "- La description doit être plus rédigée qu'une définition sèche : 2 à 3 phrases courtes, orientées usage professionnel et résultat attendu.\n"
         "- Les niveaux A/B/C/D doivent commencer par un verbe conjugué à la 3e personne du singulier, sans pronom ni sujet. Exemple : Identifie..., Structure..., Adapte..., Pilote...\n"
         "- Les niveaux ne doivent pas commencer par un infinitif. Interdit : Identifier, Structurer, Adapter, Piloter.\n"
-        "- Les 4 niveaux d’un critère doivent montrer une progression claire : guidé → autonome → optimisation → expertise/transmission.\n"
-        "- Les 4 points d'évaluation de chaque critère commencent aussi par un verbe conjugué à la 3e personne du singulier, sans pronom ni sujet.\n"
+        "- Pour chaque critère, les 4 points Eval doivent former une échelle d'évaluation du même critère, pas une liste de sous-actions différentes.\n"
+        "- Eval[0] décrit un niveau fragile ou guidé : repère partiellement, applique avec aide, oublie certains éléments, reste imprécis.\n"
+        "- Eval[1] décrit un niveau autonome simple : réalise correctement dans un cas courant, avec une méthode de base.\n"
+        "- Eval[2] décrit un niveau fiable : structure l'analyse, adapte au contexte, justifie les choix principaux.\n"
+        "- Eval[3] décrit un niveau expert : optimise, priorise, fiabilise, transmet ou améliore la pratique.\n"
+        "- Les 4 points d'évaluation de chaque critère commencent par un verbe conjugué à la 3e personne du singulier, sans pronom ni sujet.\n"
         "- Niveaux A/B/C/D <=230 caractères chacun.\n"
     )
 
