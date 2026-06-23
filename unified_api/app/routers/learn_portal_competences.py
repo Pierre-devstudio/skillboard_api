@@ -9,6 +9,9 @@ import os
 import json
 import re
 import unicodedata
+import shutil
+import subprocess
+import tempfile
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import learn_require_user, learn_fetch_profile
@@ -207,6 +210,11 @@ def _clean_doc_text(value: Any, max_len: int = 18000) -> str:
 async def _extract_document_text(upload: UploadFile) -> str:
     filename = (upload.filename or "").strip()
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+    allowed_ext = {"pdf", "doc", "docx", "txt"}
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF, DOC, DOCX ou TXT.")
+
     raw = await upload.read()
 
     if not raw:
@@ -215,8 +223,16 @@ async def _extract_document_text(upload: UploadFile) -> str:
     if len(raw) > 8 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Document trop volumineux (8 Mo maximum).")
 
-    if ext in ("txt", "md", "csv"):
-        return _clean_doc_text(raw.decode("utf-8", errors="ignore"))
+    if ext == "txt":
+        for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+            try:
+                txt = _clean_doc_text(raw.decode(enc))
+                if txt:
+                    return txt
+            except Exception:
+                pass
+
+        raise HTTPException(status_code=400, detail="Impossible de lire le document TXT.")
 
     if ext == "pdf":
         if PdfReader is None:
@@ -232,7 +248,11 @@ async def _extract_document_text(upload: UploadFile) -> str:
                 except Exception:
                     pass
 
-            return _clean_doc_text("\n".join(parts))
+            txt = _clean_doc_text("\n".join(parts))
+            if not txt:
+                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le PDF.")
+
+            return txt
         except HTTPException:
             raise
         except Exception:
@@ -250,14 +270,60 @@ async def _extract_document_text(upload: UploadFile) -> str:
                 for row in table.rows:
                     parts.append(" | ".join((cell.text or "").strip() for cell in row.cells))
 
-            return _clean_doc_text("\n".join(parts))
+            txt = _clean_doc_text("\n".join(parts))
+            if not txt:
+                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le DOCX.")
+
+            return txt
+        except HTTPException:
+            raise
         except Exception:
             raise HTTPException(status_code=400, detail="Impossible de lire le document DOCX.")
 
-    raise HTTPException(
-        status_code=400,
-        detail="Format non pris en charge. Formats acceptés : PDF, DOCX, TXT, MD, CSV.",
-    )
+    if ext == "doc":
+        antiword = shutil.which("antiword")
+        if not antiword:
+            raise HTTPException(status_code=500, detail="Lecture DOC indisponible côté serveur. Convertissez le fichier en DOCX, PDF ou TXT.")
+
+        tmp_path = ""
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".doc") as tmp:
+                tmp.write(raw)
+                tmp_path = tmp.name
+
+            proc = subprocess.run(
+                [antiword, tmp_path],
+                capture_output=True,
+                timeout=20,
+                check=False,
+            )
+
+            if proc.returncode != 0:
+                raise HTTPException(status_code=400, detail="Impossible de lire le document DOC.")
+
+            txt = _clean_doc_text(proc.stdout.decode("utf-8", errors="ignore"))
+            if not txt:
+                txt = _clean_doc_text(proc.stdout.decode("cp1252", errors="ignore"))
+
+            if not txt:
+                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le DOC.")
+
+            return txt
+
+        except HTTPException:
+            raise
+        except subprocess.TimeoutExpired:
+            raise HTTPException(status_code=400, detail="Lecture DOC trop longue.")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Impossible de lire le document DOC.")
+        finally:
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+    raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF, DOC, DOCX ou TXT.")
 
 
 def _normalize_grille(grille: Any) -> dict:
@@ -842,13 +908,32 @@ async def learn_competence_ai_draft_document(
     contexte: Optional[str] = Form(None),
     domaine_id: Optional[str] = Form(None),
     nb_criteres: Optional[int] = Form(3),
-    document: UploadFile = File(...),
+    document: Optional[list[UploadFile]] = File(None),
 ):
     auth = request.headers.get("Authorization", "")
     u = learn_require_user(auth)
 
     try:
-        doc_text = await _extract_document_text(document)
+        documents = document or []
+        if not isinstance(documents, list):
+            documents = [documents]
+
+        clean_documents = [d for d in documents if d and (d.filename or "").strip()]
+        if not clean_documents:
+            raise HTTPException(status_code=400, detail="Aucun document fourni.")
+
+        if len(clean_documents) > 8:
+            raise HTTPException(status_code=400, detail="8 documents maximum par génération.")
+
+        parts = []
+        for idx, upload in enumerate(clean_documents, start=1):
+            txt = await _extract_document_text(upload)
+            if txt:
+                parts.append(f"Document {idx} - {(upload.filename or 'document').strip()} :\n{txt}")
+
+        doc_text = _clean_doc_text("\n\n".join(parts), 22000)
+        if not doc_text:
+            raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans les documents fournis.")
 
         payload = AiDraftCompetencePayload(
             objectif=objectif,

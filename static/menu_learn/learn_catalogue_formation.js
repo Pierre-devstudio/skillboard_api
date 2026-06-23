@@ -48,6 +48,7 @@
   let _aiAbortController = null;
   let _aiLongTimer = null;
   let _aiSelectedDocs = [];
+  let _compAiSelectedDocs = [];
   let _pendingImportContenus = [];
   let _pendingCompStagCreate = [];
   let _pendingCompFormCreate = [];
@@ -1658,7 +1659,7 @@ function iconPdf(){
 
         if (byId("formCompAiObjectif")) byId("formCompAiObjectif").value = title;
         if (byId("formCompAiContexte")) byId("formCompAiContexte").value = buildCompetenceAiContext(_compCreateTarget, p);
-        if (byId("formCompAiDocument")) byId("formCompAiDocument").value = "";
+        resetCompAiDocuments();
         if (byId("formCompAiNbCrit")) byId("formCompAiNbCrit").value = "3";
 
         compResetCrit();
@@ -1793,6 +1794,7 @@ function iconPdf(){
         }
 
         fillCompAiDomainSelect(byId("formCompDomaine")?.value || "");
+        ensureCompAiDocumentUpload();
 
         const nbSel = byId("formCompAiNbCrit");
         if (nbSel) nbSel.value = "3";
@@ -1806,11 +1808,208 @@ function iconPdf(){
         closeModal("modalFormCompAi");
     }
 
+    const COMP_AI_DOC_EXTENSIONS = new Set(["pdf", "doc", "docx", "txt"]);
+
+    function ensureCompAiDocumentUpload(){
+        const input = byId("formCompAiDocument");
+        if (!input) return;
+
+        input.setAttribute("multiple", "multiple");
+        input.setAttribute("accept", ".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain");
+        input.classList.add("lf-comp-ai-doc-input-hidden");
+
+        if (!byId("lfCompAiDocUploadStyle")){
+            const style = document.createElement("style");
+            style.id = "lfCompAiDocUploadStyle";
+            style.textContent = `
+                .lf-comp-ai-doc-input-hidden{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;}
+                .lf-comp-ai-doc-drop{border:1px dashed rgba(99,102,241,.45);background:linear-gradient(135deg,rgba(245,247,255,.96),rgba(255,246,253,.96));border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.75);}
+                .lf-comp-ai-doc-drop:hover,.lf-comp-ai-doc-drop.is-dragover{border-color:#e100ff;background:linear-gradient(135deg,rgba(245,247,255,1),rgba(255,235,252,1));transform:translateY(-1px);}
+                .lf-comp-ai-doc-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#fff;color:#e100ff;box-shadow:0 8px 20px rgba(17,24,39,.08);flex:0 0 auto;}
+                .lf-comp-ai-doc-icon svg{width:23px;height:23px;}
+                .lf-comp-ai-doc-main{flex:1;min-width:0;}
+                .lf-comp-ai-doc-title{font-weight:800;color:#111827;font-size:.92rem;}
+                .lf-comp-ai-doc-sub{font-size:.82rem;color:#667085;margin-top:3px;line-height:1.35;}
+                .lf-comp-ai-doc-action{border:1px solid rgba(225,0,255,.28);background:#fff;color:#b000d4;border-radius:999px;font-weight:800;font-size:.78rem;padding:8px 12px;white-space:nowrap;}
+                .lf-comp-ai-doc-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+                .lf-comp-ai-doc-row{display:flex;align-items:center;gap:10px;border:1px solid rgba(15,23,42,.08);border-radius:14px;background:#fff;padding:9px 10px;}
+                .lf-comp-ai-doc-row-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+                .lf-comp-ai-doc-row-main strong{font-size:.84rem;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+                .lf-comp-ai-doc-row-main span{font-size:.76rem;color:#667085;}
+            `;
+            document.head.appendChild(style);
+        }
+
+        if (byId("formCompAiDocsDrop")){
+            renderCompAiDocuments();
+            return;
+        }
+
+        const drop = document.createElement("div");
+        drop.id = "formCompAiDocsDrop";
+        drop.className = "lf-comp-ai-doc-drop";
+        drop.setAttribute("role", "button");
+        drop.setAttribute("tabindex", "0");
+        drop.innerHTML = `
+            <div class="lf-comp-ai-doc-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M12 12v6"/>
+                <path d="M9 15h6"/>
+              </svg>
+            </div>
+            <div class="lf-comp-ai-doc-main">
+              <div class="lf-comp-ai-doc-title">Ajouter des documents de contexte</div>
+              <div class="lf-comp-ai-doc-sub" id="formCompAiDocsLabel">Glissez-déposez plusieurs fichiers ou cliquez pour sélectionner. Formats : PDF, DOC, DOCX, TXT.</div>
+            </div>
+            <div class="lf-comp-ai-doc-action">Sélectionner</div>
+        `;
+
+        const list = document.createElement("div");
+        list.id = "formCompAiDocsList";
+        list.className = "lf-comp-ai-doc-list";
+
+        input.parentNode.insertBefore(drop, input);
+        input.parentNode.insertBefore(list, input.nextSibling);
+
+        const oldHelp = input.parentNode.querySelector(".card-sub:not(#formCompAiDocsLabel)");
+        if (oldHelp){
+            oldHelp.style.display = "none";
+        }
+
+        const openPicker = () => input.click();
+        drop.addEventListener("click", openPicker);
+        drop.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " "){
+                e.preventDefault();
+                openPicker();
+            }
+        });
+
+        ["dragenter", "dragover"].forEach(evtName => {
+            drop.addEventListener(evtName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                drop.classList.add("is-dragover");
+            });
+        });
+
+        ["dragleave", "drop"].forEach(evtName => {
+            drop.addEventListener(evtName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                drop.classList.remove("is-dragover");
+            });
+        });
+
+        drop.addEventListener("drop", (e) => {
+            addCompAiDocuments(e.dataTransfer?.files || []);
+        });
+
+        input.addEventListener("change", () => {
+            addCompAiDocuments(input.files || []);
+            input.value = "";
+        });
+
+        list.addEventListener("click", (e) => {
+            const btn = e.target?.closest?.("[data-comp-ai-doc-remove]");
+            if (!btn) return;
+
+            const idx = Number(btn.dataset.compAiDocRemove);
+            if (!Number.isInteger(idx)) return;
+
+            _compAiSelectedDocs.splice(idx, 1);
+            renderCompAiDocuments();
+        });
+
+        renderCompAiDocuments();
+    }
+
+    function resetCompAiDocuments(){
+        _compAiSelectedDocs = [];
+
+        const input = byId("formCompAiDocument");
+        if (input) input.value = "";
+
+        renderCompAiDocuments();
+    }
+
+    function renderCompAiDocuments(){
+        const label = byId("formCompAiDocsLabel");
+        const list = byId("formCompAiDocsList");
+        const files = Array.isArray(_compAiSelectedDocs) ? _compAiSelectedDocs : [];
+
+        if (label){
+            label.textContent = files.length
+                ? `${files.length} document${files.length > 1 ? "s" : ""} sélectionné${files.length > 1 ? "s" : ""}. Formats acceptés : PDF, DOC, DOCX, TXT.`
+                : "Glissez-déposez plusieurs fichiers ou cliquez pour sélectionner. Formats : PDF, DOC, DOCX, TXT.";
+        }
+
+        if (!list) return;
+
+        list.innerHTML = files.length
+            ? files.map((f, idx) => `
+                <div class="lf-comp-ai-doc-row">
+                  <div class="lf-comp-ai-doc-row-main">
+                    <strong>${htmlEsc(f.name || "Document")}</strong>
+                    <span>${htmlEsc((getFileExt(f) || "fichier").toUpperCase())} · ${htmlEsc(formatFileSize(f.size))}</span>
+                  </div>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-comp-ai-doc-remove="${idx}">Retirer</button>
+                </div>
+            `).join("")
+            : "";
+    }
+
+    function addCompAiDocuments(fileList){
+        ensureCompAiDocumentUpload();
+
+        const incoming = Array.from(fileList || []);
+        if (!incoming.length) return;
+
+        const accepted = [];
+        const rejected = [];
+        const tooLarge = [];
+        const seen = new Set((_compAiSelectedDocs || []).map(f => `${f.name}::${f.size}::${f.lastModified}`));
+
+        incoming.forEach(file => {
+            const ext = getFileExt(file);
+            const key = `${file.name}::${file.size}::${file.lastModified}`;
+
+            if (!COMP_AI_DOC_EXTENSIONS.has(ext)){
+                rejected.push(file.name || "Document");
+                return;
+            }
+
+            if (Number(file.size || 0) > 8 * 1024 * 1024){
+                tooLarge.push(file.name || "Document");
+                return;
+            }
+
+            if (seen.has(key)) return;
+
+            seen.add(key);
+            accepted.push(file);
+        });
+
+        _compAiSelectedDocs = [...(_compAiSelectedDocs || []), ...accepted];
+        renderCompAiDocuments();
+
+        if (rejected.length || tooLarge.length){
+            const msgs = [];
+            if (rejected.length) msgs.push(`Format refusé : ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "…" : ""}.`);
+            if (tooLarge.length) msgs.push(`Fichier trop volumineux : ${tooLarge.slice(0, 3).join(", ")}${tooLarge.length > 3 ? "…" : ""}. 8 Mo maximum par document.`);
+            setLocalStatus("formCompAiStatus", "info", `${msgs.join(" ")} Formats acceptés : PDF, DOC, DOCX, TXT.`);
+        } else if (accepted.length){
+            clearCompAiStatus();
+        }
+    }
+
     async function generatePendingCompAiDraft(portal){
         const objectif = (byId("formCompAiObjectif")?.value || "").trim();
         const contexte = (byId("formCompAiContexte")?.value || "").trim();
         const dom = (byId("formCompAiDomaine")?.value || "").trim();
-        const file = byId("formCompAiDocument")?.files?.[0] || null;
+        const files = Array.isArray(_compAiSelectedDocs) ? _compAiSelectedDocs : [];
 
         let nb = parseInt((byId("formCompAiNbCrit")?.value || "3").trim(), 10);
         if (![1, 2, 3, 4].includes(nb)) nb = 3;
@@ -1836,13 +2035,13 @@ function iconPdf(){
         try{
             let draft;
 
-            if (file){
+            if (files.length){
                 const fd = new FormData();
                 fd.append("objectif", objectif);
                 fd.append("contexte", contexte || "");
                 fd.append("domaine_id", dom || "");
                 fd.append("nb_criteres", String(nb));
-                fd.append("document", file);
+                files.forEach(file => fd.append("document", file));
 
                 draft = await portal.apiJson(
                     `${portal.apiBase}/learn/competences/${encodeURIComponent(effectifId)}/draft/ai-document`,
@@ -1884,7 +2083,7 @@ function iconPdf(){
         } catch(e){
             setCompAiSystemError("Génération IA d’une compétence depuis une fiche formation", e, {
                 nb_criteres: nb,
-                has_document: !!file
+                nb_documents: files.length
             });
         } finally {
             closeAiWait();
@@ -6009,6 +6208,7 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormCompAiX")?.addEventListener("click", closePendingCompAiModal);
     byId("btnFormCompAiCancel")?.addEventListener("click", closePendingCompAiModal);
+    ensureCompAiDocumentUpload();
     byId("btnFormCompAiGenerate")?.addEventListener("click", async () => {
       await generatePendingCompAiDraft(portal);
     });
