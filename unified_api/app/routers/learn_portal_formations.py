@@ -9,6 +9,9 @@ import re
 import unicodedata
 import html
 import os
+import shutil
+import subprocess
+import tempfile
 from difflib import SequenceMatcher
 
 from reportlab.lib import colors
@@ -1082,6 +1085,10 @@ async def _extract_training_document_text(upload: UploadFile) -> str:
     filename = (upload.filename or "").strip()
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
+    allowed_ext = {"pdf", "doc", "docx", "txt"}
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF, DOC, DOCX ou TXT.")
+
     raw = await upload.read()
 
     if not raw:
@@ -1089,6 +1096,17 @@ async def _extract_training_document_text(upload: UploadFile) -> str:
 
     if len(raw) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Document trop volumineux (10 Mo maximum).")
+
+    if ext == "txt":
+        for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+            try:
+                txt = _doc_clean_text(raw.decode(enc))
+                if txt:
+                    return txt
+            except Exception:
+                pass
+
+        raise HTTPException(status_code=400, detail="Impossible de lire le document TXT.")
 
     if ext == "pdf":
         if PdfReader is None:
@@ -1140,33 +1158,50 @@ async def _extract_training_document_text(upload: UploadFile) -> str:
         except Exception:
             raise HTTPException(status_code=400, detail="Impossible de lire le document DOCX.")
 
-    if ext == "pptx":
-        if PptxPresentation is None:
-            raise HTTPException(status_code=500, detail="Lecture PPTX indisponible côté serveur.")
+    if ext == "doc":
+        antiword = shutil.which("antiword")
+        if not antiword:
+            raise HTTPException(status_code=500, detail="Lecture DOC indisponible côté serveur. Convertissez le fichier en DOCX, PDF ou TXT.")
 
+        tmp_path = ""
         try:
-            prs = PptxPresentation(BytesIO(raw))
-            parts = []
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".doc") as tmp:
+                tmp.write(raw)
+                tmp_path = tmp.name
 
-            for slide in prs.slides[:80]:
-                for shape in slide.shapes:
-                    txt = getattr(shape, "text", "") or ""
-                    if txt.strip():
-                        parts.append(txt)
+            proc = subprocess.run(
+                [antiword, tmp_path],
+                capture_output=True,
+                timeout=20,
+                check=False,
+            )
 
-            txt = _doc_clean_text("\n".join(parts))
+            if proc.returncode != 0:
+                raise HTTPException(status_code=400, detail="Impossible de lire le document DOC.")
+
+            txt = _doc_clean_text(proc.stdout.decode("utf-8", errors="ignore"))
+            if not txt:
+                txt = _doc_clean_text(proc.stdout.decode("cp1252", errors="ignore"))
 
             if not txt:
-                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le PPTX.")
+                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le DOC.")
 
             return txt
 
         except HTTPException:
             raise
+        except subprocess.TimeoutExpired:
+            raise HTTPException(status_code=400, detail="Lecture DOC trop longue.")
         except Exception:
-            raise HTTPException(status_code=400, detail="Impossible de lire le document PPTX.")
+            raise HTTPException(status_code=400, detail="Impossible de lire le document DOC.")
+        finally:
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
 
-    raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF, DOCX ou PPTX.")
+    raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF, DOC, DOCX ou TXT.")
 
 
 def _norm_match_text(value: Any) -> str:
@@ -1915,18 +1950,13 @@ def _build_generation_ai_schema() -> dict:
         "type": "object",
         "additionalProperties": False,
         "required": [
-            "titre_sequence", "duree_indicative", "intention_pedagogique",
-            "sous_themes", "situations_terrain", "exercices", "livrable",
-            "contenu", "competences_sources"
+            "titre_sequence", "intention_pedagogique",
+            "sous_themes", "contenu", "competences_sources"
         ],
         "properties": {
             "titre_sequence": {"type": "string", "maxLength": 180},
-            "duree_indicative": {"type": ["number", "null"]},
             "intention_pedagogique": {"type": "string", "maxLength": 800},
             "sous_themes": {"type": "array", "items": {"type": "string", "maxLength": 220}},
-            "situations_terrain": {"type": "array", "items": {"type": "string", "maxLength": 260}},
-            "exercices": {"type": "array", "items": {"type": "string", "maxLength": 260}},
-            "livrable": {"type": ["string", "null"], "maxLength": 260},
             "contenu": {"type": "string", "maxLength": 2500},
             "competences_sources": {"type": "array", "items": {"type": "string", "maxLength": 160}},
         },
@@ -1939,9 +1969,8 @@ def _build_generation_ai_schema() -> dict:
             "analyse_besoin", "titre", "presentation", "objectif_pedagogique",
             "public_cible", "type_formation", "obs_type_form", "duree_recommandee",
             "duree_statut", "duree_justification", "domaines_probables",
-            "methodes_peda", "methodes_eval", "prerequis",
-            "competences_stagiaires", "competences_formateurs", "contenus",
-            "modalites_evaluation", "rapport_ia"
+            "prerequis", "competences_stagiaires", "competences_formateurs",
+            "contenus", "rapport_ia"
         ],
         "properties": {
             "analyse_besoin": {
@@ -1949,14 +1978,17 @@ def _build_generation_ai_schema() -> dict:
                 "additionalProperties": False,
                 "required": [
                     "metier_concerne", "public_vise", "situation_professionnelle_cible",
-                    "probleme_operationnel", "niveau_attendu", "contraintes_prises_en_compte"
+                    "probleme_operationnel", "niveau_initial", "ambition_formation",
+                    "production_attendue", "contraintes_prises_en_compte"
                 ],
                 "properties": {
                     "metier_concerne": {"type": "string"},
                     "public_vise": {"type": "string"},
                     "situation_professionnelle_cible": {"type": "string"},
                     "probleme_operationnel": {"type": "string"},
-                    "niveau_attendu": {"type": "string"},
+                    "niveau_initial": {"type": "string"},
+                    "ambition_formation": {"type": "string"},
+                    "production_attendue": {"type": "string"},
                     "contraintes_prises_en_compte": {"type": "string"},
                 },
             },
@@ -1970,8 +2002,6 @@ def _build_generation_ai_schema() -> dict:
             "duree_statut": {"type": "string"},
             "duree_justification": {"type": "string"},
             "domaines_probables": {"type": "array", "items": {"type": "string"}},
-            "methodes_peda": {"type": "array", "items": {"type": "string"}},
-            "methodes_eval": {"type": "array", "items": {"type": "string"}},
             "prerequis": {
                 "type": "array",
                 "items": {
@@ -1989,17 +2019,6 @@ def _build_generation_ai_schema() -> dict:
             "competences_stagiaires": {"type": "array", "items": competence_schema},
             "competences_formateurs": {"type": "array", "items": competence_schema},
             "contenus": {"type": "array", "items": contenu_schema},
-            "modalites_evaluation": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["criteres_observables", "exercices_evaluation", "livrables_attendus", "liens_competences"],
-                "properties": {
-                    "criteres_observables": {"type": "array", "items": {"type": "string"}},
-                    "exercices_evaluation": {"type": "array", "items": {"type": "string"}},
-                    "livrables_attendus": {"type": "array", "items": {"type": "string"}},
-                    "liens_competences": {"type": "array", "items": {"type": "string"}},
-                },
-            },
             "rapport_ia": {"type": "string"},
         },
     }
@@ -2140,7 +2159,7 @@ def _format_generated_content_detail(item: dict) -> str:
 
     contenu = _clean_text(item.get("contenu"), 3000)
     if contenu:
-        lines.append("Sujets et méthodes travaillés")
+        lines.append("Sujets abordés")
         for raw in contenu.splitlines():
             txt = raw.strip(" -\t")
             if txt:
@@ -2277,6 +2296,11 @@ def _enforce_generation_pedagogical_coherence(draft: dict, duree_souhaitee: Opti
     return draft
 
 
+def _generation_select_label(value: str, labels: dict, default: str = "À déterminer par l’IA") -> str:
+    key = (value or "").strip().lower()
+    return labels.get(key, default)
+
+
 def _analyse_generate_formation_with_ai(
     objectif: str,
     contexte: str,
@@ -2284,6 +2308,12 @@ def _analyse_generate_formation_with_ai(
     duree_souhaitee: Optional[float],
     contraintes: str,
     documents_text: str,
+    situation_besoin: str = "",
+    niveau_initial: str = "auto",
+    ambition_formation: str = "auto",
+    situations_travail: str = "",
+    production_attendue: str = "",
+    duree_mode: str = "indicative",
 ) -> dict:
     if OpenAI is None:
         raise HTTPException(status_code=500, detail="Lib OpenAI manquante côté serveur.")
@@ -2294,53 +2324,86 @@ def _analyse_generate_formation_with_ai(
 
     model = (os.getenv("OPENAI_MODEL_FORM_GENERATE") or os.getenv("OPENAI_MODEL_FORM_IMPORT") or "gpt-4o-mini").strip()
 
-    profile = _generation_duration_profile(duree_souhaitee)
-    duree_line = "Durée souhaitée non renseignée. Propose une durée réaliste et justifie-la, sans surcharger les compétences."
-    if duree_souhaitee is not None:
+    mode = (duree_mode or "indicative").strip().lower()
+    if mode not in ("indicative", "fixed", "ai"):
+        mode = "indicative"
+
+    duree_ref = None if mode == "ai" else duree_souhaitee
+    profile = _generation_duration_profile(duree_ref)
+
+    if mode == "ai" or duree_souhaitee is None:
+        duree_line = "Durée non imposée. Propose une durée réaliste et justifie-la, sans surcharger les compétences."
+    elif mode == "fixed":
         duree_line = (
-            f"Durée souhaitée par l'utilisateur : {duree_souhaitee} heure(s). "
-            f"Cadre pédagogique à respecter : {profile.get('note')}"
+            f"Durée imposée par l'utilisateur : {duree_souhaitee} heure(s). "
+            f"Adapte l’ambition, les compétences et les contenus à cette contrainte. Cadre : {profile.get('note')}"
         )
+    else:
+        duree_line = (
+            f"Durée indicative fournie par l'utilisateur : {duree_souhaitee} heure(s). "
+            f"Tu peux l’ajuster si la cohérence pédagogique l’exige, en le justifiant. Cadre : {profile.get('note')}"
+        )
+
+    niveau_label = _generation_select_label(niveau_initial, {
+        "debutant": "Débutant",
+        "intermediaire": "Intermédiaire",
+        "avance": "Avancé",
+        "expert": "Expert",
+        "heterogene": "Hétérogène",
+    })
+
+    ambition_label = _generation_select_label(ambition_formation, {
+        "sensibiliser": "Sensibiliser",
+        "bases": "Acquérir les bases",
+        "pratique": "Mettre en pratique",
+        "demarche": "Structurer une démarche",
+        "livrable": "Produire un livrable",
+        "prise_fonction": "Accompagner une prise de fonction",
+        "perfectionner": "Perfectionner une pratique existante",
+    })
 
     system_prompt = (
         "Tu construis une fiche formation structurée pour Novoskill Learn selon une logique d’ingénierie pédagogique orientée situation de travail. "
         "Tu agis comme un ingénieur pédagogique expérimenté. Zéro marketing, rédaction opérationnelle, sobre et exploitable. "
-        "Tu ne dois jamais confondre objectif de formation, compétences visées, contenus pédagogiques, exercices et modalités d’évaluation. "
+        "Tu construis uniquement une fiche formation générique : identité, public, objectifs, prérequis, compétences et contenus. "
+        "Tu ne définis pas la méthode pédagogique, pas le séquençage détaillé, pas les modalités d’évaluation et pas un déroulé minute par minute. "
         "Objectif de formation : pourquoi la formation existe et ce qu’elle doit permettre globalement. "
         "Compétence visée stagiaire : capacité professionnelle observable, mobilisable en situation de travail, issue d'une combinaison de savoirs, savoir-faire et savoir-être. "
-        "Contenu pédagogique : sujets, méthodes, situations terrain, sous-thèmes, exercices et livrables permettant de développer les compétences. "
-        "Une compétence ne doit jamais être une reprise d’un module, d’un chapitre, d’un prompt ou d’un exercice. "
+        "Contenu pédagogique : sujet de travail permettant de développer plusieurs compétences ; il contient un titre, une intention pédagogique, des sujets abordés et les compétences travaillées. "
+        "Une compétence ne doit jamais être une reprise d’un module, d’un chapitre, d’un prompt, d’un exercice ou d’une phrase saisie par l’utilisateur. "
+        "Les situations de travail saisies par l’utilisateur servent uniquement à comprendre les activités ciblées. Tu dois les transformer en compétences professionnelles observables, sans les recopier mécaniquement. "
         "Interdiction absolue : 1 contenu = 1 compétence. Une compétence peut être travaillée dans plusieurs contenus et un contenu peut contribuer à plusieurs compétences. "
-        "Limite les compétences selon la durée : jusqu’à 7h = 3 à 5 compétences ; 14h = 4 à 6 ; 21h à 35h = 5 à 8 ; au-delà, reste cohérent avec la capacité réelle d’évaluation. "
+        "Limite les compétences selon la durée : jusqu’à 7h = 3 à 5 compétences ; 14h = 4 à 6 ; 21h à 35h = 5 à 8 ; au-delà, reste cohérent avec la capacité réelle de montée en compétence. "
         "Pour une formation courte, privilégie peu de compétences solides et des contenus plus profonds, ancrés dans le terrain. "
         "Règles Novoskill compétences : chaque intitulé commence par un verbe d’action ; il décrit une capacité professionnelle observable et évaluable ; il reste réutilisable dans le catalogue quand c’est possible ; "
-        "distingue compétences génériques et spécifiques entreprise ; une compétence spécifique doit être identifiable dès son titre ; évite les compétences trop fines liées à un exercice, un outil ponctuel ou une micro-tâche. "
-        "Exemples à éviter comme compétences : Rédiger un prompt pour LinkedIn ; Créer un email de prospection ; Utiliser ChatGPT pour répondre à une objection ; Faire une relance commerciale avec l’IA. "
-        "Ces éléments doivent aller dans les contenus, exercices, livrables ou critères d’évaluation, pas dans les compétences. "
-        "Les contenus doivent être de vraies séquences pédagogiques : titre clair, durée indicative, intention pédagogique, sous-thèmes concrets, situations professionnelles traitées, exercices, livrable possible et compétences travaillées. "
+        "distingue compétences génériques et spécifiques entreprise ; une compétence spécifique doit être identifiable dès son titre ; évite les compétences trop fines liées à un outil ponctuel ou une micro-tâche. "
+        "Les contenus proposés ne contiennent pas de durée par contenu, pas d’exercice, pas de méthode pédagogique et pas d’évaluation. "
         "Le titre de la formation commence par un verbe d'action et ne dépasse jamais 90 caractères. "
         "La présentation est un seul paragraphe sans retour ligne, ne dépassant jamais 625 caractères. "
         "L'objectif pédagogique doit être formulé dans l'esprit : À la fin de la formation, le stagiaire/l'apprenant sera capable de... et ne dépasse jamais 550 caractères. "
         "Les prérequis doivent être évaluables, chaque prérequis étant un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. Chaque titre de prérequis ne dépasse jamais 65 caractères. "
-        "Les compétences formateur décrivent ce que le formateur doit maîtriser pour animer, transmettre, adapter et évaluer correctement la formation ; elles peuvent inclure des compétences métier liées au contenu et des compétences pédagogiques. "
-        "Le rapport IA final doit justifier la cohérence durée / compétences / contenus, les arbitrages, les limites éventuelles et la justification du nombre de compétences. "
+        "Les compétences formateur décrivent ce que le formateur doit maîtriser pour animer, transmettre et contextualiser correctement la formation ; elles peuvent inclure des compétences métier liées au contenu et des compétences pédagogiques générales. "
+        "Le rapport IA final doit justifier la compréhension du besoin, les hypothèses prises quand les champs sont vides, la cohérence durée / compétences / contenus et la transformation des situations de travail en compétences. "
         "Le type_formation doit être l'une des valeurs : Certifiante, Diplomante, Non Certifiante. "
         "Renvoie uniquement un JSON strict conforme au schéma."
     )
 
     user_prompt = (
-        f"Objectif demandé :\n{objectif}\n\n"
-        f"Contexte optionnel :\n{contexte or 'Non renseigné'}\n\n"
+        f"Objectif général optionnel :\n{objectif or 'Non renseigné'}\n\n"
+        f"Situation ou besoin à traiter optionnel :\n{situation_besoin or contexte or 'Non renseigné'}\n\n"
         f"Public visé optionnel :\n{public_vise or 'Non renseigné'}\n\n"
+        f"Niveau initial estimé :\n{niveau_label}\n\n"
+        f"Niveau d’ambition attendu :\n{ambition_label}\n\n"
+        f"Situations de travail à maîtriser, à analyser puis reformuler en compétences observables :\n{situations_travail or 'Non renseigné'}\n\n"
+        f"Production attendue en fin de formation optionnelle :\n{production_attendue or 'Non renseigné'}\n\n"
         f"{duree_line}\n\n"
-        f"Contraintes éventuelles :\n{contraintes or 'Non renseigné'}\n\n"
+        f"Contraintes métier, réglementaires ou organisationnelles :\n{contraintes or 'Non renseigné'}\n\n"
         f"Documents de référence extraits :\n{documents_text or 'Aucun document fourni.'}\n\n"
         "Structure pédagogique attendue :\n"
-        "1. Analyse du besoin : métier, public, situation professionnelle cible, problème opérationnel, niveau attendu, contraintes.\n"
+        "1. Analyse du besoin : métier, public, situation professionnelle cible, problème opérationnel, niveau initial, ambition et contraintes.\n"
         "2. Compétences visées : peu nombreuses, larges, professionnelles, observables, réutilisables, avec domaine, type générique/spécifique, rôle coeur/complémentaire/transversale, justification.\n"
-        "3. Programme / contenus : séquences profondes, terrain, avec sous-thèmes, situations, exercices, livrable et compétences associées.\n"
-        "4. Modalités d’évaluation : critères observables, exercices, livrables et liens avec les compétences.\n"
-        "5. Rapport de justification : cohérence durée / compétences / contenus et limites pédagogiques.\n"
+        "3. Contenus pédagogiques : blocs de sujets profonds, terrain, avec intention pédagogique, sujets abordés et compétences associées.\n"
+        "4. Rapport de justification : hypothèses prises, cohérence durée / compétences / contenus, limites pédagogiques et arbitrages.\n"
         "Ne découpe jamais le programme en autant de compétences que de contenus."
     )
 
@@ -2353,7 +2416,7 @@ def _analyse_generate_formation_with_ai(
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.2,
-        max_tokens=5600,
+        max_tokens=5200,
         response_format={
             "type": "json_schema",
             "json_schema": {
@@ -2373,7 +2436,8 @@ def _analyse_generate_formation_with_ai(
     except Exception:
         raise HTTPException(status_code=500, detail="Génération IA illisible.")
 
-    return _enforce_generation_pedagogical_coherence(data, duree_souhaitee)
+    return _enforce_generation_pedagogical_coherence(data, duree_ref)
+
 
 def _format_generation_report(draft: dict, duree_souhaitee: Optional[float]) -> str:
     report = _clean_text(draft.get("rapport_ia"), 8000)
@@ -2627,9 +2691,15 @@ async def learn_formations_generate_ai(
         form = await request.form()
 
         objectif = str(form.get("objectif") or "")
-        contexte = str(form.get("contexte") or "")
+        situation_besoin = str(form.get("situation_besoin") or form.get("contexte") or "")
+        contexte = situation_besoin
         public_vise = str(form.get("public_vise") or "")
+        niveau_initial = str(form.get("niveau_initial") or "auto")
+        ambition_formation = str(form.get("ambition_formation") or "auto")
+        situations_travail = str(form.get("situations_travail") or "")
+        production_attendue = str(form.get("production_attendue") or "")
         duree_souhaitee = str(form.get("duree_souhaitee") or "")
+        duree_mode = str(form.get("duree_mode") or "indicative")
         contraintes = str(form.get("contraintes") or "")
 
         documents = []
@@ -2644,9 +2714,7 @@ async def learn_formations_generate_ai(
                     documents.append(item)
 
         obj = _clean_text(objectif, 3000)
-        if not obj:
-            raise HTTPException(status_code=400, detail="Objectif de formation obligatoire.")
-
+        besoin = _clean_text(situation_besoin, 5000)
         duree = _safe_float(duree_souhaitee)
         docs_text_parts = []
 
@@ -2661,6 +2729,9 @@ async def learn_formations_generate_ai(
 
         docs_text = _doc_clean_text("\n\n".join(docs_text_parts), 36000)
 
+        if not obj and not besoin and not docs_text:
+            raise HTTPException(status_code=400, detail="Indiquez au moins un objectif, un besoin à traiter ou un document de référence.")
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 profile = _learn_require_profile(cur, u, id_effectif)
@@ -2674,25 +2745,13 @@ async def learn_formations_generate_ai(
                     duree_souhaitee=duree,
                     contraintes=_clean_text(contraintes, 4000),
                     documents_text=docs_text,
+                    situation_besoin=besoin,
+                    niveau_initial=_clean_text(niveau_initial, 80),
+                    ambition_formation=_clean_text(ambition_formation, 120),
+                    situations_travail=_clean_text(situations_travail, 5000),
+                    production_attendue=_clean_text(production_attendue, 1200),
+                    duree_mode=_clean_text(duree_mode, 30),
                 )
-
-                cur.execute(
-                    """
-                    SELECT id_met_peda, titre, titre_court, description
-                    FROM public.tbl_met_peda
-                    WHERE COALESCE(masque, FALSE) = FALSE
-                    """
-                )
-                peda_rows = cur.fetchall() or []
-
-                cur.execute(
-                    """
-                    SELECT id_met_eval, titre, titre_court, description
-                    FROM public.tbl_met_eval
-                    WHERE COALESCE(masque, FALSE) = FALSE
-                    """
-                )
-                eval_rows = cur.fetchall() or []
 
                 domaine_id = _find_domaine_formation_id(cur, draft.get("domaines_probables") or [])
                 comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [], target_kind="stagiaire")
@@ -2715,11 +2774,11 @@ async def learn_formations_generate_ai(
                 "titre_sequence": titre or "Contenu",
                 "objectif": _clean_text(c.get("intention_pedagogique") or c.get("objectif"), 1200),
                 "contenu": detail,
-                "duree_indicative": c.get("duree_indicative"),
+                "duree_indicative": None,
                 "sous_themes": [str(x or "").strip() for x in (c.get("sous_themes") or []) if str(x or "").strip()],
-                "situations_terrain": [str(x or "").strip() for x in (c.get("situations_terrain") or []) if str(x or "").strip()],
-                "exercices": [str(x or "").strip() for x in (c.get("exercices") or []) if str(x or "").strip()],
-                "livrable": _clean_text(c.get("livrable"), 500),
+                "situations_terrain": [],
+                "exercices": [],
+                "livrable": "",
                 "competences_sources": [
                     str(x or "").strip()
                     for x in (c.get("competences_sources") or [])
@@ -2729,6 +2788,7 @@ async def learn_formations_generate_ai(
             })
 
         duree_recommandee = _safe_float(draft.get("duree_recommandee"))
+        duree_for_report = None if (duree_mode or "").strip().lower() == "ai" else duree
 
         out = {
             "titre": _limit_catalogue_text(draft.get("titre"), FORMATION_TITLE_MAX),
@@ -2745,15 +2805,15 @@ async def learn_formations_generate_ai(
             "tarif_mini": None,
             "domaine": domaine_id,
             "modalites_ids": [],
-            "methode_peda_ids": _find_ref_ids_by_labels(peda_rows, "id_met_peda", draft.get("methodes_peda") or []),
-            "methode_eval_ids": _find_ref_ids_by_labels(eval_rows, "id_met_eval", draft.get("methodes_eval") or []),
+            "methode_peda_ids": [],
+            "methode_eval_ids": [],
             "prerequis": prerequis,
             "competences_stagiaires_import": comp_stag,
             "competences_formateurs_import": comp_form,
             "contenus": contenus,
             "analyse_besoin": draft.get("analyse_besoin") or {},
-            "modalites_evaluation": draft.get("modalites_evaluation") or {},
-            "rapport_ia": _format_generation_report(draft, duree),
+            "modalites_evaluation": {},
+            "rapport_ia": _format_generation_report(draft, duree_for_report),
         }
 
         return out

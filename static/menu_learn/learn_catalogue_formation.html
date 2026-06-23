@@ -434,102 +434,194 @@
     </div>
   </div>
 
+  <div class="sb-modal sb-modal--above" id="modalFormAiCadrage" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--wide">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin:0;">Cadrer la génération IA</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">
+            Renseignez ce que vous savez. Les champs restent optionnels pour laisser l’IA compléter les manques.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormAiCadrageX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="lf-ai-cadrage-grid">
+          <div class="lf-ai-cadrage-section">
+            <div class="lf-import-title">Besoin de formation</div>
+            <div class="card-sub">Au moins un objectif, un besoin ou un document est nécessaire pour lancer la génération.</div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Objectif général <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormObjectif" rows="3" placeholder="Ex : Permettre aux participants de structurer une démarche compétences dans leur organisation."></textarea>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Situation ou besoin à traiter <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormSituation" rows="3" placeholder="Ex : L’entreprise souhaite mieux identifier les compétences clés, anticiper les départs et orienter ses actions de formation."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="lf-ai-cadrage-section">
+            <div class="lf-import-title">Public et niveau</div>
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:240px;">
+                <div class="label">Public visé <span class="lf-label-muted">(optionnel)</span></div>
+                <input type="text" id="aiFormPublic" placeholder="Ex : RH, managers, responsables formation..." />
+              </div>
+
+              <div class="info-item" style="flex:0 0 220px; max-width:220px;">
+                <div class="label">Niveau initial estimé</div>
+                <select id="aiFormNiveauInitial">
+                  <option value="auto">À déterminer par l’IA</option>
+                  <option value="debutant">Débutant</option>
+                  <option value="intermediaire">Intermédiaire</option>
+                  <option value="avance">Avancé</option>
+                  <option value="expert">Expert</option>
+                  <option value="heterogene">Hétérogène</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="lf-ai-cadrage-section">
+            <div class="lf-import-title">Ambition opérationnelle</div>
+            <div class="row">
+              <div class="info-item" style="flex:0 0 260px; max-width:260px;">
+                <div class="label">Niveau d’ambition attendu</div>
+                <select id="aiFormAmbition">
+                  <option value="auto">À déterminer par l’IA</option>
+                  <option value="sensibiliser">Sensibiliser</option>
+                  <option value="bases">Acquérir les bases</option>
+                  <option value="pratique">Mettre en pratique</option>
+                  <option value="demarche">Structurer une démarche</option>
+                  <option value="livrable">Produire un livrable</option>
+                  <option value="prise_fonction">Accompagner une prise de fonction</option>
+                  <option value="perfectionner">Perfectionner une pratique existante</option>
+                </select>
+              </div>
+
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Production attendue en fin de formation <span class="lf-label-muted">(optionnel)</span></div>
+                <input type="text" id="aiFormProduction" placeholder="Ex : Une première trame de cartographie compétences et un plan d’action." />
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Situations de travail à maîtriser <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormSituationsTravail" rows="4" placeholder="Ex : Identifier les compétences nécessaires à un poste, repérer les compétences critiques, prioriser les actions RH..."></textarea>
+                <div class="card-sub" style="margin-top:6px;">Ces éléments servent d’analyse. L’IA les reformule en compétences observables, sans copier-coller.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lf-ai-cadrage-section">
+            <div class="lf-import-title">Durée et contraintes</div>
+            <div class="row">
+              <div class="info-item" style="flex:0 0 160px; max-width:160px;">
+                <div class="label">Durée souhaitée</div>
+                <input type="number" id="aiFormDuree" min="0" step="1" placeholder="heures" />
+              </div>
+
+              <div class="info-item" style="flex:0 0 220px; max-width:220px;">
+                <div class="label">Gestion de la durée</div>
+                <select id="aiFormDureeMode">
+                  <option value="indicative">Durée indicative</option>
+                  <option value="fixed">Durée imposée</option>
+                  <option value="ai">Laisser l’IA proposer</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Contraintes métier, réglementaires ou organisationnelles <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormContraintes" rows="3" placeholder="Ex : Public non RH, exemples PME, vocabulaire accessible, contraintes réglementaires à prendre en compte..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="lf-ai-cadrage-section lf-ai-cadrage-section--docs">
+            <div class="lf-import-title">Documents de référence</div>
+            <div class="card-sub">Formats acceptés : PDF, DOC, DOCX, TXT. Plusieurs fichiers possibles.</div>
+
+            <label class="lf-ai-doc-drop" id="aiFormDocsDrop" for="aiFormDocs">
+              <input type="file" id="aiFormDocs" class="lf-ai-doc-input" multiple
+                     accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" />
+              <span class="lf-ai-doc-icon">⇧</span>
+              <span class="lf-ai-doc-main">Glissez vos documents ici ou cliquez pour les sélectionner</span>
+              <span class="lf-ai-doc-sub">Les documents enrichissent la génération, sans remplacer le cadrage métier.</span>
+            </label>
+
+            <div class="lf-ai-doc-list" id="aiFormDocsList"></div>
+            <div class="card-sub" id="aiFormDocsLabel" style="margin-top:8px;">Aucun document sélectionné.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <span class="sb-local-status" id="aiCadrageStatus" style="display:none;"></span>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiCadrageRun">Générer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormAiCadrageCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
   <div class="sb-modal sb-modal--above" id="modalFormGenerateAi" style="display:none;">
     <div class="sb-modal-card sb-modal-card--wide">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin:0;">Générer une fiche formation avec l’IA</div>
+          <div class="card-title" style="margin:0;">Résultat IA proposé</div>
           <div class="card-sub" style="margin:4px 0 0 0;">
-            Décrivez le besoin. Novoskill propose la fiche, les compétences, les contenus et un rapport de justification.
+            Vérifiez la fiche, les compétences et les contenus avant de remplir la formation.
           </div>
         </div>
         <button type="button" class="sb-modal-x" id="btnFormGenerateX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
-        <div class="lf-ai-shell">
-          <div class="lf-ai-form-card">
-            <div class="row">
-              <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Objectif de la formation</div>
-                <textarea id="aiFormObjectif" rows="4" placeholder="Ex : Permettre à des managers de conduire un entretien professionnel structuré..."></textarea>
-              </div>
+        <div class="lf-ai-preview" id="aiFormPreview">
+          <div class="lf-import-preview-head">
+            <div>
+              <div class="lf-import-title">Fiche proposée</div>
+              <div class="card-sub">Les contenus restent génériques : méthode pédagogique, séquençage et évaluation seront définis ensuite.</div>
             </div>
-
-            <div class="row">
-              <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Contexte <span class="lf-label-muted">(optionnel)</span></div>
-                <textarea id="aiFormContexte" rows="3" placeholder="Contexte client, environnement de travail, contraintes métier..."></textarea>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="info-item" style="flex:1; min-width:220px;">
-                <div class="label">Public visé <span class="lf-label-muted">(optionnel)</span></div>
-                <input type="text" id="aiFormPublic" />
-              </div>
-
-              <div class="info-item" style="flex:0 0 150px; max-width:150px;">
-                <div class="label">Durée souhaitée</div>
-                <input type="number" id="aiFormDuree" min="0" step="1" placeholder="heures" />
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Contraintes éventuelles</div>
-                <textarea id="aiFormContraintes" rows="3" placeholder="Contraintes réglementaires, outils imposés, contexte sensible..."></textarea>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Documents de référence <span class="lf-label-muted">(PDF, Word, PowerPoint)</span></div>
-                <input type="file" id="aiFormDocs" class="lf-import-input" multiple
-                       accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-                <div class="card-sub" id="aiFormDocsLabel" style="margin-top:6px;">Aucun document sélectionné.</div>
-              </div>
-            </div>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnAiReportDownload">Télécharger le rapport IA</button>
           </div>
 
-          <div class="lf-ai-preview" id="aiFormPreview" style="display:none;">
-            <div class="lf-import-preview-head">
-              <div>
-                <div class="lf-import-title">Résultat proposé</div>
-                <div class="card-sub">Vérifiez les propositions avant de remplir la fiche.</div>
-              </div>
-              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnAiReportDownload">Télécharger le rapport IA</button>
-            </div>
+          <div class="lf-import-summary" id="aiFormSummary"></div>
 
-            <div class="lf-import-summary" id="aiFormSummary"></div>
+          <div class="lf-import-section">
+            <div class="lf-import-section-title">Compétences visées stagiaires</div>
+            <div id="aiFormCompStag" class="lf-import-comp-list"></div>
+          </div>
 
-            <div class="lf-import-section">
-              <div class="lf-import-section-title">Compétences visées stagiaires</div>
-              <div id="aiFormCompStag" class="lf-import-comp-list"></div>
-            </div>
+          <div class="lf-import-section">
+            <div class="lf-import-section-title">Compétences requises formateur</div>
+            <div id="aiFormCompForm" class="lf-import-comp-list"></div>
+          </div>
 
-            <div class="lf-import-section">
-              <div class="lf-import-section-title">Compétences requises formateur</div>
-              <div id="aiFormCompForm" class="lf-import-comp-list"></div>
-            </div>
+          <div class="lf-import-section">
+            <div class="lf-import-section-title">Contenus proposés</div>
+            <div id="aiFormContents" class="lf-import-content-list"></div>
+          </div>
 
-            <div class="lf-import-section">
-              <div class="lf-import-section-title">Contenus proposés</div>
-              <div id="aiFormContents" class="lf-import-content-list"></div>
-            </div>
-
-            <div class="lf-import-section">
-              <div class="lf-import-section-title">Rapport IA</div>
-              <pre class="lf-ai-report" id="aiFormReport"></pre>
-            </div>
+          <div class="lf-import-section">
+            <div class="lf-import-section-title">Rapport IA</div>
+            <pre class="lf-ai-report" id="aiFormReport"></pre>
           </div>
         </div>
       </div>
 
       <div class="sb-modal-foot">
         <span class="sb-local-status" id="aiFormStatus" style="display:none;"></span>
-
-        <button type="button" class="sb-btn sb-btn--ai" id="btnFormGenerateRun">Générer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormGenerateBack">Revenir au cadrage</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormGenerateApply" disabled>Remplir la fiche</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormGenerateCancel">Annuler</button>
       </div>

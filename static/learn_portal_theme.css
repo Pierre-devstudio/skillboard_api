@@ -1077,6 +1077,140 @@
   }
 }
 
+.lf-ai-cadrage-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:14px;
+  align-items:start;
+}
+
+.lf-ai-cadrage-section{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:16px;
+  padding:14px;
+  background:#fff;
+  min-width:0;
+}
+
+.lf-ai-cadrage-section--docs{
+  grid-column:1 / -1;
+}
+
+.lf-ai-cadrage-section .row{
+  margin:12px 0 0;
+}
+
+.lf-ai-doc-drop{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  margin-top:12px;
+  min-height:134px;
+  padding:18px;
+  border:1px dashed rgba(245,124,0,.45);
+  border-radius:18px;
+  background:linear-gradient(180deg, rgba(245,124,0,.06), rgba(248,250,252,.92));
+  color:#111827;
+  text-align:center;
+  cursor:pointer;
+  transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+.lf-ai-doc-drop:hover,
+.lf-ai-doc-drop.is-dragover{
+  border-color:rgba(245,124,0,.80);
+  background:linear-gradient(180deg, rgba(245,124,0,.10), rgba(255,255,255,.96));
+  box-shadow:0 14px 34px rgba(17,24,39,.10);
+  transform:translateY(-1px);
+}
+
+.lf-ai-doc-input{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  cursor:pointer;
+}
+
+.lf-ai-doc-icon{
+  width:38px;
+  height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid rgba(245,124,0,.22);
+  color:var(--accent);
+  font-size:22px;
+  font-weight:800;
+  line-height:1;
+}
+
+.lf-ai-doc-main{
+  font-size:13px;
+  font-weight:750;
+  color:#111827;
+}
+
+.lf-ai-doc-sub{
+  max-width:540px;
+  font-size:12px;
+  line-height:1.35;
+  color:#64748b;
+}
+
+.lf-ai-doc-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+}
+
+.lf-ai-doc-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 10px;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:12px;
+  background:#f8fafc;
+}
+
+.lf-ai-doc-row-main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.lf-ai-doc-row-main strong{
+  font-size:12px;
+  font-weight:750;
+  color:#111827;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.lf-ai-doc-row-main span{
+  font-size:11px;
+  color:#64748b;
+}
+
+@media (max-width: 900px){
+  .lf-ai-cadrage-grid{
+    grid-template-columns:1fr;
+  }
+
+  .lf-ai-cadrage-section--docs{
+    grid-column:auto;
+  }
+}
+
 .lf-import-shell{
   display:grid;
   grid-template-columns:320px minmax(0, 1fr);

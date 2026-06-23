@@ -47,6 +47,7 @@
   let _aiGenerationDraft = null;
   let _aiAbortController = null;
   let _aiLongTimer = null;
+  let _aiSelectedDocs = [];
   let _pendingImportContenus = [];
   let _pendingCompStagCreate = [];
   let _pendingCompFormCreate = [];
@@ -4595,30 +4596,155 @@ function renderContentCompBadges(l){
         setSuccess("Document importé dans la fiche");
     }
 
-    function closeGenerateAiModal(){
-        closeModal("modalFormGenerateAi");
-        _aiGenerationDraft = null;
+    const AI_DOC_EXTENSIONS = new Set(["pdf", "doc", "docx", "txt"]);
 
+    function resetAiDocuments(){
+        _aiSelectedDocs = [];
+
+        const docs = byId("aiFormDocs");
+        if (docs) docs.value = "";
+
+        renderAiDocuments();
+    }
+
+    function getFileExt(file){
+        const name = String(file?.name || "").trim();
+        return name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+    }
+
+    function formatFileSize(size){
+        const n = Number(size || 0);
+        if (!Number.isFinite(n) || n <= 0) return "0 Ko";
+        if (n < 1024 * 1024) return `${Math.ceil(n / 1024)} Ko`;
+        return `${(n / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
+    }
+
+    function renderAiDocuments(){
+        const list = byId("aiFormDocsList");
+        const label = byId("aiFormDocsLabel");
+        const files = Array.isArray(_aiSelectedDocs) ? _aiSelectedDocs : [];
+
+        if (label){
+            label.textContent = files.length
+                ? `${files.length} document${files.length > 1 ? "s" : ""} sélectionné${files.length > 1 ? "s" : ""}.`
+                : "Aucun document sélectionné.";
+        }
+
+        if (!list) return;
+
+        list.innerHTML = files.length
+            ? files.map((f, idx) => `
+                <div class="lf-ai-doc-row">
+                  <div class="lf-ai-doc-row-main">
+                    <strong>${htmlEsc(f.name || "Document")}</strong>
+                    <span>${htmlEsc((getFileExt(f) || "fichier").toUpperCase())} · ${htmlEsc(formatFileSize(f.size))}</span>
+                  </div>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-ai-doc-remove="${idx}">Retirer</button>
+                </div>
+            `).join("")
+            : "";
+    }
+
+    function addAiDocuments(fileList){
+        const incoming = Array.from(fileList || []);
+        if (!incoming.length) return;
+
+        const accepted = [];
+        const rejected = [];
+        const seen = new Set((_aiSelectedDocs || []).map(f => `${f.name}::${f.size}::${f.lastModified}`));
+
+        incoming.forEach(file => {
+            const ext = getFileExt(file);
+            const key = `${file.name}::${file.size}::${file.lastModified}`;
+
+            if (!AI_DOC_EXTENSIONS.has(ext)){
+                rejected.push(file.name || "Document");
+                return;
+            }
+
+            if (seen.has(key)) return;
+
+            seen.add(key);
+            accepted.push(file);
+        });
+
+        _aiSelectedDocs = [...(_aiSelectedDocs || []), ...accepted];
+        renderAiDocuments();
+
+        if (rejected.length){
+            setLocalStatus(
+                "aiCadrageStatus",
+                "error",
+                `Format refusé : ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "…" : ""}. Formats acceptés : PDF, DOC, DOCX, TXT.`
+            );
+        } else if (accepted.length){
+            clearLocalStatus("aiCadrageStatus");
+        }
+    }
+
+    function resetAiCadrageFields(){
+        setFieldValue("aiFormObjectif", "");
+        setFieldValue("aiFormSituation", "");
+        setFieldValue("aiFormPublic", "");
+        setSelectValue("aiFormNiveauInitial", "auto");
+        setSelectValue("aiFormAmbition", "auto");
+        setFieldValue("aiFormSituationsTravail", "");
+        setFieldValue("aiFormProduction", "");
+        setFieldValue("aiFormDuree", "");
+        setSelectValue("aiFormDureeMode", "indicative");
+        setFieldValue("aiFormContraintes", "");
+        resetAiDocuments();
+        clearLocalStatus("aiCadrageStatus");
+    }
+
+    function resetAiResultModal(){
         const preview = byId("aiFormPreview");
-        if (preview) preview.style.display = "none";
+        if (preview) preview.style.display = "";
+
+        const summary = byId("aiFormSummary");
+        if (summary) summary.innerHTML = "";
+
+        const compStag = byId("aiFormCompStag");
+        if (compStag) compStag.innerHTML = "";
+
+        const compForm = byId("aiFormCompForm");
+        if (compForm) compForm.innerHTML = "";
+
+        const contents = byId("aiFormContents");
+        if (contents) contents.innerHTML = "";
+
+        const report = byId("aiFormReport");
+        if (report) report.textContent = "";
 
         const apply = byId("btnFormGenerateApply");
         if (apply) apply.disabled = true;
 
-        const run = byId("btnFormGenerateRun");
+        clearLocalStatus("aiFormStatus");
+    }
+
+    function closeAiCadrageModal(){
+        closeModal("modalFormAiCadrage");
+        clearLocalStatus("aiCadrageStatus");
+
+        const run = byId("btnFormAiCadrageRun");
         if (run){
             run.disabled = false;
             run.style.opacity = "";
             run.textContent = "Générer";
         }
+    }
 
-        clearLocalStatus("aiFormStatus");
+    function closeGenerateAiModal(){
+        closeModal("modalFormGenerateAi");
+        _aiGenerationDraft = null;
+        resetAiResultModal();
+    }
 
-        const docs = byId("aiFormDocs");
-        if (docs) docs.value = "";
-
-        const docsLabel = byId("aiFormDocsLabel");
-        if (docsLabel) docsLabel.textContent = "Aucun document sélectionné.";
+    function closeAiGenerationFlow(){
+        closeAiCadrageModal();
+        closeGenerateAiModal();
+        _aiGenerationDraft = null;
+        resetAiCadrageFields();
     }
 
     function openGenerateAiModal(){
@@ -4628,35 +4754,15 @@ function renderContentCompBadges(l){
         }
 
         _aiGenerationDraft = null;
+        resetAiResultModal();
+        resetAiCadrageFields();
+        openModal("modalFormAiCadrage");
+    }
 
-        setFieldValue("aiFormObjectif", "");
-        setFieldValue("aiFormContexte", "");
-        setFieldValue("aiFormPublic", "");
-        setFieldValue("aiFormDuree", "");
-        setFieldValue("aiFormContraintes", "");
-
-        const preview = byId("aiFormPreview");
-        if (preview) preview.style.display = "none";
-
-        const apply = byId("btnFormGenerateApply");
-        if (apply) apply.disabled = true;
-
-        const run = byId("btnFormGenerateRun");
-        if (run){
-            run.disabled = false;
-            run.style.opacity = "";
-            run.textContent = "Générer";
-        }
-
+    function reopenAiCadrageModal(){
+        closeModal("modalFormGenerateAi");
         clearLocalStatus("aiFormStatus");
-
-        const docs = byId("aiFormDocs");
-        if (docs) docs.value = "";
-
-        const docsLabel = byId("aiFormDocsLabel");
-        if (docsLabel) docsLabel.textContent = "Aucun document sélectionné.";
-
-        openModal("modalFormGenerateAi");
+        openModal("modalFormAiCadrage");
     }
 
     function openAiWait(){
@@ -4723,16 +4829,18 @@ function renderContentCompBadges(l){
         if (contents){
             const rows = data.contenus || [];
             contents.innerHTML = rows.length
-            ? rows.map((c, idx) => `
+            ? rows.map((c, idx) => {
+                const subjects = Array.isArray(c.sous_themes) ? c.sous_themes.filter(Boolean).slice(0, 5) : [];
+                return `
                 <div class="lf-import-content-row">
                 <span class="sb-badge sb-badge--form">${idx + 1}</span>
                 <div>
                     <strong>${htmlEsc(c.titre_sequence || "Contenu")}</strong>
                     <div class="card-sub">${htmlEsc(c.objectif || c.intention_pedagogique || "")}</div>
-                    ${(c.duree_indicative || c.livrable) ? `<div class="card-sub">${c.duree_indicative ? `Durée indicative : ${htmlEsc(c.duree_indicative)} h` : ""}${c.duree_indicative && c.livrable ? " · " : ""}${c.livrable ? `Livrable : ${htmlEsc(c.livrable)}` : ""}</div>` : ""}
+                    ${subjects.length ? `<div class="card-sub">Sujets abordés : ${subjects.map(x => htmlEsc(x)).join(" · ")}</div>` : ""}
                 </div>
                 </div>
-            `).join("")
+            `}).join("")
             : `<div class="card-sub">Aucun contenu proposé.</div>`;
         }
 
@@ -4778,26 +4886,34 @@ function renderContentCompBadges(l){
 
     async function generateFormationWithAi(portal){
         const objectif = (byId("aiFormObjectif")?.value || "").trim();
+        const situation = (byId("aiFormSituation")?.value || "").trim();
+        const files = Array.isArray(_aiSelectedDocs) ? _aiSelectedDocs : [];
 
-        if (!objectif){
-            setLocalStatus("aiFormStatus", "info", "Indiquez d’abord l’objectif de formation.");
+        if (!objectif && !situation && !files.length){
+            setLocalStatus("aiCadrageStatus", "info", "Indiquez au moins un objectif, un besoin à traiter ou un document de référence.");
             return;
         }
 
+        clearLocalStatus("aiCadrageStatus");
         clearLocalStatus("aiFormStatus");
 
         const effectifId = getEffectifId();
         const fd = new FormData();
         fd.append("objectif", objectif);
-        fd.append("contexte", (byId("aiFormContexte")?.value || "").trim());
+        fd.append("situation_besoin", situation);
+        fd.append("contexte", situation);
         fd.append("public_vise", (byId("aiFormPublic")?.value || "").trim());
+        fd.append("niveau_initial", (byId("aiFormNiveauInitial")?.value || "auto").trim());
+        fd.append("ambition_formation", (byId("aiFormAmbition")?.value || "auto").trim());
+        fd.append("situations_travail", (byId("aiFormSituationsTravail")?.value || "").trim());
+        fd.append("production_attendue", (byId("aiFormProduction")?.value || "").trim());
         fd.append("duree_souhaitee", (byId("aiFormDuree")?.value || "").trim());
+        fd.append("duree_mode", (byId("aiFormDureeMode")?.value || "indicative").trim());
         fd.append("contraintes", (byId("aiFormContraintes")?.value || "").trim());
 
-        const files = Array.from(byId("aiFormDocs")?.files || []);
         files.forEach(file => fd.append("documents", file));
 
-        const btn = byId("btnFormGenerateRun");
+        const btn = byId("btnFormAiCadrageRun");
 
         if (btn){
             btn.disabled = true;
@@ -4821,17 +4937,20 @@ function renderContentCompBadges(l){
             renderGenerationPreview(data);
 
             success = true;
+            closeAiCadrageModal();
+            openModal("modalFormGenerateAi");
             setLocalStatus("aiFormStatus", "success", "Génération terminée.");
 
         } catch(e){
             if (e?.name !== "AbortError"){
                 setLocalStatus(
-                    "aiFormStatus",
+                    "aiCadrageStatus",
                     "error",
                     "Erreur système, cliquez ici pour télécharger le rapport.",
                     {
                         report: buildErrorReport("Génération fiche formation IA", e, {
                             objectif: objectif,
+                            situation_besoin: situation,
                             nb_documents: files.length
                         })
                     }
@@ -4842,9 +4961,9 @@ function renderContentCompBadges(l){
             closeAiWait();
 
             if (btn){
-                btn.disabled = success;
-                btn.style.opacity = success ? ".6" : "";
-                btn.textContent = success ? "Généré" : "Générer";
+                btn.disabled = false;
+                btn.style.opacity = "";
+                btn.textContent = "Générer";
             }
         }
     }
@@ -5749,21 +5868,53 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormGenerateAi")?.addEventListener("click", openGenerateAiModal);
 
-    byId("btnFormGenerateX")?.addEventListener("click", closeGenerateAiModal);
-    byId("btnFormGenerateCancel")?.addEventListener("click", closeGenerateAiModal);
-    byId("btnFormGenerateRun")?.addEventListener("click", () => generateFormationWithAi(portal));
+    byId("btnFormAiCadrageX")?.addEventListener("click", closeAiGenerationFlow);
+    byId("btnFormAiCadrageCancel")?.addEventListener("click", closeAiGenerationFlow);
+    byId("btnFormAiCadrageRun")?.addEventListener("click", () => generateFormationWithAi(portal));
+
+    byId("btnFormGenerateX")?.addEventListener("click", closeAiGenerationFlow);
+    byId("btnFormGenerateCancel")?.addEventListener("click", closeAiGenerationFlow);
+    byId("btnFormGenerateBack")?.addEventListener("click", reopenAiCadrageModal);
     byId("btnFormGenerateApply")?.addEventListener("click", applyGeneratedFormation);
     byId("btnAiReportDownload")?.addEventListener("click", downloadAiReport);
 
     byId("aiFormDocs")?.addEventListener("change", () => {
-    const files = Array.from(byId("aiFormDocs")?.files || []);
-    const label = byId("aiFormDocsLabel");
-    if (label){
-        label.textContent = files.length
-        ? files.map(f => f.name).join(", ")
-        : "Aucun document sélectionné.";
-    }
+        addAiDocuments(byId("aiFormDocs")?.files || []);
+        const input = byId("aiFormDocs");
+        if (input) input.value = "";
     });
+
+    byId("aiFormDocsList")?.addEventListener("click", (e) => {
+        const btn = e.target?.closest?.("[data-ai-doc-remove]");
+        if (!btn) return;
+        const idx = Number(btn.dataset.aiDocRemove);
+        if (!Number.isInteger(idx)) return;
+        _aiSelectedDocs.splice(idx, 1);
+        renderAiDocuments();
+    });
+
+    const aiDrop = byId("aiFormDocsDrop");
+    if (aiDrop){
+        ["dragenter", "dragover"].forEach(evtName => {
+            aiDrop.addEventListener(evtName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                aiDrop.classList.add("is-dragover");
+            });
+        });
+
+        ["dragleave", "drop"].forEach(evtName => {
+            aiDrop.addEventListener(evtName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                aiDrop.classList.remove("is-dragover");
+            });
+        });
+
+        aiDrop.addEventListener("drop", (e) => {
+            addAiDocuments(e.dataTransfer?.files || []);
+        });
+    }
 
     document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && _aiAbortController){
