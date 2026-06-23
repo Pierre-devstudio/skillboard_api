@@ -2418,8 +2418,13 @@ def _normalize_generated_contents(items: Any, draft: dict, profile: dict) -> lis
 
         sources = [str(x or "").strip() for x in (raw.get("competences_sources") or []) if str(x or "").strip()]
         if not sources and comp_titles:
-            # Fallback prudent : un contenu peut travailler plusieurs compétences, sans forcer 1 contenu = 1 compétence.
-            sources = comp_titles[:min(2, len(comp_titles))]
+            # Fallback prudent : on répartit plusieurs compétences par contenu sans recréer un couplage 1 contenu = 1 compétence.
+            take = min(3, len(comp_titles))
+            if take >= 2:
+                start = len(out) % len(comp_titles)
+                sources = [comp_titles[(start + offset) % len(comp_titles)] for offset in range(take)]
+            else:
+                sources = comp_titles[:1]
 
         node = dict(raw)
         node["titre_sequence"] = title or f"Séquence {len(out) + 1}"
@@ -2468,7 +2473,7 @@ def _append_generation_quality_report(draft: dict, profile: dict, duree_souhaite
         f"- Cadre durée : {profile.get('note')}",
         f"- Compétences stagiaires proposées : {nb_comp} / maximum conseillé {profile.get('max_comp')}",
         f"- Séquences proposées : {nb_seq} / maximum conseillé {profile.get('max_sequences')}",
-        "- Relation contenus / compétences : many-to-many, aucun couplage mécanique 1 contenu = 1 compétence.",
+        "- Relation contenus / compétences : blocs larges, progression terrain, relation many-to-many et aucun couplage mécanique 1 contenu = 1 compétence.",
     ]
 
     if missing:
@@ -2579,15 +2584,19 @@ def _analyse_generate_formation_with_ai(
         "Tu ne définis pas la méthode pédagogique, pas le séquençage détaillé, pas les modalités d’évaluation et pas un déroulé minute par minute. "
         "Objectif de formation : pourquoi la formation existe et ce qu’elle doit permettre globalement. "
         "Compétence visée stagiaire : capacité professionnelle observable, mobilisable en situation de travail, issue d'une combinaison de savoirs, savoir-faire et savoir-être. "
-        "Contenu pédagogique : sujet de travail permettant de développer plusieurs compétences ; il contient un titre, une intention pédagogique, des sujets abordés et les compétences travaillées. "
+        "Contenu pédagogique : bloc large de progression permettant de travailler plusieurs compétences dans une logique terrain ; il contient un titre, une intention pédagogique, des sujets abordés et les compétences travaillées. "
+        "Un contenu n’est ni une compétence, ni un chapitre copié sur une compétence, ni une micro-tâche. Il doit ouvrir un angle d’apprentissage assez large pour croiser plusieurs capacités professionnelles. "
         "Une compétence ne doit jamais être une reprise d’un module, d’un chapitre, d’un prompt, d’un exercice ou d’une phrase saisie par l’utilisateur. "
         "Les situations de travail saisies par l’utilisateur servent uniquement à comprendre les activités ciblées. Tu dois les transformer en compétences professionnelles observables, sans les recopier mécaniquement. "
-        "Interdiction absolue : 1 contenu = 1 compétence. Une compétence peut être travaillée dans plusieurs contenus et un contenu peut contribuer à plusieurs compétences. "
+        "Interdiction absolue : 1 contenu = 1 compétence. Une compétence peut être travaillée dans plusieurs contenus et un contenu doit contribuer à plusieurs compétences lorsque la formation comporte plusieurs compétences. "
+        "Construis les contenus comme une progression pédagogique dynamique : poser les repères, analyser une situation professionnelle, structurer une méthode, exploiter les résultats, ancrer la démarche dans l’activité réelle. "
+        "Les titres de contenus ne doivent pas reprendre mécaniquement les intitulés des compétences. Ils doivent formuler de grands sujets de travail, concrets et exploitables. "
         "Limite les compétences selon la durée : jusqu’à 7h = 3 à 5 compétences ; 14h = 4 à 6 ; 21h à 35h = 5 à 8 ; au-delà, reste cohérent avec la capacité réelle de montée en compétence. "
         "Pour une formation courte, privilégie peu de compétences solides et des contenus plus profonds, ancrés dans le terrain. "
         "Règles Novoskill compétences : chaque intitulé commence par un verbe d’action ; il décrit une capacité professionnelle observable et évaluable ; il reste réutilisable dans le catalogue quand c’est possible ; "
         "distingue compétences génériques et spécifiques entreprise ; une compétence spécifique doit être identifiable dès son titre ; évite les compétences trop fines liées à un outil ponctuel ou une micro-tâche. "
         "Les contenus proposés ne contiennent pas de durée par contenu, pas d’exercice, pas de méthode pédagogique et pas d’évaluation. "
+        "Ils doivent rester génériques et réutilisables : ne crée pas un contenu centré sur un outil, une marque ou une solution spécifique, sauf si l’utilisateur l’a explicitement demandé dans le besoin, les contraintes ou les documents. "
         "Le titre de la formation commence par un verbe d'action et ne dépasse jamais 90 caractères. "
         "La présentation est un seul paragraphe sans retour ligne, ne dépassant jamais 625 caractères. "
         "L'objectif pédagogique doit être formulé dans l'esprit : À la fin de la formation, le stagiaire/l'apprenant sera capable de... et ne dépasse jamais 550 caractères. "
@@ -2595,8 +2604,9 @@ def _analyse_generate_formation_with_ai(
         "Les compétences formateur ne doivent jamais être une copie, une déclinaison ou une reformulation directe des compétences stagiaires. "
         "Elles décrivent d’abord ce que le formateur doit savoir faire pour concevoir, animer, adapter, transmettre et accompagner l’appropriation de la formation. "
         "Elles doivent être majoritairement pédagogiques, transversales et réutilisables sur d’autres formations : animer une action de formation, adapter son animation au public, concevoir des supports pédagogiques, faciliter les échanges, accompagner la mise en pratique. "
-        "Ajoute seulement une compétence technique liée au sujet lorsque c’est nécessaire pour garantir la crédibilité métier du formateur. "
-        "Pour 3 compétences formateur, vise 2 compétences pédagogiques transversales et 1 compétence technique maximum ; pour 4 ou 5, vise 3 à 4 compétences pédagogiques et 1 technique maximum. "
+        "Ajoute une compétence technique liée au sujet dès que le thème de formation nécessite une expertise métier identifiable, afin de garantir la crédibilité du formateur. "
+        "Pour 3 compétences formateur, vise 2 compétences pédagogiques transversales et 1 compétence technique métier ; pour 4 ou 5, vise 3 à 4 compétences pédagogiques et 1 compétence technique métier. "
+        "La compétence technique formateur doit rester plus large que les compétences stagiaires : elle porte sur la maîtrise du domaine à transmettre, pas sur l’exécution détaillée de chaque capacité attendue chez les stagiaires. "
         "Le rapport IA final doit justifier la compréhension du besoin, les hypothèses prises quand les champs sont vides, la cohérence durée / compétences / contenus et la transformation des situations de travail en compétences. "
         "Le type_formation doit être l'une des valeurs : Certifiante, Diplomante, Non Certifiante. "
         "Renvoie uniquement un JSON strict conforme au schéma."
@@ -2616,9 +2626,9 @@ def _analyse_generate_formation_with_ai(
         "Structure pédagogique attendue :\n"
         "1. Analyse du besoin : métier, public, situation professionnelle cible, problème opérationnel, niveau initial, ambition et contraintes.\n"
         "2. Compétences visées : peu nombreuses, larges, professionnelles, observables, réutilisables, avec domaine, type générique/spécifique, rôle coeur/complémentaire/transversale, justification.\n"
-        "3. Contenus pédagogiques : blocs de sujets profonds, terrain, avec intention pédagogique, sujets abordés et compétences associées.\n"
+        "3. Contenus pédagogiques : grands blocs de progression, larges et terrain, avec intention pédagogique, sujets abordés et plusieurs compétences associées quand c’est possible.\n"
         "4. Rapport de justification : hypothèses prises, cohérence durée / compétences / contenus, limites pédagogiques et arbitrages.\n"
-        "Ne découpe jamais le programme en autant de compétences que de contenus."
+        "Ne découpe jamais le programme en autant de compétences que de contenus. Évite les contenus dont le titre ressemble à un intitulé de compétence ; privilégie des blocs comme repères, diagnostic, structuration, exploitation, ancrage ou pilotage selon le sujet."
     )
 
     client = OpenAI(api_key=api_key)
