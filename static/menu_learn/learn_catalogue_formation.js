@@ -1435,6 +1435,39 @@ function iconPdf(){
         _compCritEditIdx = null;
     }
 
+    function compRemoveCrit(idx){
+        const used = compCompactCrits();
+
+        if (used.length <= 1){
+            setCompModalInfo("Au moins 1 critère d’évaluation est obligatoire.");
+            return;
+        }
+
+        const removeIdx = parseInt(idx, 10);
+        if (!Number.isInteger(removeIdx) || removeIdx < 0 || removeIdx >= used.length){
+            return;
+        }
+
+        used.splice(removeIdx, 1);
+
+        _compCrit = [
+            ...used,
+            compEmptyCrit(),
+            compEmptyCrit(),
+            compEmptyCrit(),
+            compEmptyCrit()
+        ].slice(0, 4);
+
+        if (_compCritEditIdx === removeIdx){
+            compHideCritEditor();
+        } else if (_compCritEditIdx !== null && _compCritEditIdx > removeIdx){
+            _compCritEditIdx -= 1;
+        }
+
+        clearCompModalStatus();
+        compRenderCritList();
+    }
+
     function compRenderCritList(){
         const host = byId("formCompCritList");
         const btnAdd = byId("btnFormCompAddCrit");
@@ -1508,6 +1541,21 @@ function iconPdf(){
                 });
 
                 actions.appendChild(btnEdit);
+
+                if (used > 1){
+                    const btnRemove = document.createElement("button");
+                    btnRemove.type = "button";
+                    btnRemove.className = "sb-btn sb-btn--soft sb-btn--xs";
+                    btnRemove.textContent = "Retirer";
+                    btnRemove.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        compRemoveCrit(i);
+                    });
+
+                    actions.appendChild(btnRemove);
+                }
+
                 body.appendChild(actions);
             }
 
