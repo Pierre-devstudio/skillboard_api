@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import math
 from difflib import SequenceMatcher
 
 from reportlab.lib import colors
@@ -1352,63 +1353,289 @@ def _candidate_match_blob(candidate: dict) -> str:
     ])
 
 
-def _enhanced_competence_match_score(candidate: dict, catalogue_row: dict) -> int:
-    cand_title = candidate.get("source") or ""
-    cand_desc = candidate.get("description") or ""
-    cand_blob = _candidate_match_blob(candidate)
+def _competence_catalogue_semantic_text(row: dict) -> str:
+    """Texte métier utilisé pour le rapprochement sémantique, sans domaine ni mots-clés filtrants."""
+    parts = [
+        f"Intitulé : {_clean_text(row.get('intitule'), 260)}",
+        f"Description : {_clean_text(row.get('description'), 900)}",
+        f"Niveau débutant : {_clean_text(row.get('niveaua'), 700)}",
+        f"Niveau intermédiaire : {_clean_text(row.get('niveaub'), 700)}",
+        f"Niveau avancé : {_clean_text(row.get('niveauc'), 700)}",
+        f"Niveau expert : {_clean_text(row.get('niveaud'), 700)}",
+    ]
+    return _clean_text("\n".join([x for x in parts if x and not x.endswith(" : ")]), 3200)
 
-    cat_title = catalogue_row.get("intitule") or ""
-    cat_desc = catalogue_row.get("description") or ""
-    cat_blob = " ".join([
-        cat_title,
-        cat_desc,
-        catalogue_row.get("niveaua") or "",
-        catalogue_row.get("niveaub") or "",
-        catalogue_row.get("niveauc") or "",
-        catalogue_row.get("niveaud") or "",
-        catalogue_row.get("domaine_titre_court") or "",
-        catalogue_row.get("domaine_titre") or "",
-    ])
 
-    title_score = _match_score(cand_title, cat_title)
-    core_score = _match_score(_strip_action_verb_for_match(cand_title), _strip_action_verb_for_match(cat_title))
-    desc_score = _match_score(cand_desc, cat_desc) if cand_desc and cat_desc else 0
-    blob_score = _match_score(cand_blob, cat_blob)
+def _competence_candidate_semantic_text(candidate: dict) -> str:
+    """Texte métier candidat : on compare la capacité, pas le domaine déclaré par l'utilisateur."""
+    usage = "formateur" if (candidate.get("usage") or "") == "formateur" else "stagiaire"
+    parts = [
+        f"Usage : compétence {usage}",
+        f"Intitulé : {_clean_text(candidate.get('source'), 260)}",
+        f"Description : {_clean_text(candidate.get('description'), 900)}",
+        f"Rôle dans la formation : {_clean_text(candidate.get('role'), 120)}",
+        f"Justification : {_clean_text(candidate.get('justification'), 700)}",
+        f"Réutilisation catalogue : {_clean_text(candidate.get('reutilisable_catalogue'), 300)}",
+    ]
+    return _clean_text("\n".join([x for x in parts if x and not x.endswith(" : ")]), 2400)
 
-    cand_tokens = _token_set(cand_blob)
-    cat_tokens = _token_set(cat_blob)
-    overlap_score = 0
-    if cand_tokens and cat_tokens:
-        overlap_score = int(round(100 * len(cand_tokens & cat_tokens) / max(1, min(len(cand_tokens), len(cat_tokens)))))
 
-    domaine_hint = _norm_match_text(candidate.get("domaine_hint") or "")
-    domaine_blob = _norm_match_text(" ".join([
-        catalogue_row.get("domaine_titre_court") or "",
-        catalogue_row.get("domaine_titre") or "",
-    ]))
-    domain_bonus = 0
-    if domaine_hint and domaine_blob:
-        dscore = _match_score(domaine_hint, domaine_blob)
-        if dscore >= 80:
-            domain_bonus = 6
-        elif dscore >= 65:
-            domain_bonus = 3
+def _cosine_similarity(vec_a: list, vec_b: list) -> float:
+    if not vec_a or not vec_b or len(vec_a) != len(vec_b):
+        return 0.0
 
-    score = max(
-        title_score,
-        core_score,
-        int(round((title_score * 0.34) + (core_score * 0.26) + (desc_score * 0.24) + (blob_score * 0.10) + (overlap_score * 0.06))) + domain_bonus,
+    dot = 0.0
+    na = 0.0
+    nb = 0.0
+    for a, b in zip(vec_a, vec_b):
+        try:
+            fa = float(a)
+            fb = float(b)
+        except Exception:
+            continue
+        dot += fa * fb
+        na += fa * fa
+        nb += fb * fb
+
+    if na <= 0 or nb <= 0:
+        return 0.0
+    return dot / (math.sqrt(na) * math.sqrt(nb))
+
+
+def _embedding_vectors(texts: list[str]) -> list[list[float]]:
+    if OpenAI is None:
+        raise RuntimeError("Lib OpenAI manquante pour le matching sémantique.")
+
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY non configurée pour le matching sémantique.")
+
+    model = (
+        os.getenv("OPENAI_MODEL_COMP_MATCH_EMBEDDING")
+        or os.getenv("OPENAI_EMBEDDING_MODEL")
+        or "text-embedding-3-small"
+    ).strip()
+    client = OpenAI(api_key=api_key)
+
+    vectors = []
+    clean_texts = [_clean_text(t, 3200) or "Compétence" for t in texts]
+    batch_size = 96
+
+    for idx in range(0, len(clean_texts), batch_size):
+        batch = clean_texts[idx:idx + batch_size]
+        resp = client.embeddings.create(model=model, input=batch)
+        ordered = sorted(resp.data, key=lambda x: x.index)
+        vectors.extend([item.embedding for item in ordered])
+
+    return vectors
+
+
+def _build_semantic_competence_shortlist(candidates: list[dict], catalogue: list[dict], max_matches: int = 8) -> dict[int, list[dict]]:
+    if not candidates or not catalogue:
+        return {}
+
+    candidate_texts = [_competence_candidate_semantic_text(c) for c in candidates]
+    catalogue_texts = [_competence_catalogue_semantic_text(c) for c in catalogue]
+    vectors = _embedding_vectors(candidate_texts + catalogue_texts)
+
+    cand_vectors = vectors[:len(candidate_texts)]
+    cat_vectors = vectors[len(candidate_texts):]
+
+    out = {}
+    for cand_idx, cvec in enumerate(cand_vectors):
+        scored = []
+        for cat_idx, cat_vec in enumerate(cat_vectors):
+            sim = _cosine_similarity(cvec, cat_vec)
+            score = int(round(max(0.0, min(1.0, sim)) * 100))
+            if score >= 70:
+                row = dict(catalogue[cat_idx])
+                row["score_preselection"] = score
+                scored.append(row)
+
+        scored.sort(key=lambda x: x.get("score_preselection") or 0, reverse=True)
+        out[cand_idx] = scored[:max_matches]
+
+    return out
+
+
+def _semantic_competence_match_with_ai(candidates: list[dict], catalogue: list[dict], target_kind: str = "stagiaire") -> dict[int, list[dict]]:
+    """
+    Décision finale de rapprochement : l'IA compare le noyau professionnel complet.
+    Pas de filtre par mots, pas de bonus/pénalité de domaine. Les 4 niveaux de maîtrise catalogue sont pris en compte.
+    """
+    if not candidates or not catalogue:
+        return {}
+
+    shortlist = _build_semantic_competence_shortlist(candidates, catalogue)
+    if not any(shortlist.values()):
+        return {}
+
+    catalogue_payload = {}
+    candidate_payload = []
+
+    for idx, candidate in enumerate(candidates):
+        cand_key = f"c{idx}"
+        options = []
+        for row in shortlist.get(idx) or []:
+            rid = str(row.get("id_comp") or "").strip()
+            if not rid:
+                continue
+            catalogue_payload[rid] = {
+                "id_comp": rid,
+                "code": row.get("code") or "",
+                "intitule": row.get("intitule") or "",
+                "description": row.get("description") or "",
+                "niveau_debutant": row.get("niveaua") or "",
+                "niveau_intermediaire": row.get("niveaub") or "",
+                "niveau_avance": row.get("niveauc") or "",
+                "niveau_expert": row.get("niveaud") or "",
+            }
+            options.append(rid)
+
+        candidate_payload.append({
+            "candidate_ref": cand_key,
+            "source": candidate.get("source") or "",
+            "description": candidate.get("description") or "",
+            "role": candidate.get("role") or "",
+            "justification": candidate.get("justification") or "",
+            "usage": "formateur" if str(target_kind).strip().lower() == "formateur" else "stagiaire",
+            "options_catalogue_autorisees": options,
+        })
+
+    if OpenAI is None:
+        raise RuntimeError("Lib OpenAI manquante pour la validation sémantique.")
+
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY non configurée pour la validation sémantique.")
+
+    model = (
+        os.getenv("OPENAI_MODEL_COMP_MATCH")
+        or os.getenv("OPENAI_MODEL_FORM_GENERATE")
+        or os.getenv("OPENAI_MODEL_FORM_IMPORT")
+        or "gpt-4o-mini"
+    ).strip()
+
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["resultats"],
+        "properties": {
+            "resultats": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["candidate_ref", "matches"],
+                    "properties": {
+                        "candidate_ref": {"type": "string"},
+                        "matches": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["id_comp", "score", "statut", "raison"],
+                                "properties": {
+                                    "id_comp": {"type": "string"},
+                                    "score": {"type": "integer", "minimum": 0, "maximum": 100},
+                                    "statut": {"type": "string", "enum": ["recommandé", "approchant", "à vérifier"]},
+                                    "raison": {"type": "string", "maxLength": 260},
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+    system_prompt = (
+        "Tu rapproches des compétences générées avec un catalogue existant dans Novoskill. "
+        "Tu dois comparer le noyau professionnel complet : action principale, objet travaillé, situation professionnelle, finalité, périmètre et niveau d'autonomie. "
+        "Tu dois lire la description et les 4 niveaux de maîtrise du catalogue : débutant, intermédiaire, avancé, expert. "
+        "Deux compétences peuvent correspondre même si le stagiaire n'atteint qu'un niveau différent : une compétence reste la même compétence à travers ses niveaux de maîtrise. "
+        "Interdiction : ne valide jamais un rapprochement à cause d'un verbe commun, d'un mot commun, d'une formulation proche ou d'un domaine proche. "
+        "Le domaine n'est pas une preuve et ne doit jamais déclencher, bloquer, avantager ou pénaliser un match. "
+        "Valide uniquement si la compétence catalogue décrit la même capacité professionnelle ou une capacité suffisamment englobante. "
+        "Si l'objet, la finalité ou la situation professionnelle diffèrent, ne renvoie aucun match, même si les mots se ressemblent. "
+        "Ne renvoie que les matches parmi les options_catalogue_autorisees de chaque candidat. "
+        "Score : 90-100 équivalence forte ; 80-89 même compétence probable ; 74-79 à vérifier ; sous 74, ne renvoie pas le match. "
+        "Renvoie uniquement un JSON strict conforme au schéma."
     )
 
-    # Si la compétence vient du même besoin et que titre + description convergent, on évite les 58 % absurdes.
-    if max(title_score, core_score) >= 84 and (desc_score >= 72 or blob_score >= 78):
-        score = max(score, 93)
-    if _norm_match_text(cand_title) == _norm_match_text(cat_title):
-        score = max(score, 96)
-    if _strip_action_verb_for_match(cand_title) == _strip_action_verb_for_match(cat_title) and len(_strip_action_verb_for_match(cand_title)) >= 8:
-        score = max(score, 94)
+    user_prompt = json.dumps({
+        "competences_a_rapprocher": candidate_payload,
+        "catalogue": list(catalogue_payload.values()),
+    }, ensure_ascii=False)
 
-    return max(0, min(100, int(round(score))))
+    client = OpenAI(api_key=api_key)
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0,
+        max_tokens=2400,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "learn_competence_semantic_match",
+                "schema": schema,
+                "strict": True,
+            },
+        },
+    )
+
+    raw = (resp.choices[0].message.content or "").strip()
+    data = json.loads(raw) if raw else {"resultats": []}
+
+    catalogue_by_id = {str(c.get("id_comp") or ""): c for c in catalogue}
+    out = {}
+
+    for item in data.get("resultats") or []:
+        ref = str(item.get("candidate_ref") or "").strip()
+        if not ref.startswith("c"):
+            continue
+        try:
+            cand_idx = int(ref[1:])
+        except Exception:
+            continue
+
+        allowed = set(candidate_payload[cand_idx].get("options_catalogue_autorisees") or []) if cand_idx < len(candidate_payload) else set()
+        rows = []
+        seen = set()
+
+        for match in item.get("matches") or []:
+            rid = str(match.get("id_comp") or "").strip()
+            if not rid or rid in seen or rid not in allowed:
+                continue
+
+            score = int(match.get("score") or 0)
+            if score < 74:
+                continue
+
+            row = catalogue_by_id.get(rid)
+            if not row:
+                continue
+
+            seen.add(rid)
+            rows.append({
+                "id_comp": row.get("id_comp"),
+                "code": row.get("code"),
+                "intitule": row.get("intitule"),
+                "domaine": row.get("domaine"),
+                "domaine_titre_court": row.get("domaine_titre_court"),
+                "domaine_titre": row.get("domaine_titre"),
+                "domaine_couleur": row.get("domaine_couleur"),
+                "score": max(0, min(100, score)),
+                "match_reason": _clean_text(match.get("raison"), 260),
+            })
+
+        rows.sort(key=lambda x: x.get("score") or 0, reverse=True)
+        out[cand_idx] = rows[:3]
+
+    return out
 
 
 def _fetch_competence_domain_rows(cur) -> list:
@@ -1522,75 +1749,58 @@ def _competence_candidate_meta(raw: Any) -> dict:
 
 def _match_import_competences(cur, oid: str, labels: list, target_kind: str = "stagiaire") -> list:
     catalogue = _fetch_import_catalogue(cur, oid)
-    out = []
+    candidates = []
 
     for raw in labels or []:
-        label = _competence_candidate_text(raw)
-        if not label:
-            continue
+        candidate = _normalize_ai_competence_candidate(raw, target_kind=target_kind)
+        if candidate:
+            candidates.append(candidate)
 
-        meta = _competence_candidate_meta(raw)
-        candidate_blob = _competence_candidate_blob(raw)
-        scored = []
+    if not candidates:
+        return []
 
-        for c in catalogue:
-            blob = " ".join([
-                c.get("intitule") or "",
-                c.get("description") or "",
-                c.get("niveaua") or "",
-                c.get("niveaub") or "",
-                c.get("niveauc") or "",
-                c.get("niveaud") or "",
-                c.get("domaine_titre_court") or "",
-                c.get("domaine_titre") or "",
-            ])
+    semantic_matches = {}
+    if catalogue:
+        try:
+            semantic_matches = _semantic_competence_match_with_ai(candidates, catalogue, target_kind=target_kind)
+        except Exception:
+            # En cas d'indisponibilité du matching sémantique, on évite les faux positifs : tout reste à créer.
+            semantic_matches = {}
 
-            score_title = _match_score(label, c.get("intitule") or "")
-            score_full = _match_score(candidate_blob, blob)
-            score_desc = _match_score(meta.get("description") or label, c.get("description") or "")
+    out = []
+    usage = "formateur" if str(target_kind).strip().lower() == "formateur" else "stagiaire"
 
-            score = max(
-                score_title,
-                int(round((score_title * 0.58) + (score_full * 0.28) + (score_desc * 0.14))),
-            )
-
-            if score >= 48:
-                scored.append({
-                    "id_comp": c.get("id_comp"),
-                    "code": c.get("code"),
-                    "intitule": c.get("intitule"),
-                    "domaine": c.get("domaine"),
-                    "domaine_titre_court": c.get("domaine_titre_court"),
-                    "domaine_titre": c.get("domaine_titre"),
-                    "domaine_couleur": c.get("domaine_couleur"),
-                    "score": score,
-                })
-
-        scored.sort(key=lambda x: x.get("score") or 0, reverse=True)
-        matches = scored[:3]
+    for idx, candidate in enumerate(candidates):
+        matches = semantic_matches.get(idx) or []
         best_score = matches[0].get("score", 0) if matches else 0
 
-        if best_score >= 82:
+        if best_score >= 90:
             status = "recommandé"
             selected_id = matches[0].get("id_comp")
-        elif best_score >= 66:
+        elif best_score >= 80:
             status = "approchant"
             selected_id = None
-        elif best_score >= 48:
+        elif best_score >= 74:
             status = "à vérifier"
             selected_id = None
         else:
             status = "à créer"
             selected_id = None
+            matches = []
 
         row = {
-            "source": label,
+            "source": candidate.get("source") or "",
             "selected_id": selected_id,
             "status": status,
-            "matches": matches,
-            "usage": "formateur" if str(target_kind).strip().lower() == "formateur" else "stagiaire",
+            "matches": matches[:3],
+            "usage": usage,
         }
-        row.update({k: v for k, v in meta.items() if v})
+
+        for key in ("description", "domaine_hint", "type_competence", "role", "justification", "reutilisable_catalogue"):
+            value = candidate.get(key)
+            if value:
+                row[key] = value
+
         out.append(row)
 
     return out
@@ -2382,7 +2592,11 @@ def _analyse_generate_formation_with_ai(
         "La présentation est un seul paragraphe sans retour ligne, ne dépassant jamais 625 caractères. "
         "L'objectif pédagogique doit être formulé dans l'esprit : À la fin de la formation, le stagiaire/l'apprenant sera capable de... et ne dépasse jamais 550 caractères. "
         "Les prérequis doivent être évaluables, chaque prérequis étant un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. Chaque titre de prérequis ne dépasse jamais 65 caractères. "
-        "Les compétences formateur décrivent ce que le formateur doit maîtriser pour animer, transmettre et contextualiser correctement la formation ; elles peuvent inclure des compétences métier liées au contenu et des compétences pédagogiques générales. "
+        "Les compétences formateur ne doivent jamais être une copie, une déclinaison ou une reformulation directe des compétences stagiaires. "
+        "Elles décrivent d’abord ce que le formateur doit savoir faire pour concevoir, animer, adapter, transmettre et accompagner l’appropriation de la formation. "
+        "Elles doivent être majoritairement pédagogiques, transversales et réutilisables sur d’autres formations : animer une action de formation, adapter son animation au public, concevoir des supports pédagogiques, faciliter les échanges, accompagner la mise en pratique. "
+        "Ajoute seulement une compétence technique liée au sujet lorsque c’est nécessaire pour garantir la crédibilité métier du formateur. "
+        "Pour 3 compétences formateur, vise 2 compétences pédagogiques transversales et 1 compétence technique maximum ; pour 4 ou 5, vise 3 à 4 compétences pédagogiques et 1 technique maximum. "
         "Le rapport IA final doit justifier la compréhension du besoin, les hypothèses prises quand les champs sont vides, la cohérence durée / compétences / contenus et la transformation des situations de travail en compétences. "
         "Le type_formation doit être l'une des valeurs : Certifiante, Diplomante, Non Certifiante. "
         "Renvoie uniquement un JSON strict conforme au schéma."
