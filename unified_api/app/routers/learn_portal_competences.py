@@ -544,12 +544,17 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
 
         "La compétence doit rester générique et réutilisable uniquement si le contexte précis n'est pas nécessaire "
         "pour comprendre, exercer et évaluer la compétence. "
+        "La description doit être rédigée en 2 à 3 phrases courtes : elle explique l'usage professionnel de la compétence, "
+        "la situation dans laquelle elle se mobilise et le résultat attendu. Elle ne doit pas être une simple reformulation de l'intitulé. "
         "Règles de niveau A/B/C/D : A = débutant guidé, B = intermédiaire autonome, C = avancé fiable/adapte, D = expert qui optimise/transmet. "
         "Ces niveaux décrivent une progression de maîtrise observable, compatible avec les évaluations Studio et Learn. "
-        "Ne mets jamais un simple label type Débutant/Intermédiaire/Avancé/Expert dans niveaua/b/c/d/d. "
-        "Rédige des attendus concrets, observables, orientés action. "
+        "Ne mets jamais un simple label type Débutant/Intermédiaire/Avancé/Expert dans niveaua/b/c/d. "
+        "Rédige chaque niveau comme si tu décrivais ce que sait faire une personne, mais sans écrire le pronom ni le sujet. "
+        "Chaque niveau commence directement par un verbe conjugué à la 3e personne du singulier : Identifie, Analyse, Adapte, Formalise, Pilote, Optimise, Transmet. "
+        "Interdiction de commencer les niveaux par un verbe à l'infinitif : Identifier, Analyser, Adapter, Formaliser, Piloter, Optimiser. "
         "Les critères d'évaluation doivent être distincts, progressifs, observables et utilisables en formation. "
-        "Chaque évaluation doit être courte, 1 phrase, verbe d'action + résultat observable. "
+        "Chaque point d'évaluation doit être court, 1 phrase, commencer par un verbe conjugué à la 3e personne du singulier, sans pronom : Liste, Décrit, Analyse, Justifie, Adapte, Fiabilise, Transmet. "
+        "N'écris jamais 'il', 'elle', 'le stagiaire', 'l'apprenant' ou 'la personne' dans les niveaux ou les évaluations. "
         "Si un document est fourni, utilise-le comme source de contexte, sans recopier de longs passages."
     )
 
@@ -571,8 +576,12 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         "- Ne crée pas une compétence trop spécifique si le même savoir-faire peut être utile dans plusieurs domaines sans perdre son sens.\n"
         f"- Produis exactement {nb} critères NON VIDES (Critere1..Critere{nb}).\n"
         f"- Critere{nb + 1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
+        "- La description doit être plus rédigée qu'une définition sèche : 2 à 3 phrases courtes, orientées usage professionnel et résultat attendu.\n"
+        "- Les niveaux A/B/C/D doivent commencer par un verbe conjugué à la 3e personne du singulier, sans pronom ni sujet. Exemple : Identifie..., Structure..., Adapte..., Pilote...\n"
+        "- Les niveaux ne doivent pas commencer par un infinitif. Interdit : Identifier, Structurer, Adapter, Piloter.\n"
         "- Les 4 niveaux d’un critère doivent montrer une progression claire : guidé → autonome → optimisation → expertise/transmission.\n"
-        "- Niveaux A/B/C/D/D <=230 caractères chacun.\n"
+        "- Les 4 points d'évaluation de chaque critère commencent aussi par un verbe conjugué à la 3e personne du singulier, sans pronom ni sujet.\n"
+        "- Niveaux A/B/C/D <=230 caractères chacun.\n"
     )
 
     client = OpenAI(api_key=api_key)

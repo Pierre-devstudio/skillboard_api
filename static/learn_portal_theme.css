@@ -2349,3 +2349,131 @@
   color: rgb(226, 114, 9) !important;
 }
 
+
+/* ======================================================
+   Learn - Création compétence depuis formation
+   ====================================================== */
+
+.lf-comp-section-card{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:14px;
+  background:#fff;
+  padding:12px;
+  margin-top:12px;
+}
+
+.lf-comp-section-title{
+  font-size:14px;
+  font-weight:800;
+  color:#111827;
+  line-height:1.25;
+}
+
+.lf-comp-levels-editor{
+  display:grid;
+  gap:0;
+}
+
+.lf-comp-level-row{
+  display:grid;
+  grid-template-columns:170px minmax(0, 1fr);
+  gap:16px;
+  align-items:start;
+  padding:10px 0;
+  border-top:1px solid rgba(17,24,39,.10);
+}
+
+.lf-comp-level-row:first-of-type{
+  border-top:0;
+}
+
+.lf-comp-level-badge{
+  min-height:22px;
+  border:1px solid #ff9f73;
+  border-radius:999px;
+  color:#ff6b35;
+  background:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:3px 16px;
+  font-size:12px;
+  font-weight:750;
+  line-height:1.1;
+}
+
+.lf-comp-level-row textarea{
+  min-height:44px;
+  resize:vertical;
+}
+
+.lf-comp-criteria-editor .sb-field-head{
+  align-items:flex-start;
+  margin-bottom:10px;
+}
+
+.lf-comp-crit-list{
+  gap:8px;
+}
+
+.lf-comp-crit-card{
+  border-color:rgba(17,24,39,.10);
+  border-radius:12px;
+  background:#fff;
+  overflow:hidden;
+}
+
+.lf-comp-crit-head{
+  padding:10px 12px;
+  background:#f8fafc;
+}
+
+.lf-comp-crit-title{
+  font-size:15px;
+  font-weight:800;
+  color:#111827;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+}
+
+.lf-comp-crit-badge{
+  border:1px solid #9a5a40;
+  color:#b45309;
+  background:#fff7ed;
+  border-radius:999px;
+  padding:3px 10px;
+  font-size:11px;
+  font-weight:750;
+  white-space:nowrap;
+}
+
+.lf-comp-crit-body{
+  padding:12px 14px 14px;
+}
+
+.lf-comp-crit-eval-list{
+  margin:0;
+  padding-left:18px;
+  display:grid;
+  gap:7px;
+  font-size:13px;
+  line-height:1.35;
+  color:#111827;
+}
+
+.lf-comp-crit-actions{
+  margin-top:12px;
+}
+
+@media (max-width: 760px){
+  .lf-comp-level-row{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  .lf-comp-level-badge{
+    justify-content:flex-start;
+    width:max-content;
+  }
+}

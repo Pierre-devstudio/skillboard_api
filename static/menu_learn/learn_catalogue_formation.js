@@ -1452,6 +1452,8 @@ function iconPdf(){
             btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
         }
 
+        let rendered = 0;
+
         for (let i = 0; i < 4; i++){
             const c = _compCrit[i];
             const nom = (c?.Nom || "").trim();
@@ -1459,47 +1461,45 @@ function iconPdf(){
             if (!nom) continue;
 
             const acc = document.createElement("div");
-            acc.className = "sb-acc";
+            acc.className = "sb-acc lf-comp-crit-card";
+            if (rendered === 0) acc.classList.add("is-open");
 
             const head = document.createElement("button");
             head.type = "button";
-            head.className = "sb-acc-head";
+            head.className = "sb-acc-head lf-comp-crit-head";
             head.addEventListener("click", () => acc.classList.toggle("is-open"));
 
             const t = document.createElement("div");
-            t.className = "sb-acc-title";
-            t.textContent = `Critère ${i + 1} – ${nom}`;
+            t.className = "sb-acc-title lf-comp-crit-title";
+            t.textContent = nom;
+
+            const badge = document.createElement("span");
+            badge.className = "lf-comp-crit-badge";
+            badge.textContent = `Critère ${rendered + 1}`;
 
             head.appendChild(t);
+            head.appendChild(badge);
 
             const body = document.createElement("div");
-            body.className = "sb-acc-body";
+            body.className = "sb-acc-body lf-comp-crit-body";
 
-            const ul = document.createElement("div");
-            ul.className = "sb-crit-evals";
+            const ul = document.createElement("ul");
+            ul.className = "lf-comp-crit-eval-list";
 
-            ["Niveau 1", "Niveau 2", "Niveau 3", "Niveau 4"].forEach((label, k) => {
-                const row = document.createElement("div");
-                row.className = "sb-crit-eval-row";
+            (c.Eval || []).slice(0, 4).forEach(v => {
+                const txt = (v || "").toString().trim();
+                if (!txt) return;
 
-                const lab = document.createElement("div");
-                lab.className = "label";
-                lab.textContent = label;
-
-                const txt = document.createElement("div");
-                txt.textContent = (c.Eval?.[k] || "").toString();
-
-                row.appendChild(lab);
-                row.appendChild(txt);
-
-                ul.appendChild(row);
+                const li = document.createElement("li");
+                li.textContent = txt;
+                ul.appendChild(li);
             });
 
             body.appendChild(ul);
 
             if (isSupervisor()){
                 const actions = document.createElement("div");
-                actions.className = "sb-acc-actions";
+                actions.className = "sb-acc-actions lf-comp-crit-actions";
 
                 const btnEdit = document.createElement("button");
                 btnEdit.type = "button";
@@ -1520,6 +1520,7 @@ function iconPdf(){
             acc.appendChild(body);
 
             host.appendChild(acc);
+            rendered += 1;
         }
 
         if (!host.children.length){
@@ -1635,16 +1636,6 @@ function iconPdf(){
         }
 
         byId("formCompModalTitle").textContent = "Créer une compétence";
-
-        const sub = byId("formCompModalSub");
-        if (sub){
-            const targetLabel = _compCreateTarget === "formateur"
-                ? "compétence requise pour le formateur"
-                : "compétence visée pour les stagiaires";
-            const roleLabel = p.role ? ` · ${competenceRoleLabel(p.role)}` : "";
-            sub.textContent = `Création depuis ${targetLabel}${roleLabel}.`;
-            sub.style.display = "";
-        }
 
         byId("formCompIntitule").value = title;
         byId("formCompEtat").value = "à valider";

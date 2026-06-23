@@ -801,7 +801,6 @@
             <span id="formCompModalBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
             <div class="card-title" id="formCompModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
           </div>
-          <div class="card-sub" id="formCompModalSub" style="margin:4px 0 0 0; display:none;"></div>
         </div>
         <button type="button" class="sb-modal-x" id="btnFormCompX" aria-label="Fermer">×</button>
       </div>
@@ -838,31 +837,38 @@
           </div>
         </div>
 
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau A - Débutant</div>
-            <textarea id="formCompNivA" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+        <div class="lf-comp-section-card lf-comp-levels-editor">
+          <div class="lf-comp-section-title">Niveaux de maîtrise</div>
+          <div class="card-sub" style="margin:3px 0 12px 0;">
+            Décrivez la progression observable de Débutant à Expert.
           </div>
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau B - Intermédiaire</div>
-            <textarea id="formCompNivB" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+
+          <div class="lf-comp-level-row">
+            <div class="lf-comp-level-badge">Débutant</div>
+            <textarea id="formCompNivA" rows="2" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Identifie les repères essentiels avec un accompagnement."></textarea>
           </div>
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau C - Avancé</div>
-            <textarea id="formCompNivC" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+          <div class="lf-comp-level-row">
+            <div class="lf-comp-level-badge">Intermédiaire</div>
+            <textarea id="formCompNivB" rows="2" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Applique la méthode de manière autonome dans une situation simple."></textarea>
           </div>
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau D - Expert</div>
-            <textarea id="formCompNivD" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+          <div class="lf-comp-level-row">
+            <div class="lf-comp-level-badge">Avancé</div>
+            <textarea id="formCompNivC" rows="2" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Adapte la pratique au contexte et fiabilise les résultats."></textarea>
+          </div>
+          <div class="lf-comp-level-row">
+            <div class="lf-comp-level-badge">Expert</div>
+            <textarea id="formCompNivD" rows="2" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Optimise la démarche et transmet les bonnes pratiques."></textarea>
           </div>
         </div>
 
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="sb-field-head">
-              <div class="label" style="margin:0;">Grille d’évaluation</div>
-              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompAddCrit">Ajouter un critère</button>
+        <div class="lf-comp-section-card lf-comp-criteria-editor">
+          <div class="sb-field-head">
+            <div>
+              <div class="lf-comp-section-title">Grille d’évaluation</div>
+              <div class="card-sub" style="margin:3px 0 0 0;">Critères et niveaux d’évaluation.</div>
             </div>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompAddCrit">Ajouter un critère</button>
+          </div>
 
             <div class="sb-crit-editor" id="formCompCritEditor" style="display:none;">
               <div class="card-sub" id="formCompCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
@@ -899,11 +905,10 @@
               </div>
             </div>
 
-            <div class="sb-stack sb-stack--xs" id="formCompCritList"></div>
+          <div class="sb-stack sb-stack--xs lf-comp-crit-list" id="formCompCritList"></div>
 
-            <div class="card-sub" style="margin:8px 0 0 0;">
-              1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
-            </div>
+          <div class="card-sub" style="margin:8px 0 0 0;">
+            1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
           </div>
         </div>
       </div>
