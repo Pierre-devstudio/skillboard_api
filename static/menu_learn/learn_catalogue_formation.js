@@ -1771,7 +1771,11 @@ function iconPdf(){
         closePendingCompetenceCreate();
 
         renderCompetences();
-        await persistAiBrouillonIfPossible(portal);
+        try{
+            await persistAiBrouillonIfPossible(portal);
+        } catch(err){
+            console.warn("Sauvegarde du brouillon IA impossible", err);
+        }
         setSuccess("Compétence créée et rattachée à la formation");
     }
 
@@ -4356,6 +4360,17 @@ function renderContentCompBadges(l){
         );
     }
 
+    async function persistAiBrouillonSafely(portal){
+        if (!_editingId || !hasAiBrouillonMatter()) return;
+
+        try{
+            await persistAiBrouillonIfPossible(portal);
+        } catch(err){
+            console.warn("Sauvegarde du brouillon IA impossible", err);
+            setFormInfo("Formation enregistrée. Le brouillon IA n’a pas pu être sauvegardé automatiquement.");
+        }
+    }
+
         function buildImportSelectedMap(draft){
         const map = new Map();
         const src = draft || _importDraft || _aiGenerationDraft || {};
@@ -5364,8 +5379,7 @@ function renderContentCompBadges(l){
       methode_eval: _selectedEval,
       competences_stagiaires: _selectedCompStag,
       competences_formateurs: _selectedCompForm,
-      prerequis: buildPrerequisPayload(),
-      ai_brouillon: buildAiBrouillonPayload()
+      prerequis: buildPrerequisPayload()
     };
   }
 
@@ -5434,6 +5448,8 @@ function renderContentCompBadges(l){
             _pendingImportContenus = [];
             await reloadFormationTechnicalDetail(portal);
             }
+
+            await persistAiBrouillonSafely(portal);
         } else {
             if (!_editingId) return;
 
@@ -5445,6 +5461,8 @@ function renderContentCompBadges(l){
                 body: JSON.stringify(payload)
             }
             );
+
+            await persistAiBrouillonSafely(portal);
         }
 
         let successMessage = wasCreate ? "Formation créée avec succès" : "Enregistré avec succès";
