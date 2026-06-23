@@ -1473,12 +1473,7 @@ function iconPdf(){
             t.className = "sb-acc-title lf-comp-crit-title";
             t.textContent = nom;
 
-            const badge = document.createElement("span");
-            badge.className = "lf-comp-crit-badge";
-            badge.textContent = `Critère ${rendered + 1}`;
-
             head.appendChild(t);
-            head.appendChild(badge);
 
             const body = document.createElement("div");
             body.className = "sb-acc-body lf-comp-crit-body";
