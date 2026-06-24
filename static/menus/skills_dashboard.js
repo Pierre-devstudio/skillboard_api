@@ -677,7 +677,7 @@
   function transmissionRowsHtml(items) {
     const rows = Array.isArray(items) ? items : [];
     if (!rows.length) {
-      return `<tr><td colspan="4" class="sb-muted">Aucune compétence analysable sur ce périmètre.</td></tr>`;
+      return `<tr><td colspan="2" class="sb-muted">Aucune compétence analysable sur ce périmètre.</td></tr>`;
     }
 
     return rows.map(item => {
@@ -685,7 +685,6 @@
       const title = (item?.intitule || "Compétence").toString().trim();
       const statusKey = (item?.status_key || "none").toString();
       const statusLabel = (item?.status_label || "Aucun transmetteur").toString();
-      const total = Number(item?.transmetteurs_total || 0);
       return `
         <tr>
           <td>
@@ -695,8 +694,6 @@
             </div>
           </td>
           <td class="col-center">${transmissionStatusBadge(statusKey, statusLabel)}</td>
-          <td class="col-center">${Number.isFinite(total) ? numTxt(total, 0) : "—"}</td>
-          <td>${transmissionTransmittersHtml(item)}</td>
         </tr>
       `;
     }).join("");
@@ -715,24 +712,23 @@
     const confirm = Number(transmission?.transmission_confirm_count || 0);
     const review = Number(transmission?.transmission_review_count || 0);
     const none = Number(transmission?.sans_transmetteur_count || 0);
-    const transmitters = Number(transmission?.transmetteurs_identifies_count || 0);
     const threshold = Number(transmission?.threshold_score || 63);
     const months = Number(transmission?.seuil_mois || 6);
     const criticite = Number(filters?.criticite_min);
     const criticiteLabel = Number.isFinite(criticite) ? `≥ ${Math.round(criticite)}` : "—";
 
     body.innerHTML = `
-      <div class="sb-stack">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="sb-block-title" style="margin-bottom:8px;">Lecture immédiate</div>
-          <div class="sb-dashboard-kpi-grid">
+      <div class="sb-stack sb-dashboard-transmission-detail">
+        <div class="card sb-dashboard-detail-section">
+          <div class="sb-dashboard-section-title">Lecture immédiate</div>
+          <div class="sb-dashboard-kpi-grid sb-dashboard-kpi-grid--compact">
             <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--main">
-              <div class="label">Capacité affichée</div>
+              <div class="label">Capacité</div>
               <div class="value">${pctTxt(pct, 0)}</div>
-              <div class="card-sub">${numTxt(secured, 0)} / ${numTxt(total, 0)} compétences sécurisées ou à confirmer</div>
+              <div class="card-sub">${numTxt(secured, 0)} / ${numTxt(total, 0)} compétences</div>
             </div>
             <div class="sb-dashboard-kpi-card">
-              <div class="label">Transmission validée</div>
+              <div class="label">Sécurisées</div>
               <div class="value">${numTxt(valid, 0)}</div>
             </div>
             <div class="sb-dashboard-kpi-card">
@@ -740,19 +736,19 @@
               <div class="value">${numTxt(confirm, 0)}</div>
             </div>
             <div class="sb-dashboard-kpi-card">
-              <div class="label">À reprendre</div>
+              <div class="label">À vérifier</div>
               <div class="value">${numTxt(review, 0)}</div>
             </div>
             <div class="sb-dashboard-kpi-card">
-              <div class="label">Sans transmetteur</div>
+              <div class="label">Sans relais</div>
               <div class="value">${numTxt(none, 0)}</div>
             </div>
           </div>
         </div>
 
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="sb-block-title" style="margin-bottom:8px;">Règle utilisée</div>
-          <div class="card-sub" style="margin:0; line-height:1.45;">
+        <div class="card sb-dashboard-detail-section">
+          <div class="sb-dashboard-section-title">Règle utilisée</div>
+          <div class="card-sub sb-dashboard-rule-text">
             Une compétence est considérée transmissible lorsqu’au moins une personne disponible est au niveau <strong>Expert</strong>
             ou atteint le niveau <strong>Avancé haut</strong> avec un score normalisé d’au moins <strong>${numTxt(threshold, 0)}%</strong>.
             Le taux affiché additionne les transmissions <strong>validées</strong> et celles <strong>à confirmer</strong>, puis les rapporte au nombre de compétences analysées.
@@ -760,7 +756,6 @@
           </div>
           <div class="sb-dashboard-mini-meta">
             <span>Criticité prise en compte : ${esc(criticiteLabel)}</span>
-            <span>Transmetteurs identifiés : ${numTxt(transmitters, 0)}</span>
           </div>
         </div>
 
@@ -770,8 +765,6 @@
               <tr>
                 <th>Compétence</th>
                 <th class="col-center">Statut</th>
-                <th class="col-center">Transmetteurs</th>
-                <th>Détail</th>
               </tr>
             </thead>
             <tbody>
