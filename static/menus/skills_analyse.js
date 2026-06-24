@@ -5903,12 +5903,43 @@ function renderDetail(mode) {
     byId("btnAnalysePrevisionActionClose")?.addEventListener("click", close);
     byId("btnAnalysePrevisionActionHypothesis")?.addEventListener("click", () => {
       const state = window.__sbPrevisionTransitionModalState || {};
+      const body = byId("analysePrevisionActionBody");
+
+      if (state.mode === "transmission") {
+        const checked = Array.from(body?.querySelectorAll?.("input[data-prev-transmission-scenario]:checked") || []);
+        if (!checked.length) {
+          if (_portalref?.showAlert) _portalref.showAlert("error", "Sélectionnez au moins une hypothèse de sécurisation.");
+          else setStatus("Sélectionnez au moins une hypothèse de sécurisation.");
+          return;
+        }
+        const labels = checked.map(x => x.getAttribute("data-prev-transmission-scenario-label") || x.value).filter(Boolean);
+        const r = state.row || {};
+        const code = String(r.code || "").trim();
+        const comp = String(r.intitule || "Compétence").trim() || "Compétence";
+        const compLabel = `${code ? code + " - " : ""}${comp}`;
+        const horizon = analysePrevisionDate(r.exit_date || r.first_exit_date);
+        addAnalyseHypothesis({
+          type: "montee_competence",
+          title: `Sécuriser la transmission de ${compLabel}`,
+          poste_id: String(r.id_poste_actuel || "").trim(),
+          poste_label: r.intitule_poste || "Poste non renseigné",
+          competence_id: String(r.id_comp || "").trim(),
+          competence_code: code,
+          competence_label: comp,
+          cause: labels.join(" · "),
+          effet: `Préparer la transmission de ${compLabel}${horizon && horizon !== "—" ? " avant le " + horizon : ""}.`,
+          horizon,
+          criticite: r.max_criticite || getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)
+        });
+        close();
+        return;
+      }
+
       if (state.mode !== "transition") {
         close();
         setStatus("Scénario RH à créer depuis Simulation RH avec les éléments prévisionnels sélectionnés.");
         return;
       }
-      const body = byId("analysePrevisionActionBody");
       const checked = Array.from(body?.querySelectorAll?.("input[data-prev-scenario]:checked") || []);
       if (!checked.length) {
         if (_portalref?.showAlert) _portalref.showAlert("error", "Sélectionnez au moins une hypothèse de sécurisation.");
@@ -6104,53 +6135,113 @@ function renderDetail(mode) {
     const sub = byId("analysePrevisionActionSub");
     const body = byId("analysePrevisionActionBody");
     const btn = byId("btnAnalysePrevisionActionHypothesis");
-    const comp = `${r.code ? r.code + " — " : ""}${r.intitule || "Compétence"}`;
-    const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Porteur";
-    const dateTxt = analysePrevisionDate(r.exit_date);
+
+    const code = String(r.code || "").trim();
+    const comp = String(r.intitule || "Compétence").trim() || "Compétence";
+    const compHtml = `${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}<strong>${escapeHtml(comp)}</strong>`;
+    const full = r.sortants_label || r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Collaborateur concerné";
+    const dateTxt = analysePrevisionDate(r.exit_date || r.first_exit_date);
+    const posteCode = String(r.codif_client || r.codif_poste || "").trim();
+    const posteLabel = String(r.intitule_poste || "Poste non renseigné").trim() || "Poste non renseigné";
+    const targetRank = nsLevelRank(r.niveau_a_transmettre);
+    const currentRank = nsLevelRank(r.niveau_actuel);
+    const levelOk = targetRank > 0 && currentRank >= targetRank;
+    const relaisCount = Math.max(0, Math.round(Number(r.receveurs_potentiels_count || 0)));
+    const sortantsCount = Math.max(1, Math.round(Number(r.sortants_count || 1)));
+    const impactCount = Math.max(0, Math.round(Number(r.nb_postes_impactes || 0)));
+    const relaisNames = String(r.receveurs_potentiels_label || "")
+      .split(",")
+      .map(x => x.trim())
+      .filter(Boolean);
+
+    const relaisHtml = relaisNames.length ? `
+      <div class="sb-prev-transmission-relais-list">
+        ${relaisNames.map(n => `<span>${escapeHtml(n)}</span>`).join("")}
+      </div>
+    ` : `<div class="sb-prev-empty" style="margin:0;">Aucun relais interne identifié dans le périmètre.</div>`;
+
+    const scenarios = [
+      ["transmission_interne", "Organiser une transmission interne", true],
+      ["binome_temporaire", "Mettre en place un binôme avant la sortie", relaisCount > 0],
+      ["formation_ciblee", "Planifier une formation ciblée", !levelOk || relaisCount > 0],
+      ["recrutement", "Prévoir un recrutement si aucun relais n’est disponible", relaisCount <= 0],
+    ];
+
     window.__sbPrevisionTransitionModalState = { mode: "transmission", row: r };
-    if (title) title.textContent = `Transmission à préparer — ${comp}`;
+    if (title) title.textContent = "Transmission à préparer";
     if (sub) {
-      sub.textContent = `${full} · ${dateTxt}`;
-      sub.style.display = "";
+      sub.textContent = "";
+      sub.style.display = "none";
     }
     if (btn) {
-      btn.textContent = "Tester un scénario RH";
+      btn.textContent = "Simuler les hypothèses";
       btn.disabled = false;
     }
     if (body) {
       body.innerHTML = `
-        <div class="sb-prev-modal-grid">
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Ce qui doit être transmis</div>
+        <div class="sb-prev-modal-grid sb-prev-transmission-modal">
+          <div class="sb-prev-actions-card card sb-prev-transmission-hero">
+            <div class="sb-prev-modal-title">Compétence à transmettre</div>
+            <div class="sb-prev-transmission-hero-line">
+              <div class="sb-prev-transmission-comp">${compHtml}</div>
+              <div class="sb-icon-actions">${analysePrevisionCompetencePdfButton(r)}</div>
+            </div>
+            <div class="sb-prev-transmission-meta">
+              <span>${impactCount} poste${impactCount > 1 ? "s" : ""} concerné${impactCount > 1 ? "s" : ""}</span>
+              <span>Criticité ${analysePrevisionCriticityBadge(r.max_criticite)}</span>
+              <span>${escapeHtml(r.expertise_label || "Expertise à confirmer")}</span>
+            </div>
+          </div>
+
+          <div class="sb-prev-transmission-grid2">
+            <div class="sb-prev-actions-card card">
+              <div class="sb-prev-modal-title">Collaborateur concerné</div>
+              <div class="sb-prev-transmission-person">${escapeHtml(full)}</div>
+              <div class="sb-prev-transmission-line">
+                ${posteCode ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(posteCode)}</span>` : ""}
+                <span>${escapeHtml(posteLabel)}</span>
+              </div>
+              <div class="sb-prev-transmission-muted">
+                ${dateTxt && dateTxt !== "—" ? `Échéance : ${escapeHtml(dateTxt)}` : "Échéance à confirmer"}
+                ${r.raison_sortie || r.event_kind_label ? ` · ${escapeHtml(r.raison_sortie || r.event_kind_label)}` : ""}
+              </div>
+              ${sortantsCount > 1 ? `<div class="sb-prev-transmission-muted">${sortantsCount} collaborateurs concernés par cette compétence.</div>` : ""}
+            </div>
+
+            <div class="sb-prev-actions-card card">
+              <div class="sb-prev-modal-title">Lecture RH</div>
+              <div class="sb-prev-action-list">
+                <div>Transmission à préparer avant l’échéance identifiée.</div>
+                <div>${relaisCount > 0 ? `${relaisCount} relais interne${relaisCount > 1 ? "s" : ""} à analyser.` : "Aucun relais interne identifié."}</div>
+                <div>${levelOk ? "Le niveau actuel atteint le niveau à transmettre." : "Le niveau actuel reste inférieur au niveau à transmettre."}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-prev-actions-card card">
+            <div class="sb-prev-modal-title">Niveaux et capacité</div>
             <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
-              <div class="sb-prev-kpi"><span>Niveau porteur</span><strong>${escapeHtml(r.niveau_actuel || "—")}</strong></div>
-              <div class="sb-prev-kpi"><span>Niveau cible</span><strong>${escapeHtml(r.niveau_a_transmettre || "—")}</strong></div>
-              <div class="sb-prev-kpi"><span>Postes concernés</span><strong>${escapeHtml(String(r.nb_postes_impactes || 0))}</strong></div>
-              <div class="sb-prev-kpi"><span>Capacité à transmettre</span><strong>${escapeHtml(r.titulaire_transmet_label || "À confirmer")}</strong></div>
+              <div class="sb-prev-kpi"><span>Niveau actuel</span><strong>${nsLevelBadgeHtml(r.niveau_actuel || "", "Niveau actuel")}</strong></div>
+              <div class="sb-prev-kpi"><span>Niveau à transmettre</span><strong>${analyseRequiredLevelBadgeHtml(r.niveau_a_transmettre || "", "Niveau à transmettre")}</strong></div>
+              <div class="sb-prev-kpi"><span>Statut</span><strong>${analysePrevisionCapacityStatusBadge(levelOk)}</strong></div>
+              <div class="sb-prev-kpi"><span>Relais internes</span><strong>${escapeHtml(String(relaisCount))}</strong></div>
             </div>
           </div>
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Porteur sortant</div>
-            <div class="sb-prev-action-list">
-              <div><strong>${escapeHtml(full)}</strong> · ${escapeHtml(r.raison_sortie || r.event_kind_label || "Sortie prévue")}</div>
-              <div>Échéance : <strong>${dateTxt}</strong></div>
-              <div>Poste actuel : <strong>${escapeHtml(r.intitule_poste || "—")}</strong></div>
-            </div>
+
+          <div class="sb-prev-actions-card card">
+            <div class="sb-prev-modal-title">Relais internes identifiés</div>
+            ${relaisHtml}
           </div>
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Relais possibles</div>
-            <div class="sb-prev-action-list">
-              <div>${escapeHtml(String(r.receveurs_potentiels_count || 0))} collaborateur(s) disposent déjà d’une base sur cette compétence.</div>
-              <div>${escapeHtml(r.receveurs_potentiels_label || "Aucun relais identifié dans le périmètre.")}</div>
-            </div>
-          </div>
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Scénarios à tester</div>
-            <div class="sb-prev-action-list">
-              <div>Transmission accélérée vers un relais interne.</div>
-              <div>Binôme temporaire avant la sortie.</div>
-              <div>Formation ciblée sur le niveau à transmettre.</div>
-              <div>Recrutement avec niveau cible ${escapeHtml(r.niveau_a_transmettre || "attendu")} si aucun relais n’est disponible.</div>
+
+          <div class="sb-prev-actions-card card">
+            <div class="sb-prev-modal-title">Hypothèses de sécurisation</div>
+            <div class="sb-prev-scenario-grid">
+              ${scenarios.map(([value, label, checked]) => `
+                <label class="card sb-prev-scenario-check">
+                  <input type="checkbox" data-prev-transmission-scenario="${escapeHtml(value)}" data-prev-transmission-scenario-label="${escapeHtml(label)}" ${checked ? "checked" : ""}>
+                  <span>${escapeHtml(label)}</span>
+                </label>
+              `).join("")}
             </div>
           </div>
         </div>

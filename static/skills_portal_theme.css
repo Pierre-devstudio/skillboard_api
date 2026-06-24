@@ -7786,3 +7786,201 @@ body{
 #modalAnalysePrevisionAction .sb-prev-table{
   min-width:760px;
 }
+
+/* ======================================================
+   Analyse compétences — Prévisions: modal transmission à préparer
+   ====================================================== */
+#modalAnalysePrevisionAction .sb-prev-modal-grid{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-actions-card.card{
+  padding:14px;
+  margin:0;
+}
+
+#modalAnalysePrevisionAction .sb-prev-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+  margin:0;
+}
+
+#modalAnalysePrevisionAction .sb-prev-kpi-grid--4{
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+}
+
+#modalAnalysePrevisionAction .sb-prev-kpi{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  padding:10px 12px;
+  min-width:0;
+}
+
+#modalAnalysePrevisionAction .sb-prev-kpi span{
+  display:block;
+  font-size:11px;
+  color:var(--sb-gray-500);
+  font-weight:600;
+  line-height:1.2;
+}
+
+#modalAnalysePrevisionAction .sb-prev-kpi strong{
+  display:block;
+  margin-top:5px;
+  font-size:15px;
+  font-weight:700;
+  color:var(--sb-gray-900);
+  line-height:1.2;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#modalAnalysePrevisionAction .sb-prev-action-list{
+  display:grid;
+  gap:7px;
+  color:var(--sb-gray-700);
+  font-size:13px;
+  line-height:1.3;
+}
+
+#modalAnalysePrevisionAction .sb-prev-action-list > div{
+  position:relative;
+  padding-left:16px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-action-list > div::before{
+  content:"";
+  position:absolute;
+  left:2px;
+  top:.55em;
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background:var(--reading-accent);
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-hero-line{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-comp{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  color:var(--sb-gray-900);
+  font-size:14px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-comp strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-meta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.3;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-meta > span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-grid2{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-person{
+  font-size:16px;
+  line-height:1.2;
+  font-weight:700;
+  color:var(--sb-gray-900);
+  margin-bottom:8px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:700;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-muted{
+  margin-top:7px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.35;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-relais-list{
+  display:grid;
+  gap:7px;
+  margin-top:2px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-relais-list span{
+  display:block;
+  color:var(--sb-gray-700);
+  font-size:13px;
+  line-height:1.25;
+}
+
+#modalAnalysePrevisionAction .sb-prev-scenario-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:8px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-scenario-check{
+  padding:10px;
+  margin:0;
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+  cursor:pointer;
+  border-color:#dbe3ef;
+}
+
+#modalAnalysePrevisionAction .sb-prev-scenario-check input{
+  margin-top:2px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-scenario-check span{
+  font-weight:700;
+  font-size:13px;
+  line-height:1.25;
+  color:var(--sb-gray-900);
+}
+
+@media (max-width:900px){
+  #modalAnalysePrevisionAction .sb-prev-kpi-grid,
+  #modalAnalysePrevisionAction .sb-prev-kpi-grid--4,
+  #modalAnalysePrevisionAction .sb-prev-transmission-grid2{
+    grid-template-columns:1fr;
+  }
+}
