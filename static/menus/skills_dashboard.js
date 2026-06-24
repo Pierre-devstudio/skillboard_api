@@ -636,6 +636,155 @@
     openModal("dashboardHealthDetailModal");
   }
 
+  function transmissionStatusClass(key) {
+    const k = (key || "").toString();
+    if (k === "validated") return "sb-dashboard-status--validated";
+    if (k === "confirm") return "sb-dashboard-status--confirm";
+    if (k === "review") return "sb-dashboard-status--review";
+    return "sb-dashboard-status--none";
+  }
+
+  function transmissionStatusBadge(key, label) {
+    return `<span class="sb-dashboard-status ${transmissionStatusClass(key)}">${esc(label || "À qualifier")}</span>`;
+  }
+
+  function transmissionTransmittersHtml(item) {
+    const rows = Array.isArray(item?.transmetteurs) ? item.transmetteurs : [];
+    if (!rows.length) return `<span class="sb-muted">Aucun transmetteur identifié</span>`;
+
+    const visible = rows.slice(0, 3).map(t => {
+      const full = (t?.full || "Collaborateur").toString();
+      const niveau = (t?.niveau_label || "À qualifier").toString();
+      const score = Number(t?.score_pct);
+      const scoreTxt = Number.isFinite(score) ? ` · ${numTxt(score, 0)}%` : "";
+      const dateTxt = (t?.date_derniere_eval || "Date à confirmer").toString();
+      const poste = (t?.codif_poste || t?.intitule_poste || "").toString().trim();
+      const meta = poste ? `${niveau}${scoreTxt} · ${dateTxt} · ${poste}` : `${niveau}${scoreTxt} · ${dateTxt}`;
+      return `
+        <div class="sb-dashboard-person-line">
+          <strong>${esc(full)}</strong>
+          <span>${esc(meta)}</span>
+        </div>
+      `;
+    }).join("");
+
+    const more = rows.length > 3
+      ? `<div class="sb-dashboard-person-more">+ ${rows.length - 3} autre(s) transmetteur(s)</div>`
+      : "";
+    return `<div class="sb-dashboard-person-list">${visible}${more}</div>`;
+  }
+
+  function transmissionRowsHtml(items) {
+    const rows = Array.isArray(items) ? items : [];
+    if (!rows.length) {
+      return `<tr><td colspan="4" class="sb-muted">Aucune compétence analysable sur ce périmètre.</td></tr>`;
+    }
+
+    return rows.map(item => {
+      const code = (item?.code || "").toString().trim();
+      const title = (item?.intitule || "Compétence").toString().trim();
+      const statusKey = (item?.status_key || "none").toString();
+      const statusLabel = (item?.status_label || "Aucun transmetteur").toString();
+      const total = Number(item?.transmetteurs_total || 0);
+      return `
+        <tr>
+          <td>
+            <div class="sb-dashboard-comp-cell">
+              ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
+              <span>${esc(title)}</span>
+            </div>
+          </td>
+          <td class="col-center">${transmissionStatusBadge(statusKey, statusLabel)}</td>
+          <td class="col-center">${Number.isFinite(total) ? numTxt(total, 0) : "—"}</td>
+          <td>${transmissionTransmittersHtml(item)}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function renderTransmissionDetailModal() {
+    const body = byId("dashboardTransmissionDetailBody");
+    if (!body) return;
+
+    const transmission = _lastData?.transmission || {};
+    const filters = _lastData?.filters || {};
+    const pct = clamp(transmission?.pct ?? 0, 0, 100);
+    const total = Number(transmission?.competences_total ?? transmission?.postes_total ?? 0);
+    const secured = Number(transmission?.competences_transmissibles ?? transmission?.postes_transmissibles ?? 0);
+    const valid = Number(transmission?.transmission_valides_count || 0);
+    const confirm = Number(transmission?.transmission_confirm_count || 0);
+    const review = Number(transmission?.transmission_review_count || 0);
+    const none = Number(transmission?.sans_transmetteur_count || 0);
+    const transmitters = Number(transmission?.transmetteurs_identifies_count || 0);
+    const threshold = Number(transmission?.threshold_score || 63);
+    const months = Number(transmission?.seuil_mois || 6);
+    const criticite = Number(filters?.criticite_min);
+    const criticiteLabel = Number.isFinite(criticite) ? `≥ ${Math.round(criticite)}` : "—";
+
+    body.innerHTML = `
+      <div class="sb-stack">
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="sb-block-title" style="margin-bottom:8px;">Lecture immédiate</div>
+          <div class="sb-dashboard-kpi-grid">
+            <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--main">
+              <div class="label">Capacité affichée</div>
+              <div class="value">${pctTxt(pct, 0)}</div>
+              <div class="card-sub">${numTxt(secured, 0)} / ${numTxt(total, 0)} compétences sécurisées ou à confirmer</div>
+            </div>
+            <div class="sb-dashboard-kpi-card">
+              <div class="label">Transmission validée</div>
+              <div class="value">${numTxt(valid, 0)}</div>
+            </div>
+            <div class="sb-dashboard-kpi-card">
+              <div class="label">À confirmer</div>
+              <div class="value">${numTxt(confirm, 0)}</div>
+            </div>
+            <div class="sb-dashboard-kpi-card">
+              <div class="label">À reprendre</div>
+              <div class="value">${numTxt(review, 0)}</div>
+            </div>
+            <div class="sb-dashboard-kpi-card">
+              <div class="label">Sans transmetteur</div>
+              <div class="value">${numTxt(none, 0)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="sb-block-title" style="margin-bottom:8px;">Règle utilisée</div>
+          <div class="card-sub" style="margin:0; line-height:1.45;">
+            Une compétence est considérée transmissible lorsqu’au moins une personne disponible est au niveau <strong>Expert</strong>
+            ou atteint le niveau <strong>Avancé haut</strong> avec un score normalisé d’au moins <strong>${numTxt(threshold, 0)}%</strong>.
+            Le taux affiché additionne les transmissions <strong>validées</strong> et celles <strong>à confirmer</strong>, puis les rapporte au nombre de compétences analysées.
+            Les évaluations de plus de <strong>${numTxt(months, 0)} mois</strong> sont isolées en entretien recommandé.
+          </div>
+          <div class="sb-dashboard-mini-meta">
+            <span>Criticité prise en compte : ${esc(criticiteLabel)}</span>
+            <span>Transmetteurs identifiés : ${numTxt(transmitters, 0)}</span>
+          </div>
+        </div>
+
+        <div class="sb-dashboard-table-wrap">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-dashboard-detail-table sb-dashboard-transmission-table">
+            <thead>
+              <tr>
+                <th>Compétence</th>
+                <th class="col-center">Statut</th>
+                <th class="col-center">Transmetteurs</th>
+                <th>Détail</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${transmissionRowsHtml(transmission?.items)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    openModal("dashboardTransmissionDetailModal");
+  }
+
   async function openReport(target) {
     if (target === "noaction") {
       renderNoActionModal();
@@ -715,6 +864,7 @@
       if (detailBtn) {
         const kind = (detailBtn.getAttribute("data-dash-detail") || "").trim();
         if (kind === "health") renderHealthDetailModal();
+        if (kind === "transmission") renderTransmissionDetailModal();
         return;
       }
 
@@ -736,6 +886,11 @@
     ["dashboardHealthDetailClose", "dashboardHealthDetailClose2"].forEach(id => {
       const btn = byId(id);
       if (btn) btn.addEventListener("click", () => closeModal("dashboardHealthDetailModal"));
+    });
+
+    ["dashboardTransmissionDetailClose", "dashboardTransmissionDetailClose2"].forEach(id => {
+      const btn = byId(id);
+      if (btn) btn.addEventListener("click", () => closeModal("dashboardTransmissionDetailModal"));
     });
 
     ["dashboardNoActionClose", "dashboardNoActionClose2"].forEach(id => {

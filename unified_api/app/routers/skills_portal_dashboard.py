@@ -112,6 +112,7 @@ class DashboardTransmission(BaseModel):
     threshold_score: int = 63
     threshold_label: str = "Avancé haut ou Expert"
     seuil_mois: int = DASHBOARD_RELIABILITY_MONTHS
+    items: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class DashboardReliability(BaseModel):

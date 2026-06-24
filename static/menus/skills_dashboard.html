@@ -98,7 +98,12 @@
         </div>
         <div class="sb-risk-card-actions">
           <button type="button" class="sb-dash-round-btn" data-dash-help="transmission" aria-label="Comprendre Capacité de transmission">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir l’analyse de transmission">▦</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-detail="transmission" aria-label="Voir le détail Capacité de transmission">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block;">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
         </div>
       </div>
       <div class="sb-ring-risk-wrap">
@@ -172,6 +177,24 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="sb-btn sb-btn--soft" id="dashboardHealthDetailClose2">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dashboardTransmissionDetailModal" aria-hidden="true">
+    <div class="modal-card sb-modal-card--wide">
+      <div class="modal-header">
+        <div>
+          <div class="sb-modal-title">Détail capacité de transmission</div>
+          <div class="card-sub">Justification du taux affiché sur le dashboard.</div>
+        </div>
+        <button type="button" class="modal-x" id="dashboardTransmissionDetailClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="dashboardTransmissionDetailBody" class="sb-dashboard-info-text"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="sb-btn sb-btn--soft" id="dashboardTransmissionDetailClose2">Fermer</button>
       </div>
     </div>
   </div>

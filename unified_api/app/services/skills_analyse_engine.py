@@ -2956,6 +2956,11 @@ def _dashboard_compute_transmission_capacity(
         SELECT
             cs.id_comp,
             e.id_effectif,
+            COALESCE(e.prenom_effectif, '') AS prenom_effectif,
+            COALESCE(e.nom_effectif, '') AS nom_effectif,
+            COALESCE(fp.codif_client, fp.codif_poste, '') AS codif_poste,
+            COALESCE(fp.intitule_poste, '') AS intitule_poste,
+            COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
             COALESCE(a.date_audit, ec.date_derniere_eval)::date AS date_derniere_eval,
             CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
                 WHEN 'a' THEN 1
@@ -2988,6 +2993,8 @@ def _dashboard_compute_transmission_capacity(
           ON e.id_effectif = ec.id_effectif_client
         JOIN effectifs_scope es
           ON es.id_effectif = e.id_effectif
+        LEFT JOIN public.tbl_fiche_poste fp
+          ON fp.id_poste = e.id_poste_actuel
         LEFT JOIN public.tbl_effectif_client_audit_competence a
           ON a.id_audit_competence = ec.id_dernier_audit
          AND a.id_effectif_competence = ec.id_effectif_competence
@@ -3028,22 +3035,75 @@ def _dashboard_compute_transmission_capacity(
     agg AS (
         SELECT
             cs.id_comp,
+            cs.code,
+            cs.intitule,
             COUNT(DISTINCT CASE WHEN t.is_transmetteur THEN t.id_effectif END)::int AS transmetteurs_total,
             COUNT(DISTINCT CASE WHEN t.is_transmetteur AND t.is_recent AND t.is_valide_fort THEN t.id_effectif END)::int AS valid_count,
             COUNT(DISTINCT CASE WHEN t.is_transmetteur AND t.is_recent AND NOT t.is_valide_fort THEN t.id_effectif END)::int AS confirm_count,
-            COUNT(DISTINCT CASE WHEN t.is_transmetteur AND NOT t.is_recent THEN t.id_effectif END)::int AS review_count
+            COUNT(DISTINCT CASE WHEN t.is_transmetteur AND NOT t.is_recent THEN t.id_effectif END)::int AS review_count,
+            COALESCE(
+                jsonb_agg(
+                    DISTINCT jsonb_build_object(
+                        'id_effectif', t.id_effectif,
+                        'prenom_effectif', t.prenom_effectif,
+                        'nom_effectif', t.nom_effectif,
+                        'full', BTRIM(CONCAT(COALESCE(t.prenom_effectif, ''), ' ', COALESCE(t.nom_effectif, ''))),
+                        'codif_poste', t.codif_poste,
+                        'intitule_poste', t.intitule_poste,
+                        'niveau_actuel', t.niveau_actuel,
+                        'niveau_rank', t.niveau_rank,
+                        'score_pct', t.score_pct,
+                        'date_derniere_eval', t.date_derniere_eval,
+                        'is_recent', t.is_recent,
+                        'is_valide_fort', t.is_valide_fort,
+                        'status_key', CASE
+                            WHEN t.is_recent AND t.is_valide_fort THEN 'validated'
+                            WHEN t.is_recent THEN 'confirm'
+                            ELSE 'review'
+                        END,
+                        'status_label', CASE
+                            WHEN t.is_recent AND t.is_valide_fort THEN 'Validé'
+                            WHEN t.is_recent THEN 'À confirmer'
+                            ELSE 'Entretien recommandé'
+                        END
+                    )
+                ) FILTER (WHERE t.is_transmetteur),
+                '[]'::jsonb
+            ) AS transmetteurs_json
         FROM competences_scope cs
         LEFT JOIN transmetteurs t ON t.id_comp = cs.id_comp
-        GROUP BY cs.id_comp
+        GROUP BY cs.id_comp, cs.code, cs.intitule
     )
     SELECT
-        COUNT(*)::int AS competences_total,
-        COALESCE(SUM(CASE WHEN valid_count > 0 THEN 1 ELSE 0 END), 0)::int AS transmission_valides_count,
-        COALESCE(SUM(CASE WHEN valid_count <= 0 AND confirm_count > 0 THEN 1 ELSE 0 END), 0)::int AS transmission_confirm_count,
-        COALESCE(SUM(CASE WHEN valid_count <= 0 AND confirm_count <= 0 AND review_count > 0 THEN 1 ELSE 0 END), 0)::int AS transmission_review_count,
-        COALESCE(SUM(CASE WHEN transmetteurs_total <= 0 THEN 1 ELSE 0 END), 0)::int AS sans_transmetteur_count,
-        COALESCE(SUM(transmetteurs_total), 0)::int AS transmetteurs_identifies_count
-    FROM agg
+        a.*,
+        CASE
+            WHEN a.valid_count > 0 THEN 'validated'
+            WHEN a.confirm_count > 0 THEN 'confirm'
+            WHEN a.review_count > 0 THEN 'review'
+            ELSE 'none'
+        END AS status_key,
+        CASE
+            WHEN a.valid_count > 0 THEN 'Transmission validée'
+            WHEN a.confirm_count > 0 THEN 'Transmission à confirmer'
+            WHEN a.review_count > 0 THEN 'Entretien recommandé'
+            ELSE 'Aucun transmetteur'
+        END AS status_label,
+        CASE
+            WHEN a.valid_count > 0 THEN 3
+            WHEN a.confirm_count > 0 THEN 2
+            WHEN a.review_count > 0 THEN 1
+            ELSE 0
+        END AS status_order
+    FROM agg a
+    ORDER BY
+        CASE
+            WHEN a.valid_count > 0 THEN 3
+            WHEN a.confirm_count > 0 THEN 2
+            WHEN a.review_count > 0 THEN 1
+            ELSE 0
+        END ASC,
+        a.code ASC,
+        a.intitule ASC
     """
     params = list(cte_params) + [cmin, id_ent, months]
     if sql.count("%s") != len(params):
@@ -3053,17 +3113,83 @@ def _dashboard_compute_transmission_capacity(
         )
 
     cur.execute(sql, tuple(params))
-    row = cur.fetchone() or {}
-    total = _safe_int(row.get("competences_total"), 0)
-    valid = _safe_int(row.get("transmission_valides_count"), 0)
-    confirm = _safe_int(row.get("transmission_confirm_count"), 0)
-    review = _safe_int(row.get("transmission_review_count"), 0)
-    none = _safe_int(row.get("sans_transmetteur_count"), 0)
-    transmitters = _safe_int(row.get("transmetteurs_identifies_count"), 0)
+    rows = [dict(r) for r in (cur.fetchall() or [])]
+
+    def _as_json_list(value: Any) -> List[Dict[str, Any]]:
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except Exception:
+                value = []
+        if not isinstance(value, list):
+            return []
+        out: List[Dict[str, Any]] = []
+        seen = set()
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            eff_id = str(item.get("id_effectif") or "").strip()
+            if not eff_id or eff_id in seen:
+                continue
+            seen.add(eff_id)
+            rank = _safe_int(item.get("niveau_rank"), 0)
+            score_pct = _safe_float(item.get("score_pct"))
+            if rank >= 4:
+                niveau_label = "Expert"
+            elif score_pct is not None and score_pct >= 63:
+                niveau_label = "Avancé haut"
+            elif rank >= 3:
+                niveau_label = "Avancé"
+            else:
+                niveau_label = "À qualifier"
+            full = str(item.get("full") or "").strip()
+            if not full:
+                full = f"{str(item.get('prenom_effectif') or '').strip()} {str(item.get('nom_effectif') or '').strip()}".strip()
+            out.append({
+                "id_effectif": eff_id,
+                "full": full or "Collaborateur",
+                "codif_poste": item.get("codif_poste") or "",
+                "intitule_poste": item.get("intitule_poste") or "",
+                "niveau_actuel": item.get("niveau_actuel") or "",
+                "niveau_label": niveau_label,
+                "niveau_rank": rank,
+                "score_pct": round(float(score_pct), 1) if score_pct is not None else None,
+                "date_derniere_eval": _analyse_date_fr_value(item.get("date_derniere_eval")),
+                "status_key": item.get("status_key") or "review",
+                "status_label": item.get("status_label") or "Entretien recommandé",
+            })
+        out.sort(key=lambda x: (
+            {"validated": 0, "confirm": 1, "review": 2}.get(str(x.get("status_key") or ""), 9),
+            str(x.get("full") or ""),
+        ))
+        return out
+
+    total = len(rows)
+    valid = sum(1 for r in rows if str(r.get("status_key") or "") == "validated")
+    confirm = sum(1 for r in rows if str(r.get("status_key") or "") == "confirm")
+    review = sum(1 for r in rows if str(r.get("status_key") or "") == "review")
+    none = sum(1 for r in rows if str(r.get("status_key") or "") == "none")
+    transmitters = sum(_safe_int(r.get("transmetteurs_total"), 0) for r in rows)
 
     ok = valid + confirm
     risk = review + none
     pct = round((ok / float(total)) * 100.0, 1) if total else 0.0
+
+    items: List[Dict[str, Any]] = []
+    for r in rows:
+        transmetteurs = _as_json_list(r.get("transmetteurs_json"))
+        items.append({
+            "id_comp": r.get("id_comp"),
+            "code": r.get("code") or "",
+            "intitule": r.get("intitule") or "Compétence",
+            "status_key": r.get("status_key") or "none",
+            "status_label": r.get("status_label") or "Aucun transmetteur",
+            "transmetteurs_total": _safe_int(r.get("transmetteurs_total"), 0),
+            "transmission_valides_count": _safe_int(r.get("valid_count"), 0),
+            "transmission_confirm_count": _safe_int(r.get("confirm_count"), 0),
+            "transmission_review_count": _safe_int(r.get("review_count"), 0),
+            "transmetteurs": transmetteurs,
+        })
 
     return {
         "pct": pct,
@@ -3083,8 +3209,8 @@ def _dashboard_compute_transmission_capacity(
         "threshold_score": 63,
         "threshold_label": "Avancé haut ou Expert",
         "seuil_mois": months,
+        "items": items,
     }
-
 
 def _dashboard_compute_reliability(
     cur,
