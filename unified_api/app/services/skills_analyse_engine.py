@@ -2858,7 +2858,13 @@ def _fetch_prevision_transition_capacity(
             a.resultat_eval,
             CASE
                 WHEN lower(trim(COALESCE(ec.niveau_actuel, ''))) IN ('d', 'expert') THEN TRUE
-                WHEN a.resultat_eval IS NOT NULL AND a.resultat_eval >= 63 THEN TRUE
+                WHEN a.resultat_eval IS NOT NULL
+                 AND (
+                    CASE
+                        WHEN a.resultat_eval <= 24 THEN (a.resultat_eval / 24.0) * 100.0
+                        ELSE a.resultat_eval
+                    END
+                 ) >= 63 THEN TRUE
                 ELSE FALSE
             END AS is_transmissible
         FROM poste_comp pc
