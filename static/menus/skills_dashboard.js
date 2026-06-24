@@ -26,7 +26,7 @@
     },
     postes: {
       title: "Postes à surveiller",
-      body: "Cette carte répartit les postes du périmètre entre postes en danger, postes à surveiller et postes stabilisés. Elle permet de voir immédiatement la part de l’organisation sous vigilance."
+      body: "Cette carte répartit les postes du périmètre selon leur indice de fragilité : stable en dessous de 25 %, à surveiller de 25 % à 64 %, en danger à partir de 65 %. Elle permet de voir immédiatement la part de l’organisation sous vigilance."
     },
     transmission: {
       title: "Capacité de transmission",
