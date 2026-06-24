@@ -319,7 +319,38 @@
       .filter(Boolean)
       .slice(0, 5);
   }
+  function normalizeAnalyseRiskEffectFromEngine(effect) {
+    const e = effect || {};
+    const score = Number(e.riskScore ?? e.risk_score ?? e.score ?? 0);
+    const count = Number(e.riskCount ?? e.risk_count ?? e.count ?? 0);
+    return {
+      ...e,
+      key: (e.key || "").toString(),
+      title: e.title || "Effet terrain",
+      level: e.level || "Risque faible",
+      riskScore: Number.isFinite(score) ? score : 0,
+      riskCount: Number.isFinite(count) ? count : 0,
+      metric: e.metric || "Point détecté",
+      causesTitle: e.causesTitle || e.causes_title || "Causes probables identifiées",
+      causes: Array.isArray(e.causes) ? e.causes : []
+    };
+  }
+
+  function pickAnalyseRiskSynthesisEffects(data) {
+    const synth = data?.risk_synthesis || data?.synthese_risques || null;
+    if (!synth) return [];
+
+    const horizon = Number(getPrevHorizon ? getPrevHorizon() : 1);
+    const horizons = Array.isArray(synth.horizons) ? synth.horizons : [];
+    const hItem = horizons.find(x => Number(x?.horizon_years || 0) === horizon) || null;
+    const effects = Array.isArray(hItem?.effects) ? hItem.effects : (Array.isArray(synth.effects) ? synth.effects : []);
+    return effects.map(normalizeAnalyseRiskEffectFromEngine).filter(e => e.key);
+  }
+
   function buildAnalyseRiskEffects(data) {
+    const engineEffects = pickAnalyseRiskSynthesisEffects(data);
+    if (engineEffects.length) return engineEffects;
+
     const t = data?.tiles || {};
     const r = t.risques || {};
     const p = t.previsions || {};
@@ -558,14 +589,14 @@
         const key = String(e?.key || "").trim();
         if (!key) return;
         if (e?.level) qs.set(`risk_level_${key}`, String(e.level));
-        if (Number.isFinite(Number(e?.riskScore))) qs.set(`risk_score_${key}`, String(Math.round(Number(e.riskScore))));
-        if (Number.isFinite(Number(e?.riskCount))) qs.set(`risk_count_${key}`, String(Math.round(Number(e.riskCount))));
+        if (Number.isFinite(Number(e?.riskScore ?? e?.score))) qs.set(`risk_score_${key}`, String(Math.round(Number(e.riskScore ?? e.score))));
+        if (Number.isFinite(Number(e?.riskCount ?? e?.count))) qs.set(`risk_count_${key}`, String(Math.round(Number(e.riskCount ?? e.count))));
       });
     } else if (effectKey) {
       const effect = effects.find(x => String(x?.key || "") === String(effectKey || ""));
       if (effect?.level) qs.set("risk_level", String(effect.level));
-      if (Number.isFinite(Number(effect?.riskScore))) qs.set("risk_score", String(Math.round(Number(effect.riskScore))));
-      if (Number.isFinite(Number(effect?.riskCount))) qs.set("risk_count", String(Math.round(Number(effect.riskCount))));
+      if (Number.isFinite(Number(effect?.riskScore ?? effect?.score))) qs.set("risk_score", String(Math.round(Number(effect.riskScore ?? effect.score))));
+      if (Number.isFinite(Number(effect?.riskCount ?? effect?.count))) qs.set("risk_count", String(Math.round(Number(effect.riskCount ?? effect.count))));
     }
 
     qs.set("_", String(Date.now()));

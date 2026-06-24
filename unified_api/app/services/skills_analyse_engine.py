@@ -3534,6 +3534,298 @@ def _fetch_prevision_transmission_items(
         out.append(item)
     return out
 
+
+# ======================================================
+# Synthèse des risques — source commune Analyse / PDF / Ishikawa
+# ======================================================
+
+def _analyse_risk_effect_definitions() -> Dict[str, Dict[str, Any]]:
+    """Définitions communes des effets terrain.
+
+    Cette structure est volontairement indépendante du rendu UI/PDF :
+    le front, le rapport et les Ishikawa consomment les mêmes clés.
+    """
+    return {
+        "rupture_activite": {
+            "title": "Risque de rupture ou ralentissement d’activité",
+            "central_effect": "L’activité peut ralentir ou se bloquer si les compétences indispensables ne sont pas suffisamment couvertes.",
+            "families": [
+                "Niveau attendu non atteint",
+                "Renfort potentiel insuffisant",
+                "Couverture du poste insuffisante",
+                "Couverture trop dépendante d’une personne",
+                "Données à confirmer",
+            ],
+        },
+        "qualite_execution": {
+            "title": "Risque de baisse de qualité d’exécution",
+            "central_effect": "La qualité, l’autonomie ou les délais peuvent se dégrader si la maîtrise réelle reste insuffisante.",
+            "families": [
+                "Écart de maîtrise",
+                "Évaluations à reprendre",
+                "Niveau attendu non atteint",
+                "Expertise réelle à confirmer",
+                "Référentiel à consolider",
+            ],
+        },
+        "dependance_individuelle": {
+            "title": "Risque de dépendance individuelle",
+            "central_effect": "L’organisation dépend trop fortement de quelques personnes pour maintenir certaines compétences.",
+            "families": [
+                "Porteur unique",
+                "Vivier interne limité",
+                "Renfort potentiel insuffisant",
+                "Transmission à structurer",
+                "Données à confirmer",
+            ],
+        },
+        "perte_savoir_faire": {
+            "title": "Risque de perte de savoir-faire",
+            "central_effect": "Un savoir-faire important peut se fragiliser ou se perdre s’il n’est pas transmis à temps.",
+            "families": [
+                "Expertise peu diffusée",
+                "Relève interne à confirmer",
+                "Transmission à organiser",
+                "Compétences sensibles à anticiper",
+                "Données à fiabiliser",
+            ],
+        },
+    }
+
+
+def _analyse_risk_effect_level(score: Any, count: Any) -> str:
+    s = _safe_int(score, 0)
+    c = _safe_int(count, 0)
+    if s >= 80 or c >= 8:
+        return "Risque critique"
+    if s >= 65 or c >= 5:
+        return "Risque élevé"
+    if s >= 35 or c > 0:
+        return "Risque modéré"
+    return "Risque faible"
+
+
+def _analyse_risk_count_label(value: Any, singular: str, plural: str) -> str:
+    n = _safe_int(value, 0)
+    return f"{n} {singular if n == 1 else plural}"
+
+
+def _analyse_risk_avg(records: List[Dict[str, Any]], fragile_only: bool = False) -> int:
+    rows = [r for r in (records or []) if not fragile_only or _safe_int(r.get("indice_fragilite"), 0) > 0]
+    return _analyse_fragility_average(rows)
+
+
+def _analyse_risk_renfort_count(poste_record: Dict[str, Any], renfort_by_poste: Optional[Dict[str, Dict[str, Any]]] = None) -> int:
+    if poste_record and poste_record.get("nb_renforts_immediats") is not None:
+        return _safe_int(poste_record.get("nb_renforts_immediats"), 0)
+    pid = str((poste_record or {}).get("id_poste") or "").strip()
+    meta = (renfort_by_poste or {}).get(pid) or {}
+    if meta.get("nb_renforts_immediats") is not None:
+        return _safe_int(meta.get("nb_renforts_immediats"), 0)
+    return _safe_int(meta.get("nb_renforts"), 0)
+
+
+def _build_risk_synthesis_effects(
+    comp_records: List[Dict[str, Any]],
+    poste_records: List[Dict[str, Any]],
+    horizon_years: int = 1,
+    prevision_item: Optional[Dict[str, Any]] = None,
+    renfort_by_poste: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
+    """Construit les effets terrain depuis les mêmes records moteur que les tableaux.
+
+    Cette fonction est la source commune pour :
+    - la modal Synthèse des risques côté JS ;
+    - le rapport PDF ;
+    - les Ishikawa individuels.
+    """
+    defs = _analyse_risk_effect_definitions()
+    comps = list(comp_records or [])
+    postes = list(poste_records or [])
+    prev = dict(prevision_item or {})
+
+    total_couv_abs = sum(1 for r in comps if _safe_int(r.get("nb_postes_couverture_absente"), 0) > 0)
+    total_couv_ins = sum(1 for r in comps if _safe_int(r.get("nb_postes_niveau_insuffisant"), 0) > 0)
+    total_couverture = sum(1 for r in comps if _safe_int(r.get("nb_postes_couverture_absente"), 0) > 0 or _safe_int(r.get("nb_postes_niveau_insuffisant"), 0) > 0)
+    total_non_conf = sum(1 for r in comps if _safe_int(r.get("nb_postes_non_confirmee"), 0) > 0)
+    total_dep = sum(1 for r in comps if _safe_int(r.get("nb_postes_dependance"), 0) > 0)
+    total_expertise_abs = sum(1 for r in comps if _safe_int(r.get("nb_experts"), 0) <= 0)
+    total_expertise_faible = sum(1 for r in comps if _safe_int(r.get("nb_experts"), 0) <= 1)
+    postes_fragiles = sum(1 for r in postes if _safe_int(r.get("indice_fragilite"), 0) > 0)
+    total_renfort = sum(1 for p in postes if _analyse_risk_renfort_count(p, renfort_by_poste) <= 0 and _safe_int(p.get("indice_fragilite"), 0) > 0)
+
+    comp_frag_score = _analyse_risk_avg(comps, fragile_only=True)
+    poste_frag_score = _analyse_risk_avg(postes, fragile_only=False)
+
+    sorties = _safe_int(prev.get("sorties"), 0)
+    if sorties <= 0:
+        sorties = _safe_int(prev.get("sorties_confirmees"), 0) + _safe_int(prev.get("sorties_potentielles"), 0)
+    comp_delta = _safe_int(prev.get("comp_critiques_impactees"), 0)
+    poste_delta = _safe_int(prev.get("postes_rouges"), 0)
+    horizon_label = f"N+{max(1, _safe_int(horizon_years, 1))}"
+
+    raw = [
+        {
+            "key": "rupture_activite",
+            "count": total_couverture + total_renfort + postes_fragiles + total_dep,
+            "score": max(poste_frag_score, comp_frag_score),
+            "metric": _analyse_risk_count_label(postes_fragiles, "poste fragile", "postes fragiles"),
+            "causes": [
+                _analyse_risk_count_label(total_couverture, "compétence critique sans couverture suffisante", "compétences critiques sans couverture suffisante") if total_couverture else "couverture critique à vérifier",
+                _analyse_risk_count_label(total_renfort, "poste sans renfort immédiat", "postes sans renfort immédiat") if total_renfort else "renfort immédiat à vérifier sur les postes sensibles",
+                _analyse_risk_count_label(postes_fragiles, "poste déjà fragilisé", "postes déjà fragilisés") if postes_fragiles else "postes sensibles à relire dans le détail",
+                _analyse_risk_count_label(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "dépendance individuelle à surveiller",
+            ],
+        },
+        {
+            "key": "qualite_execution",
+            "count": total_couv_ins + total_non_conf + total_couv_abs + total_expertise_abs,
+            "score": comp_frag_score,
+            "metric": f"{round(comp_frag_score)}% de fragilité moyenne des compétences",
+            "causes": [
+                _analyse_risk_count_label(total_couv_ins, "écart de maîtrise à vérifier", "écarts de maîtrise à vérifier") if total_couv_ins else "écarts de maîtrise à vérifier",
+                _analyse_risk_count_label(total_non_conf, "évaluation ou confirmation à reprendre", "évaluations ou confirmations à reprendre") if total_non_conf else "évaluations ou confirmations à reprendre",
+                _analyse_risk_count_label(total_couv_abs, "niveau attendu non couvert", "niveaux attendus non couverts") if total_couv_abs else "niveaux attendus insuffisamment couverts",
+                _analyse_risk_count_label(total_expertise_abs, "expertise non visible", "expertises non visibles") if total_expertise_abs else "expertise réelle à confirmer sur les situations sensibles",
+            ],
+        },
+        {
+            "key": "dependance_individuelle",
+            "count": total_dep + total_renfort + total_expertise_faible,
+            "score": max(comp_frag_score, poste_frag_score),
+            "metric": _analyse_risk_count_label(total_dep, "compétence dépendante d’une seule personne", "compétences dépendantes d’une seule personne"),
+            "causes": [
+                _analyse_risk_count_label(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "dépendances individuelles à vérifier",
+                _analyse_risk_count_label(total_expertise_faible, "compétence avec un vivier interne limité", "compétences avec un vivier interne limité") if total_expertise_faible else "vivier interne à surveiller",
+                _analyse_risk_count_label(total_renfort, "poste sans renfort immédiat", "postes sans renfort immédiat") if total_renfort else "renfort immédiat à confirmer",
+                _analyse_risk_count_label(total_expertise_abs, "compétence sans niveau expert", "compétences sans niveau expert") if total_expertise_abs else "transmission à structurer sur les compétences clés",
+            ],
+        },
+        {
+            "key": "perte_savoir_faire",
+            "count": sorties + (1 if poste_delta > 0 else 0) + (1 if comp_delta > 0 else 0),
+            "score": max(0, min(100, poste_delta + comp_delta)),
+            "metric": f"{('postes +' + str(round(poste_delta)) + '%') if poste_delta > 0 else 'postes stables'} · {('compétences +' + str(round(comp_delta)) + '%') if comp_delta > 0 else 'compétences stables'} à {horizon_label}",
+            "causes": [
+                _analyse_risk_count_label(sorties, "sortie possible", "sorties possibles") + f" à {horizon_label}" if sorties else "sorties à surveiller selon l’horizon choisi",
+                f"+{round(comp_delta)}% d’évolution de fragilité moyenne des compétences" if comp_delta > 0 else "expertise à surveiller dans la durée",
+                f"+{round(poste_delta)}% d’évolution de fragilité moyenne des postes" if poste_delta > 0 else "relève interne à confirmer",
+                "transmission à organiser avant perte de couverture",
+            ],
+        },
+    ]
+
+    out: List[Dict[str, Any]] = []
+    for item in raw:
+        d = defs[item["key"]]
+        score = max(0, min(100, _safe_int(item.get("score"), 0)))
+        count = max(0, _safe_int(item.get("count"), 0))
+        level = _analyse_risk_effect_level(score, count)
+        merged = {**item, **d, "score": score, "count": count, "riskScore": score, "riskCount": count, "level": level}
+        out.append(merged)
+    return out
+
+
+def _build_risk_synthesis_rows_for_effect(
+    comp_records: List[Dict[str, Any]],
+    poste_records: List[Dict[str, Any]],
+    last_eval_map: Optional[Dict[str, Optional[str]]],
+    renfort_by_poste: Optional[Dict[str, Dict[str, Any]]],
+    effet: str,
+) -> List[Dict[str, Any]]:
+    """Construit les lignes Ishikawa depuis les mêmes records moteur que les tableaux."""
+    rows: List[Dict[str, Any]] = []
+    eval_map = last_eval_map or {}
+    effect_key = str(effet or "").strip()
+
+    for r in comp_records or []:
+        code = str(r.get("code") or "").strip() or "COMP"
+        title = str(r.get("intitule") or "Compétence").strip()
+        frag = _safe_int(r.get("indice_fragilite"), 0)
+        n_abs = _safe_int(r.get("nb_postes_couverture_absente"), 0)
+        n_ins = _safe_int(r.get("nb_postes_niveau_insuffisant"), 0)
+        n_couverture = n_abs + n_ins
+        n_dep = _safe_int(r.get("nb_postes_dependance"), 0)
+        n_nc = _safe_int(r.get("nb_postes_non_confirmee"), 0)
+        n_exp = _safe_int(r.get("nb_experts"), 0)
+        n_exp_dispo = _safe_int(r.get("nb_experts_dispo"), 0)
+        nb_impactes = max(1, _safe_int(r.get("nb_postes_impactes"), 0))
+        nb_valides = _safe_int(r.get("nb_postes_valides"), 0)
+        pct_cover = int(round((float(nb_valides) / float(nb_impactes)) * 100.0)) if nb_impactes > 0 else 0
+        last_eval = eval_map.get(str(r.get("id_comp") or "").strip())
+        last_eval_label = last_eval or "Jamais évaluée"
+
+        if effect_key == "rupture_activite":
+            if n_couverture > 0:
+                rows.append({"family": "Niveau attendu non atteint", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
+            if n_dep > 0:
+                rows.append({"family": "Couverture trop dépendante d’une personne", "type": "comp", "code": code, "title": title, "value": "1 personne", "value_label": "Couverture confirmée", "sort": frag})
+            if n_nc > 0:
+                rows.append({"family": "Données à confirmer", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
+        elif effect_key == "qualite_execution":
+            if n_ins > 0:
+                rows.append({"family": "Écart de maîtrise", "type": "comp", "code": code, "title": title, "value": str(n_ins), "value_label": "Écarts", "sort": frag})
+            if n_nc > 0:
+                rows.append({"family": "Évaluations à reprendre", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
+            if n_abs > 0:
+                rows.append({"family": "Niveau attendu non atteint", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
+            if n_exp <= 0:
+                rows.append({"family": "Expertise réelle à confirmer", "type": "comp", "code": code, "title": title, "value": "0 expert", "value_label": "Experts", "sort": frag})
+            if n_nc > 0:
+                rows.append({"family": "Référentiel à consolider", "type": "comp", "code": code, "title": title, "value": "à vérifier", "value_label": "Statut", "sort": frag})
+        elif effect_key == "dependance_individuelle":
+            if n_dep > 0:
+                rows.append({"family": "Porteur unique", "type": "comp", "code": code, "title": title, "value": "1 personne", "value_label": "Couverture confirmée", "sort": frag})
+            if n_exp_dispo <= 1:
+                rows.append({"family": "Vivier interne limité", "type": "comp", "code": code, "title": title, "value": str(n_exp_dispo), "value_label": "Experts disponibles", "sort": frag})
+            if n_exp <= 0:
+                rows.append({"family": "Transmission à structurer", "type": "comp", "code": code, "title": title, "value": "0 expert", "value_label": "Experts", "sort": frag})
+            if n_nc > 0:
+                rows.append({"family": "Données à confirmer", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
+        elif effect_key == "perte_savoir_faire":
+            if n_exp <= 0:
+                rows.append({"family": "Expertise peu diffusée", "type": "comp", "code": code, "title": title, "value": "0 expert", "value_label": "Experts", "sort": frag})
+            if n_dep > 0:
+                rows.append({"family": "Relève interne à confirmer", "type": "comp", "code": code, "title": title, "value": "1 personne", "value_label": "Relève visible", "sort": frag})
+            if n_exp <= 0 or n_dep > 0:
+                rows.append({"family": "Transmission à organiser", "type": "comp", "code": code, "title": title, "value": "à organiser", "value_label": "Transmission", "sort": frag})
+            if n_couverture > 0:
+                rows.append({"family": "Compétences sensibles à anticiper", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
+            if n_nc > 0:
+                rows.append({"family": "Données à fiabiliser", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
+
+    if effect_key in ("rupture_activite", "dependance_individuelle"):
+        for p in poste_records or []:
+            nb_renforts = _analyse_risk_renfort_count(p, renfort_by_poste)
+            frag_p = _safe_int(p.get("indice_fragilite"), 0)
+            if nb_renforts <= 0 and frag_p > 0:
+                rows.append({
+                    "family": "Renfort potentiel insuffisant",
+                    "type": "poste",
+                    "code": (p.get("codif_poste") or p.get("codif_client") or "POSTE").strip() or "POSTE",
+                    "title": str(p.get("intitule_poste") or "Poste").strip(),
+                    "value": str(nb_renforts),
+                    "value_label": "Renforts immédiats",
+                    "sort": frag_p,
+                })
+
+    if effect_key == "rupture_activite":
+        for p in poste_records or []:
+            frag_p = _safe_int(p.get("indice_fragilite"), 0)
+            if frag_p > 0:
+                rows.append({
+                    "family": "Couverture du poste insuffisante",
+                    "type": "poste",
+                    "code": (p.get("codif_poste") or p.get("codif_client") or "POSTE").strip() or "POSTE",
+                    "title": str(p.get("intitule_poste") or "Poste").strip(),
+                    "value": f"{frag_p}%",
+                    "value_label": "Fragilité",
+                    "sort": frag_p,
+                })
+
+    rows.sort(key=lambda x: (str(x.get("family") or ""), -_safe_int(x.get("sort"), 0), str(x.get("title") or "")))
+    return rows
+
 def _fetch_prevision_transition_counts(
     cur,
     id_ent: str,
