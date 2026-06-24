@@ -41,7 +41,12 @@
         </div>
         <div class="sb-risk-card-actions">
           <button type="button" class="sb-dash-round-btn" data-dash-help="health" aria-label="Comprendre Santé globale">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir le détail Santé globale">▦</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-detail="health" aria-label="Voir le détail Santé globale">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block;">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -150,6 +155,23 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="sb-btn sb-btn--soft" id="dashboardInfoClose2">Fermer</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="dashboardHealthDetailModal" aria-hidden="true">
+    <div class="modal-card sb-modal-card--medium">
+      <div class="modal-header">
+        <div>
+          <div class="sb-modal-title">Détail santé globale</div>
+          <div class="card-sub">Lecture de la jauge affichée sur le dashboard.</div>
+        </div>
+        <button type="button" class="modal-x" id="dashboardHealthDetailClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="dashboardHealthDetailBody" class="sb-dashboard-info-text"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="sb-btn sb-btn--soft" id="dashboardHealthDetailClose2">Fermer</button>
       </div>
     </div>
   </div>

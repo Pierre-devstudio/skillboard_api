@@ -67,6 +67,15 @@
     }) + "%";
   }
 
+  function numTxt(v, digits = 0) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "—";
+    return n.toLocaleString("fr-FR", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    });
+  }
+
   function riskColor(score, inverse) {
     const s = clamp(score, 0, 100) / 100;
     const x = inverse ? (1 - s) : s;
@@ -511,6 +520,82 @@
     openModal("dashboardInfoModal");
   }
 
+  function healthDetailInterpretation(pct) {
+    const p = clamp(pct, 0, 100);
+    if (p >= 92) return "La couverture est robuste : les postes du périmètre disposent globalement des niveaux attendus sur les compétences analysées.";
+    if (p >= 80) return "La couverture est solide, avec quelques points à surveiller dans les détails de l’analyse.";
+    if (p >= 65) return "La couverture reste correcte, mais plusieurs écarts peuvent déjà fragiliser la continuité des postes.";
+    if (p >= 50) return "Le périmètre est sous vigilance : la couverture des compétences attendues doit être consolidée.";
+    return "Le périmètre est fragile : les postes analysés présentent une couverture insuffisante ou trop incertaine.";
+  }
+
+  function renderHealthDetailModal() {
+    const body = byId("dashboardHealthDetailBody");
+    if (!body) return;
+
+    const health = _lastData?.health || {};
+    const filters = _lastData?.filters || {};
+    const pct = clamp(health?.pct ?? 0, 0, 100);
+    const st = healthStatus(pct);
+    const score = Number(health?.score);
+    const maxScore = Number(health?.max_score);
+    const nbItems = Number(health?.nb_items);
+    const scoreLabel = (Number.isFinite(score) && Number.isFinite(maxScore) && maxScore > 0)
+      ? `${numTxt(score, 1)} / ${numTxt(maxScore, 1)}`
+      : "—";
+    const nbLabel = Number.isFinite(nbItems) ? numTxt(nbItems, 0) : "—";
+    const scopeLabel = health?.scope_label || _lastData?.scope?.nom_service || "—";
+    const criticite = Number(filters?.criticite_min);
+    const criticiteLabel = Number.isFinite(criticite) ? `≥ ${Math.round(criticite)}` : "—";
+
+    body.innerHTML = `
+      <div class="sb-stack">
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="sb-block-title" style="margin-bottom:8px;">Lecture immédiate</div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font-size:28px; font-weight:800; color:#111827; line-height:1;">${pctTxt(pct, 0)}</div>
+            <span class="sb-health-status ${esc(st.cls)}" style="margin:0;">${esc(st.label)}</span>
+          </div>
+          <div class="card-sub" style="margin:8px 0 0 0;">${esc(healthDetailInterpretation(pct))}</div>
+        </div>
+
+        <div class="sb-dashboard-table-wrap">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-dashboard-detail-table">
+            <tbody>
+              <tr>
+                <th style="width:38%;">Périmètre</th>
+                <td>${esc(scopeLabel)}</td>
+              </tr>
+              <tr>
+                <th>Criticité prise en compte</th>
+                <td>${esc(criticiteLabel)}</td>
+              </tr>
+              <tr>
+                <th>Éléments analysés</th>
+                <td>${esc(nbLabel)} couple(s) poste / compétence</td>
+              </tr>
+              <tr>
+                <th>Score technique</th>
+                <td>${esc(scoreLabel)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="sb-block-title" style="margin-bottom:8px;">Comment lire la jauge</div>
+          <div class="card-sub" style="margin:0; line-height:1.45;">
+            L’aiguille se déplace de gauche à droite selon le niveau de couverture du périmètre.
+            Plus elle avance vers la droite, plus les compétences attendues sur les postes analysés sont couvertes.
+            Le statut affiché sous la jauge traduit cette valeur en lecture RH : fragile, sous vigilance, correct, solide ou robuste.
+          </div>
+        </div>
+      </div>
+    `;
+
+    openModal("dashboardHealthDetailModal");
+  }
+
   async function openReport(target) {
     if (target === "noaction") {
       renderNoActionModal();
@@ -586,6 +671,13 @@
         return;
       }
 
+      const detailBtn = e.target.closest("[data-dash-detail]");
+      if (detailBtn) {
+        const kind = (detailBtn.getAttribute("data-dash-detail") || "").trim();
+        if (kind === "health") renderHealthDetailModal();
+        return;
+      }
+
       const reportBtn = e.target.closest("[data-dash-report]");
       if (reportBtn) {
         try {
@@ -599,6 +691,11 @@
     ["dashboardInfoClose", "dashboardInfoClose2"].forEach(id => {
       const btn = byId(id);
       if (btn) btn.addEventListener("click", () => closeModal("dashboardInfoModal"));
+    });
+
+    ["dashboardHealthDetailClose", "dashboardHealthDetailClose2"].forEach(id => {
+      const btn = byId(id);
+      if (btn) btn.addEventListener("click", () => closeModal("dashboardHealthDetailModal"));
     });
 
     ["dashboardNoActionClose", "dashboardNoActionClose2"].forEach(id => {
