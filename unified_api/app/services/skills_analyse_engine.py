@@ -2675,6 +2675,326 @@ def _prevision_transition_impact_label(row: Dict[str, Any]) -> str:
     return "Impact limité"
 
 
+
+# ======================================================
+# Dashboard Insights — calculs centralisés
+# ======================================================
+
+def _dashboard_normalize_criticite_min(value: Optional[int]) -> int:
+    try:
+        n = int(value if value is not None else CRITICITE_MIN_DEFAULT)
+    except Exception:
+        n = CRITICITE_MIN_DEFAULT
+    return max(CRITICITE_MIN_MIN, min(CRITICITE_MIN_MAX, n))
+
+
+def _dashboard_enrich_records_poste_criticite(cur, records: List[Dict[str, Any]]) -> None:
+    ids = [str(r.get("id_poste") or "").strip() for r in (records or []) if str(r.get("id_poste") or "").strip()]
+    if not ids:
+        return
+
+    cur.execute(
+        """
+        SELECT id_poste, COALESCE(criticite_poste, 2)::int AS criticite_poste
+        FROM public.tbl_fiche_poste_param_rh
+        WHERE id_poste = ANY(%s)
+        """,
+        (ids,),
+    )
+    mp = {str(r.get("id_poste") or ""): _safe_int(r.get("criticite_poste"), 2) for r in (cur.fetchall() or [])}
+    for r in records:
+        pid = str(r.get("id_poste") or "")
+        r["criticite_poste"] = _safe_int(mp.get(pid, r.get("criticite_poste") or 2), 2)
+
+
+def _dashboard_fetch_current_poste_records(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+) -> List[Dict[str, Any]]:
+    records = _fetch_postes_fragility_records(
+        cur,
+        id_ent,
+        id_service,
+        _dashboard_normalize_criticite_min(criticite_min),
+    )
+    _dashboard_enrich_records_poste_criticite(cur, records)
+    return records
+
+
+def _dashboard_month_bounds(base: date, month_offset: int) -> Tuple[date, date]:
+    d = _analyse_add_months(base, int(month_offset or 0))
+    start = date(d.year, d.month, 1)
+    end = _analyse_add_months(start, 1) - timedelta(days=1)
+    return start, end
+
+
+def _dashboard_compute_health_from_records(records: List[Dict[str, Any]], scope_label: str) -> Dict[str, Any]:
+    """
+    Santé globale dashboard.
+    Source : moteur de fragilité postes. La santé est l'inverse lisible de la
+    fragilité moyenne actuelle, pour éviter une deuxième logique de couverture.
+    """
+    analysed = _analyse_fragility_records_analyzed(records)
+    nb_items = len(analysed)
+    fragility = _analyse_fragility_average(analysed)
+    pct = round(max(0.0, min(100.0, 100.0 - float(fragility))), 1) if nb_items else 0.0
+    max_score = float(nb_items * 100)
+    score = round((pct / 100.0) * max_score, 1) if max_score > 0 else 0.0
+    return {
+        "pct": pct,
+        "score": score,
+        "max_score": max_score,
+        "nb_items": nb_items,
+        "scope_label": scope_label or "Tous les services",
+    }
+
+
+def _dashboard_compute_risk_timeline(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    current_records: List[Dict[str, Any]],
+    criticite_min: int,
+    months: int = 12,
+) -> List[Dict[str, Any]]:
+    today = date.today()
+    horizon = max(0, min(36, _safe_int(months, 12)))
+    out: List[Dict[str, Any]] = []
+
+    for i in range(horizon + 1):
+        d = _analyse_add_months(today, i)
+        if i == 0:
+            records = current_records or []
+        else:
+            period_start, period_end = _dashboard_month_bounds(today, i)
+            records = _fetch_postes_fragility_records_projected(
+                cur,
+                id_ent,
+                id_service,
+                _dashboard_normalize_criticite_min(criticite_min),
+                period_start,
+                period_end,
+            )
+            _dashboard_enrich_records_poste_criticite(cur, records)
+
+        analysed = _analyse_fragility_records_analyzed(records)
+        fragile = [r for r in analysed if bool(r.get("is_fragile"))]
+        out.append({
+            "date_ref": d.isoformat(),
+            "label": d.strftime("%m/%y"),
+            "indice_fragilite": _analyse_fragility_average(records),
+            "nb_postes_fragiles": len(fragile),
+            "nb_postes_total": len(analysed),
+        })
+    return out
+
+
+def _dashboard_compute_postes_watch_from_records(
+    records: List[Dict[str, Any]],
+    danger_min: int = 60,
+    watch_min: int = 1,
+    critical_poste_min: int = 3,
+) -> Dict[str, Any]:
+    analysed = _analyse_fragility_records_analyzed(records)
+    total = len(analysed)
+    danger = [r for r in analysed if _safe_int(r.get("indice_fragilite"), 0) >= int(danger_min)]
+    watch = [
+        r for r in analysed
+        if int(watch_min) <= _safe_int(r.get("indice_fragilite"), 0) < int(danger_min)
+    ]
+    stable = max(total - len(danger) - len(watch), 0)
+    critical_danger = [r for r in danger if _safe_int(r.get("criticite_poste"), 2) >= int(critical_poste_min)]
+    return {
+        "total_postes": total,
+        "postes_danger": len(danger),
+        "postes_surveillance": len(watch),
+        "postes_stables": stable,
+        "postes_critiques_danger": len(critical_danger),
+    }
+
+
+def _dashboard_compute_transmission_from_records(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Capacité de transmission dashboard.
+    Source : records postes du moteur, après enrichissement du potentiel de renfort
+    par _augment_poste_records_with_matching_potential().
+    """
+    analysed = _analyse_fragility_records_analyzed(records)
+    total = len(analysed)
+    ok = 0
+    risk = 0
+
+    for r in analysed:
+        rupture = bool(r.get("rupture"))
+        besoin_local = _safe_int(r.get("besoin_local"), 0)
+        score_transmission = _safe_int(r.get("score_transmission", r.get("score_renfort_potentiel")), 0)
+        sans_releve = _safe_int(r.get("nb_critiques_sans_releve"), 0)
+        releve_faible = _safe_int(r.get("nb_critiques_releve_faible"), 0)
+        transmissible = (not rupture) and besoin_local > 0 and score_transmission <= 0 and sans_releve == 0 and releve_faible == 0
+        if transmissible:
+            ok += 1
+        else:
+            risk += 1
+
+    pct = round((ok / total * 100.0), 1) if total else 0.0
+    return {
+        "pct": pct,
+        "postes_total": total,
+        "postes_transmissibles": ok,
+        "postes_risque": risk,
+    }
+
+
+def _dashboard_compute_reliability(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+    seuil_mois: int = 6,
+) -> Dict[str, Any]:
+    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
+    months = max(1, min(60, _safe_int(seuil_mois, 6)))
+    cur.execute(
+        f"""
+        WITH
+        {cte_sql},
+        eff AS (
+            SELECT e.id_effectif, e.id_poste_actuel
+            FROM effectifs_scope es
+            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+            WHERE COALESCE(e.archive, FALSE) = FALSE
+              AND COALESCE(e.statut_actif, TRUE) = TRUE
+              AND COALESCE(e.id_poste_actuel, '') <> ''
+        ),
+        items AS (
+            SELECT
+                eff.id_effectif,
+                fpc.id_competence,
+                GREATEST(
+                    COALESCE(ec.date_derniere_eval, DATE '1900-01-01'),
+                    COALESCE(a.date_audit, DATE '1900-01-01')
+                ) AS last_eval
+            FROM eff
+            JOIN public.tbl_fiche_poste_competence fpc
+              ON fpc.id_poste = eff.id_poste_actuel
+             AND COALESCE(fpc.masque, FALSE) = FALSE
+             AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+            LEFT JOIN public.tbl_effectif_client_competence ec
+              ON ec.id_effectif_client = eff.id_effectif
+             AND ec.id_comp = fpc.id_competence
+             AND COALESCE(ec.actif, TRUE) = TRUE
+             AND COALESCE(ec.archive, FALSE) = FALSE
+            LEFT JOIN public.tbl_effectif_client_audit_competence a
+              ON a.id_audit_competence = ec.id_dernier_audit
+             AND a.id_effectif_competence = ec.id_effectif_competence
+        )
+        SELECT
+            COUNT(*)::int AS total_items,
+            SUM(CASE WHEN last_eval >= (CURRENT_DATE - (%s::int * INTERVAL '1 month')) THEN 1 ELSE 0 END)::int AS fresh_items
+        FROM items
+        """,
+        tuple(cte_params + [_dashboard_normalize_criticite_min(criticite_min), months]),
+    )
+    row = cur.fetchone() or {}
+    total = _safe_int(row.get("total_items"), 0)
+    fresh = _safe_int(row.get("fresh_items"), 0)
+    stale = max(total - fresh, 0)
+    pct = round((fresh / total * 100.0), 1) if total else 0.0
+    return {
+        "pct": pct,
+        "fresh_items": fresh,
+        "stale_items": stale,
+        "total_items": total,
+        "seuil_mois": months,
+    }
+
+
+def _dashboard_fetch_postes_with_action(cur, id_ent: str, id_service: Optional[str]) -> set:
+    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
+    cur.execute(
+        f"""
+        WITH
+        {cte_sql},
+        eff AS (
+            SELECT e.id_effectif, e.id_poste_actuel
+            FROM effectifs_scope es
+            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+            WHERE COALESCE(e.archive, FALSE) = FALSE
+              AND COALESCE(e.statut_actif, TRUE) = TRUE
+              AND COALESCE(e.id_poste_actuel, '') <> ''
+        ),
+        formation_action AS (
+            SELECT DISTINCT e.id_poste_actuel AS id_poste
+            FROM eff e
+            JOIN public.tbl_action_formation_effectif afe
+              ON afe.id_effectif = e.id_effectif
+             AND COALESCE(afe.archive, FALSE) = FALSE
+            JOIN public.tbl_action_formation af
+              ON af.id_action_formation = afe.id_action_formation
+             AND COALESCE(af.archive, FALSE) = FALSE
+            WHERE COALESCE(af.etat_action, '') NOT IN ('annulée', 'annulee', 'annulé', 'annule')
+              AND (af.date_fin_formation IS NULL OR af.date_fin_formation >= CURRENT_DATE)
+        ),
+        entretien_action AS (
+            SELECT DISTINCT e.id_poste_actuel AS id_poste
+            FROM eff e
+            JOIN public.tbl_entretien_individuel ei
+              ON ei.id_effectif_client = e.id_effectif
+             AND COALESCE(ei.archive, FALSE) = FALSE
+            WHERE lower(COALESCE(ei.statut, '')) IN ('à réaliser', 'a réaliser', 'en cours', 'en-cours', 'à signer 1/2', 'a signer 1/2')
+        )
+        SELECT id_poste FROM formation_action
+        UNION
+        SELECT id_poste FROM entretien_action
+        """,
+        tuple(cte_params),
+    )
+    rows = cur.fetchall() or []
+    return {str(r.get("id_poste") or "") for r in rows if r.get("id_poste")}
+
+
+def _dashboard_compute_risks_without_action(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    records: List[Dict[str, Any]],
+    danger_min: int = 60,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    action_postes = _dashboard_fetch_postes_with_action(cur, id_ent, id_service)
+    rows = []
+    for r in _analyse_fragility_records_analyzed(records):
+        id_poste = str(r.get("id_poste") or "").strip()
+        if not id_poste or id_poste in action_postes:
+            continue
+        if _safe_int(r.get("indice_fragilite"), 0) < int(danger_min):
+            continue
+        rows.append(r)
+
+    items = []
+    for r in rows[:max(1, min(2000, _safe_int(limit, 100)))]:
+        items.append({
+            "id_poste": str(r.get("id_poste") or ""),
+            "codif_poste": r.get("codif_poste"),
+            "codif_client": r.get("codif_client"),
+            "intitule_poste": r.get("intitule_poste") or "Poste",
+            "nom_service": r.get("nom_service"),
+            "indice_fragilite": _safe_int(r.get("indice_fragilite"), 0),
+            "criticite_poste": _safe_int(r.get("criticite_poste"), 0),
+            "nb_titulaires": _safe_int(r.get("nb_titulaires"), 0),
+            "nb_titulaires_cible": _safe_int(r.get("nb_titulaires_cible"), 0),
+            "nb_critiques_fragiles": _safe_int(r.get("nb_critiques_fragiles"), 0),
+            "nb_critiques_sans_porteur": _safe_int(r.get("nb_critiques_sans_porteur"), 0),
+            "nb_critiques_sans_releve": _safe_int(r.get("nb_critiques_sans_releve"), 0),
+        })
+
+    return {
+        "total": len(rows),
+        "items": items,
+    }
+
 def _fetch_prevision_transition_events(
     cur,
     id_ent: str,

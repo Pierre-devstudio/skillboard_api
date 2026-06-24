@@ -1,5 +1,4 @@
-from datetime import date, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -13,12 +12,14 @@ from app.routers.skills_portal_common import (
 from app.services.skills_analyse_engine import (
     CRITICITE_MIN_DEFAULT,
     NON_LIE_ID,
-    _analyse_fragility_average,
-    _analyse_fragility_records_analyzed,
-    _build_scope_cte,
-    _compute_poste_fragility_record,
-    _fetch_postes_fragility_records,
-    _fetch_postes_fragility_records_projected,
+    _dashboard_compute_health_from_records,
+    _dashboard_compute_postes_watch_from_records,
+    _dashboard_compute_reliability,
+    _dashboard_compute_risk_timeline,
+    _dashboard_compute_risks_without_action,
+    _dashboard_compute_transmission_from_records,
+    _dashboard_fetch_current_poste_records,
+    _dashboard_normalize_criticite_min,
     _fetch_service_label,
 )
 
@@ -261,327 +262,22 @@ def _dashboard_context(cur, id_contact: str, request: Request, requested_service
     return id_ent, access, scope, services
 
 
-def _month_add(base: date, months: int) -> date:
-    month = base.month - 1 + months
-    year = base.year + month // 12
-    month = month % 12 + 1
-    day = min(base.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
-    return date(year, month, day)
-
-
-
-
-def _month_bounds(base: date, months: int) -> Tuple[date, date]:
-    d = _month_add(base, int(months or 0))
-    start = date(d.year, d.month, 1)
-    end = _month_add(start, 1) - timedelta(days=1)
-    return start, end
-
-
-def _is_danger_record(r: Dict[str, Any]) -> bool:
-    return int(r.get("indice_fragilite") or 0) >= DASHBOARD_DANGER_MIN
-
-
-def _is_watch_record(r: Dict[str, Any]) -> bool:
-    s = int(r.get("indice_fragilite") or 0)
-    return DASHBOARD_WATCH_MIN <= s < DASHBOARD_DANGER_MIN
-
-
-def _normalize_criticite_min(v: Optional[int]) -> int:
-    try:
-        n = int(v if v is not None else CRITICITE_MIN_DEFAULT)
-    except Exception:
-        n = CRITICITE_MIN_DEFAULT
-    return max(0, min(100, n))
-
-
 # ======================================================
 # Calculs
 # ======================================================
+# Les calculs métier du dashboard sont centralisés dans
+# app.services.skills_analyse_engine. Ce routeur ne fait plus que résoudre
+# le contexte, appeler le moteur et mapper les dictionnaires vers les modèles API.
 
 
-def _enrich_records_poste_criticite(cur, records: List[Dict[str, Any]]) -> None:
-    ids = [str(r.get("id_poste") or "").strip() for r in (records or []) if str(r.get("id_poste") or "").strip()]
-    if not ids:
-        return
-
-    cur.execute(
-        """
-        SELECT id_poste, COALESCE(criticite_poste, 2)::int AS criticite_poste
-        FROM public.tbl_fiche_poste_param_rh
-        WHERE id_poste = ANY(%s)
-        """,
-        (ids,),
-    )
-    mp = {str(r.get("id_poste") or ""): int(r.get("criticite_poste") or 2) for r in (cur.fetchall() or [])}
-    for r in records:
-        pid = str(r.get("id_poste") or "")
-        r["criticite_poste"] = int(mp.get(pid, r.get("criticite_poste") or 2))
-
-def _compute_health(cur, id_ent: str, scope: DashboardScope, criticite_min: int) -> DashboardHealth:
-    cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
-    cur.execute(
-        f"""
-        WITH
-        {cte_sql},
-        eff AS (
-            SELECT e.id_effectif, e.id_poste_actuel
-            FROM effectifs_scope es
-            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-            WHERE COALESCE(e.archive, FALSE) = FALSE
-              AND COALESCE(e.statut_actif, TRUE) = TRUE
-              AND COALESCE(e.id_poste_actuel, '') <> ''
-        )
-        SELECT
-            COALESCE(SUM(
-                CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
-                    WHEN 'A' THEN 6
-                    WHEN 'B' THEN 12
-                    WHEN 'C' THEN 18
-                    WHEN 'D' THEN 24
-                    ELSE 0
-                END
-            ), 0)::numeric AS max_score,
-            COALESCE(SUM(LEAST(
-                COALESCE(a.resultat_eval, 0),
-                CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
-                    WHEN 'A' THEN 6
-                    WHEN 'B' THEN 12
-                    WHEN 'C' THEN 18
-                    WHEN 'D' THEN 24
-                    ELSE 0
-                END
-            )), 0)::numeric AS score,
-            COUNT(*)::int AS nb_items
-        FROM eff
-        JOIN public.tbl_fiche_poste_competence fpc
-          ON fpc.id_poste = eff.id_poste_actuel
-         AND COALESCE(fpc.masque, FALSE) = FALSE
-         AND COALESCE(fpc.poids_criticite, 0)::int >= %s
-        LEFT JOIN public.tbl_effectif_client_competence ec
-          ON ec.id_effectif_client = eff.id_effectif
-         AND ec.id_comp = fpc.id_competence
-         AND COALESCE(ec.actif, TRUE) = TRUE
-         AND COALESCE(ec.archive, FALSE) = FALSE
-        LEFT JOIN public.tbl_effectif_client_audit_competence a
-          ON a.id_audit_competence = ec.id_dernier_audit
-         AND a.id_effectif_competence = ec.id_effectif_competence
-        """,
-        tuple(cte_params + [int(criticite_min)]),
-    )
-    row = cur.fetchone() or {}
-    score = float(row.get("score") or 0.0)
-    max_score = float(row.get("max_score") or 0.0)
-    pct = round((score / max_score * 100.0), 1) if max_score > 0 else 0.0
-    return DashboardHealth(
-        pct=pct,
-        score=score,
-        max_score=max_score,
-        nb_items=int(row.get("nb_items") or 0),
-        scope_label=scope.nom_service,
-    )
+def _model(model_cls, payload):
+    if isinstance(payload, model_cls):
+        return payload
+    return model_cls(**dict(payload or {}))
 
 
-
-def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: List[Dict[str, Any]], criticite_min: int) -> List[DashboardRiskTimelinePoint]:
-    today = date.today()
-    out: List[DashboardRiskTimelinePoint] = []
-    for i in range(13):
-        d = _month_add(today, i)
-        if i == 0:
-            records = current_records
-        else:
-            period_start, period_end = _month_bounds(today, i)
-            records = _fetch_postes_fragility_records_projected(
-                cur,
-                id_ent,
-                scope.id_service,
-                int(criticite_min),
-                period_start,
-                period_end,
-            )
-        analysed_records = _analyse_fragility_records_analyzed(records)
-        fragile = [r for r in analysed_records if bool(r.get("is_fragile"))]
-        out.append(
-            DashboardRiskTimelinePoint(
-                date_ref=d.isoformat(),
-                label=d.strftime("%m/%y"),
-                indice_fragilite=_analyse_fragility_average(records),
-                nb_postes_fragiles=len(fragile),
-                nb_postes_total=len(analysed_records),
-            )
-        )
-    return out
-
-def _compute_postes_watch(records: List[Dict[str, Any]]) -> DashboardPostesWatch:
-    analysed_records = _analyse_fragility_records_analyzed(records)
-    total = len(analysed_records)
-    danger = [r for r in analysed_records if _is_danger_record(r)]
-    watch = [r for r in analysed_records if _is_watch_record(r)]
-    stable = max(total - len(danger) - len(watch), 0)
-    critical_danger = [r for r in danger if int(r.get("criticite_poste") or 2) >= DASHBOARD_CRITICAL_POSTE_MIN]
-    return DashboardPostesWatch(
-        total_postes=total,
-        postes_danger=len(danger),
-        postes_surveillance=len(watch),
-        postes_stables=stable,
-        postes_critiques_danger=len(critical_danger),
-    )
-
-def _compute_transmission(records: List[Dict[str, Any]]) -> DashboardTransmission:
-    total = len(records)
-    ok = 0
-    risk = 0
-    for r in records:
-        rupture = bool(r.get("rupture"))
-        sans_releve = int(r.get("nb_critiques_sans_releve") or 0)
-        releve_faible = int(r.get("nb_critiques_releve_faible") or 0)
-        pool_eligible = int(r.get("pool_eligible") or 0)
-        besoin_local = int(r.get("besoin_local") or 0)
-        transmissible = (not rupture) and besoin_local > 0 and pool_eligible > 0 and sans_releve == 0 and releve_faible == 0
-        if transmissible:
-            ok += 1
-        else:
-            risk += 1
-    pct = round((ok / total * 100.0), 1) if total else 0.0
-    return DashboardTransmission(
-        pct=pct,
-        postes_total=total,
-        postes_transmissibles=ok,
-        postes_risque=risk,
-    )
-
-
-def _compute_reliability(cur, id_ent: str, scope: DashboardScope, criticite_min: int) -> DashboardReliability:
-    cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
-    cur.execute(
-        f"""
-        WITH
-        {cte_sql},
-        eff AS (
-            SELECT e.id_effectif, e.id_poste_actuel
-            FROM effectifs_scope es
-            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-            WHERE COALESCE(e.archive, FALSE) = FALSE
-              AND COALESCE(e.statut_actif, TRUE) = TRUE
-              AND COALESCE(e.id_poste_actuel, '') <> ''
-        ),
-        items AS (
-            SELECT
-                eff.id_effectif,
-                fpc.id_competence,
-                GREATEST(
-                    COALESCE(ec.date_derniere_eval, DATE '1900-01-01'),
-                    COALESCE(a.date_audit, DATE '1900-01-01')
-                ) AS last_eval
-            FROM eff
-            JOIN public.tbl_fiche_poste_competence fpc
-              ON fpc.id_poste = eff.id_poste_actuel
-             AND COALESCE(fpc.masque, FALSE) = FALSE
-             AND COALESCE(fpc.poids_criticite, 0)::int >= %s
-            LEFT JOIN public.tbl_effectif_client_competence ec
-              ON ec.id_effectif_client = eff.id_effectif
-             AND ec.id_comp = fpc.id_competence
-             AND COALESCE(ec.actif, TRUE) = TRUE
-             AND COALESCE(ec.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_effectif_client_audit_competence a
-              ON a.id_audit_competence = ec.id_dernier_audit
-             AND a.id_effectif_competence = ec.id_effectif_competence
-        )
-        SELECT
-            COUNT(*)::int AS total_items,
-            SUM(CASE WHEN last_eval >= (CURRENT_DATE - INTERVAL '6 months') THEN 1 ELSE 0 END)::int AS fresh_items
-        FROM items
-        """,
-        tuple(cte_params + [int(criticite_min)]),
-    )
-    row = cur.fetchone() or {}
-    total = int(row.get("total_items") or 0)
-    fresh = int(row.get("fresh_items") or 0)
-    stale = max(total - fresh, 0)
-    pct = round((fresh / total * 100.0), 1) if total else 0.0
-    return DashboardReliability(
-        pct=pct,
-        fresh_items=fresh,
-        stale_items=stale,
-        total_items=total,
-        seuil_mois=DASHBOARD_RELIABILITY_MONTHS,
-    )
-
-
-def _fetch_postes_with_action(cur, id_ent: str, scope: DashboardScope) -> set:
-    cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
-    cur.execute(
-        f"""
-        WITH
-        {cte_sql},
-        eff AS (
-            SELECT e.id_effectif, e.id_poste_actuel
-            FROM effectifs_scope es
-            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-            WHERE COALESCE(e.archive, FALSE) = FALSE
-              AND COALESCE(e.statut_actif, TRUE) = TRUE
-              AND COALESCE(e.id_poste_actuel, '') <> ''
-        ),
-        formation_action AS (
-            SELECT DISTINCT e.id_poste_actuel AS id_poste
-            FROM eff e
-            JOIN public.tbl_action_formation_effectif afe
-              ON afe.id_effectif = e.id_effectif
-             AND COALESCE(afe.archive, FALSE) = FALSE
-            JOIN public.tbl_action_formation af
-              ON af.id_action_formation = afe.id_action_formation
-             AND COALESCE(af.archive, FALSE) = FALSE
-            WHERE COALESCE(af.etat_action, '') NOT IN ('annulée', 'annulee', 'annulé', 'annule')
-              AND (af.date_fin_formation IS NULL OR af.date_fin_formation >= CURRENT_DATE)
-        ),
-        entretien_action AS (
-            SELECT DISTINCT e.id_poste_actuel AS id_poste
-            FROM eff e
-            JOIN public.tbl_entretien_individuel ei
-              ON ei.id_effectif_client = e.id_effectif
-             AND COALESCE(ei.archive, FALSE) = FALSE
-            WHERE lower(COALESCE(ei.statut, '')) IN ('à réaliser', 'a réaliser', 'en cours', 'en-cours', 'à signer 1/2', 'a signer 1/2')
-        )
-        SELECT id_poste FROM formation_action
-        UNION
-        SELECT id_poste FROM entretien_action
-        """,
-        tuple(cte_params),
-    )
-    rows = cur.fetchall() or []
-    return {str(r.get("id_poste") or "") for r in rows if r.get("id_poste")}
-
-
-def _compute_risks_without_action(cur, id_ent: str, scope: DashboardScope, records: List[Dict[str, Any]]) -> DashboardRisksWithoutAction:
-    action_postes = _fetch_postes_with_action(cur, id_ent, scope)
-    rows = []
-    for r in records:
-        id_poste = str(r.get("id_poste") or "").strip()
-        if not id_poste or id_poste in action_postes:
-            continue
-        if not _is_danger_record(r):
-            continue
-        rows.append(r)
-
-    items = [
-        DashboardRiskWithoutActionRow(
-            id_poste=str(r.get("id_poste") or ""),
-            codif_poste=r.get("codif_poste"),
-            codif_client=r.get("codif_client"),
-            intitule_poste=r.get("intitule_poste") or "Poste",
-            nom_service=r.get("nom_service"),
-            indice_fragilite=int(r.get("indice_fragilite") or 0),
-            criticite_poste=int(r.get("criticite_poste") or 0),
-            nb_titulaires=int(r.get("nb_titulaires") or 0),
-            nb_titulaires_cible=int(r.get("nb_titulaires_cible") or 0),
-            nb_critiques_fragiles=int(r.get("nb_critiques_fragiles") or 0),
-            nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
-            nb_critiques_sans_releve=int(r.get("nb_critiques_sans_releve") or 0),
-        )
-        for r in rows[:DASHBOARD_NO_ACTION_LIMIT]
-    ]
-    return DashboardRisksWithoutAction(total=len(rows), items=items)
+def _model_list(model_cls, rows):
+    return [_model(model_cls, r) for r in (rows or [])]
 
 
 # ======================================================
@@ -603,22 +299,57 @@ def build_dashboard_risk_overview_for_scope(
 
     Toute évolution des indicateurs doit passer ici pour éviter deux calculs divergents.
     """
-    criticite = _normalize_criticite_min(criticite_min)
+    criticite = _dashboard_normalize_criticite_min(criticite_min)
 
-    current_records = _fetch_postes_fragility_records(
+    current_records = _dashboard_fetch_current_poste_records(
         cur,
         id_ent,
         scope.id_service,
         criticite,
     )
-    _enrich_records_poste_criticite(cur, current_records)
 
-    health = _compute_health(cur, id_ent, scope, criticite)
-    risk_timeline = _compute_timeline(cur, id_ent, scope, current_records, criticite)
-    postes_watch = _compute_postes_watch(current_records)
-    transmission = _compute_transmission(current_records)
-    reliability = _compute_reliability(cur, id_ent, scope, criticite)
-    risks_without_action = _compute_risks_without_action(cur, id_ent, scope, current_records)
+    health = _model(
+        DashboardHealth,
+        _dashboard_compute_health_from_records(current_records, scope.nom_service),
+    )
+    risk_timeline = _model_list(
+        DashboardRiskTimelinePoint,
+        _dashboard_compute_risk_timeline(cur, id_ent, scope.id_service, current_records, criticite),
+    )
+    postes_watch = _model(
+        DashboardPostesWatch,
+        _dashboard_compute_postes_watch_from_records(
+            current_records,
+            danger_min=DASHBOARD_DANGER_MIN,
+            watch_min=DASHBOARD_WATCH_MIN,
+            critical_poste_min=DASHBOARD_CRITICAL_POSTE_MIN,
+        ),
+    )
+    transmission = _model(
+        DashboardTransmission,
+        _dashboard_compute_transmission_from_records(current_records),
+    )
+    reliability = _model(
+        DashboardReliability,
+        _dashboard_compute_reliability(
+            cur,
+            id_ent,
+            scope.id_service,
+            criticite,
+            seuil_mois=DASHBOARD_RELIABILITY_MONTHS,
+        ),
+    )
+    risks_without_action = _model(
+        DashboardRisksWithoutAction,
+        _dashboard_compute_risks_without_action(
+            cur,
+            id_ent,
+            scope.id_service,
+            current_records,
+            danger_min=DASHBOARD_DANGER_MIN,
+            limit=DASHBOARD_NO_ACTION_LIMIT,
+        ),
+    )
 
     return DashboardRiskOverview(
         access=access,
