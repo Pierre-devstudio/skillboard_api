@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from collections import defaultdict
 import re
+import json
 
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -2788,11 +2789,13 @@ def _fetch_prevision_transition_capacity(
     id_service: Optional[str],
     id_effectif: str,
     id_poste: str,
+    horizon_years: int = 1,
 ) -> Dict[str, Any]:
     """
     Capacité de transmission du sortant sur les compétences de son poste actuel.
     Lecture volontairement sans seuil de criticité : toutes les compétences actives du poste sont prises en compte.
     Une compétence est considérée transmissible si le collaborateur est Expert ou si sa dernière note atteint la moitié haute du niveau Avancé (>= 63%).
+    Les autres transmetteurs sont comptés uniquement s'ils restent disponibles dans l'horizon étudié.
     """
     eff_id = (id_effectif or "").strip()
     poste_id = (id_poste or "").strip()
@@ -2800,25 +2803,35 @@ def _fetch_prevision_transition_capacity(
         "total_competences_poste": 0,
         "transmissibles_count": 0,
         "unique_transmissibles_count": 0,
+        "other_transmitter_count": 0,
         "coverage_pct": 0,
         "unique_share_pct": 0,
+        "other_transmitter_pct": 0,
         "threshold_score": 63,
+        "threshold_label": "Avancé haut ou Expert",
+        "competences": [],
         "unique_competences": [],
+        "other_transmitter_competences": [],
     }
     if not eff_id or not poste_id:
         return default
 
     scope_id = (id_service or "").strip() or None
     cte_sql, cte_params = _build_scope_cte(id_ent, scope_id)
+    try:
+        horizon = max(1, min(5, int(horizon_years or 1)))
+    except Exception:
+        horizon = 1
 
     sql = f"""
     WITH
     {cte_sql},
     poste_comp AS (
-        SELECT DISTINCT
+        SELECT
             c.id_comp,
             COALESCE(c.code, '') AS code,
-            COALESCE(c.intitule, '') AS intitule
+            COALESCE(c.intitule, '') AS intitule,
+            MAX(COALESCE(fpc.poids_criticite, 0)::int)::int AS criticite
         FROM public.tbl_fiche_poste_competence fpc
         JOIN public.tbl_competence c
           ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
@@ -2826,9 +2839,17 @@ def _fetch_prevision_transition_capacity(
           AND COALESCE(fpc.masque, FALSE) = FALSE
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+        GROUP BY c.id_comp, c.code, c.intitule
     ),
-    effectifs_valid AS (
-        SELECT e.id_effectif
+    effectifs_base AS (
+        SELECT
+            e.id_effectif,
+            e.prenom_effectif,
+            e.nom_effectif,
+            e.date_sortie_prevue,
+            e.retraite_estimee::int AS retraite_annee,
+            COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+            COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
         FROM public.tbl_effectif_client e
         JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
         WHERE e.id_ent = %s
@@ -2836,13 +2857,49 @@ def _fetch_prevision_transition_capacity(
           AND COALESCE(e.is_temp, FALSE) = FALSE
           AND COALESCE(e.statut_actif, TRUE) = TRUE
     ),
+    effectifs_valid AS (
+        SELECT
+            eb.*,
+            CASE
+                WHEN eb.date_sortie_prevue IS NOT NULL THEN eb.date_sortie_prevue
+                WHEN eb.retraite_annee IS NOT NULL THEN
+                    (
+                        make_date(eb.retraite_annee, eb.m_entree, 1)
+                        + (
+                            (
+                                LEAST(
+                                    eb.d_entree,
+                                    EXTRACT(
+                                        DAY FROM (
+                                            date_trunc('month', make_date(eb.retraite_annee, eb.m_entree, 1))
+                                            + interval '1 month - 1 day'
+                                        )
+                                    )::int
+                                ) - 1
+                            )::text || ' days'
+                        )::interval
+                    )::date
+                ELSE NULL
+            END AS exit_date
+        FROM effectifs_base eb
+    ),
     porteurs AS (
         SELECT
             pc.id_comp,
             ev.id_effectif,
+            COALESCE(ev.prenom_effectif, '') AS prenom_effectif,
+            COALESCE(ev.nom_effectif, '') AS nom_effectif,
+            CASE
+                WHEN ev.exit_date IS NOT NULL
+                 AND ev.exit_date >= CURRENT_DATE
+                 AND ev.exit_date <= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int + %s::int, 12, 31)::date
+                THEN TRUE ELSE FALSE
+            END AS is_sortant_horizon,
             CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
                 WHEN 'a' THEN 1
                 WHEN 'initial' THEN 1
+                WHEN 'débutant' THEN 1
+                WHEN 'debutant' THEN 1
                 WHEN 'b' THEN 2
                 WHEN 'intermediaire' THEN 2
                 WHEN 'intermédiaire' THEN 2
@@ -2856,6 +2913,11 @@ def _fetch_prevision_transition_capacity(
                 ELSE 0
             END AS act_rank,
             a.resultat_eval,
+            CASE
+                WHEN a.resultat_eval IS NULL THEN NULL
+                WHEN a.resultat_eval <= 24 THEN (a.resultat_eval / 24.0) * 100.0
+                ELSE a.resultat_eval
+            END AS score_pct,
             CASE
                 WHEN lower(trim(COALESCE(ec.niveau_actuel, ''))) IN ('d', 'expert') THEN TRUE
                 WHEN a.resultat_eval IS NOT NULL
@@ -2882,19 +2944,43 @@ def _fetch_prevision_transition_capacity(
             pc.id_comp,
             pc.code,
             pc.intitule,
+            pc.criticite,
             COALESCE(BOOL_OR(p.id_effectif = %s AND p.is_transmissible), FALSE) AS sortant_transmissible,
             MAX(CASE WHEN p.id_effectif = %s THEN p.resultat_eval END) AS score_sortant,
+            MAX(CASE WHEN p.id_effectif = %s THEN p.score_pct END) AS score_pct_sortant,
             MAX(CASE WHEN p.id_effectif = %s THEN p.act_rank END) AS rank_sortant,
-            COUNT(DISTINCT CASE WHEN p.id_effectif <> %s AND p.is_transmissible THEN p.id_effectif END)::int AS autres_transmissibles
+            COUNT(DISTINCT CASE
+                WHEN p.id_effectif <> %s
+                 AND p.is_transmissible
+                 AND COALESCE(p.is_sortant_horizon, FALSE) = FALSE
+                THEN p.id_effectif END
+            )::int AS autres_transmissibles,
+            COALESCE(
+                jsonb_agg(
+                    DISTINCT jsonb_build_object(
+                        'id_effectif', p.id_effectif,
+                        'prenom_effectif', p.prenom_effectif,
+                        'nom_effectif', p.nom_effectif,
+                        'full', BTRIM(CONCAT(COALESCE(p.prenom_effectif, ''), ' ', COALESCE(p.nom_effectif, ''))),
+                        'score_pct', p.score_pct,
+                        'rank', p.act_rank
+                    )
+                ) FILTER (
+                    WHERE p.id_effectif <> %s
+                      AND p.is_transmissible
+                      AND COALESCE(p.is_sortant_horizon, FALSE) = FALSE
+                ),
+                '[]'::jsonb
+            ) AS autres_transmetteurs
         FROM poste_comp pc
         LEFT JOIN porteurs p ON p.id_comp = pc.id_comp
-        GROUP BY pc.id_comp, pc.code, pc.intitule
+        GROUP BY pc.id_comp, pc.code, pc.intitule, pc.criticite
     )
     SELECT *
     FROM agg
-    ORDER BY sortant_transmissible DESC, autres_transmissibles ASC, code ASC, intitule ASC
+    ORDER BY sortant_transmissible DESC, autres_transmissibles ASC, criticite DESC, code ASC, intitule ASC
     """
-    params = list(cte_params) + [poste_id, id_ent, eff_id, eff_id, eff_id, eff_id]
+    params = list(cte_params) + [poste_id, id_ent, horizon, eff_id, eff_id, eff_id, eff_id, eff_id, eff_id]
     if sql.count("%s") != len(params):
         raise RuntimeError(
             f"Paramètres SQL incohérents pour la capacité de transmission sortant : "
@@ -2906,26 +2992,73 @@ def _fetch_prevision_transition_capacity(
     total = len(rows)
     transmissibles = [r for r in rows if bool(r.get("sortant_transmissible"))]
     uniques = [r for r in transmissibles if _safe_int(r.get("autres_transmissibles"), 0) <= 0]
+    non_transmissibles = [r for r in rows if not bool(r.get("sortant_transmissible"))]
+    non_transmissibles_with_other = [r for r in non_transmissibles if _safe_int(r.get("autres_transmissibles"), 0) > 0]
+
+    def _as_transmitters(value: Any) -> List[Dict[str, Any]]:
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except Exception:
+                value = []
+        if not isinstance(value, list):
+            return []
+        out: List[Dict[str, Any]] = []
+        seen = set()
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            eff = str(item.get("id_effectif") or "").strip()
+            if not eff or eff in seen:
+                continue
+            seen.add(eff)
+            full = (item.get("full") or "").strip()
+            prenom = (item.get("prenom_effectif") or "").strip()
+            nom = (item.get("nom_effectif") or "").strip()
+            full = full or (prenom + " " + nom).strip() or "—"
+            out.append({
+                "id_effectif": eff,
+                "prenom_effectif": prenom or None,
+                "nom_effectif": nom or None,
+                "full": full,
+                "score_pct": float(item.get("score_pct")) if item.get("score_pct") is not None else None,
+                "rank": _safe_int(item.get("rank"), 0),
+            })
+        return out
+
+    def _comp_payload(r: Dict[str, Any]) -> Dict[str, Any]:
+        transmitters = _as_transmitters(r.get("autres_transmetteurs"))
+        return {
+            "id_comp": r.get("id_comp"),
+            "code": r.get("code"),
+            "intitule": r.get("intitule"),
+            "criticite": _safe_int(r.get("criticite"), 0),
+            "transmission_required_label": "Avancé haut ou Expert",
+            "threshold_score": 63,
+            "sortant_transmissible": bool(r.get("sortant_transmissible")),
+            "score_sortant": float(r.get("score_sortant")) if r.get("score_sortant") is not None else None,
+            "score_pct_sortant": float(r.get("score_pct_sortant")) if r.get("score_pct_sortant") is not None else None,
+            "rank_sortant": _safe_int(r.get("rank_sortant"), 0),
+            "autres_transmissibles": _safe_int(r.get("autres_transmissibles"), 0),
+            "autres_transmetteurs": transmitters,
+        }
+
+    competences = [_comp_payload(r) for r in rows]
 
     return {
         "total_competences_poste": int(total),
         "transmissibles_count": int(len(transmissibles)),
         "unique_transmissibles_count": int(len(uniques)),
+        "other_transmitter_count": int(len(non_transmissibles_with_other)),
         "coverage_pct": int(round((len(transmissibles) / float(total)) * 100)) if total > 0 else 0,
         "unique_share_pct": int(round((len(uniques) / float(len(transmissibles))) * 100)) if len(transmissibles) > 0 else 0,
+        "other_transmitter_pct": int(round((len(non_transmissibles_with_other) / float(len(non_transmissibles))) * 100)) if len(non_transmissibles) > 0 else 0,
         "threshold_score": 63,
-        "unique_competences": [
-            {
-                "id_comp": r.get("id_comp"),
-                "code": r.get("code"),
-                "intitule": r.get("intitule"),
-                "score_sortant": float(r.get("score_sortant")) if r.get("score_sortant") is not None else None,
-                "rank_sortant": _safe_int(r.get("rank_sortant"), 0),
-            }
-            for r in uniques[:8]
-        ],
+        "threshold_label": "Avancé haut ou Expert",
+        "competences": competences,
+        "unique_competences": [_comp_payload(r) for r in uniques],
+        "other_transmitter_competences": [_comp_payload(r) for r in non_transmissibles],
     }
-
 
 def _fetch_prevision_transition_other_poste_impacts(
     cur,
@@ -3040,6 +3173,7 @@ def _fetch_prevision_transition_modal_detail(
         id_service,
         eff_id,
         str(item.get("id_poste_actuel") or "").strip(),
+        horizon_years,
     )
     item["other_poste_impacts"] = _fetch_prevision_transition_other_poste_impacts(
         cur,

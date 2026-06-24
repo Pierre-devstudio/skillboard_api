@@ -6945,16 +6945,147 @@ body{
   z-index:10060;
 }
 
+
+#view-analyse-competences .sb-prev-ring-grid{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+  margin-top:12px;
+}
+
+#view-analyse-competences .sb-prev-ring-card{
+  position:relative;
+  padding:16px;
+  margin:0;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  text-align:center;
+}
+
+#view-analyse-competences .sb-prev-ring-title{
+  min-height:16px;
+  padding:0 28px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.25;
+  color:var(--sb-gray-700);
+}
+
+#view-analyse-competences .sb-prev-ring-detail-btn{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  border:1px solid var(--sb-gray-300);
+  background:#fff;
+  color:var(--sb-gray-700);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+}
+
+#view-analyse-competences .sb-prev-ring-detail-btn:hover{
+  background:var(--sb-gray-50);
+  border-color:var(--reading-accent);
+  color:var(--reading-accent);
+}
+
+#view-analyse-competences .sb-prev-ring-detail-btn svg{
+  width:14px;
+  height:14px;
+  display:block;
+}
+
+#view-analyse-competences .sb-prev-ring-visual{
+  position:relative;
+  flex:0 0 auto;
+}
+
+#view-analyse-competences .sb-prev-ring-svg{
+  position:absolute;
+  inset:0;
+}
+
+#view-analyse-competences .sb-prev-ring-percent{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#view-analyse-competences .sb-prev-ring-percent > div{
+  font-weight:900;
+  font-size:26px;
+  line-height:1;
+  color:var(--sb-gray-900);
+}
+
+#view-analyse-competences .sb-prev-ring-percent span{
+  font-size:12px;
+  font-weight:800;
+}
+
+#view-analyse-competences .sb-prev-ring-value{
+  font-size:20px;
+  font-weight:750;
+  line-height:1.1;
+  color:var(--sb-gray-900);
+}
+
+#view-analyse-competences .sb-prev-ring-text{
+  max-width:330px;
+  margin:0;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.35;
+}
+
+.sb-prev-capacity-detail-modal{
+  z-index:10080;
+}
+
+.sb-prev-capacity-detail-table{
+  max-height:62vh;
+  overflow:auto;
+}
+
+.sb-prev-capacity-detail-table .sb-table{
+  min-width:760px;
+}
+
+.sb-prev-capacity-comp-title{
+  margin-left:8px;
+  font-weight:650;
+  color:var(--sb-gray-900);
+}
+
+.sb-prev-transmitter-list{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
 @media (max-width:900px){
   #view-analyse-competences .sb-prev-kpi-grid,
-  #view-analyse-competences .sb-prev-kpi-grid--4{
+  #view-analyse-competences .sb-prev-kpi-grid--4,
+  #view-analyse-competences .sb-prev-ring-grid{
     grid-template-columns:1fr 1fr;
   }
 }
 
 @media (max-width:620px){
   #view-analyse-competences .sb-prev-kpi-grid,
-  #view-analyse-competences .sb-prev-kpi-grid--4{
+  #view-analyse-competences .sb-prev-kpi-grid--4,
+  #view-analyse-competences .sb-prev-ring-grid{
     grid-template-columns:1fr;
   }
 }

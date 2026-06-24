@@ -5638,22 +5638,29 @@ function renderDetail(mode) {
     const mode = (opts.mode || "good").toString().trim().toLowerCase();
     const hue = mode === "risk" ? Math.round(120 * (1 - s / 100)) : Math.round(120 * (s / 100));
     const fill = `hsl(${hue} 70% 42%)`;
+    const detailKey = (opts.detailKey || "").toString().trim();
+    const detailBtn = detailKey ? `
+      <button type="button" class="sb-prev-ring-detail-btn" data-prev-capacity-detail="${escapeHtml(detailKey)}" title="Voir le détail" aria-label="Voir le détail ${escapeHtml(title || "")}">
+        ${analyseEyeIconSvg()}
+      </button>
+    ` : "";
     return `
-      <div class="card" style="padding:16px; margin:0; min-width:250px; flex:1; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;">
-        <div class="label" style="font-size:12px; font-weight:800; color:#475569;">${escapeHtml(title || "—")}</div>
-        <div style="position:relative; width:${size}px; height:${size}px; flex:0 0 ${size}px;">
-          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+      <div class="card sb-prev-ring-card">
+        ${detailBtn}
+        <div class="sb-prev-ring-title">${escapeHtml(title || "—")}</div>
+        <div class="sb-prev-ring-visual" style="width:${size}px; height:${size}px; flex-basis:${size}px;">
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" class="sb-prev-ring-svg">
             <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
             <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
                     stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
                     transform="rotate(-90 ${size / 2} ${size / 2})" />
           </svg>
-          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-            <div style="font-weight:900; font-size:26px; line-height:1; color:#111827;">${s}<span style="font-size:12px; font-weight:800;">%</span></div>
+          <div class="sb-prev-ring-percent">
+            <div>${s}<span>%</span></div>
           </div>
         </div>
-        <div class="value" style="font-size:20px; line-height:1.1;">${escapeHtml(valueText || "—")}</div>
-        <div class="card-sub" style="margin:0; max-width:330px; line-height:1.35;">${escapeHtml(bodyText || "")}</div>
+        <div class="sb-prev-ring-value">${escapeHtml(valueText || "—")}</div>
+        <div class="sb-prev-ring-text">${escapeHtml(bodyText || "")}</div>
       </div>
     `;
   }
@@ -5668,8 +5675,146 @@ function renderDetail(mode) {
     const who = (firstName || "ce collaborateur").toString().trim() || "ce collaborateur";
     const n = Math.max(0, Math.round(Number(uniqueCount || 0)));
     if (n <= 0) return `Dans les compétences que ${who} peut transmettre, aucune ne repose uniquement sur ${who}.`;
-    if (n === 1) return `Dans les compétences que ${who} peut transmettre, 1 compétence n’a aucun autre porteur en capacité de la transmettre.`;
-    return `Dans les compétences que ${who} peut transmettre, ${n} compétences n’ont aucun autre porteur en capacité de les transmettre.`;
+    if (n === 1) return `Dans les compétences que ${who} peut transmettre, 1 compétence n’a aucun autre porteur capable d’assurer la transmission.`;
+    return `Dans les compétences que ${who} peut transmettre, ${n} compétences n’ont aucun autre porteur capable d’assurer la transmission.`;
+  }
+
+  function analysePrevisionOtherTransmitterSentence(firstName, otherCount, nonTransmissibleCount) {
+    const who = (firstName || "ce collaborateur").toString().trim() || "ce collaborateur";
+    const n = Math.max(0, Math.round(Number(otherCount || 0)));
+    const total = Math.max(0, Math.round(Number(nonTransmissibleCount || 0)));
+    if (total <= 0) return `${who} peut transmettre toutes les compétences connues de son poste.`;
+    if (n <= 0) return `Sur les compétences que ${who} ne peut pas transmettre, aucun autre transmetteur disponible n’est identifié.`;
+    if (n === 1) return `Sur les compétences que ${who} ne peut pas transmettre, 1 compétence dispose d’un autre transmetteur disponible.`;
+    return `Sur les compétences que ${who} ne peut pas transmettre, ${n} compétences disposent d’un autre transmetteur disponible.`;
+  }
+
+  function analysePrevisionCapacityStatusBadge(ok) {
+    return ok
+      ? `<span class="sb-badge sb-badge--success">Atteint</span>`
+      : `<span class="sb-badge sb-badge--danger">Non atteint</span>`;
+  }
+
+  function analysePrevisionCriticityBadge(value) {
+    const n = Math.max(0, Math.min(100, Math.round(Number(value || 0))));
+    const lvl = n >= 90 ? 5 : (n >= 80 ? 4 : (n >= 70 ? 3 : (n >= 50 ? 2 : 1)));
+    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité">${escapeHtml(String(n))}</span>`;
+  }
+
+  function analysePrevisionCapacityCompLabel(c) {
+    const code = (c?.code || "").toString().trim();
+    const intitule = (c?.intitule || "—").toString().trim();
+    return `${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}<span class="sb-prev-capacity-comp-title">${escapeHtml(intitule)}</span>`;
+  }
+
+  function analysePrevisionCapacityRowsEmpty(colspan, text) {
+    return `<tr><td colspan="${Number(colspan || 1)}" class="sb-muted" style="text-align:center; padding:18px;">${escapeHtml(text || "Aucune donnée à afficher.")}</td></tr>`;
+  }
+
+  function analysePrevisionCapacityTransmittersHtml(list) {
+    const items = Array.isArray(list) ? list : [];
+    if (!items.length) return `<span class="sb-muted">Aucun transmetteur disponible</span>`;
+    return `
+      <div class="sb-prev-transmitter-list">
+        ${items.map(p => `<span class="sb-badge">${escapeHtml(p.full || `${p.prenom_effectif || ""} ${p.nom_effectif || ""}`.trim() || "—")}</span>`).join("")}
+      </div>
+    `;
+  }
+
+  function ensureAnalysePrevisionCapacityDetailModal() {
+    let modal = byId("modalAnalysePrevisionCapacityDetail");
+    if (modal) return modal;
+    document.body.insertAdjacentHTML("beforeend", `
+      <div class="modal sb-prev-capacity-detail-modal" id="modalAnalysePrevisionCapacityDetail" aria-hidden="true">
+        <div class="modal-card modal-card--wide">
+          <div class="modal-header">
+            <div class="modal-title" id="analysePrevisionCapacityDetailTitle">Détail</div>
+            <button type="button" class="modal-x" id="btnCloseAnalysePrevisionCapacityDetail" aria-label="Fermer">×</button>
+          </div>
+          <div class="modal-body" id="analysePrevisionCapacityDetailBody"></div>
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionCapacityDetailClose">Fermer</button>
+          </div>
+        </div>
+      </div>
+    `);
+    modal = byId("modalAnalysePrevisionCapacityDetail");
+    const close = () => {
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+    };
+    byId("btnCloseAnalysePrevisionCapacityDetail")?.addEventListener("click", close);
+    byId("btnAnalysePrevisionCapacityDetailClose")?.addEventListener("click", close);
+    modal.addEventListener("click", (ev) => { if (ev.target === modal) close(); });
+    return modal;
+  }
+
+  function openAnalysePrevisionCapacityDetail(kind) {
+    const state = window.__sbPrevisionTransitionModalState || {};
+    const item = state.item || state.row || {};
+    const cap = item.transmission_capacity || {};
+    const key = (kind || "").toString().trim().toLowerCase();
+    const modal = ensureAnalysePrevisionCapacityDetailModal();
+    const title = byId("analysePrevisionCapacityDetailTitle");
+    const body = byId("analysePrevisionCapacityDetailBody");
+
+    const all = Array.isArray(cap.competences) ? cap.competences : [];
+    const unique = Array.isArray(cap.unique_competences) ? cap.unique_competences : [];
+    const other = Array.isArray(cap.other_transmitter_competences) ? cap.other_transmitter_competences : [];
+    const requiredLabel = cap.threshold_label || "Avancé haut ou Expert";
+
+    if (key === "unique") {
+      if (title) title.textContent = "Compétences à porteur unique";
+      if (body) body.innerHTML = `
+        <div class="table-wrap sb-prev-capacity-detail-table">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+            <thead><tr><th>Compétence</th><th class="col-center">Criticité</th></tr></thead>
+            <tbody>
+              ${unique.length ? unique.map(c => `<tr><td>${analysePrevisionCapacityCompLabel(c)}</td><td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td></tr>`).join("") : analysePrevisionCapacityRowsEmpty(2, "Aucune compétence transmissible ne repose uniquement sur le sortant.")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (key === "other") {
+      if (title) title.textContent = "Autres transmetteurs disponibles";
+      if (body) body.innerHTML = `
+        <div class="table-wrap sb-prev-capacity-detail-table">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+            <thead><tr><th>Compétence</th><th class="col-center">Potentiel de transmission</th><th>Porteurs transmetteurs potentiels</th></tr></thead>
+            <tbody>
+              ${other.length ? other.map(c => `
+                <tr>
+                  <td>${analysePrevisionCapacityCompLabel(c)}</td>
+                  <td class="col-center"><span class="sb-badge ${Number(c.autres_transmissibles || 0) > 0 ? "sb-badge--success" : ""}">${escapeHtml(String(c.autres_transmissibles || 0))}</span></td>
+                  <td>${analysePrevisionCapacityTransmittersHtml(c.autres_transmetteurs)}</td>
+                </tr>
+              `).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence non transmissible par le sortant n’est rattachée à son poste.")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      if (title) title.textContent = "Compétences transmissibles";
+      if (body) body.innerHTML = `
+        <div class="table-wrap sb-prev-capacity-detail-table">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+            <thead><tr><th>Compétence</th><th>Niveau requis de transmission</th><th class="col-center">Statut</th></tr></thead>
+            <tbody>
+              ${all.length ? all.map(c => `
+                <tr>
+                  <td>${analysePrevisionCapacityCompLabel(c)}</td>
+                  <td><span class="sb-badge">${escapeHtml(c.transmission_required_label || requiredLabel)}</span></td>
+                  <td class="col-center">${analysePrevisionCapacityStatusBadge(!!c.sortant_transmissible)}</td>
+                </tr>
+              `).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence active n’est rattachée au poste du sortant.")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
   }
 
   function analysePrevisionFragilityBadge(value) {
@@ -5740,7 +5885,16 @@ function renderDetail(mode) {
       });
       close();
     });
-    modal.addEventListener("click", (ev) => { if (ev.target === modal) close(); });
+    modal.addEventListener("click", (ev) => {
+      const detailBtn = ev.target?.closest?.("[data-prev-capacity-detail]");
+      if (detailBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openAnalysePrevisionCapacityDetail(detailBtn.getAttribute("data-prev-capacity-detail") || "transmissible");
+        return;
+      }
+      if (ev.target === modal) close();
+    });
     return modal;
   }
 
@@ -5760,13 +5914,17 @@ function renderDetail(mode) {
     const total = Number(cap.total_competences_poste || 0) || 0;
     const transmissibles = Number(cap.transmissibles_count || 0) || 0;
     const uniques = Number(cap.unique_transmissibles_count || 0) || 0;
+    const otherTransmitters = Number(cap.other_transmitter_count || 0) || 0;
+    const nonTransmissibles = Math.max(total - transmissibles, 0);
     const capPct = analysePrevisionPct(cap.coverage_pct);
     const uniquePct = analysePrevisionPct(cap.unique_share_pct);
+    const otherPct = analysePrevisionPct(cap.other_transmitter_pct);
     const impacts = r.other_poste_impacts || {};
     const impactItems = Array.isArray(impacts.items) ? impacts.items : [];
 
     const transmissionText = `Le niveau de maîtrise requis pour la transmission est présent sur ${transmissibles}/${total} compétence${total > 1 ? "s" : ""}.`;
     const uniqueText = analysePrevisionUniqueSentence(firstName, uniques);
+    const otherText = analysePrevisionOtherTransmitterSentence(firstName, otherTransmitters, nonTransmissibles);
 
     const impactHtml = impactItems.length ? `
       <div class="table-wrap" style="margin-top:10px;">
@@ -5798,12 +5956,6 @@ function renderDetail(mode) {
       </div>
     ` : `<div class="card-sub" style="margin:8px 0 0 0;">Aucun autre poste ne voit sa fragilité augmenter avec cette personne en moins sur le périmètre filtré.</div>`;
 
-    const uniqueList = Array.isArray(cap.unique_competences) && cap.unique_competences.length ? `
-      <div class="card-sub" style="margin:10px 0 0 0;">
-        Compétences concernées : ${cap.unique_competences.map(c => `${c.code ? escapeHtml(c.code) + " · " : ""}${escapeHtml(c.intitule || "")}`).join(" ; ")}
-      </div>
-    ` : "";
-
     const scenarios = [
       ["transmission", "Organiser une transmission interne", uniques > 0 || transmissibles > 0],
       ["mobilite", "Tester une relève / mobilité interne", true],
@@ -5829,12 +5981,12 @@ function renderDetail(mode) {
         </div>
 
         <div class="sb-prev-actions-card card" style="padding:14px; margin:0;">
-          <div class="sb-prev-modal-title" style="margin-bottom:12px;">Capacité de transmission à son poste</div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
-            ${analysePrevisionRingHtml(capPct, "Compétences transmissibles", `${transmissibles} / ${total}`, transmissionText, { mode: "good" })}
-            ${analysePrevisionRingHtml(uniquePct, "Porteur unique", `${uniques} / ${transmissibles}`, uniqueText, { mode: "risk" })}
+          <div class="sb-prev-modal-title">Capacité de transmission à son poste</div>
+          <div class="sb-prev-ring-grid">
+            ${analysePrevisionRingHtml(capPct, "Compétences transmissibles", `${transmissibles} / ${total}`, transmissionText, { mode: "good", detailKey: "transmissible" })}
+            ${analysePrevisionRingHtml(uniquePct, "Porteur unique", `${uniques} / ${transmissibles}`, uniqueText, { mode: "risk", detailKey: "unique" })}
+            ${analysePrevisionRingHtml(otherPct, "Autre transmetteur", `${otherTransmitters} / ${nonTransmissibles}`, otherText, { mode: "good", detailKey: "other" })}
           </div>
-          ${uniqueList}
         </div>
 
         <div class="sb-prev-actions-card card" style="padding:14px; margin:0;">
