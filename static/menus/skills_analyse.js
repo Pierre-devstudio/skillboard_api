@@ -2752,81 +2752,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
 
 
-  // ======================================================
-  // API: détail "Critiques impactées" (prévisions)
-  // ======================================================
-  async function fetchPrevisionsCritiquesDetail(portal, horizonYears, id_service, limit = 2000) {
-    const ctx = getPortalContext(portal);
-    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
-
-    const qs = new URLSearchParams();
-    qs.set("horizon_years", String(horizonYears || 1));
-    if (id_service) qs.set("id_service", String(id_service).trim());
-
-    // IMPORTANT: alignement avec le reste de la page
-    const cmin = getCriticiteMinSafe(null);
-    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
-    qs.set("limit", String(limit || 2000));
-
-    const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-
-    const data = await analyseApiJson(portal, url);
-    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
-    return data;
-  }
-
-  async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service, limit = 2000) {
-    const portalCtx = getPortalContext(portal);
-    if (!portalCtx.id_contact) throw new Error("id_contact introuvable côté UI.");
-    if (!portalCtx.apiBase) throw new Error("apiBase introuvable côté UI.");
-
-    const qs = new URLSearchParams();
-    qs.set("horizon_years", String(horizonYears));
-    if (id_service) qs.set("id_service", String(id_service));
-
-    // Alignement avec le reste de la page
-    const cmin = getCriticiteMinSafe(null);
-    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
-    qs.set("limit", String(limit || 2000));
-
-    const url = `${portalCtx.apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(portalCtx.id_contact)}?${qs.toString()}`;
-
-    const data = await analyseApiJson(portal, url);
-    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
-    return data;
-  }
-
-  async function fetchPrevisionsPosteRougeModal(portal, id_poste, horizonYears, id_service, criticite_min) {
-    const ctx = getPortalContext(portal);
-    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
-
-    const poste = (id_poste || "").toString().trim();
-    if (!poste) throw new Error("id_poste manquant.");
-
-    const qs = new URLSearchParams();
-    qs.set("id_poste", poste);
-    qs.set("horizon_years", String(horizonYears || 1));
-
-    const svc = (id_service || "").toString().trim();
-    if (svc) qs.set("id_service", svc);
-
-    const cmin = (criticite_min === null || criticite_min === undefined || criticite_min === "")
-      ? getCriticiteMinSafe(null)
-      : Number(criticite_min);
-
-    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
-
-    const url = `${ctx.apiBase}/skills/analyse/previsions/postes-rouges/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-
-    const data = await analyseApiJson(portal, url);
-    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
-    return data;
-  }
-
-
-
   function ensureMatchPersonModal() {
     let modal = byId("modalMatchPerson");
     if (modal) return modal;
@@ -5253,7 +5178,7 @@ function renderDetail(mode) {
               const tr = el.closest("tr");
               const idx = Number(tr?.getAttribute("data-index") || -1);
               const row = (window.__sbPrevTransitionRows || [])[idx];
-              if (row) openAnalysePrevisionTransitionModal(row, potential ? "Alerte potentielle" : "Transition confirmée");
+              if (row) openAnalysePrevisionTransitionModal(row, potential ? "potential" : "confirmed");
             });
           });
         }
@@ -5651,6 +5576,28 @@ function renderDetail(mode) {
     return data;
   }
 
+  async function fetchPrevisionsTransitionModalDetail(portal, row, kind, horizonYears, id_service) {
+    const ctx = getPortalContext(portal);
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+
+    const idEffectif = String(row?.id_effectif || "").trim();
+    if (!idEffectif) throw new Error("Collaborateur introuvable pour cette sortie.");
+
+    const qs = new URLSearchParams();
+    qs.set("kind", kind === "potential" ? "potential" : "confirmed");
+    qs.set("horizon_years", String(horizonYears || 1));
+    if (id_service) qs.set("id_service", String(id_service).trim());
+    const cmin = getCriticiteMinSafe(null);
+    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
+    qs.set("_", String(Date.now()));
+
+    const url = `${ctx.apiBase}/skills/analyse/previsions/transition-modal/${encodeURIComponent(ctx.id_contact)}/${encodeURIComponent(idEffectif)}?${qs.toString()}`;
+    const data = await analyseApiJson(portal, url);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
+    return data;
+  }
+
   async function fetchPrevisionsTransmissionsDetail(portal, horizonYears, id_service, limit = 2000) {
     const ctx = getPortalContext(portal);
     if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
@@ -5669,6 +5616,54 @@ function renderDetail(mode) {
     return data;
   }
 
+  function analysePrevisionYear(value) {
+    const raw = (value || "").toString().trim();
+    if (!raw) return "—";
+    const m = raw.match(/(19|20)\d{2}/);
+    return m ? m[0] : raw;
+  }
+
+  function analysePrevisionPct(value) {
+    const n = Math.round(Number(value || 0));
+    return Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
+  }
+
+  function analysePrevisionRingHtml(pct, title, valueText, subText, size = 104) {
+    const s = analysePrevisionPct(pct);
+    const stroke = size >= 100 ? 10 : 9;
+    const r = (size - stroke) / 2;
+    const c = 2 * Math.PI * r;
+    const offset = c * (1 - s / 100);
+    const hue = Math.round(120 * (s / 100));
+    const fill = `hsl(${hue} 70% 42%)`;
+    return `
+      <div class="card" style="padding:12px; margin:0; display:flex; align-items:center; gap:12px; min-width:240px; flex:1;">
+        <div style="position:relative; width:${size}px; height:${size}px; flex:0 0 ${size}px;">
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                    stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                    transform="rotate(-90 ${size / 2} ${size / 2})" />
+          </svg>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <div style="font-weight:900; font-size:${size >= 100 ? 26 : 22}px; line-height:1;">${s}<span style="font-size:12px; font-weight:800;">%</span></div>
+          </div>
+        </div>
+        <div style="min-width:0;">
+          <div class="label" style="margin-bottom:4px;">${escapeHtml(title || "—")}</div>
+          <div class="value" style="font-size:22px; line-height:1.1;">${escapeHtml(valueText || "—")}</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">${escapeHtml(subText || "")}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function analysePrevisionFragilityBadge(value) {
+    const s = analysePrevisionPct(value);
+    const hue = Math.round(120 * (1 - s / 100));
+    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid hsl(${hue} 70% 80%); background:hsl(${hue} 70% 95%); color:hsl(${hue} 70% 28%); font-weight:800; font-size:12px; white-space:nowrap;">${escapeHtml(String(s))}%</span>`;
+  }
+
   function ensureAnalysePrevisionActionModal() {
     let modal = byId("modalAnalysePrevisionAction");
     if (modal) return modal;
@@ -5677,14 +5672,14 @@ function renderDetail(mode) {
         <div class="modal-card modal-card--wide">
           <div class="modal-header">
             <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
-              <div style="font-weight:700;" id="analysePrevisionActionTitle">Détail prévisionnel</div>
-              <div class="card-sub" id="analysePrevisionActionSub" style="margin:0;"></div>
+              <div class="modal-title" id="analysePrevisionActionTitle">Détail prévisionnel</div>
+              <div class="card-sub" id="analysePrevisionActionSub" style="margin:0; display:none;"></div>
             </div>
             <button type="button" class="modal-x" id="btnCloseAnalysePrevisionActionModal" aria-label="Fermer">×</button>
           </div>
           <div class="modal-body" id="analysePrevisionActionBody"></div>
           <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionActionHypothesis">Tester un scénario RH</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionActionHypothesis">Simuler les hypothèses</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnAnalysePrevisionActionClose">Fermer</button>
           </div>
         </div>
@@ -5698,72 +5693,195 @@ function renderDetail(mode) {
     byId("btnCloseAnalysePrevisionActionModal")?.addEventListener("click", close);
     byId("btnAnalysePrevisionActionClose")?.addEventListener("click", close);
     byId("btnAnalysePrevisionActionHypothesis")?.addEventListener("click", () => {
+      const state = window.__sbPrevisionTransitionModalState || {};
+      if (state.mode !== "transition") {
+        close();
+        setStatus("Scénario RH à créer depuis Simulation RH avec les éléments prévisionnels sélectionnés.");
+        return;
+      }
+      const body = byId("analysePrevisionActionBody");
+      const checked = Array.from(body?.querySelectorAll?.("input[data-prev-scenario]:checked") || []);
+      if (!checked.length) {
+        if (_portalref?.showAlert) _portalref.showAlert("error", "Sélectionnez au moins une hypothèse de sécurisation.");
+        else setStatus("Sélectionnez au moins une hypothèse de sécurisation.");
+        return;
+      }
+      const labels = checked.map(x => x.getAttribute("data-prev-scenario-label") || x.value).filter(Boolean);
+      const r = state.item || state.row || {};
+      const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Collaborateur";
+      const poste = r.intitule_poste || "Poste non renseigné";
+      const kindLabel = state.kind === "potential" ? "sortie potentielle" : "sortie confirmée";
+      addAnalyseHypothesis({
+        type: "depart_effectif",
+        title: `Simuler la ${kindLabel} de ${String(full || "collaborateur")}`,
+        poste_id: String(r.id_poste_actuel || "").trim(),
+        poste_label: poste,
+        effectif_id: String(r.id_effectif || "").trim(),
+        effectif_label: full,
+        scope_label: r.nom_service || getScopeLabel(),
+        cause: labels.join(" · "),
+        effet: `Mesurer l’impact de la sortie et tester les leviers cochés : ${labels.join(", ")}.`,
+        horizon: state.kind === "potential" ? analysePrevisionYear(r.exit_date || r.retraite_annee) : analysePrevisionDate(r.exit_date),
+        criticite: getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)
+      });
       close();
-      setStatus("Scénario RH à créer depuis Simulation RH avec les éléments prévisionnels sélectionnés.");
     });
     modal.addEventListener("click", (ev) => { if (ev.target === modal) close(); });
     return modal;
   }
 
-  function openAnalysePrevisionTransitionModal(row, modeLabel) {
+  function renderAnalysePrevisionTransitionModal(row, kind) {
     const r = row || {};
+    const isPotential = kind === "potential";
+    const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Collaborateur";
+    const code = (r.codif_client || r.codif_poste || "").toString().trim();
+    const poste = (r.intitule_poste || "Poste non renseigné").toString();
+    const service = (r.nom_service || "—").toString();
+    const reason = (r.raison_sortie || r.event_kind_label || (isPotential ? "Retraite estimée" : "Sortie prévue")).toString();
+    const dateLabel = isPotential
+      ? `Horizon départ : ${analysePrevisionYear(r.exit_date || r.retraite_annee || r.horizon_year)}`
+      : `Départ : ${analysePrevisionDate(r.exit_date)}`;
+
+    const cap = r.transmission_capacity || {};
+    const total = Number(cap.total_competences_poste || 0) || 0;
+    const transmissibles = Number(cap.transmissibles_count || 0) || 0;
+    const uniques = Number(cap.unique_transmissibles_count || 0) || 0;
+    const capPct = analysePrevisionPct(cap.coverage_pct);
+    const uniquePct = analysePrevisionPct(cap.unique_share_pct);
+    const impacts = r.other_poste_impacts || {};
+    const impactItems = Array.isArray(impacts.items) ? impacts.items : [];
+
+    const impactHtml = impactItems.length ? `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th>Poste impacté</th>
+              <th>Service</th>
+              <th class="col-center">Fragilité actuelle</th>
+              <th class="col-center">Avec sortie</th>
+              <th class="col-center">Évolution</th>
+            </tr>
+          </thead>
+          <tbody>${impactItems.map(p => {
+            const pCode = (p.codif_client || p.codif_poste || "").toString().trim();
+            const pLabel = (p.intitule_poste || "—").toString();
+            const now = analysePrevisionPct(p.indice_fragilite_now);
+            const after = analysePrevisionPct(p.indice_fragilite_after);
+            const delta = Math.max(0, Math.round(Number(p.delta_fragilite || 0)));
+            return `<tr>
+              <td>${pCode ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(pCode)}</span> ` : ""}<strong>${escapeHtml(pLabel)}</strong></td>
+              <td>${escapeHtml(p.nom_service || "—")}</td>
+              <td class="col-center">${analysePrevisionFragilityBadge(now)}</td>
+              <td class="col-center">${analysePrevisionFragilityBadge(after)}</td>
+              <td class="col-center"><span class="sb-badge sb-badge--warning">+${escapeHtml(String(delta))}%</span></td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+    ` : `<div class="card-sub" style="margin:8px 0 0 0;">Aucun autre poste ne voit sa fragilité augmenter avec cette personne en moins sur le périmètre filtré.</div>`;
+
+    const uniqueList = Array.isArray(cap.unique_competences) && cap.unique_competences.length ? `
+      <div class="card-sub" style="margin:8px 0 0 0;">
+        Compétences concernées : ${cap.unique_competences.map(c => `${c.code ? escapeHtml(c.code) + " · " : ""}${escapeHtml(c.intitule || "")}`).join(" ; ")}
+      </div>
+    ` : "";
+
+    const scenarios = [
+      ["transmission", "Organiser une transmission interne", uniques > 0 || transmissibles > 0],
+      ["mobilite", "Tester une relève / mobilité interne", true],
+      ["formation", "Prévoir une formation ciblée", total > transmissibles],
+      ["recrutement", "Préparer un recrutement", Number(r.ecart_titulaires || 0) > 0],
+    ];
+
+    return `
+      <div class="sb-prev-modal-grid">
+        <div class="sb-prev-actions-card">
+          <div class="sb-prev-modal-title">Identification du sortant</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:8px;">
+            <div style="min-width:0;">
+              <div style="font-weight:800; font-size:18px; line-height:1.2;">${escapeHtml(full)}</div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}
+                <span class="sb-badge">${escapeHtml(poste)}</span>
+                <span class="sb-badge sb-badge-accent">${escapeHtml(dateLabel)}</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+              <span class="sb-badge">${escapeHtml(service)}</span>
+              <span class="sb-badge">${escapeHtml(reason)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-prev-actions-card">
+          <div class="sb-prev-modal-title">Capacité de transmission à son poste</div>
+          <div class="card-sub" style="margin:4px 0 10px 0;">Lecture sur toutes les compétences du poste, sans seuil de criticité.</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            ${analysePrevisionRingHtml(capPct, "Compétences transmissibles", `${transmissibles} / ${total}`, "Expert ou Avancé haut")}
+            ${analysePrevisionRingHtml(uniquePct, "Porteuse unique", `${uniques} / ${transmissibles}`, "Part des compétences transmissibles sans autre porteur")}
+          </div>
+          ${uniqueList}
+        </div>
+
+        <div class="sb-prev-actions-card">
+          <div class="sb-prev-modal-title">Impact sur les autres postes</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">Calcul issu du moteur de fragilité des Risques actuels, rejoué avec cette personne en moins.</div>
+          ${impactHtml}
+        </div>
+
+        <div class="sb-prev-actions-card">
+          <div class="sb-prev-modal-title">Sécurisation</div>
+          <div class="card-sub" style="margin:4px 0 10px 0;">Cochez les hypothèses à envoyer dans Simulation RH.</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
+            ${scenarios.map(([value, label, checked]) => `
+              <label class="card" style="padding:10px; margin:0; display:flex; gap:8px; align-items:flex-start; cursor:pointer;">
+                <input type="checkbox" data-prev-scenario="${escapeHtml(value)}" data-prev-scenario-label="${escapeHtml(label)}" ${checked ? "checked" : ""} style="margin-top:2px;">
+                <span style="font-weight:700; font-size:13px; line-height:1.25;">${escapeHtml(label)}</span>
+              </label>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function openAnalysePrevisionTransitionModal(row, kind) {
+    const mode = kind === "potential" ? "potential" : "confirmed";
     const modal = ensureAnalysePrevisionActionModal();
     const title = byId("analysePrevisionActionTitle");
     const sub = byId("analysePrevisionActionSub");
     const body = byId("analysePrevisionActionBody");
-    const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Collaborateur";
-    const poste = r.intitule_poste || "Poste non renseigné";
-    const dateTxt = analysePrevisionDate(r.exit_date);
-    const cible = Number(r.nb_titulaires_cible || 0) || 0;
-    const now = Number(r.nb_titulaires_now || 0) || 0;
-    const after = Number(r.nb_titulaires_after || 0) || 0;
-    const ecart = Number(r.ecart_titulaires || 0) || 0;
-    const indirect = Number(r.nb_postes_indirects || 0) || 0;
-    const comps = Number(r.nb_competences_critiques || 0) || 0;
+    const btn = byId("btnAnalysePrevisionActionHypothesis");
+    const titleText = mode === "potential" ? "Sortie potentielle" : "Sortie confirmée";
+    const horizon = getPrevHorizon();
+    const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
 
-    if (title) title.textContent = `${modeLabel || "Transition à préparer"} — ${full}`;
-    if (sub) sub.textContent = `${poste} · ${dateTxt}`;
-    if (body) {
-      body.innerHTML = `
-        <div class="sb-prev-modal-grid">
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Événement RH</div>
-            <div class="sb-prev-action-list">
-              <div><strong>${escapeHtml(full)}</strong> · ${escapeHtml(r.raison_sortie || r.event_kind_label || "Sortie prévue")}</div>
-              <div>Date / horizon : <strong>${dateTxt}</strong></div>
-              <div>Poste actuel : <strong>${escapeHtml(poste)}</strong></div>
-            </div>
-          </div>
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Impact direct sur le poste</div>
-            <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
-              <div class="sb-prev-kpi"><span>Cible RH</span><strong>${escapeHtml(String(cible || "—"))}</strong></div>
-              <div class="sb-prev-kpi"><span>Avant sortie</span><strong>${escapeHtml(String(now || 0))}</strong></div>
-              <div class="sb-prev-kpi"><span>Après sortie</span><strong>${escapeHtml(String(after || 0))}</strong></div>
-              <div class="sb-prev-kpi"><span>Écart à couvrir</span><strong>${escapeHtml(String(ecart || 0))}</strong></div>
-            </div>
-          </div>
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Impact indirect</div>
-            <div class="sb-prev-action-list">
-              <div>${escapeHtml(String(indirect))} poste(s) indirectement impacté(s)</div>
-              <div>${escapeHtml(String(comps))} compétence(s) critique(s) à sécuriser</div>
-            </div>
-          </div>
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">À préparer</div>
-            <div class="sb-prev-action-list">
-              ${ecart > 0 ? `<div>Préparer un relais, une mobilité ou un recrutement pour couvrir l’écart titulaire.</div>` : `<div>Confirmer que la capacité poste reste suffisante après la sortie.</div>`}
-              ${comps > 0 ? `<div>Organiser la transmission des compétences critiques portées par le collaborateur.</div>` : `<div>Vérifier les compétences réellement portées avant arbitrage.</div>`}
-              ${indirect > 0 ? `<div>Contrôler les postes indirectement dépendants de ces compétences.</div>` : ``}
-              <div>Tester un scénario RH : transmission, mobilité, recrutement ou scénario mixte.</div>
-            </div>
-          </div>
-        </div>
-      `;
+    window.__sbPrevisionTransitionModalState = { mode: "transition", kind: mode, row: row || {}, item: row || {} };
+    if (title) title.textContent = titleText;
+    if (sub) {
+      sub.textContent = "";
+      sub.style.display = "none";
     }
+    if (btn) {
+      btn.textContent = "Simuler les hypothèses";
+      btn.disabled = true;
+    }
+    if (body) body.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
+
+    try {
+      const data = await fetchPrevisionsTransitionModalDetail(_portalref, row, mode, horizon, id_service);
+      const item = data?.item || row || {};
+      window.__sbPrevisionTransitionModalState = { mode: "transition", kind: mode, row: row || {}, item };
+      if (body) body.innerHTML = renderAnalysePrevisionTransitionModal(item, mode);
+      if (btn) btn.disabled = false;
+    } catch (e) {
+      if (body) body.innerHTML = `<div class="sb-prev-empty">Impossible de charger le détail de la sortie : ${escapeHtml(e?.message || e)}</div>`;
+      if (btn) btn.disabled = true;
+    }
   }
 
   function openAnalysePrevisionTransmissionModal(row) {
@@ -5772,11 +5890,20 @@ function renderDetail(mode) {
     const title = byId("analysePrevisionActionTitle");
     const sub = byId("analysePrevisionActionSub");
     const body = byId("analysePrevisionActionBody");
+    const btn = byId("btnAnalysePrevisionActionHypothesis");
     const comp = `${r.code ? r.code + " — " : ""}${r.intitule || "Compétence"}`;
     const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Porteur";
     const dateTxt = analysePrevisionDate(r.exit_date);
+    window.__sbPrevisionTransitionModalState = { mode: "transmission", row: r };
     if (title) title.textContent = `Transmission à préparer — ${comp}`;
-    if (sub) sub.textContent = `${full} · ${dateTxt}`;
+    if (sub) {
+      sub.textContent = `${full} · ${dateTxt}`;
+      sub.style.display = "";
+    }
+    if (btn) {
+      btn.textContent = "Tester un scénario RH";
+      btn.disabled = false;
+    }
     if (body) {
       body.innerHTML = `
         <div class="sb-prev-modal-grid">
@@ -5934,287 +6061,6 @@ function renderDetail(mode) {
       </div>
     `;
   }
-  function renderPrevisionTablePostes(rows) {
-    const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
-
-    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-
-    function scoreHue(score) {
-      const s = clamp(Number(score || 0), 0, 100) / 100;
-      return Math.round(120 * (1 - s));
-    }
-
-    function scoreChip(score) {
-      const s = clamp(Math.round(Number(score || 0)), 0, 100);
-      const h = scoreHue(s);
-      const fill = `hsl(${h} 70% 45%)`;
-
-      return `
-        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
-          <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
-            <div style="height:100%; width:${s}%; background:${fill};"></div>
-          </div>
-          <div style="min-width:44px; text-align:right; font-weight:800;">
-            ${s}<span style="font-weight:700; font-size:12px;">%</span>
-          </div>
-        </div>
-      `;
-    }
-
-    function stateLabel(score) {
-      const s = clamp(Number(score || 0), 0, 100);
-      if (s >= 75) return "Critique";
-      if (s >= 50) return "Élevé";
-      if (s >= 25) return "Modéré";
-      return "Faible";
-    }
-
-    function statePill(label, score) {
-      const s = clamp(Math.round(Number(score || 0)), 0, 100);
-      const h = scoreHue(s);
-      const bg = `hsl(${h} 70% 95%)`;
-      const br = `hsl(${h} 70% 80%)`;
-      const tx = `hsl(${h} 70% 28%)`;
-
-      return `
-        <span style="
-          display:inline-flex; align-items:center; justify-content:center;
-          padding:4px 10px; border-radius:999px;
-          border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;
-        ">
-          ${escapeHtml(label)}
-        </span>
-      `;
-    }
-
-    return `
-      <div class="table-wrap sb-tip-host" style="margin-top:10px;">
-        <table class="sb-table" id="tblPrevPostesImpactes">
-          <thead>
-            <tr>
-              <th>Poste</th>
-              <th style="width:180px;">Service</th>
-
-              <th class="col-center" style="width:220px;">
-                <span class="sb-th-with-tip">
-                  <span>Indice<br>de fragilité</span>
-                  <span class="sb-iinfo"
-                        data-sbtip="fragility-index"
-                        tabindex="0"
-                        role="button"
-                        aria-label="Informations sur l'indice de fragilité">i</span>
-                </span>
-              </th>
-
-              <th class="col-center" style="width:120px; white-space:normal; line-height:1.1;">
-                Évolution
-              </th>
-
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
-                État
-              </th>
-
-              <th class="col-center" style="width:92px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${list.map(r => {
-              const intitule = (r.intitule_poste || "").trim() || "—";
-              const codifClient = (r.codif_client || "").trim();
-              const codifPoste  = (r.codif_poste || "").trim();
-              const codeAffiche = codifClient !== "" ? codifClient : codifPoste;
-              const svc = (r.nom_service || "").trim() || "—";
-              const score = clamp(Number(r.indice_fragilite_horizon ?? r.indice_fragilite ?? 0), 0, 100);
-              const delta = Number(r.delta_fragilite ?? 0);
-              const etat = stateLabel(score);
-              const idPoste = (r.id_poste || "").toString().trim();
-
-              return `
-                <tr class="prev-red-poste-row"
-                    data-id_poste="${escapeHtml(idPoste)}"
-                    data-intitule_poste="${escapeHtml(intitule)}"
-                    data-nom_service="${escapeHtml(svc)}"
-                    data-indice_fragilite_horizon="${escapeHtml(String(score))}"
-                    data-delta_fragilite="${escapeHtml(String(delta))}"
-                    data-next_exit_date="${escapeHtml((r.last_exit_date || r.next_exit_date || "").toString())}">
-                  <td class="prev-red-open" style="cursor:pointer;">
-                    <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                      <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
-                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${escapeHtml(intitule)}
-                      </span>
-                    </div>
-                  </td>
-                  <td>${escapeHtml(svc)}</td>
-
-                  <td class="col-center" title="Indice de fragilité projeté du poste">
-                    ${scoreChip(score)}
-                  </td>
-
-                  <td class="col-center" title="Évolution depuis la situation actuelle">
-                    ${previsionDeltaBadge(delta)}
-                  </td>
-
-                  <td class="col-center">${statePill(etat, score)}</td>
-
-                  <td class="col-center">
-                    <div class="sb-icon-actions" style="justify-content:center;">
-                      <button type="button"
-                              class="sb-icon-btn prev-red-open"
-                              title="Voir"
-                              aria-label="Voir l’analyse du poste">
-                        ${analyseEyeIconSvg()}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  function renderPrevisionTableCompetences(rows) {
-    const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
-
-    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-
-    function scoreHue(score) {
-      const s = clamp(Number(score || 0), 0, 100) / 100;
-      return Math.round(120 * (1 - s));
-    }
-
-    function scoreChip(score) {
-      const s = clamp(Math.round(Number(score || 0)), 0, 100);
-      const h = scoreHue(s);
-      const fill = `hsl(${h} 70% 45%)`;
-
-      return `
-        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
-          <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
-            <div style="height:100%; width:${s}%; background:${fill};"></div>
-          </div>
-          <div style="min-width:44px; text-align:right; font-weight:800;">
-            ${s}<span style="font-weight:700; font-size:12px;">%</span>
-          </div>
-        </div>
-      `;
-    }
-
-    function stateLabel(score) {
-      const s = clamp(Number(score || 0), 0, 100);
-      if (s >= 75) return "Critique";
-      if (s >= 50) return "Élevé";
-      if (s >= 25) return "Modéré";
-      return "Faible";
-    }
-
-    function statePill(label, score) {
-      const s = clamp(Math.round(Number(score || 0)), 0, 100);
-      const h = scoreHue(s);
-      const bg = `hsl(${h} 70% 95%)`;
-      const br = `hsl(${h} 70% 80%)`;
-      const tx = `hsl(${h} 70% 28%)`;
-
-      return `
-        <span style="
-          display:inline-flex; align-items:center; justify-content:center;
-          padding:4px 10px; border-radius:999px;
-          border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;
-        ">
-          ${escapeHtml(label)}
-        </span>
-      `;
-    }
-
-    return `
-      <div class="table-wrap sb-tip-host" style="margin-top:10px;">
-        <table class="sb-table" id="tblPrevCompImpact">
-          <thead>
-            <tr>
-              <th>Code – Compétence</th>
-              <th class="col-center" style="width:220px;">Domaine</th>
-
-              <th class="col-center" style="width:220px;">
-                <span class="sb-th-with-tip">
-                  <span>Indice<br>de fragilité</span>
-                  <span class="sb-iinfo"
-                        data-sbtip="fragility-index-competence"
-                        tabindex="0"
-                        role="button"
-                        aria-label="Informations sur l'indice de fragilité compétence">i</span>
-                </span>
-              </th>
-
-              <th class="col-center" style="width:120px; white-space:normal; line-height:1.1;">
-                Évolution
-              </th>
-
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
-                État
-              </th>
-
-              <th class="col-center" style="width:92px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${list.map(r => {
-              const code = (r.code || "—").toString().trim();
-              const intit = (r.intitule || r.intitule_competence || "—").toString();
-              const idComp = (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
-              const compKey = (idComp || code || "").trim();
-              const score = clamp(Number(r.indice_fragilite_horizon ?? r.indice_fragilite ?? 0), 0, 100);
-              const delta = Number(r.delta_fragilite ?? 0);
-              const etat = stateLabel(score);
-
-              return `
-                <tr class="prev-crit-row"
-                    data-comp-key="${escapeHtml(compKey)}"
-                    data-code="${escapeHtml(code)}"
-                    data-id_comp="${escapeHtml(idComp)}">
-
-                  <td class="prev-crit-open" style="cursor:pointer;">
-                    <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                      <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
-                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${escapeHtml(intit)}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td style="text-align:left;">${renderDomainPill(r)}</td>
-
-                  <td class="col-center" title="Indice de fragilité projeté de la compétence">${scoreChip(score)}</td>
-
-                  <td class="col-center" title="Évolution depuis la situation actuelle">${previsionDeltaBadge(delta)}</td>
-
-                  <td class="col-center">${statePill(etat, score)}</td>
-
-                  <td class="col-center">
-                    <div class="sb-icon-actions" style="justify-content:center;">
-                      <button type="button"
-                              class="sb-icon-btn prev-crit-open"
-                              title="Voir"
-                              aria-label="Voir l’analyse de la compétence">
-                        ${analyseEyeIconSvg()}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
   const currentRiskDetailKey = isExpandableRiskDetail(rf) ? rf : "";
 
   const buildResetHtml = () => "";
@@ -6522,381 +6368,6 @@ function renderDetail(mode) {
     renderDetail(finalMode);
   }
 
-  // =====================================================
-  // MODAL - Prévisions / Critiques impactées (détail)
-  // HTML IDs attendus : modalAnalysePrevCrit, btnCloseAnalysePrevCritModal, btnAnalysePrevCritModalClose, etc.
-  // =====================================================
-
-  function openAnalysePrevCritModal() {
-    const m = byId("modalAnalysePrevCrit");
-    if (!m) return;
-    m.classList.add("show");
-    m.setAttribute("aria-hidden", "false");
-  }
-
-  function closeAnalysePrevCritModal() {
-    const m = byId("modalAnalysePrevCrit");
-    if (!m) return;
-    m.classList.remove("show");
-    m.setAttribute("aria-hidden", "true");
-    if (typeof updateCriticiteMinUi === "function") {
-    updateCriticiteMinUi();
-    }
-  }
-
-  function setAnalysePrevCritTab(tabKey) {
-    const btnSynth = byId("tabPrevCritSynthese");
-    const btnRest = byId("tabPrevCritRestants");
-    const btnOut = byId("tabPrevCritSortants");
-    const btnPostes = byId("tabPrevCritPostes");
-
-    const paneSynth = byId("analysePrevCritTabSynthese");
-    const paneRest = byId("analysePrevCritTabRestants");
-    const paneOut = byId("analysePrevCritTabSortants");
-    const panePostes = byId("analysePrevCritTabPostes");
-
-    const map = {
-      synthese: { btn: btnSynth, pane: paneSynth },
-      restants: { btn: btnRest, pane: paneRest },
-      sortants: { btn: btnOut, pane: paneOut },
-      postes: { btn: btnPostes, pane: panePostes },
-    };
-
-    // reset
-    Object.values(map).forEach(x => {
-      if (x.btn) x.btn.classList.remove("is-active");
-      if (x.pane) x.pane.style.display = "none";
-    });
-
-    const cur = map[tabKey] || map.synthese;
-    if (cur.btn) cur.btn.classList.add("is-active");
-    if (cur.pane) cur.pane.style.display = "";
-  }
-
-  function fmtDateFR(v) {
-    const s = (v || "").toString().trim();
-    if (!s) return "—";
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return escapeHtml(s);
-    return `${m[3]}-${m[2]}-${m[1]}`;
-  }
-
-  function renderLevelBar(a, b, c) {
-    const A = Number(a || 0);
-    const B = Number(b || 0);
-    const C = Number(c || 0);
-    const tot = Math.max(0, A + B + C);
-
-    const pct = (x) => (tot ? Math.round((x / tot) * 100) : 0);
-
-    const elA = byId("prevCritLevelBarA");
-    const elB = byId("prevCritLevelBarB");
-    const elC = byId("prevCritLevelBarC");
-    const legend = byId("prevCritLevelBarLegend");
-
-    if (elA) elA.style.width = pct(A) + "%";
-    if (elB) elB.style.width = pct(B) + "%";
-    if (elC) elC.style.width = pct(C) + "%";
-    if (legend) legend.textContent = `A: ${A} • B: ${B} • C: ${C}`;
-  }
-
-  function safeDomainPill(it) {
-    const lab = (it?.domaine_titre_court || it?.domaine_titre || it?.id_domaine_competence || "—").toString();
-    const col = normalizeColor(it?.domaine_couleur) || "#e5e7eb";
-    return `
-      <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
-        <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
-        <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
-      </span>
-    `;
-  }
-
-  // Endpoint attendu (tu le coderas côté API ensuite) :
-  // GET /skills/analyse/previsions/critiques/modal/{id_contact}?comp_key=...&horizon_years=...&id_service=...
-  async function fetchPrevisionsCritiquesModal(portal, compKey, horizonYears, id_service) {
-    const ctx = getPortalContext(portal);
-    if (!ctx.id_contact) throw new Error("id_contact introuvable (UI)");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable (UI)");
-
-    const qs = new URLSearchParams();
-    qs.set("comp_key", String(compKey || ""));
-    qs.set("horizon_years", String(horizonYears || 1));
-    if (id_service) qs.set("id_service", String(id_service));
-    qs.set("limit", "500");
-
-    const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-
-    return await analyseApiJson(portal, url);
-  }
-
-
-  async function showAnalysePrevCritModal(portal, compKey, id_service) {
-    openAnalysePrevCritModal();
-    setAnalysePrevCritTab("synthese");
-
-    const horizon = getPrevHorizon();
-    const horizonTxt = analyseHorizonLabel(horizon);
-    const scope = getScopeLabel();
-
-    const title = byId("analysePrevCritModalTitle");
-    const sub = byId("analysePrevCritModalSub");
-    const bSvc = byId("analysePrevCritBadgeService");
-    const bHor = byId("analysePrevCritBadgeHorizon");
-    const bCrit = byId("analysePrevCritBadgeCriticite");
-
-    const kNow = byId("prevCritKpiNow");
-    const kOut = byId("prevCritKpiOut");
-    const kRemain = byId("prevCritKpiRemain");
-    const kPostes = byId("prevCritKpiPostes");
-    const kNext = byId("prevCritKpiNextExit");
-
-    const paneSynth = byId("analysePrevCritTabSynthese");
-    const paneRest = byId("analysePrevCritTabRestants");
-    const paneOut = byId("analysePrevCritTabSortants");
-    const panePostes = byId("analysePrevCritTabPostes");
-
-    if (title) title.textContent = "Détail compétence";
-    if (sub) sub.textContent = "Chargement…";
-    if (bSvc) bSvc.textContent = `Service : ${scope || "—"}`;
-    if (bHor) bHor.textContent = `Horizon : ${horizonTxt}`;
-    if (bCrit) bCrit.textContent = `Criticité : —`;
-    [kNow, kOut, kRemain, kPostes, kNext].forEach(el => { if (el) el.textContent = "—"; });
-    renderLevelBar(0, 0, 0);
-    if (paneSynth) paneSynth.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
-    if (paneRest) paneRest.innerHTML = "";
-    if (paneOut) paneOut.innerHTML = "";
-    if (panePostes) panePostes.innerHTML = "";
-
-    window.__sbPrevCritModalReqId = (window.__sbPrevCritModalReqId || 0) + 1;
-    const reqId = window.__sbPrevCritModalReqId;
-
-    try {
-      const data = await fetchPrevisionsCritiquesModal(portal, compKey, horizon, id_service);
-      if ((window.__sbPrevCritModalReqId || 0) !== reqId) return;
-
-      const comp = data?.competence || data?.comp || {};
-      const code = (comp.code || comp.code_competence || "").toString().trim();
-      const intit = (comp.intitule || comp.intitule_competence || comp.libelle || "Compétence").toString().trim();
-      const domPill = safeDomainPill(comp);
-      const kpis = data?.kpis || {};
-
-      const now = Number(kpis.nb_now ?? 0);
-      const out = Number(kpis.nb_out ?? 0);
-      const remain = Number(kpis.nb_remain ?? Math.max(now - out, 0));
-      const postesImpact = Number(kpis.nb_postes ?? 0);
-      const nextExit = (kpis.next_exit_date || "").toString().trim();
-      const criticite = Number(data?.criticite_max ?? data?.max_criticite ?? comp?.max_criticite ?? 0) || 0;
-
-      window.__sbPrevCritHypothesis = {
-        type: "securiser_competence_prevision",
-        title: `Anticiper la compétence ${code ? code + " · " : ""}${intit}`,
-        competence_id: String(comp.id_comp || comp.id_competence || comp.id || compKey || "").trim(),
-        competence_code: code,
-        competence_label: intit,
-        scope_label: scope,
-        cause: "Fragilité prévisionnelle à horizon",
-        effet: "Tester une hypothèse de couverture ou de transmission avant que la compétence ne devienne insuffisamment couverte.",
-        horizon: horizonTxt,
-        criticite: criticite
-      };
-
-      if (title) title.textContent = `${code ? code + " — " : ""}${intit}`;
-      if (sub) sub.textContent = `Impact prévisionnel à horizon ${horizonTxt}`;
-      if (bCrit) bCrit.textContent = `Criticité : ${criticite || "—"}`;
-      if (kNow) kNow.textContent = String(now);
-      if (kOut) kOut.textContent = String(out);
-      if (kRemain) kRemain.textContent = String(remain);
-      if (kPostes) kPostes.textContent = String(postesImpact);
-      if (kNext) kNext.textContent = nextExit ? fmtDateFR(nextExit) : "—";
-
-      const a = Number(kpis.remain_a ?? 0);
-      const b = Number(kpis.remain_b ?? 0);
-      const c = Number(kpis.remain_c ?? 0);
-      renderLevelBar(a, b, c);
-
-      const restants = Array.isArray(data?.restants) ? data.restants : (Array.isArray(data?.porteurs_restants) ? data.porteurs_restants : []);
-      const sortants = Array.isArray(data?.sortants) ? data.sortants : (Array.isArray(data?.porteurs_sortants) ? data.porteurs_sortants : []);
-      const postes = Array.isArray(data?.postes) ? data.postes : (Array.isArray(data?.postes_impactes) ? data.postes_impactes : []);
-
-      function rhReading() {
-        if (out > 0 && remain <= 0) return "Risque de rupture : les porteurs identifiés sortent du périmètre et aucun relais suffisant n’est confirmé à la période sélectionnée.";
-        if (out > 0 && remain === 1) return "Dépendance forte : la compétence resterait couverte par une seule personne. Une transmission ou une montée en compétence doit être organisée.";
-        if (out > 0) return "La compétence est exposée par une ou plusieurs sorties prévues. Le relais existe, mais la capacité doit être confirmée.";
-        return "Aucune sortie directe de porteur n’est identifiée, mais cette compétence reste à surveiller sur les postes concernés.";
-      }
-
-      function peopleRows(rows, mode) {
-        if (!rows.length) return `<div class="sb-prev-empty">Aucune personne retournée sur ce périmètre.</div>`;
-        return `
-          <div class="sb-prev-table-wrap">
-            <table class="sb-table sb-table--airy sb-prev-table">
-              <thead><tr><th>Personne</th><th class="col-center">Niveau</th><th>Poste</th><th>Service</th>${mode === "out" ? "<th>Date sortie</th><th>Motif</th>" : ""}</tr></thead>
-              <tbody>${rows.map(r => {
-                const full = (r.full || `${(r.prenom || r.prenom_effectif || "").trim()} ${(r.nom || r.nom_effectif || "").trim()}`.trim() || "—");
-                const niv = (r.niveau || r.level || r.niv || "—").toString().trim();
-                const poste = (r.intitule_poste || r.poste || "—").toString().trim();
-                const svc = (r.nom_service || r.service || "—").toString().trim();
-                const exit = (r.exit_date || r.date_sortie || r.date_sortie_prevue || "").toString().trim();
-                const reason = (r.raison_sortie || r.reason || r.motif_sortie || "—").toString().trim();
-                return `<tr><td><strong>${escapeHtml(full)}</strong></td><td class="col-center"><span class="sb-badge">${escapeHtml(niv)}</span></td><td>${escapeHtml(poste)}</td><td>${escapeHtml(svc)}</td>${mode === "out" ? `<td>${escapeHtml(exit ? fmtDateFR(exit) : "—")}</td><td>${escapeHtml(reason)}</td>` : ""}</tr>`;
-              }).join("")}</tbody>
-            </table>
-          </div>`;
-      }
-
-      if (paneSynth) {
-        paneSynth.innerHTML = `
-          <div class="sb-prev-rh-summary">
-            <div class="sb-prev-rh-title">Ce qu’il faut comprendre</div>
-            <div class="sb-prev-rh-text">${escapeHtml(rhReading())}</div>
-          </div>
-          <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
-            <div class="sb-prev-kpi"><span>Porteurs actuels</span><strong>${escapeHtml(String(now))}</strong></div>
-            <div class="sb-prev-kpi"><span>Sortants à horizon</span><strong>${escapeHtml(String(out))}</strong></div>
-            <div class="sb-prev-kpi"><span>Relais restants</span><strong>${escapeHtml(String(remain))}</strong></div>
-            <div class="sb-prev-kpi"><span>Postes concernés</span><strong>${escapeHtml(String(postesImpact))}</strong></div>
-          </div>
-          <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Points à sécuriser</div>
-            <div class="sb-prev-action-list">
-              <div>Confirmer les relais capables de couvrir le niveau attendu.</div>
-              <div>Organiser une transmission avant la prochaine sortie prévue${nextExit ? ` (${escapeHtml(fmtDateFR(nextExit))})` : ""}.</div>
-              <div>Tester une hypothèse de sécurisation si la couverture restante est insuffisante.</div>
-            </div>
-          </div>
-          <div style="margin-top:10px;">${domPill}</div>
-        `;
-      }
-
-      if (paneRest) paneRest.innerHTML = peopleRows(restants, "remain");
-      if (paneOut) paneOut.innerHTML = peopleRows(sortants, "out");
-
-      if (panePostes) {
-        if (!postes.length) {
-          panePostes.innerHTML = `<div class="sb-prev-empty">Aucun poste impacté retourné.</div>`;
-        } else {
-          panePostes.innerHTML = `
-            <div class="sb-prev-table-wrap">
-              <table class="sb-table sb-table--airy sb-table--hover sb-prev-table">
-                <thead><tr><th>Poste concerné</th><th>Service</th><th class="col-center">Niveau attendu</th><th class="col-center">Criticité</th><th>Lecture RH</th></tr></thead>
-                <tbody>${postes.map(p => {
-                  const poste = (p.intitule_poste || p.poste || "—").toString();
-                  const svc = (p.nom_service || p.service || "—").toString();
-                  const attendu = (p.niveau_attendu || p.level_expected || p.niveau || "—").toString();
-                  const crit = (p.criticite || p.max_criticite || "—").toString();
-                  return `<tr><td><strong>${escapeHtml(poste)}</strong></td><td>${escapeHtml(svc)}</td><td class="col-center"><span class="sb-badge">${escapeHtml(attendu)}</span></td><td class="col-center">${escapeHtml(crit)}</td><td>Vérifier le relais opérationnel sur ce poste.</td></tr>`;
-                }).join("")}</tbody>
-              </table>
-            </div>`;
-        }
-      }
-    } catch (e) {
-      if ((window.__sbPrevCritModalReqId || 0) !== reqId) return;
-      const msg = `Impossible de charger le détail compétence : ${e?.message || e}`;
-      if (sub) sub.textContent = "Erreur de chargement";
-      if (paneSynth) paneSynth.innerHTML = `<div class="sb-prev-empty">${escapeHtml(msg)}</div>`;
-    }
-  }
-
-
-// =====================================================
-// PREVISIONS - MODAL "POSTE ROUGE" (open/close + tabs)
-// IDs HTML existants (NE PAS CHANGER):
-// - modalAnalysePrevPosteRed
-// - btnCloseAnalysePrevPosteRedModal, btnAnalysePrevPosteRedModalClose
-// - tabPrevPosteRedSynthese, tabPrevPosteRedCauses, tabPrevPosteRedSortants, tabPrevPosteRedCouverture, tabPrevPosteRedVoisins
-// - analysePrevPosteRedTabSynthese, analysePrevPosteRedTabCauses, analysePrevPosteRedTabSortants, analysePrevPosteRedTabCouverture, analysePrevPosteRedTabVoisins
-// =====================================================
-
-function openAnalysePrevPosteRedModal() {
-  const m = byId("modalAnalysePrevPosteRed");
-  if (!m) return;
-  m.classList.add("show");
-  m.setAttribute("aria-hidden", "false");
-}
-
-function closeAnalysePrevPosteRedModal() {
-  const m = byId("modalAnalysePrevPosteRed");
-  if (!m) return;
-  m.classList.remove("show");
-  m.setAttribute("aria-hidden", "true");
-  if (typeof updateCriticiteMinUi === "function") {
-    updateCriticiteMinUi();
-  }
-}
-
-function setAnalysePrevPosteRedTab(key) {
-  const tabs = [
-    ["synthese", "tabPrevPosteRedSynthese", "analysePrevPosteRedTabSynthese"],
-    ["causes",   "tabPrevPosteRedCauses",   "analysePrevPosteRedTabCauses"],
-    ["sortants", "tabPrevPosteRedSortants", "analysePrevPosteRedTabSortants"],
-    ["couverture","tabPrevPosteRedCouverture","analysePrevPosteRedTabCouverture"],
-    ["voisins",  "tabPrevPosteRedVoisins",  "analysePrevPosteRedTabVoisins"],
-  ];
-
-  tabs.forEach(([k, tabId, paneId]) => {
-    const t = byId(tabId);
-    const p = byId(paneId);
-    const on = (k === key);
-
-    if (t) {
-      // style simple (cohérent avec tes autres tabs)
-      t.classList.toggle("is-active", on);
-      t.style.borderColor = on ? "var(--reading-accent)" : "";
-      t.style.background = on ? "color-mix(in srgb, var(--reading-accent) 8%, #ffffff)" : "";
-      t.style.fontWeight = on ? "700" : "";
-    }
-    if (p) p.style.display = on ? "" : "none";
-  });
-}
-
-// Bind une seule fois
-(function bindAnalysePrevPosteRedModalOnce() {
-  if (window.__sbBoundPrevPosteRedModal) return;
-  window.__sbBoundPrevPosteRedModal = true;
-
-  const btnX = byId("btnCloseAnalysePrevPosteRedModal");
-  const btnClose = byId("btnAnalysePrevPosteRedModalClose");
-  const btnHypoPosteRed = byId("btnAnalysePrevPosteRedCreateHypothesis");
-
-  if (btnX) btnX.addEventListener("click", closeAnalysePrevPosteRedModal);
-  if (btnClose) btnClose.addEventListener("click", closeAnalysePrevPosteRedModal);
-  if (btnHypoPosteRed) btnHypoPosteRed.addEventListener("click", () => {
-    const h = window.__sbPrevPosteRedHypothesis;
-    if (!h) return setStatus("Aucune hypothèse disponible pour cette prévision.");
-    addAnalyseHypothesis(h);
-    closeAnalysePrevPosteRedModal();
-  });
-
-  const m = byId("modalAnalysePrevPosteRed");
-  if (m) {
-    // clic dehors = fermer
-    m.addEventListener("click", (ev) => {
-      if (ev.target === m) closeAnalysePrevPosteRedModal();
-    });
-
-    // ESC = fermer (si tu as déjà un handler global, ça ne gêne pas)
-    document.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape" && m.classList.contains("show")) {
-        closeAnalysePrevPosteRedModal();
-      }
-    });
-  }
-
-  const tSyn = byId("tabPrevPosteRedSynthese");
-  const tCau = byId("tabPrevPosteRedCauses");
-  const tSor = byId("tabPrevPosteRedSortants");
-  const tCov = byId("tabPrevPosteRedCouverture");
-  const tVoi = byId("tabPrevPosteRedVoisins");
-
-  if (tSyn) tSyn.addEventListener("click", () => setAnalysePrevPosteRedTab("synthese"));
-  if (tCau) tCau.addEventListener("click", () => setAnalysePrevPosteRedTab("causes"));
-  if (tSor) tSor.addEventListener("click", () => setAnalysePrevPosteRedTab("sortants"));
-  if (tCov) tCov.addEventListener("click", () => setAnalysePrevPosteRedTab("couverture"));
-  if (tVoi) tVoi.addEventListener("click", () => setAnalysePrevPosteRedTab("voisins"));
-})();
-
-
 function bindOnce(portal) {
   if (_bound) return;
   _bound = true;
@@ -7122,48 +6593,6 @@ function bindOnce(portal) {
       if (e.target === modalPoste) closeAnalysePosteModal();
     });
   }
-
-  // ==============================
-  // Modal Prévisions Critiques - wiring
-  // ==============================
-  const modalPrevCrit = byId("modalAnalysePrevCrit");
-  const btnXPrevCrit = byId("btnCloseAnalysePrevCritModal");
-  const btnClosePrevCrit = byId("btnAnalysePrevCritModalClose");
-
-  if (btnXPrevCrit) btnXPrevCrit.addEventListener("click", closeAnalysePrevCritModal);
-  if (btnClosePrevCrit) btnClosePrevCrit.addEventListener("click", closeAnalysePrevCritModal);
-  const btnHypoPrevCrit = byId("btnAnalysePrevCritCreateHypothesis");
-  if (btnHypoPrevCrit) btnHypoPrevCrit.addEventListener("click", () => {
-    const h = window.__sbPrevCritHypothesis;
-    if (!h) return setStatus("Aucune hypothèse disponible pour cette prévision.");
-    addAnalyseHypothesis(h);
-    closeAnalysePrevCritModal();
-  });
-
-  if (modalPrevCrit) {
-    modalPrevCrit.addEventListener("click", (e) => {
-      if (e.target === modalPrevCrit) closeAnalysePrevCritModal();
-    });
-  }
-
-  // Onglets modal PrevCrit
-  const btnSynth = byId("tabPrevCritSynthese");
-  const btnRest = byId("tabPrevCritRestants");
-  const btnOut = byId("tabPrevCritSortants");
-  const btnPostes = byId("tabPrevCritPostes");
-
-  if (btnSynth) btnSynth.addEventListener("click", () => setAnalysePrevCritTab("synthese"));
-  if (btnRest) btnRest.addEventListener("click", () => setAnalysePrevCritTab("restants"));
-  if (btnOut) btnOut.addEventListener("click", () => setAnalysePrevCritTab("sortants"));
-  if (btnPostes) btnPostes.addEventListener("click", () => setAnalysePrevCritTab("postes"));
-
-  // ESC ferme le PrevCrit modal (sans flinguer le reste)
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    const m = byId("modalAnalysePrevCrit");
-    if (m && m.classList.contains("show")) closeAnalysePrevCritModal();
-  });
-
 
   // ==============================
   // Tooltip "i" (Analyse) : portail hors table (#sbTipPortal)
@@ -7407,40 +6836,6 @@ function bindOnce(portal) {
 
 
     // ------------------------------
-    // PREVISIONS: clic sur un poste impacté
-    // Source détail = modal prévisionnel poste, pas diagnostic risques actuels
-    // ------------------------------
-    const trPrevRed = ev.target.closest("tr.prev-red-poste-row[data-id_poste]");
-    if (trPrevRed) {
-      const hit = ev.target.closest(".prev-red-open");
-      if (!hit) return;
-
-      const id_poste = (trPrevRed.getAttribute("data-id_poste") || "").trim();
-      if (!id_poste) return;
-
-      const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-      const seed = {
-        intitule_poste: (trPrevRed.getAttribute("data-intitule_poste") || "").trim(),
-        nom_service: (trPrevRed.getAttribute("data-nom_service") || "").trim(),
-        indice_fragilite_horizon: (trPrevRed.getAttribute("data-indice_fragilite_horizon") || "").trim(),
-        delta_fragilite: (trPrevRed.getAttribute("data-delta_fragilite") || "").trim(),
-        next_exit_date: (trPrevRed.getAttribute("data-next_exit_date") || "").trim(),
-      };
-
-      try {
-        if (typeof window.showAnalysePrevPosteRedModal === "function") {
-          await window.showAnalysePrevPosteRedModal(p, id_poste, id_service, seed);
-        } else {
-          await showAnalysePosteDetailModal(p, id_poste, id_service, "");
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      return;
-    }
-
-
-    // ------------------------------
     // PDF fiche compétence depuis le détail poste
     // ------------------------------
     const btnPosteDepCompPdf = ev.target.closest("[data-poste-dep-comp-pdf]");
@@ -7577,849 +6972,8 @@ function bindOnce(portal) {
     if (trPerson) {
       return;
     }
-
-    // ------------------------------
-    // 5) Click sur SORTIE (prévisions sorties)
-    // ------------------------------
-    const trSortie = ev.target.closest("tr.prev-sortie-row[data-id_effectif]");
-    if (trSortie) {
-      const tds = Array.from(trSortie.querySelectorAll("td"));
-      const id_effectif = (trSortie.getAttribute("data-id_effectif") || "").trim();
-      const id_poste_actuel = (trSortie.getAttribute("data-id_poste_actuel") || "").trim();
-      if (!id_effectif) return;
-      showPrevSortieModal(p, {
-        id_effectif,
-        id_poste_actuel,
-        full: (tds[0]?.textContent || "").trim(),
-        date_sortie: (trSortie.getAttribute("data-exit_date") || tds[1]?.textContent || "").trim(),
-        poste: (tds[2]?.textContent || "").trim(),
-        service: (tds[3]?.textContent || "").trim(),
-        raison: (trSortie.getAttribute("data-reason") || tds[4]?.textContent || "").trim(),
-      });
-      return;
-    }
-
-    // ------------------------------
-    // 6) Click sur CRITIQUE IMPACTEE (prévisions critiques)
-    // ------------------------------
-    const trPrevCrit = ev.target.closest("tr.prev-crit-row[data-comp-key]");
-    if (trPrevCrit) {
-      const hit = ev.target.closest(".prev-crit-open");
-      if (!hit) return;
-
-      const compKey = (trPrevCrit.getAttribute("data-comp-key") || "").trim();
-      if (!compKey) return;
-
-      showAnalysePrevCritModal(p, compKey, id_service);
-      return;
-    }
   });
 }
-
-
-  let _prevSortieModalEl = null;
-
-  function showPrevSortieModal(portal, d) {
-    if (_prevSortieModalEl && _prevSortieModalEl.parentNode) {
-      _prevSortieModalEl.parentNode.removeChild(_prevSortieModalEl);
-    }
-
-    const horizon = getPrevHorizon();
-    const horizonTxt = analyseHorizonLabel(horizon);
-    const full = (d.full || "—").toString().trim();
-    const exitDate = (d.date_sortie || d.exit_date || "").toString().trim();
-    const poste = (d.poste || "—").toString().trim();
-    const service = (d.service || "—").toString().trim();
-    const raison = (d.raison || "—").toString().trim();
-    const idPoste = (d.id_poste_actuel || "").toString().trim();
-
-    const wrap = document.createElement("div");
-    _prevSortieModalEl = wrap;
-
-    function close() {
-      if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
-      if (_prevSortieModalEl === wrap) _prevSortieModalEl = null;
-      document.removeEventListener("keydown", onKey);
-    }
-
-    function onKey(e) {
-      if (e.key === "Escape") close();
-    }
-
-    wrap.innerHTML = `
-      <div class="modal show sb-prev-decision-modal" aria-hidden="false">
-        <div class="modal-card modal-card--wide">
-          <div class="modal-header">
-            <div class="sb-prev-modal-head">
-              <div class="sb-prev-modal-titleline">${escapeHtml(full)}</div>
-              <div class="card-sub" style="margin:0;">Sortie prévue à horizon ${escapeHtml(horizonTxt)}</div>
-            </div>
-            <button type="button" class="modal-x" id="btnPrevSortieCloseTop" aria-label="Fermer">×</button>
-          </div>
-
-          <div class="modal-body">
-            <div class="sb-prev-rh-summary">
-              <div class="sb-prev-rh-title">Lecture RH</div>
-              <div class="sb-prev-rh-text">
-                Cette sortie doit être lue comme un point de vigilance sur le poste occupé. Vérifiez les compétences critiques portées par cette personne, les relais internes disponibles et les actions à engager avant la date de sortie.
-              </div>
-            </div>
-
-            <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
-              <div class="sb-prev-kpi"><span>Date de sortie prévue</span><strong>${escapeHtml(exitDate ? fmtDateFR(exitDate) : "—")}</strong></div>
-              <div class="sb-prev-kpi"><span>Poste occupé</span><strong>${escapeHtml(poste)}</strong></div>
-              <div class="sb-prev-kpi"><span>Service</span><strong>${escapeHtml(service)}</strong></div>
-              <div class="sb-prev-kpi"><span>Motif</span><strong>${escapeHtml(raison)}</strong></div>
-            </div>
-
-            <div class="sb-prev-actions-card">
-              <div class="sb-prev-modal-title">Points à sécuriser</div>
-              <div class="sb-prev-action-list">
-                <div>Identifier les savoir-faire critiques portés par la personne.</div>
-                <div>Confirmer un relais interne ou organiser une transmission.</div>
-                <div>Préparer une hypothèse de sécurisation si la couverture du poste devient insuffisante.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnPrevSortieCreateHypothesis" ${idPoste ? "" : "disabled"}>Créer une hypothèse de sécurisation</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPrevSortieGoRisques" ${idPoste ? "" : "disabled"}>Voir l’analyse du poste</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPrevSortieGoMatching" ${idPoste ? "" : "disabled"}>Voir les relais possibles</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPrevSortieCloseBottom">Fermer</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(wrap);
-
-    const modal = wrap.querySelector(".modal");
-    modal?.addEventListener("click", (e) => { if (e.target === modal) close(); });
-    wrap.querySelector("#btnPrevSortieCloseTop")?.addEventListener("click", close);
-    wrap.querySelector("#btnPrevSortieCloseBottom")?.addEventListener("click", close);
-
-    wrap.querySelector("#btnPrevSortieCreateHypothesis")?.addEventListener("click", () => {
-      if (!idPoste) return;
-      addAnalyseHypothesis({
-        type: "securiser_sortie_prevue",
-        title: `Anticiper la sortie de ${String(full || "collaborateur")}`,
-        poste_id: idPoste,
-        poste_label: poste,
-        effectif_label: full,
-        scope_label: service,
-        cause: "Sortie ou indisponibilité prévue",
-        effet: "Vérifier si la couverture du poste et des compétences critiques reste suffisante à la date prévue.",
-        horizon: horizonTxt,
-        criticite: null
-      });
-      close();
-    });
-
-    wrap.querySelector("#btnPrevSortieGoRisques")?.addEventListener("click", async () => {
-      if (!idPoste) return;
-      const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-      close();
-      if (typeof showAnalysePosteDetailModal === "function") {
-        await showAnalysePosteDetailModal(portal, idPoste, id_service, "");
-      }
-    });
-
-    wrap.querySelector("#btnPrevSortieGoMatching")?.addEventListener("click", () => {
-      if (!idPoste) return;
-      close();
-      _matchSelectedPoste = idPoste;
-      if (typeof setMode === "function") setMode("matching");
-      else localStorage.setItem(STORE_MODE, "matching");
-      renderDetail("matching");
-    });
-
-    document.addEventListener("keydown", onKey);
-  }
-
-  // ======================================================
-  // Modal Prévisions — "Critiques impactées" (détail)
-  // ======================================================
-  let _prevCritBound = false;
-  let _prevCritReqId = 0;
-
-  function _firstEl(...ids) {
-    for (const id of ids) {
-      const el = byId(id);
-      if (el) return el;
-    }
-    return null;
-  }
-
-  function _openModal(modal) {
-    if (!modal) return;
-    modal.classList.add("show");
-    modal.setAttribute("aria-hidden", "false");
-  }
-
-  function _closeModal(modal) {
-    if (!modal) return;
-    modal.classList.remove("show");
-    modal.setAttribute("aria-hidden", "true");
-  }
-
-  function _fmtDateFR(v) {
-    const s = (v || "").toString().trim();
-    if (!s) return "—";
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return escapeHtml(s);
-    return `${m[3]}-${m[2]}-${m[1]}`;
-  }
-
-  function _num(v) {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function _bindPrevCritModalOnce() {
-    if (_prevCritBound) return;
-    _prevCritBound = true;
-
-    const modal = _firstEl("modalPrevCrit", "modalPrevCritDetail", "modalPrevisionsCritiques");
-    if (!modal) return;
-
-    const btnX = _firstEl("btnClosePrevCritModal", "btnClosePrevCritDetailModal");
-    const btnClose = _firstEl("btnPrevCritModalClose", "btnPrevCritDetailModalClose");
-
-    if (btnX) btnX.addEventListener("click", () => _closeModal(modal));
-    if (btnClose) btnClose.addEventListener("click", () => _closeModal(modal));
-
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) _closeModal(modal);
-    });
-
-    const tabs = [
-      { key: "synthese", btn: _firstEl("tabPrevCritSynthese"), pane: _firstEl("prevCritTabSynthese") },
-      { key: "porteurs", btn: _firstEl("tabPrevCritPorteurs"), pane: _firstEl("prevCritTabPorteurs") },
-      { key: "postes", btn: _firstEl("tabPrevCritPostes"), pane: _firstEl("prevCritTabPostes") },
-      { key: "actions", btn: _firstEl("tabPrevCritActions"), pane: _firstEl("prevCritTabActions") },
-    ].filter(x => x.btn && x.pane);
-
-    function setTab(k) {
-      tabs.forEach(t => {
-        t.btn.classList.toggle("is-active", t.key === k);
-        t.pane.style.display = (t.key === k) ? "" : "none";
-      });
-      localStorage.setItem("sb_prev_crit_tab", k);
-    }
-
-    tabs.forEach(t => {
-      t.btn.addEventListener("click", () => setTab(t.key));
-    });
-
-    // tab par défaut
-    const last = (localStorage.getItem("sb_prev_crit_tab") || "synthese").trim();
-    setTab(tabs.some(t => t.key === last) ? last : "synthese");
-  }
-
-  async function _fetchPrevCritDetail(portal, compKey, horizon, id_service) {
-    // contexte API (même logique tolérante que le reste)
-    const portalCtx = portal || _portalref || null;
-
-    const id_contact = String(
-      portalCtx?.id_contact ||
-      portalCtx?.idContact ||
-      portalCtx?.getAttribute?.("data-id_contact") ||
-      portalCtx?.getAttribute?.("data-id-contact") ||
-      portalCtx?.dataset?.id_contact ||
-      portalCtx?.dataset?.idContact ||
-      ""
-    ).trim();
-
-    const apiBaseRaw = String(
-      portalCtx?.api_base ||
-      portalCtx?.apiBase ||
-      portalCtx?.getAttribute?.("data-api-base") ||
-      portalCtx?.dataset?.apiBase ||
-      window.API_BASE ||
-      window.SKILLS_API_BASE ||
-      ""
-    ).trim();
-
-    const apiBase = apiBaseRaw.replace(/\/$/, "");
-
-    if (!id_contact) throw new Error("id_contact introuvable");
-    if (!apiBase) throw new Error("apiBase introuvable");
-
-    const qs = new URLSearchParams();
-    qs.set("horizon_years", String(horizon));
-    if (id_service) qs.set("id_service", id_service);
-
-    // Endpoint à brancher côté API (prochaine étape backend)
-    const url = `${apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(id_contact)}/${encodeURIComponent(compKey)}?${qs.toString()}`;
-
-    return await analyseApiJson(portal, url);
-  }
-
-  async function showPrevCritDetailModal(portal, tr, compKey, horizon, id_service) {
-    _bindPrevCritModalOnce();
-
-    const modal = _firstEl("modalPrevCrit", "modalPrevCritDetail", "modalPrevisionsCritiques");
-    const titleEl = _firstEl("prevCritModalTitle", "prevCritDetailModalTitle");
-    const subEl = _firstEl("prevCritModalSub", "prevCritDetailModalSub");
-
-    const paneSynth = _firstEl("prevCritTabSynthese");
-    const panePorteurs = _firstEl("prevCritTabPorteurs");
-    const panePostes = _firstEl("prevCritTabPostes");
-    const paneActions = _firstEl("prevCritTabActions");
-
-    if (!modal || !paneSynth || !panePorteurs || !panePostes || !paneActions) {
-      portal?.showAlert?.("error", "Modal Critiques: IDs HTML non trouvés (vérifie les id=...)");
-      return;
-    }
-
-    // Infos depuis la ligne (pas besoin d’attendre l’API pour afficher un truc propre)
-    const tds = Array.from(tr.querySelectorAll("td"));
-    const code = (tds[1]?.textContent || "").trim() || "—";
-    const lib = (tds[2]?.textContent || "").trim() || "—";
-    const nbPostes = _num((tds[3]?.textContent || "").trim());
-    const criticite = _num((tds[4]?.textContent || "").trim());
-    const porteursNow = _num((tds[5]?.textContent || "").trim());
-    const sortants = _num((tds[6]?.textContent || "").trim());
-    const lastExit = (tds[7]?.textContent || "").trim() || "—";
-
-    const horizonLabel = (horizon === 1 ? "1 an" : `${horizon} ans`);
-    if (titleEl) titleEl.textContent = `Critiques impactées — ${code}`;
-    if (subEl) subEl.textContent = `${lib} • Horizon < ${horizonLabel}${id_service ? " • périmètre filtré" : ""}`;
-
-    // Synthèse (immédiat)
-    const restants = Math.max(0, porteursNow - sortants);
-
-    paneSynth.innerHTML = `
-      <div class="sb-modal-kpis">
-        <div class="sb-metric"><div class="label">Postes impactés</div><div class="value">${escapeHtml(String(nbPostes))}</div></div>
-        <div class="sb-metric"><div class="label">Criticité (max)</div><div class="value">${escapeHtml(String(criticite || "—"))}</div></div>
-        <div class="sb-metric"><div class="label">Porteurs actuels</div><div class="value">${escapeHtml(String(porteursNow))}</div></div>
-        <div class="sb-metric"><div class="label">Porteurs sortants</div><div class="value">${escapeHtml(String(sortants))}</div></div>
-        <div class="sb-metric"><div class="label">Porteurs restants</div><div class="value">${escapeHtml(String(restants))}</div></div>
-      </div>
-
-      <div class="card" style="padding:12px; margin-top:12px;">
-        <div class="card-title" style="margin-bottom:6px;">Signal</div>
-        <div class="card-sub" style="margin:0;">
-          Dernière sortie détectée: <b>${escapeHtml(lastExit)}</b><br/>
-          Lecture: si <b>restants = 0</b> → rupture, si <b>restants = 1</b> → dépendance, sinon → tension à prioriser.
-        </div>
-      </div>
-    `;
-
-    // Les 3 autres tabs = chargement (API)
-    panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
-    panePostes.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
-    paneActions.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
-
-    _openModal(modal);
-
-    // Requête unique (et annulable si reclique vite)
-    _prevCritReqId = (_prevCritReqId || 0) + 1;
-    const reqId = _prevCritReqId;
-
-    try {
-      const data = await _fetchPrevCritDetail(portal, compKey, horizon, id_service);
-      if (_prevCritReqId !== reqId) return;
-
-      // Attendu côté API (prochaine étape):
-      // data.porteurs[], data.postes[], data.actions[]
-      const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
-      const postes = Array.isArray(data?.postes) ? data.postes : [];
-      const actions = Array.isArray(data?.actions) ? data.actions : [];
-
-      // Porteurs
-      if (!porteurs.length) {
-        panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">Aucune couverture retournée.</div>`;
-      } else {
-        const rows = porteurs.map(p => {
-          const nom = (p.full || `${p.prenom || ""} ${p.nom || ""}`).trim() || "—";
-          const lvl = (p.niveau || p.level || "—").toString();
-          const posteP = (p.intitule_poste || p.poste || "—").toString();
-          const svc = (p.nom_service || p.service || "—").toString();
-          const exit = _fmtDateFR(p.exit_date || p.date_sortie || "");
-          const reason = (p.reason || p.motif_sortie || p.exit_source || "—").toString();
-          return `
-            <tr>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;"><b>${escapeHtml(nom)}</b></td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(lvl)}</td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(posteP)}</td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(svc)}</td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${exit}</td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(reason)}</td>
-            </tr>
-          `;
-        }).join("");
-
-        panePorteurs.innerHTML = `
-          <div style="overflow:auto;">
-            <table class="sb-table">
-              <thead>
-                <tr>
-                  <th>Personne</th><th class="col-center">Niveau</th><th>Poste</th><th>Service</th><th>Date sortie</th><th>Raison</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        `;
-      }
-
-      // Postes impactés
-      if (!postes.length) {
-        panePostes.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste impacté retourné.</div>`;
-      } else {
-        const rows = postes.map(p => {
-          const poste = (p.intitule_poste || p.poste || "—").toString();
-          const svc = (p.nom_service || p.service || "—").toString();
-          const attendu = (p.niveau_attendu || p.level_expected || "—").toString();
-          const crit = (p.criticite || p.max_criticite || "—").toString();
-          return `
-            <tr>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;"><b>${escapeHtml(poste)}</b></td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(svc)}</td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;" class="col-center">${escapeHtml(attendu)}</td>
-              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;" class="col-center">${escapeHtml(crit)}</td>
-            </tr>
-          `;
-        }).join("");
-
-        panePostes.innerHTML = `
-          <div style="overflow:auto;">
-            <table class="sb-table">
-              <thead>
-                <tr><th>Poste</th><th>Service</th><th class="col-center">Niveau attendu</th><th class="col-center">Criticité</th></tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        `;
-      }
-
-      // Points à sécuriser
-      if (!actions.length) {
-        paneActions.innerHTML = `
-          <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:6px;">Points à sécuriser</div>
-            <div class="card-sub" style="margin:0;">
-              Aucun plan renvoyé par l’API (à brancher).<br/>
-              Points à instruire : couverture complémentaire, transmission, niveau réel à confirmer et hypothèse à tester.
-            </div>
-          </div>
-        `;
-      } else {
-        paneActions.innerHTML = `
-          <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:6px;">Points à sécuriser</div>
-            <div class="card-sub" style="margin:0;">
-              ${actions.map(a => `• ${escapeHtml(String(a))}`).join("<br/>")}
-            </div>
-          </div>
-        `;
-      }
-
-    } catch (e) {
-      if (_prevCritReqId !== reqId) return;
-      const msg = `Erreur chargement détail critique: ${e?.message || e}`;
-      panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>`;
-      panePostes.innerHTML = `<div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>`;
-      paneActions.innerHTML = `<div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>`;
-    }
-  }
-
-    /* ======================================================
-    PREVISIONS — MODAL "POSTE ROUGE"
-    - ouverture modal + tabs
-    - clic sur ligne <tr class="prev-poste-red-row" data-id_poste="...">
-    - fetch modal (endpoint à créer côté API)
-    ====================================================== */
-
-  if (!window.__sbPrevPosteRedModalWired) {
-    window.__sbPrevPosteRedModalWired = true;
-
-    // ---------- helpers modal ----------
-    function openAnalysePrevPosteRedModal() {
-      const m = byId("modalAnalysePrevPosteRed");
-      if (!m) return;
-      m.classList.add("show");
-      m.setAttribute("aria-hidden", "false");
-    }
-
-    function closeAnalysePrevPosteRedModal() {
-      const m = byId("modalAnalysePrevPosteRed");
-      if (!m) return;
-      m.classList.remove("show");
-      m.setAttribute("aria-hidden", "true");
-    }
-
-    function setAnalysePrevPosteRedTab(tab) {
-      const tabs = {
-        synthese: { btn: "tabPrevPosteRedSynthese", pane: "analysePrevPosteRedTabSynthese" },
-        causes: { btn: "tabPrevPosteRedCauses", pane: "analysePrevPosteRedTabCauses" },
-        sortants: { btn: "tabPrevPosteRedSortants", pane: "analysePrevPosteRedTabSortants" },
-        couverture: { btn: "tabPrevPosteRedCouverture", pane: "analysePrevPosteRedTabCouverture" },
-        voisins: { btn: "tabPrevPosteRedVoisins", pane: "analysePrevPosteRedTabVoisins" },
-      };
-
-      Object.keys(tabs).forEach((k) => {
-        const b = byId(tabs[k].btn);
-        const p = byId(tabs[k].pane);
-        if (b) b.classList.toggle("is-active", k === tab);
-        if (p) p.style.display = (k === tab ? "" : "none");
-      });
-    }
-
-    function _badge(el, txt) { if (el) el.textContent = txt; }
-
-    function _num(v) {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    function _decisionText(futureFragiles, futureSans, futureUnique) {
-      if (futureSans > 0) {
-        return "Lecture RH : le poste perd une couverture critique. Préparer une hypothèse de sécurisation à tester.";
-      }
-      if (futureUnique > 0) {
-        return "Lecture RH : le poste reste couvert, mais dépend trop fortement d’une seule personne. Préparer une hypothèse de couverture complémentaire.";
-      }
-      if (futureFragiles > 0) {
-        return "Lecture RH : le poste présente une fragilité à horizon. Les relais internes et niveaux réels doivent être confirmés.";
-      }
-      return "Lecture RH : aucun point de rupture majeur détecté sur l’horizon, mais la couverture doit être suivie.";
-    }
-
-    // ---------- fetch modal ----------
-    async function fetchPrevisionsPostesRougesModal(portal, id_poste, horizonYears, id_service) {
-      const ctx = getPortalContext(portal);
-      if (!ctx?.id_contact) throw new Error("id_contact introuvable côté UI.");
-      if (!ctx?.apiBase) throw new Error("apiBase introuvable côté UI.");
-
-      const qs = new URLSearchParams();
-      qs.set("horizon_years", String(horizonYears || 1));
-      qs.set("id_poste", String(id_poste || "").trim());
-      if (id_service) qs.set("id_service", String(id_service).trim());
-      const cmin = getCriticiteMinSafe(null);
-      if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
-
-      const url = `${ctx.apiBase}/skills/analyse/previsions/postes-rouges/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-
-      return await analyseApiJson(portal, url);
-    }
-
-    // ---------- render modal ----------
-    async function showAnalysePrevPosteRedModal(portal, id_poste, id_service, seed) {
-      openAnalysePrevPosteRedModal();
-      setAnalysePrevPosteRedTab("synthese");
-
-      const horizon = getPrevHorizon();
-      const horizonTxt = analyseHorizonLabel(horizon);
-      const scopeLab = getScopeLabel();
-      const seedData = seed || {};
-
-      const title = byId("analysePrevPosteRedModalTitle");
-      const sub = byId("analysePrevPosteRedModalSub");
-      const bSvc = byId("analysePrevPosteRedBadgeService");
-      const bHor = byId("analysePrevPosteRedBadgeHorizon");
-      const bNext = byId("analysePrevPosteRedBadgeNext");
-      const kFutureFrag = byId("prevPosteRedKpiFutureFragiles");
-      const kFutureSans = byId("prevPosteRedKpiFutureSansPorteur");
-      const kFutureUniq = byId("prevPosteRedKpiFuturePorteurUnique");
-      const decision = byId("analysePrevPosteRedDecision");
-      const paneSyn = byId("analysePrevPosteRedTabSynthese");
-      const paneCauses = byId("analysePrevPosteRedTabCauses");
-      const paneOut = byId("analysePrevPosteRedTabSortants");
-      const paneCov = byId("analysePrevPosteRedTabCouverture");
-      const paneVois = byId("analysePrevPosteRedTabVoisins");
-
-      if (title) title.textContent = seedData.intitule_poste || "Détail poste";
-      if (sub) sub.textContent = `Impact prévisionnel à horizon ${horizonTxt}`;
-      _badge(bSvc, `Service : ${seedData.nom_service || scopeLab || "—"}`);
-      _badge(bHor, `Horizon : ${horizonTxt}`);
-      _badge(bNext, `Prochaine bascule : ${seedData.next_exit_date ? fmtDateFR(seedData.next_exit_date) : "—"}`);
-      if (kFutureFrag) kFutureFrag.textContent = "—";
-      if (kFutureSans) kFutureSans.textContent = "—";
-      if (kFutureUniq) kFutureUniq.textContent = "—";
-      if (decision) decision.textContent = "Chargement du diagnostic prévisionnel…";
-      if (paneSyn) paneSyn.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
-      if (paneCauses) paneCauses.innerHTML = "";
-      if (paneOut) paneOut.innerHTML = "";
-      if (paneCov) paneCov.innerHTML = "";
-      if (paneVois) paneVois.innerHTML = "";
-
-      window.__sbPrevPosteRedModalReqId = (window.__sbPrevPosteRedModalReqId || 0) + 1;
-      const reqId = window.__sbPrevPosteRedModalReqId;
-
-      try {
-        const data = await fetchPrevisionsPostesRougesModal(portal, id_poste, horizon, id_service);
-        if ((window.__sbPrevPosteRedModalReqId || 0) !== reqId) return;
-
-        const poste = data?.poste || data?.post || {};
-        const kpis = data?.kpis || data?.kpi || {};
-        const causes = Array.isArray(data?.causes) ? data.causes : [];
-        const sortants = Array.isArray(data?.sortants) ? data.sortants : [];
-        const couverture = Array.isArray(data?.couverture) ? data.couverture : [];
-        const voisins = Array.isArray(data?.voisins) ? data.voisins : [];
-
-        const intit = (poste.intitule_poste || seedData.intitule_poste || "—").toString().trim();
-        const svc = (poste.nom_service || seedData.nom_service || scopeLab || "—").toString().trim();
-        const code = (poste.codif_client || poste.codif_poste || "").toString().trim();
-        const fFrag = _num(kpis.future_fragiles ?? data?.future_fragiles ?? seedData.future_fragiles ?? 0);
-        const fSans = _num(kpis.future_sans_porteur ?? data?.future_sans_porteur ?? seedData.future_sans_porteur ?? 0);
-        const fUniq = _num(kpis.future_porteur_unique ?? data?.future_porteur_unique ?? seedData.future_porteur_unique ?? 0);
-        const next = (kpis.next_exit_date || data?.next_exit_date || seedData.next_exit_date || "").toString().trim();
-        const nowTit = _num(kpis.nb_titulaires_now);
-        const hTit = _num(kpis.nb_titulaires_horizon);
-        const cible = _num(kpis.nb_titulaires_cible || poste.nb_titulaires_cible || 1);
-        const covNow = _num(kpis.couverture_now);
-        const covFuture = _num(kpis.couverture_future);
-        const firstSortant = sortants.find(r => (r.exit_date || "").toString().trim()) || sortants[0] || null;
-
-        if (title) title.innerHTML = `${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(intit)}`;
-        if (sub) sub.textContent = `Risque prévisionnel du poste à horizon ${horizonTxt}`;
-        _badge(bSvc, `Service : ${svc}`);
-        _badge(bNext, `Prochaine bascule : ${next ? fmtDateFR(next) : "—"}`);
-
-        // Les 3 KPI du bandeau haut sont volontairement réordonnés pour une lecture RH : rupture, dépendance, total.
-        if (kFutureFrag) kFutureFrag.textContent = String(fSans);
-        if (kFutureSans) kFutureSans.textContent = String(fUniq);
-        if (kFutureUniq) kFutureUniq.textContent = String(fFrag);
-
-        window.__sbPrevPosteRedHypothesis = {
-          type: "securiser_poste_prevision",
-          title: `Anticiper le poste ${code ? code + " · " : ""}${intit}`,
-          poste_id: String(id_poste || poste.id_poste || poste.id || "").trim(),
-          poste_label: `${code ? code + " — " : ""}${intit}`,
-          scope_label: svc,
-          cause: fSans > 0 ? "Compétence critique sans porteur à horizon" : (fUniq > 0 ? "Couverture trop dépendante à horizon" : "Fragilité prévisionnelle du poste"),
-          effet: "Tester une hypothèse de couverture future avant que le poste ne devienne fragile.",
-          horizon: horizonTxt,
-          criticite: null
-        };
-
-        function riskLevelText() {
-          if (fSans > 0) return "risque de rupture de couverture";
-          if (fUniq > 0) return "risque de dépendance à un porteur unique";
-          if (fFrag > 0) return "fragilité prévisionnelle à surveiller";
-          return "point de vigilance prévisionnel";
-        }
-
-        function mainDecisionText() {
-          const datePart = next ? `À partir du ${fmtDateFR(next)}, ` : "À l’horizon sélectionné, ";
-          if (fSans > 0) return `${datePart}ce poste présente un risque de rupture : ${fSans} compétence${fSans > 1 ? "s" : ""} critique${fSans > 1 ? "s" : ""} sans porteur projeté.`;
-          if (fUniq > 0) return `${datePart}ce poste reste couvert, mais dépend d’un porteur unique sur ${fUniq} compétence${fUniq > 1 ? "s" : ""} critique${fUniq > 1 ? "s" : ""}.`;
-          if (fFrag > 0) return `${datePart}ce poste présente ${fFrag} compétence${fFrag > 1 ? "s" : ""} critique${fFrag > 1 ? "s" : ""} à sécuriser.`;
-          return `${datePart}aucune rupture majeure n’est détectée, mais la couverture doit rester suivie.`;
-        }
-
-        function causeBasculeText() {
-          if (firstSortant) {
-            const full = (firstSortant.full || `${(firstSortant.prenom_effectif || "").trim()} ${(firstSortant.nom_effectif || "").trim()}`.trim() || "un porteur").toString().trim();
-            const exit = (firstSortant.exit_date || next || "").toString().trim();
-            const reason = (firstSortant.raison_sortie || "Sortie prévue").toString().trim();
-            return `${reason} de ${full}${exit ? ` le ${fmtDateFR(exit)}` : ""}. Cette sortie réduit la robustesse du poste et fragilise les compétences critiques couvertes par ce porteur.`;
-          }
-          if (hTit < nowTit) return `Le nombre de titulaires passe de ${nowTit} à ${hTit}. La couverture du poste devient plus concentrée et moins robuste.`;
-          if (covFuture < covNow) return `La couverture critique baisse de ${Math.round(covNow)} % à ${Math.round(covFuture)} %. Certaines compétences doivent être sécurisées avant l’échéance.`;
-          return "La projection fait apparaître une concentration de couverture ou une absence de relais sur des compétences critiques du poste.";
-        }
-
-        function couvertureText() {
-          if (covFuture === covNow && (fSans > 0 || fUniq > 0)) {
-            return "Couverture globale stable, mais robustesse insuffisante : le risque vient surtout de l’absence de relais ou de la concentration sur un porteur.";
-          }
-          if (covFuture < covNow) return `Couverture critique en baisse : ${Math.round(covNow)} % → ${Math.round(covFuture)} %.`;
-          if (covFuture > covNow) return `Couverture critique en hausse : ${Math.round(covNow)} % → ${Math.round(covFuture)} %, mais certains points restent à confirmer.`;
-          return `Couverture critique : ${Math.round(covNow)} % → ${Math.round(covFuture)} %.`;
-        }
-
-        function impactLabel(now, rem) {
-          if (rem <= 0) return "Rupture";
-          if (rem === 1) return "Porteur unique";
-          if (rem < now) return "Couverture réduite";
-          return "À confirmer";
-        }
-
-        function impactClass(now, rem) {
-          if (rem <= 0) return "sb-prev-impact-badge--critical";
-          if (rem === 1) return "sb-prev-impact-badge--warning";
-          return "";
-        }
-
-        function actionList() {
-          const arr = [];
-          if (fSans > 0) arr.push(`Sécuriser les ${fSans} compétence${fSans > 1 ? "s" : ""} sans porteur avant ${next ? fmtDateFR(next) : "l’échéance projetée"}.`);
-          if (fUniq > 0) arr.push(`Réduire la dépendance sur les ${fUniq} compétence${fUniq > 1 ? "s" : ""} à porteur unique.`);
-          if (sortants.length) arr.push("Formaliser la transmission avec les porteurs sortants avant la bascule.");
-          if (causes.length) arr.push("Prioriser les compétences ci-dessous avant de créer l’hypothèse de sécurisation.");
-          if (!arr.length) arr.push("Contrôler la couverture et confirmer les relais internes disponibles.");
-          return arr.map(x => `<div>${escapeHtml(x)}</div>`).join("");
-        }
-
-        if (decision) decision.textContent = mainDecisionText();
-
-        if (paneSyn) {
-          const top = causes.slice(0, 8).map(c => {
-            const compKey = (c.id_comp || c.id_competence || c.code || "").toString().trim();
-            const codeC = (c.code || "—").toString().trim();
-            const label = (c.intitule || c.intitule_competence || "—").toString().trim();
-            const now = _num(c.nb_now ?? c.porteurs_now);
-            const rem = _num(c.nb_remain ?? c.porteurs_remain);
-            const crit = _num(c.criticite ?? c.poids_criticite);
-            const impact = impactLabel(now, rem);
-            return `<div class="sb-prev-impact-line prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}"><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span><div class="sb-prev-impact-main"><strong>${escapeHtml(label)}</strong><span>Criticité ${escapeHtml(String(crit || "—"))} · couverture projetée ${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</span></div><span class="sb-prev-impact-badge ${impactClass(now, rem)}">${escapeHtml(impact)}</span></div>`;
-          }).join("");
-
-          paneSyn.innerHTML = `
-            <div class="sb-prev-rh-summary sb-prev-rh-summary--decision">
-              <div class="sb-prev-rh-title">Lecture RH</div>
-              <div class="sb-prev-rh-text"><strong>${escapeHtml(mainDecisionText())}</strong></div>
-              <div class="sb-prev-rh-note">${escapeHtml(couvertureText())}</div>
-            </div>
-
-            <div class="sb-prev-section-title">Ce qui change</div>
-            <div class="sb-prev-kpi-grid sb-prev-kpi-grid--4">
-              <div class="sb-prev-kpi"><span>Titulaires du poste</span><strong>${escapeHtml(String(nowTit))} → ${escapeHtml(String(hTit))}</strong></div>
-              <div class="sb-prev-kpi"><span>Sans porteur projeté</span><strong>${escapeHtml(String(fSans))}</strong></div>
-              <div class="sb-prev-kpi"><span>Porteur unique projeté</span><strong>${escapeHtml(String(fUniq))}</strong></div>
-              <div class="sb-prev-kpi"><span>Total impacté</span><strong>${escapeHtml(String(fFrag))}</strong></div>
-            </div>
-
-            <div class="sb-prev-actions-card">
-              <div class="sb-prev-modal-title">Cause de la bascule</div>
-              <div class="sb-prev-reading"><strong>${escapeHtml(riskLevelText())}</strong><br>${escapeHtml(causeBasculeText())}</div>
-            </div>
-
-            <div class="sb-prev-actions-card">
-              <div class="sb-prev-modal-title">Priorités de sécurisation</div>
-              <div class="sb-prev-action-list">${actionList()}</div>
-            </div>
-
-            <div class="sb-prev-actions-card">
-              <div class="sb-prev-modal-title">Compétences à sécuriser en priorité</div>
-              ${top || `<div class="sb-prev-empty">Aucune compétence prioritaire retournée.</div>`}
-            </div>
-          `;
-        }
-
-        if (paneCauses) {
-          if (!causes.length) paneCauses.innerHTML = `<div class="sb-prev-empty">Aucune cause compétence retournée.</div>`;
-          else paneCauses.innerHTML = `
-            <div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-table--hover sb-prev-table"><thead><tr><th>Compétence critique</th><th class="col-center">Niveau requis</th><th class="col-center">Criticité</th><th class="col-center">Porteurs</th><th>Prochaine sortie</th><th>Impact</th></tr></thead><tbody>${causes.map(c => {
-              const compKey = (c.id_comp || c.id_competence || c.code || "").toString().trim();
-              const codeC = (c.code || "—").toString().trim();
-              const label = (c.intitule || c.intitule_competence || "—").toString().trim();
-              const niv = (c.niveau_requis || c.niveau_attendu || "—").toString().trim();
-              const crit = _num(c.criticite ?? c.poids_criticite);
-              const now = _num(c.nb_now ?? c.porteurs_now);
-              const rem = _num(c.nb_remain ?? c.porteurs_remain);
-              const nxt = (c.next_exit_comp || c.next_exit_date || "").toString().trim();
-              const impact = impactLabel(now, rem);
-              return `<tr class="prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}"><td><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span> <strong>${escapeHtml(label)}</strong></td><td class="col-center"><span class="sb-badge">${escapeHtml(niv)}</span></td><td class="col-center">${escapeHtml(String(crit || "—"))}</td><td class="col-center"><strong>${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</strong></td><td>${escapeHtml(nxt ? fmtDateFR(nxt) : "—")}</td><td><span class="sb-prev-impact-badge ${impactClass(now, rem)}">${escapeHtml(impact)}</span></td></tr>`;
-            }).join("")}</tbody></table></div>`;
-        }
-
-        if (paneOut) {
-          if (!sortants.length) paneOut.innerHTML = `<div class="sb-prev-empty">Aucun porteur sortant retourné pour ce poste.</div>`;
-          else paneOut.innerHTML = `<div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-prev-table"><thead><tr><th>Porteur sortant</th><th>Date sortie</th><th>Compétence portée</th><th class="col-center">Niveau</th><th>Motif</th></tr></thead><tbody>${sortants.map(r => {
-            const full = (r.full || `${(r.prenom_effectif || "").trim()} ${(r.nom_effectif || "").trim()}`.trim() || "—");
-            const exit = (r.exit_date || "").toString().trim();
-            const codeC = (r.code || "—").toString().trim();
-            const label = (r.intitule || "—").toString().trim();
-            const niv = (r.niveau_actuel || r.niveau || "—").toString().trim();
-            const reason = (r.raison_sortie || "—").toString().trim();
-            return `<tr><td><strong>${escapeHtml(full)}</strong></td><td>${escapeHtml(exit ? fmtDateFR(exit) : "—")}</td><td><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span> ${escapeHtml(label)}</td><td class="col-center"><span class="sb-badge">${escapeHtml(niv)}</span></td><td>${escapeHtml(reason)}</td></tr>`;
-          }).join("")}</tbody></table></div>`;
-        }
-
-        if (paneCov) {
-          if (!couverture.length) paneCov.innerHTML = `<div class="sb-prev-empty">Aucun relais restant retourné.</div>`;
-          else paneCov.innerHTML = `<div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-prev-table"><thead><tr><th>Compétence</th><th>Relais restant</th><th class="col-center">Niveau</th><th>Poste actuel</th><th>Service</th></tr></thead><tbody>${couverture.map(r => {
-            const codeC = (r.comp_code || r.code || "—").toString().trim();
-            const full = (r.full || `${(r.prenom_effectif || r.prenom || "").trim()} ${(r.nom_effectif || r.nom || "").trim()}`.trim() || "—");
-            const niv = (r.niveau_actuel || r.niveau || "—").toString().trim();
-            const posteR = (r.intitule_poste || r.poste || "—").toString().trim();
-            const svcR = (r.nom_service || r.service || "—").toString().trim();
-            return `<tr><td><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span></td><td><strong>${escapeHtml(full)}</strong></td><td class="col-center"><span class="sb-badge">${escapeHtml(niv)}</span></td><td>${escapeHtml(posteR)}</td><td>${escapeHtml(svcR)}</td></tr>`;
-          }).join("")}</tbody></table></div>`;
-        }
-
-        if (paneVois) {
-          if (!voisins.length) paneVois.innerHTML = `<div class="sb-prev-empty">Aucun poste voisin retourné. À traiter via une hypothèse de sécurisation selon le niveau de couverture.</div>`;
-          else paneVois.innerHTML = `<div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-prev-table"><thead><tr><th>Poste voisin</th><th>Service</th><th class="col-center">Compétences communes</th></tr></thead><tbody>${voisins.map(r => `<tr><td><strong>${escapeHtml(r.intitule_poste || r.poste || "—")}</strong></td><td>${escapeHtml(r.nom_service || r.service || "—")}</td><td class="col-center">${escapeHtml(String(r.nb_competences_communes || r.score || "—"))}</td></tr>`).join("")}</tbody></table></div>`;
-        }
-
-      } catch (e) {
-        if ((window.__sbPrevPosteRedModalReqId || 0) !== reqId) return;
-        if (sub) sub.textContent = "Erreur de chargement";
-        if (paneSyn) paneSyn.innerHTML = `<div class="sb-prev-empty">Impossible de charger le détail poste : ${escapeHtml(e?.message || e)}</div>`;
-      }
-    }
-
-
-    // ---------- wiring (clics) ----------
-    document.addEventListener("click", async (ev) => {
-      // close
-      if (ev.target.closest("#btnCloseAnalysePrevPosteRedModal") || ev.target.closest("#btnAnalysePrevPosteRedModalClose")) {
-        closeAnalysePrevPosteRedModal();
-        return;
-      }
-      // backdrop close
-      const modal = byId("modalAnalysePrevPosteRed");
-      if (modal && ev.target === modal) {
-        closeAnalysePrevPosteRedModal();
-        return;
-      }
-
-      // tabs
-      if (ev.target.closest("#tabPrevPosteRedSynthese")) return setAnalysePrevPosteRedTab("synthese");
-      if (ev.target.closest("#tabPrevPosteRedCauses")) return setAnalysePrevPosteRedTab("causes");
-      if (ev.target.closest("#tabPrevPosteRedSortants")) return setAnalysePrevPosteRedTab("sortants");
-      if (ev.target.closest("#tabPrevPosteRedCouverture")) return setAnalysePrevPosteRedTab("couverture");
-      if (ev.target.closest("#tabPrevPosteRedVoisins")) return setAnalysePrevPosteRedTab("voisins");
-
-      // clic compétence dans l’onglet Causes => ouvre modal compétence (si déjà en place chez toi)
-      const trComp = ev.target.closest("tr.prev-poste-red-comp-row[data-comp-key]");
-      if (trComp) {
-        const compKey = (trComp.getAttribute("data-comp-key") || "").trim();
-        if (!compKey) return;
-        const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-
-        if (_portalref && typeof showAnalysePrevCritModal === "function") {
-          await showAnalysePrevCritModal(_portalref, compKey, id_service);
-        }
-        return;
-      }
-
-      // clic ligne "poste rouge" (dans le détail KPI postes rouges)
-      const tr = ev.target.closest("tr.prev-poste-red-row[data-id_poste]");
-      if (tr) {
-        const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
-        if (!id_poste) return;
-
-        const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-
-
-        const seed = {
-          intitule_poste: (tr.getAttribute("data-intitule_poste") || "").trim(),
-          nom_service: (tr.getAttribute("data-nom_service") || "").trim(),
-          future_fragiles: (tr.getAttribute("data-future_fragiles") || "").trim(),
-          future_sans_porteur: (tr.getAttribute("data-future_sans_porteur") || "").trim(),
-          future_porteur_unique: (tr.getAttribute("data-future_porteur_unique") || "").trim(),
-          next_exit_date: (tr.getAttribute("data-next_exit_date") || "").trim(),
-        };
-
-        if (!_portalref) throw new Error("Contexte portail indisponible (_portalref manquant).");
-        await showAnalysePrevPosteRedModal(_portalref, id_poste, id_service, seed);
-        return;
-      }
-    });
-
-    // expose si besoin (debug / appels directs)
-    window.showAnalysePrevPosteRedModal = showAnalysePrevPosteRedModal;
-  }
-
 
   function ensureRiskEvol3mModal() {
     let modal = byId("modalRiskEvol3m");

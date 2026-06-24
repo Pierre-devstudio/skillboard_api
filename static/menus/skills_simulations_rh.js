@@ -51,7 +51,44 @@
   async function loadOptions(force) { if (_optionsLoaded && !force) return _options; if (!_portal || !_portal.contactId) return _options; setStatus("Chargement des données RH…"); const data = await _portal.apiJson(apiUrl(`/skills/simulations/options/${encodeURIComponent(_portal.contactId)}`, { id_service: getServiceId(), criticite_min: getCriticiteMin() })); _options = { postes: Array.isArray(data?.postes) ? data.postes : [], effectifs: Array.isArray(data?.effectifs) ? data.effectifs : [], competences: Array.isArray(data?.competences) ? data.competences : [], scope: data?.scope || null }; _optionsLoaded = true; setStatus(""); renderBuilder(); renderScenarioPreview(); return _options; }
 
   function renderAnalyseHypotheses() { const root = byId("simAnalyseHypothesesCard"); if (!root) return; const list = readAnalyseHypotheses(); if (!list.length) { root.style.display = "none"; root.innerHTML = ""; return; } root.style.display = "block"; root.innerHTML = `<div class="sim2-hero-layout"><div><div class="card-title">Hypothèses issues de l’analyse</div><div class="card-sub sim2-muted-top">Ces hypothèses ont été préparées depuis la page Analyse des compétences. Elles cadrent le sujet à tester, sans lancer encore le résultat de simulation.</div></div><button type="button" class="sb-btn sb-btn--soft" id="btnSimClearAnalyseHypotheses">Vider</button></div><div class="sim2-source-list">${list.map((h, idx) => `<div class="sim2-source-item"><div><div class="sim2-source-title">${escapeHtml(h.title || "Hypothèse de sécurisation")}</div><div class="sim2-source-meta">${escapeHtml([h.scope_label || "Périmètre", h.horizon ? "Horizon : " + h.horizon : "", h.cause || ""].filter(Boolean).join(" · "))}</div>${h.effet ? `<div class="sim2-source-meta">Effet à vérifier : ${escapeHtml(h.effet)}</div>` : ""}</div><div class="sb-actions sb-actions--end" style="flex-shrink:0;"><button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-use-analyse-hypothesis="${idx}">Utiliser</button><button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-remove-analyse-hypothesis="${idx}">Retirer</button></div></div>`).join("")}</div>`; byId("btnSimClearAnalyseHypotheses")?.addEventListener("click", () => writeAnalyseHypotheses([])); root.querySelectorAll("[data-remove-analyse-hypothesis]").forEach(btn => btn.addEventListener("click", () => { const idx = parseInt(btn.getAttribute("data-remove-analyse-hypothesis"), 10); const next = readAnalyseHypotheses(); next.splice(idx, 1); writeAnalyseHypotheses(next); })); root.querySelectorAll("[data-use-analyse-hypothesis]").forEach(btn => btn.addEventListener("click", async () => { const idx = parseInt(btn.getAttribute("data-use-analyse-hypothesis"), 10); const h = readAnalyseHypotheses()[idx]; if (!h) return; applyAnalyseHypothesis(h); })); }
-  async function applyAnalyseHypothesis(h) { if (!h) return; _selectedObjective = h.type === "securiser_poste" ? "securiser_poste" : "comparer_recrutement_formation"; localStorage.setItem(STORE_OBJECTIVE, _selectedObjective); await loadOptions(false); renderObjectiveCards(); renderBuilder(); const mode = byId("simDecisionMode"); if (mode) mode.value = h.type === "securiser_poste" ? "montee_competence" : "montee_competence"; const posteSel = byId("simDecisionPoste"); if (posteSel && h.poste_id && Array.from(posteSel.options).some(o => o.value === h.poste_id)) posteSel.value = h.poste_id; const compSel = byId("simDecisionComp"); if (compSel && h.competence_id && Array.from(compSel.options).some(o => o.value === h.competence_id)) compSel.value = h.competence_id; renderScenarioPreview(); setStatus(`Hypothèse chargée : ${h.title || "sécurisation à tester"}. Complétez les champs manquants avant d’analyser l’impact.`); switchTab("build"); }
+  async function applyAnalyseHypothesis(h) {
+    if (!h) return;
+
+    const type = String(h.type || "").trim();
+
+    if (type === "depart_effectif") _selectedObjective = "anticiper_depart";
+    else if (type === "absence_effectif") _selectedObjective = "preparer_absence";
+    else if (type === "mobilite_effectif") _selectedObjective = "tester_mobilite";
+    else if (type === "securiser_poste") _selectedObjective = "securiser_poste";
+    else _selectedObjective = "comparer_recrutement_formation";
+
+    localStorage.setItem(STORE_OBJECTIVE, _selectedObjective);
+    await loadOptions(false);
+    renderObjectiveCards();
+    renderBuilder();
+
+    const mode = byId("simDecisionMode");
+    if (mode) {
+      if (["depart_effectif", "absence_effectif", "mobilite_effectif"].includes(type)) mode.value = type;
+      else if (type === "securiser_poste") mode.value = "recrutement_virtuel";
+      else mode.value = "montee_competence";
+      renderModeFields();
+    }
+
+    const idEffectif = String(h.effectif_id || h.id_effectif || "").trim();
+    const effSel = byId("simDecisionEffectif");
+    if (effSel && idEffectif && Array.from(effSel.options).some(o => o.value === idEffectif)) effSel.value = idEffectif;
+
+    const posteSel = byId("simDecisionPoste");
+    if (posteSel && h.poste_id && Array.from(posteSel.options).some(o => o.value === h.poste_id)) posteSel.value = h.poste_id;
+
+    const compSel = byId("simDecisionComp");
+    if (compSel && h.competence_id && Array.from(compSel.options).some(o => o.value === h.competence_id)) compSel.value = h.competence_id;
+
+    renderScenarioPreview();
+    setStatus(`Hypothèse chargée : ${h.title || "sécurisation à tester"}. Complétez les champs manquants avant d’analyser l’impact.`);
+    switchTab("build");
+  }
 
   function switchTab(tab) { const wanted = tab || "build"; document.querySelectorAll(".sim-tab-btn").forEach(btn => { btn.classList.toggle("is-active", btn.getAttribute("data-sim-tab") === wanted); }); document.querySelectorAll(".sim-panel").forEach(panel => { panel.style.display = panel.getAttribute("data-sim-panel") === wanted ? "block" : "none"; }); if (wanted === "compare") renderCompare(); }
 

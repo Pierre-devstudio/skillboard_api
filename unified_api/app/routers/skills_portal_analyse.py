@@ -70,6 +70,7 @@ from app.services.skills_analyse_engine import (
     _fetch_prevision_poste_impacts,
     _analyse_prevision_poste_average_delta,
     _fetch_prevision_transition_events,
+    _fetch_prevision_transition_modal_detail,
     _fetch_prevision_transmission_items,
     _fetch_prevision_transition_counts,
 )
@@ -1705,6 +1706,49 @@ def get_analyse_previsions_sorties_potentielles_detail(
                     "criticite_min": int(criticite_min),
                     "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
                     "items": items,
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+
+@router.get("/skills/analyse/previsions/transition-modal/{id_contact}/{id_effectif}")
+def get_analyse_previsions_transition_modal_detail(
+    id_contact: str,
+    id_effectif: str,
+    request: Request,
+    kind: str = Query(default="confirmed"),
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                event_kind = "potential" if (kind or "").strip().lower() == "potential" else "confirmed"
+                item = _fetch_prevision_transition_modal_detail(
+                    cur,
+                    id_ent,
+                    scope.id_service,
+                    int(horizon_years),
+                    int(criticite_min),
+                    event_kind,
+                    id_effectif,
+                )
+                if not item:
+                    raise HTTPException(status_code=404, detail="Sortie prévisionnelle introuvable sur le périmètre sélectionné.")
+
+                return {
+                    "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
+                    "horizon_years": int(horizon_years),
+                    "criticite_min": int(criticite_min),
+                    "kind": event_kind,
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "item": item,
                 }
     except HTTPException:
         raise
