@@ -1,0 +1,302 @@
+diff --git a/static/menus/skills_analyse.js b/static/menus/skills_analyse.js
+index 3da8224..8733982 100644
+--- a/static/menus/skills_analyse.js
++++ b/static/menus/skills_analyse.js
+@@ -440,12 +440,12 @@
+         level: analyseRiskLevelLabel(riskScore, riskCount),
+         riskScore,
+         riskCount,
+-        metric: `${postesRouges > 0 ? `postes +${Math.round(postesRouges)}%` : "postes stables"} · ${compImpactHausse > 0 ? `compétences +${Math.round(compImpactHausse)}%` : "compétences stables"} à ${analyseHorizonLabel(horizon)}`,
++        metric: `${postesRouges > 0 ? `postes +${Math.round(postesRouges)} pts` : "postes stables"} · ${compImpactHausse > 0 ? `compétences +${Math.round(compImpactHausse)} pts` : "compétences stables"} à ${analyseHorizonLabel(horizon)}`,
+         causesTitle: "Causes probables identifiées",
+         causes: compactCauseList([
+           sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
+-          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)}% d’évolution de fragilité moyenne des compétences` : "expertise à surveiller dans la durée",
+-          postesRouges > 0 ? `+${Math.round(postesRouges)}% d’évolution de fragilité moyenne des postes` : "relève interne à confirmer",
++          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)} pts de dégradation détectée sur les compétences` : "expertise à surveiller dans la durée",
++          postesRouges > 0 ? `+${Math.round(postesRouges)} pts de dégradation détectée sur les postes` : "relève interne à confirmer",
+           "transmission à organiser avant perte de couverture"
+         ])
+       });
+@@ -455,13 +455,34 @@
+   }
+ 
+ 
++  function formatAnalyseSignedPoints(value) {
++    const n = Math.round(Number(value || 0));
++    if (!Number.isFinite(n) || n === 0) return "0 pt";
++    return `${n > 0 ? "+" : ""}${n} ${Math.abs(n) > 1 ? "pts" : "pt"}`;
++  }
++
+   function updateAnalyseProjectionSummary(previsions) {
+     const horizon = getPrevHorizon();
+     const item = pickPrevHorizonItem(previsions || _prevData || {}, horizon) || null;
+     const label = byId("analyseSynthProjectionLabel");
+-    if (label) label.textContent = `Projection ${analyseHorizonLabel(horizon)}`;
+-    const postes = Number(item?.postes_rouges ?? NaN);
+-    setText("analyseSynthProjection", Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste fragilisé", "postes fragilisés") : "—");
++    if (label) label.textContent = `Fragilité postes ${analyseHorizonLabel(horizon)}`;
++
++    const now = Number(item?.postes_fragilite_now ?? NaN);
++    const future = Number(item?.postes_fragilite_horizon ?? NaN);
++    const delta = Number(item?.postes_fragilite_delta ?? NaN);
++
++    if (Number.isFinite(now) && Number.isFinite(future) && Number.isFinite(delta)) {
++      setText("analyseSynthProjection", `${Math.round(now)}% → ${Math.round(future)}% (${formatAnalyseSignedPoints(delta)})`);
++      return;
++    }
++
++    const degradation = Number(item?.postes_degradation_index ?? item?.postes_rouges ?? NaN);
++    if (Number.isFinite(degradation)) {
++      setText("analyseSynthProjection", degradation > 0 ? `Dégradation ${formatAnalyseSignedPoints(degradation)}` : "Stable");
++      return;
++    }
++
++    setText("analyseSynthProjection", "—");
+   }
+ 
+   function updateAnalyseHeaderSynthesis(data) {
+diff --git a/unified_api/app/routers/skills_portal_analyse.py b/unified_api/app/routers/skills_portal_analyse.py
+index e8ce3af..721ff42 100644
+--- a/unified_api/app/routers/skills_portal_analyse.py
++++ b/unified_api/app/routers/skills_portal_analyse.py
+@@ -61,6 +61,7 @@ from app.services.skills_analyse_engine import (
+     _analyse_prevision_delta_between_record_sets,
+     _analyse_prevision_competence_global_delta,
+     _analyse_prevision_poste_global_delta,
++    _analyse_prevision_poste_projection_summary,
+     _analyse_prevision_comp_fragility_index,
+     _fetch_prevision_competence_impacts,
+     _analyse_prevision_competence_average_delta,
+@@ -133,6 +134,14 @@ class AnalysePrevisionsHorizonItem(BaseModel):
+     comp_critiques_impactees: int = 0
+     postes_rouges: int = 0
+ 
++    # Synthèse lisible de la projection postes.
++    # postes_rouges conserve l'ancien indice de dégradation pour compatibilité.
++    postes_fragilite_now: int = 0
++    postes_fragilite_horizon: int = 0
++    postes_fragilite_delta: int = 0
++    postes_degradation_index: int = 0
++    postes_aggraves: int = 0
++
+     # Console de prévision RH orientée transition
+     sorties_confirmees: int = 0
+     sorties_potentielles: int = 0
+@@ -808,6 +817,7 @@ def get_analyse_summary(
+ 
+                 comp_delta_by_horizon: Dict[int, int] = {}
+                 poste_delta_by_horizon: Dict[int, int] = {}
++                poste_projection_by_horizon: Dict[int, Dict[str, Any]] = {}
+                 transition_counts_by_horizon = _fetch_prevision_transition_counts(
+                     cur,
+                     id_ent,
+@@ -824,19 +834,22 @@ def get_analyse_summary(
+                         CRITICITE_MIN,
+                     )
+ 
+-                    poste_delta_by_horizon[_h] = _analyse_prevision_poste_global_delta(
++                    _poste_projection = _analyse_prevision_poste_projection_summary(
+                         cur,
+                         id_ent,
+                         scope.id_service,
+                         _h,
+                         CRITICITE_MIN,
+                     )
++                    poste_projection_by_horizon[_h] = _poste_projection
++                    poste_delta_by_horizon[_h] = int(_poste_projection.get("postes_degradation_index") or 0)
+ 
+                 horizons = []
+ 
+                 for row in prev_rows:
+                     _h_years = int(row.get("horizon_years") or 0)
+                     _transition_counts = transition_counts_by_horizon.get(_h_years, {})
++                    _poste_projection = poste_projection_by_horizon.get(_h_years, {})
+ 
+                     horizons.append(
+ 
+@@ -850,6 +863,16 @@ def get_analyse_summary(
+ 
+                             postes_rouges=int(poste_delta_by_horizon.get(_h_years, 0)),
+ 
++                            postes_fragilite_now=int(_poste_projection.get("postes_fragilite_now") or 0),
++
++                            postes_fragilite_horizon=int(_poste_projection.get("postes_fragilite_horizon") or 0),
++
++                            postes_fragilite_delta=int(_poste_projection.get("postes_fragilite_delta") or 0),
++
++                            postes_degradation_index=int(_poste_projection.get("postes_degradation_index") or 0),
++
++                            postes_aggraves=int(_poste_projection.get("postes_aggraves") or 0),
++
+                             sorties_confirmees=int(_transition_counts.get("sorties_confirmees", 0)),
+ 
+                             sorties_potentielles=int(_transition_counts.get("sorties_potentielles", 0)),
+diff --git a/unified_api/app/services/skills_analyse_engine.py b/unified_api/app/services/skills_analyse_engine.py
+index bc42dd5..b737c45 100644
+--- a/unified_api/app/services/skills_analyse_engine.py
++++ b/unified_api/app/services/skills_analyse_engine.py
+@@ -1886,28 +1886,104 @@ def _analyse_prevision_poste_global_delta(
+     criticite_min: int,
+ ) -> int:
+     """
+-    KPI Prévisions postes : évolution moyenne ramenée à tous les postes analysés.
+-    Le détail reste porté par _fetch_prevision_poste_impacts().
++    Indice de dégradation postes à horizon N+X.
++
++    Ce n'est pas une moyenne projetée : on additionne uniquement les hausses
++    positives poste par poste, puis on les ramène au nombre de postes analysés.
++    Les baisses ne compensent pas les hausses, afin de ne pas masquer les
++    postes qui se dégradent réellement.
++    """
++    summary = _analyse_prevision_poste_projection_summary(
++        cur,
++        id_ent,
++        id_service,
++        horizon_years,
++        criticite_min,
++    )
++    return int(summary.get("postes_degradation_index") or 0)
++
++
++def _analyse_prevision_poste_projection_summary(
++    cur,
++    id_ent: str,
++    id_service: Optional[str],
++    horizon_years: int,
++    criticite_min: int,
++) -> Dict[str, Any]:
++    """
++    Synthèse lisible de la projection postes.
++
++    - fragilité actuelle moyenne : moyenne réelle des postes analysés ;
++    - fragilité projetée moyenne : même moteur rejoué en retirant les sortants N+X ;
++    - delta moyen : différence future - actuelle, en points ;
++    - indice de dégradation : ancien KPI conservé pour la priorisation, basé
++      uniquement sur les hausses positives poste par poste.
+     """
+     scope_id = (id_service or "").strip() or None
+     cmin = max(CRITICITE_MIN_MIN, min(CRITICITE_MIN_MAX, int(criticite_min or 0)))
+-    leaving_ids = _analyse_prevision_leaving_effectif_ids(cur, id_ent, scope_id, horizon_years)
+-    if not leaving_ids:
+-        return 0
++    h = max(1, min(5, int(horizon_years or 1)))
+ 
+-    today = date.today()
+-    period_end = date(today.year + max(1, min(5, int(horizon_years or 1))), 12, 31)
+     current_records = _fetch_postes_fragility_records(cur, id_ent, scope_id, cmin)
+-    future_records = _fetch_postes_fragility_records_projected(
+-        cur,
+-        id_ent,
+-        scope_id,
+-        cmin,
+-        today,
+-        period_end,
+-        excluded_effectif_ids=leaving_ids,
+-    )
+-    return _analyse_prevision_delta_between_record_sets(current_records, future_records, "id_poste")
++    current_analysed = _analyse_fragility_records_analyzed(current_records)
++    current_avg = _analyse_fragility_average(current_records)
++    current_count = len(current_analysed)
++
++    leaving_ids = _analyse_prevision_leaving_effectif_ids(cur, id_ent, scope_id, h)
++    if leaving_ids:
++        today = date.today()
++        period_end = date(today.year + h, 12, 31)
++        future_records = _fetch_postes_fragility_records_projected(
++            cur,
++            id_ent,
++            scope_id,
++            cmin,
++            today,
++            period_end,
++            excluded_effectif_ids=leaving_ids,
++        )
++    else:
++        future_records = list(current_records or [])
++
++    future_analysed = _analyse_fragility_records_analyzed(future_records)
++    future_avg = _analyse_fragility_average(future_records)
++    future_count = len(future_analysed)
++
++    degradation_index = _analyse_prevision_delta_between_record_sets(current_records, future_records, "id_poste")
++
++    future_by_poste = {
++        str(r.get("id_poste") or "").strip(): r
++        for r in future_analysed
++        if str(r.get("id_poste") or "").strip()
++    }
++    postes_aggraves = 0
++    postes_stables = 0
++    postes_ameliores = 0
++    for rec in current_analysed:
++        pid = str(rec.get("id_poste") or "").strip()
++        fut = future_by_poste.get(pid)
++        if not fut:
++            continue
++        now_score = _safe_int(rec.get("indice_fragilite"), 0)
++        future_score = _safe_int(fut.get("indice_fragilite"), 0)
++        if future_score > now_score:
++            postes_aggraves += 1
++        elif future_score < now_score:
++            postes_ameliores += 1
++        else:
++            postes_stables += 1
++
++    return {
++        "postes_fragilite_now": int(current_avg),
++        "postes_fragilite_horizon": int(future_avg),
++        "postes_fragilite_delta": int(round(float(future_avg) - float(current_avg))),
++        "postes_degradation_index": int(degradation_index),
++        "postes_analyses_projection": int(current_count),
++        "postes_analyses_horizon": int(future_count),
++        "postes_aggraves": int(postes_aggraves),
++        "postes_stables": int(postes_stables),
++        "postes_ameliores": int(postes_ameliores),
++    }
++
+ 
+ def _analyse_prevision_comp_fragility_index(B: int, P: int, Pd: int, Pe: int, Ped: int, N: int, Cmax: int, N80: int) -> int:
+     """
+@@ -3661,9 +3737,21 @@ def _build_risk_synthesis_effects(
+     if sorties <= 0:
+         sorties = _safe_int(prev.get("sorties_confirmees"), 0) + _safe_int(prev.get("sorties_potentielles"), 0)
+     comp_delta = _safe_int(prev.get("comp_critiques_impactees"), 0)
+-    poste_delta = _safe_int(prev.get("postes_rouges"), 0)
++    poste_degradation_index = _safe_int(prev.get("postes_degradation_index", prev.get("postes_rouges")), 0)
++    poste_frag_now = prev.get("postes_fragilite_now")
++    poste_frag_horizon = prev.get("postes_fragilite_horizon")
++    poste_frag_delta = prev.get("postes_fragilite_delta")
++    has_poste_projection = poste_frag_now is not None and poste_frag_horizon is not None and poste_frag_delta is not None
+     horizon_label = f"N+{max(1, _safe_int(horizon_years, 1))}"
+ 
++    if has_poste_projection:
++        delta_label = f"+{_safe_int(poste_frag_delta, 0)} pts" if _safe_int(poste_frag_delta, 0) > 0 else f"{_safe_int(poste_frag_delta, 0)} pt"
++        poste_projection_metric = f"postes {_safe_int(poste_frag_now, 0)}% → {_safe_int(poste_frag_horizon, 0)}% ({delta_label})"
++        poste_projection_cause = f"fragilité moyenne des postes : {_safe_int(poste_frag_now, 0)}% → {_safe_int(poste_frag_horizon, 0)}% ({delta_label})"
++    else:
++        poste_projection_metric = ("postes +" + str(round(poste_degradation_index)) + " pts") if poste_degradation_index > 0 else "postes stables"
++        poste_projection_cause = f"+{round(poste_degradation_index)} pts de dégradation détectée sur les postes" if poste_degradation_index > 0 else "relève interne à confirmer"
++
+     raw = [
+         {
+             "key": "rupture_activite",
+@@ -3703,13 +3791,13 @@ def _build_risk_synthesis_effects(
+         },
+         {
+             "key": "perte_savoir_faire",
+-            "count": sorties + (1 if poste_delta > 0 else 0) + (1 if comp_delta > 0 else 0),
+-            "score": max(0, min(100, poste_delta + comp_delta)),
+-            "metric": f"{('postes +' + str(round(poste_delta)) + '%') if poste_delta > 0 else 'postes stables'} · {('compétences +' + str(round(comp_delta)) + '%') if comp_delta > 0 else 'compétences stables'} à {horizon_label}",
++            "count": sorties + (1 if poste_degradation_index > 0 else 0) + (1 if comp_delta > 0 else 0),
++            "score": max(0, min(100, poste_degradation_index + comp_delta)),
++            "metric": f"{poste_projection_metric} · {('compétences +' + str(round(comp_delta)) + ' pts') if comp_delta > 0 else 'compétences stables'} à {horizon_label}",
+             "causes": [
+                 _analyse_risk_count_label(sorties, "sortie possible", "sorties possibles") + f" à {horizon_label}" if sorties else "sorties à surveiller selon l’horizon choisi",
+-                f"+{round(comp_delta)}% d’évolution de fragilité moyenne des compétences" if comp_delta > 0 else "expertise à surveiller dans la durée",
+-                f"+{round(poste_delta)}% d’évolution de fragilité moyenne des postes" if poste_delta > 0 else "relève interne à confirmer",
++                f"+{round(comp_delta)} pts de dégradation détectée sur les compétences" if comp_delta > 0 else "expertise à surveiller dans la durée",
++                poste_projection_cause,
+                 "transmission à organiser avant perte de couverture",
+             ],
+         },

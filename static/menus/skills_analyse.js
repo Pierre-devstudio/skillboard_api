@@ -440,12 +440,12 @@
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: `${postesRouges > 0 ? `postes +${Math.round(postesRouges)}%` : "postes stables"} · ${compImpactHausse > 0 ? `compétences +${Math.round(compImpactHausse)}%` : "compétences stables"} à ${analyseHorizonLabel(horizon)}`,
+        metric: `${postesRouges > 0 ? `postes +${Math.round(postesRouges)} pts` : "postes stables"} · ${compImpactHausse > 0 ? `compétences +${Math.round(compImpactHausse)} pts` : "compétences stables"} à ${analyseHorizonLabel(horizon)}`,
         causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
           sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
-          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)}% d’évolution de fragilité moyenne des compétences` : "expertise à surveiller dans la durée",
-          postesRouges > 0 ? `+${Math.round(postesRouges)}% d’évolution de fragilité moyenne des postes` : "relève interne à confirmer",
+          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)} pts de dégradation détectée sur les compétences` : "expertise à surveiller dans la durée",
+          postesRouges > 0 ? `+${Math.round(postesRouges)} pts de dégradation détectée sur les postes` : "relève interne à confirmer",
           "transmission à organiser avant perte de couverture"
         ])
       });
@@ -455,13 +455,34 @@
   }
 
 
+  function formatAnalyseSignedPoints(value) {
+    const n = Math.round(Number(value || 0));
+    if (!Number.isFinite(n) || n === 0) return "0 pt";
+    return `${n > 0 ? "+" : ""}${n} ${Math.abs(n) > 1 ? "pts" : "pt"}`;
+  }
+
   function updateAnalyseProjectionSummary(previsions) {
     const horizon = getPrevHorizon();
     const item = pickPrevHorizonItem(previsions || _prevData || {}, horizon) || null;
     const label = byId("analyseSynthProjectionLabel");
-    if (label) label.textContent = `Projection ${analyseHorizonLabel(horizon)}`;
-    const postes = Number(item?.postes_rouges ?? NaN);
-    setText("analyseSynthProjection", Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste fragilisé", "postes fragilisés") : "—");
+    if (label) label.textContent = `Fragilité postes ${analyseHorizonLabel(horizon)}`;
+
+    const now = Number(item?.postes_fragilite_now ?? NaN);
+    const future = Number(item?.postes_fragilite_horizon ?? NaN);
+    const delta = Number(item?.postes_fragilite_delta ?? NaN);
+
+    if (Number.isFinite(now) && Number.isFinite(future) && Number.isFinite(delta)) {
+      setText("analyseSynthProjection", `${Math.round(now)}% → ${Math.round(future)}% (${formatAnalyseSignedPoints(delta)})`);
+      return;
+    }
+
+    const degradation = Number(item?.postes_degradation_index ?? item?.postes_rouges ?? NaN);
+    if (Number.isFinite(degradation)) {
+      setText("analyseSynthProjection", degradation > 0 ? `Dégradation ${formatAnalyseSignedPoints(degradation)}` : "Stable");
+      return;
+    }
+
+    setText("analyseSynthProjection", "—");
   }
 
   function updateAnalyseHeaderSynthesis(data) {

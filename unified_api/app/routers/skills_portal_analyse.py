@@ -61,6 +61,7 @@ from app.services.skills_analyse_engine import (
     _analyse_prevision_delta_between_record_sets,
     _analyse_prevision_competence_global_delta,
     _analyse_prevision_poste_global_delta,
+    _analyse_prevision_poste_projection_summary,
     _analyse_prevision_comp_fragility_index,
     _fetch_prevision_competence_impacts,
     _analyse_prevision_competence_average_delta,
@@ -132,6 +133,14 @@ class AnalysePrevisionsHorizonItem(BaseModel):
     sorties: int = 0
     comp_critiques_impactees: int = 0
     postes_rouges: int = 0
+
+    # Synthèse lisible de la projection postes.
+    # postes_rouges conserve l'ancien indice de dégradation pour compatibilité.
+    postes_fragilite_now: int = 0
+    postes_fragilite_horizon: int = 0
+    postes_fragilite_delta: int = 0
+    postes_degradation_index: int = 0
+    postes_aggraves: int = 0
 
     # Console de prévision RH orientée transition
     sorties_confirmees: int = 0
@@ -808,6 +817,7 @@ def get_analyse_summary(
 
                 comp_delta_by_horizon: Dict[int, int] = {}
                 poste_delta_by_horizon: Dict[int, int] = {}
+                poste_projection_by_horizon: Dict[int, Dict[str, Any]] = {}
                 transition_counts_by_horizon = _fetch_prevision_transition_counts(
                     cur,
                     id_ent,
@@ -824,19 +834,22 @@ def get_analyse_summary(
                         CRITICITE_MIN,
                     )
 
-                    poste_delta_by_horizon[_h] = _analyse_prevision_poste_global_delta(
+                    _poste_projection = _analyse_prevision_poste_projection_summary(
                         cur,
                         id_ent,
                         scope.id_service,
                         _h,
                         CRITICITE_MIN,
                     )
+                    poste_projection_by_horizon[_h] = _poste_projection
+                    poste_delta_by_horizon[_h] = int(_poste_projection.get("postes_degradation_index") or 0)
 
                 horizons = []
 
                 for row in prev_rows:
                     _h_years = int(row.get("horizon_years") or 0)
                     _transition_counts = transition_counts_by_horizon.get(_h_years, {})
+                    _poste_projection = poste_projection_by_horizon.get(_h_years, {})
 
                     horizons.append(
 
@@ -849,6 +862,16 @@ def get_analyse_summary(
                             comp_critiques_impactees=int(comp_delta_by_horizon.get(_h_years, 0)),
 
                             postes_rouges=int(poste_delta_by_horizon.get(_h_years, 0)),
+
+                            postes_fragilite_now=int(_poste_projection.get("postes_fragilite_now") or 0),
+
+                            postes_fragilite_horizon=int(_poste_projection.get("postes_fragilite_horizon") or 0),
+
+                            postes_fragilite_delta=int(_poste_projection.get("postes_fragilite_delta") or 0),
+
+                            postes_degradation_index=int(_poste_projection.get("postes_degradation_index") or 0),
+
+                            postes_aggraves=int(_poste_projection.get("postes_aggraves") or 0),
 
                             sorties_confirmees=int(_transition_counts.get("sorties_confirmees", 0)),
 
