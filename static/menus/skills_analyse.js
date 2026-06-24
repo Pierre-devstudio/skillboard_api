@@ -299,10 +299,9 @@
   }
   function analyseRiskLevelLabel(value, count) {
     const v = Number(value || 0);
-    const c = Number(count || 0);
-    if (v >= 80 || c >= 8) return "Risque critique";
-    if (v >= 65 || c >= 5) return "Risque élevé";
-    if (v >= 35 || c > 0) return "Risque modéré";
+    if (v >= 80) return "Risque critique";
+    if (v >= 65) return "Risque élevé";
+    if (v >= 35) return "Risque modéré";
     return "Risque faible";
   }
   function analyseRiskLevelClass(level) {
@@ -340,10 +339,9 @@
     const synth = data?.risk_synthesis || data?.synthese_risques || null;
     if (!synth) return [];
 
-    const horizon = Number(getPrevHorizon ? getPrevHorizon() : 1);
-    const horizons = Array.isArray(synth.horizons) ? synth.horizons : [];
-    const hItem = horizons.find(x => Number(x?.horizon_years || 0) === horizon) || null;
-    const effects = Array.isArray(hItem?.effects) ? hItem.effects : (Array.isArray(synth.effects) ? synth.effects : []);
+    // La synthèse des risques est une lecture actuelle.
+    // Elle ne suit plus le slider N+X, réservé à la tuile Prévisions.
+    const effects = Array.isArray(synth.effects) ? synth.effects : [];
     return effects.map(normalizeAnalyseRiskEffectFromEngine).filter(e => e.key);
   }
 
@@ -353,47 +351,42 @@
 
     const t = data?.tiles || {};
     const r = t.risques || {};
-    const p = t.previsions || {};
-    const horizon = getPrevHorizon();
-    const item = pickPrevHorizonItem(p, horizon) || null;
     const count = (value, singular, plural) => fmtAnalyseCount(Number(value || 0), singular, plural);
 
     const posteFrag = Number(r.postes_fragilite_globale || 0);
     const compFrag = Number(r.comp_fragilite_moyenne || 0);
-    const postesFragiles = Number(r.postes_fragiles || 0);
-    const sansPorteur = Number(r.comp_critiques_sans_porteur || 0);
-    const porteurUnique = Number(r.comp_bus_factor_1 || 0);
+    const postesAnalyses = Number(r.postes_analyses || 0);
+    const postesFort = posteFrag >= 65 ? postesAnalyses : 0;
+    const sansCouverture = Number(r.comp_critiques_sans_porteur || 0);
+    const couvertureConcentree = Number(r.comp_bus_factor_1 || 0);
     const sansRenfort = Number(r.comp_critiques_tombent_zero_auj || 0);
     const compFragiles = Number(r.comp_critiques_fragiles || 0);
-    const sorties = Number(item?.sorties || 0);
-    const compImpactHausse = Number(item?.comp_critiques_impactees || 0);
-    const postesRouges = Number(item?.postes_rouges || 0);
 
     const effects = [];
 
-    if (postesFragiles > 0 || sansPorteur > 0 || sansRenfort > 0 || porteurUnique > 0) {
-      const riskScore = Math.max(posteFrag, compFrag);
-      const riskCount = postesFragiles + sansPorteur + sansRenfort + porteurUnique;
+    if (posteFrag >= 35 || sansCouverture > 0 || sansRenfort > 0) {
+      const riskScore = posteFrag;
+      const riskCount = sansCouverture + sansRenfort + postesFort;
       effects.push({
         key: "rupture_activite",
         title: "Risque de rupture ou ralentissement d’activité",
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: count(postesFragiles, "poste fragile", "postes fragiles"),
+        metric: `${Math.round(posteFrag)}% de fragilité moyenne des postes`,
         causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          sansPorteur > 0 ? `${count(sansPorteur, "compétence critique sans couverture suffisante", "compétences critiques sans couverture suffisante")}` : "couverture critique à vérifier",
-          sansRenfort > 0 ? `${count(sansRenfort, "point sans renfort immédiat", "points sans renfort immédiat")}` : "renfort immédiat à vérifier sur les postes sensibles",
-          postesFragiles > 0 ? `${count(postesFragiles, "poste déjà fragilisé", "postes déjà fragilisés")}` : "postes sensibles à relire dans le détail",
-          porteurUnique > 0 ? `${count(porteurUnique, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne")}` : "dépendance individuelle à surveiller"
+          sansCouverture > 0 ? count(sansCouverture, "compétence critique avec couverture insuffisante", "compétences critiques avec couverture insuffisante") : "couverture critique à vérifier",
+          sansRenfort > 0 ? count(sansRenfort, "poste sans renfort immédiat", "postes sans renfort immédiat") : "renfort immédiat à vérifier sur les postes sensibles",
+          posteFrag >= 65 ? "postes à risque fort à relire dans le détail" : "postes à surveiller selon le détail",
+          "continuité opérationnelle à vérifier sur les postes les plus exposés"
         ])
       });
     }
 
-    if (compFrag > 0 || compFragiles > 0 || sansPorteur > 0) {
+    if (compFrag >= 35 || compFragiles > 0 || sansCouverture > 0) {
       const riskScore = compFrag;
-      const riskCount = compFragiles + sansPorteur;
+      const riskCount = compFragiles + sansCouverture;
       effects.push({
         key: "qualite_execution",
         title: "Risque de baisse de qualité d’exécution",
@@ -403,50 +396,50 @@
         metric: `${Math.round(compFrag)}% de fragilité moyenne des compétences`,
         causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          compFragiles > 0 ? `${count(compFragiles, "compétence critique avec maîtrise fragile", "compétences critiques avec maîtrise fragile")}` : "écarts de maîtrise à vérifier",
-          "niveaux attendus insuffisamment couverts",
+          compFragiles > 0 ? count(compFragiles, "compétence critique avec maîtrise fragile", "compétences critiques avec maîtrise fragile") : "écarts de maîtrise à vérifier",
+          "niveaux attendus à confirmer",
           "évaluations ou confirmations à reprendre",
-          sansPorteur > 0 ? `${count(sansPorteur, "compétence sans couverture suffisante", "compétences sans couverture suffisante")}` : "expertise réelle à confirmer sur les situations sensibles"
+          "qualité d’exécution à sécuriser sur les compétences les plus critiques"
         ])
       });
     }
 
-    if (porteurUnique > 0) {
-      const riskScore = Math.max(posteFrag, compFrag);
-      const riskCount = porteurUnique;
+    if (couvertureConcentree > 0 || sansRenfort > 0) {
+      const riskScore = Math.max(compFrag, sansRenfort > 0 ? posteFrag : 0);
+      const riskCount = couvertureConcentree + sansRenfort;
       effects.push({
         key: "dependance_individuelle",
         title: "Risque de dépendance individuelle",
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: count(porteurUnique, "compétence dépendante d’une seule personne", "compétences dépendantes d’une seule personne"),
+        metric: count(couvertureConcentree, "compétence avec couverture concentrée", "compétences avec couverture concentrée"),
         causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          `${count(porteurUnique, "compétence portée par une seule personne", "compétences portées par une seule personne")}`,
-          "vivier interne trop limité",
-          "renfort immédiat insuffisant sur les postes concernés",
+          couvertureConcentree > 0 ? count(couvertureConcentree, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") : "dépendances individuelles à vérifier",
+          "vivier interne à surveiller",
+          sansRenfort > 0 ? count(sansRenfort, "poste sans renfort immédiat", "postes sans renfort immédiat") : "renfort immédiat à confirmer",
           "transmission à structurer sur les compétences clés"
         ])
       });
     }
 
-    if (sorties > 0 || compImpactHausse > 0 || postesRouges > 0) {
-      const riskScore = postesRouges + compImpactHausse;
-      const riskCount = sorties + (postesRouges > 0 ? 1 : 0) + (compImpactHausse > 0 ? 1 : 0);
+    if (compFrag >= 35 || couvertureConcentree > 0 || sansCouverture > 0) {
+      const riskScore = compFrag;
+      const riskCount = couvertureConcentree + sansCouverture;
       effects.push({
         key: "perte_savoir_faire",
         title: "Risque de perte de savoir-faire",
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: `${postesRouges > 0 ? `postes +${Math.round(postesRouges)} pts` : "postes stables"} · ${compImpactHausse > 0 ? `compétences +${Math.round(compImpactHausse)} pts` : "compétences stables"} à ${analyseHorizonLabel(horizon)}`,
+        metric: count(couvertureConcentree, "compétence avec savoir-faire peu diffusé", "compétences avec savoir-faire peu diffusé"),
         causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
-          compImpactHausse > 0 ? `+${Math.round(compImpactHausse)} pts de dégradation détectée sur les compétences` : "expertise à surveiller dans la durée",
-          postesRouges > 0 ? `+${Math.round(postesRouges)} pts de dégradation détectée sur les postes` : "relève interne à confirmer",
-          "transmission à organiser avant perte de couverture"
+          sansCouverture > 0 ? count(sansCouverture, "compétence sans expertise confirmée", "compétences sans expertise confirmée") : "expertise confirmée à surveiller",
+          couvertureConcentree > 0 ? count(couvertureConcentree, "compétence avec relève interne limitée", "compétences avec relève interne limitée") : "relève interne à confirmer",
+          "transmission à organiser sur les savoir-faire sensibles",
+          "savoir-faire à sécuriser avant perte de maîtrise opérationnelle"
         ])
       });
     }
@@ -461,29 +454,24 @@
     return `${n > 0 ? "+" : ""}${n} ${Math.abs(n) > 1 ? "pts" : "pt"}`;
   }
 
-  function updateAnalyseProjectionSummary(previsions) {
-    const horizon = getPrevHorizon();
-    const item = pickPrevHorizonItem(previsions || _prevData || {}, horizon) || null;
+  function updateAnalyseProjectionSummary(_previsions) {
     const label = byId("analyseSynthProjectionLabel");
-    if (label) label.textContent = `Fragilité postes ${analyseHorizonLabel(horizon)}`;
+    if (label) label.textContent = "Niveau de risque actuel";
 
-    const now = Number(item?.postes_fragilite_now ?? NaN);
-    const future = Number(item?.postes_fragilite_horizon ?? NaN);
-    const delta = Number(item?.postes_fragilite_delta ?? NaN);
-
-    if (Number.isFinite(now) && Number.isFinite(future) && Number.isFinite(delta)) {
-      setText("analyseSynthProjection", `${Math.round(now)}% → ${Math.round(future)}% (${formatAnalyseSignedPoints(delta)})`);
+    const r = _analyseLastSummary?.tiles?.risques || {};
+    const posteFrag = Number(r.postes_fragilite_globale ?? NaN);
+    const compFrag = Number(r.comp_fragilite_moyenne ?? NaN);
+    const values = [posteFrag, compFrag].filter(Number.isFinite);
+    if (!values.length) {
+      setText("analyseSynthProjection", "—");
       return;
     }
 
-    const degradation = Number(item?.postes_degradation_index ?? item?.postes_rouges ?? NaN);
-    if (Number.isFinite(degradation)) {
-      setText("analyseSynthProjection", degradation > 0 ? `Dégradation ${formatAnalyseSignedPoints(degradation)}` : "Stable");
-      return;
-    }
-
-    setText("analyseSynthProjection", "—");
+    const score = Math.max(...values);
+    const level = analyseRiskLevelLabel(score, 0).replace(/^Risque\s+/i, "");
+    setText("analyseSynthProjection", `${level} · ${Math.round(score)}%`);
   }
+
 
   function updateAnalyseHeaderSynthesis(data) {
     _analyseLastSummary = data || null;
@@ -601,29 +589,11 @@
     const f = getFilters();
     if (f.id_service) qs.set("id_service", f.id_service);
     qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
-    qs.set("horizon_years", String(getPrevHorizon()));
-
-    const effects = Array.isArray(_analyseLastSummaryEffects) ? _analyseLastSummaryEffects : buildAnalyseRiskEffects(_analyseLastSummary || {});
-
-    if (kind === "rapport") {
-      effects.forEach(e => {
-        const key = String(e?.key || "").trim();
-        if (!key) return;
-        if (e?.level) qs.set(`risk_level_${key}`, String(e.level));
-        if (Number.isFinite(Number(e?.riskScore ?? e?.score))) qs.set(`risk_score_${key}`, String(Math.round(Number(e.riskScore ?? e.score))));
-        if (Number.isFinite(Number(e?.riskCount ?? e?.count))) qs.set(`risk_count_${key}`, String(Math.round(Number(e.riskCount ?? e.count))));
-      });
-    } else if (effectKey) {
-      const effect = effects.find(x => String(x?.key || "") === String(effectKey || ""));
-      if (effect?.level) qs.set("risk_level", String(effect.level));
-      if (Number.isFinite(Number(effect?.riskScore ?? effect?.score))) qs.set("risk_score", String(Math.round(Number(effect.riskScore ?? effect.score))));
-      if (Number.isFinite(Number(effect?.riskCount ?? effect?.count))) qs.set("risk_count", String(Math.round(Number(effect.riskCount ?? effect.count))));
-    }
-
     qs.set("_", String(Date.now()));
     const route = kind === "rapport" ? "rapport" : "ishikawa";
     return `${ctx.apiBase}/skills/analyse/${route}/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
   }
+
 
 
 

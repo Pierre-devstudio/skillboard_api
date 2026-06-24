@@ -887,27 +887,13 @@ def get_analyse_summary(
                 h1 = next((h for h in horizons if h.horizon_years == 1), None)
 
 
-                risk_synthesis_horizons: List[Dict[str, Any]] = []
-                for _h_item in horizons:
-                    try:
-                        _prev_item = _h_item.model_dump() if hasattr(_h_item, "model_dump") else _h_item.dict()
-                    except Exception:
-                        _prev_item = {
-                            "horizon_years": int(getattr(_h_item, "horizon_years", 1) or 1),
-                            "sorties": int(getattr(_h_item, "sorties", 0) or 0),
-                            "comp_critiques_impactees": int(getattr(_h_item, "comp_critiques_impactees", 0) or 0),
-                            "postes_rouges": int(getattr(_h_item, "postes_rouges", 0) or 0),
-                        }
-                    _h_years = int(_prev_item.get("horizon_years") or 1)
-                    risk_synthesis_horizons.append({
-                        "horizon_years": _h_years,
-                        "effects": _build_risk_synthesis_effects(
-                            comp_records,
-                            postes_fragiles_records,
-                            _h_years,
-                            _prev_item,
-                        ),
-                    })
+                # Synthèse des risques = lecture actuelle uniquement.
+                # Les projections N+X restent dans la tuile Prévisions, pour éviter
+                # de mélanger un diagnostic actuel et une anticipation RH.
+                risk_synthesis_effects = _build_risk_synthesis_effects(
+                    comp_records,
+                    postes_fragiles_records,
+                )
 
 
                 previsions_tile = AnalysePrevisionsTile(
@@ -955,8 +941,8 @@ def get_analyse_summary(
                     updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
                     tiles=tiles,
                     risk_synthesis={
-                        "horizons": risk_synthesis_horizons,
-                        "effects": (risk_synthesis_horizons[0].get("effects") if risk_synthesis_horizons else []),
+                        "mode": "current",
+                        "effects": risk_synthesis_effects,
                     },
                 )
 
@@ -7094,12 +7080,11 @@ def _analyse_effect_definitions() -> Dict[str, Dict[str, Any]]:
 
 def _analyse_effect_level(score: int, count: int) -> str:
     s = _analyse_pdf_safe_int(score)
-    c = _analyse_pdf_safe_int(count)
-    if s >= 80 or c >= 8:
+    if s >= 80:
         return "Risque critique"
-    if s >= 65 or c >= 5:
+    if s >= 65:
         return "Risque élevé"
-    if s >= 35 or c > 0:
+    if s >= 35:
         return "Risque modéré"
     return "Risque faible"
 
@@ -7107,12 +7092,11 @@ def _analyse_effect_level(score: int, count: int) -> str:
 
 def _analyse_report_effect_level(score: Any, count: Any) -> str:
     s = _analyse_pdf_safe_int(score)
-    c = _analyse_pdf_safe_int(count)
-    if s >= 85:
+    if s >= 80:
         return "Risque critique"
-    if s >= 65 or c >= 8:
+    if s >= 65:
         return "Risque élevé"
-    if s >= 45 or c >= 3:
+    if s >= 35:
         return "Risque modéré"
     return "Risque faible"
 
@@ -7182,12 +7166,12 @@ def _analyse_build_effect_metrics(
     renfort_by_poste: Optional[Dict[str, Dict[str, Any]]] = None,
     prevision_item: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
+    # Synthèse risques = situation actuelle. Les paramètres prévisionnels sont
+    # gardés pour compatibilité mais ne pilotent plus le rapport / Ishikawa.
     return _build_risk_synthesis_effects(
         comp_records,
         poste_records,
-        int(horizon_years or 1),
-        prevision_item,
-        renfort_by_poste,
+        renfort_by_poste=renfort_by_poste,
     )
 
 def _analyse_ishikawa_rows_for_effect(
@@ -7983,10 +7967,9 @@ def get_analyse_ishikawa_pdf(
                 comp_ids = [str(r.get("id_comp") or "").strip() for r in comp_records if str(r.get("id_comp") or "").strip()]
                 last_eval_map = _analyse_last_eval_map(cur, id_ent, scope.id_service, comp_ids)
                 renfort_by_poste = {}
-                prevision_item = _analyse_prevision_synthesis_item(cur, id_ent, scope.id_service, int(horizon_years), int(criticite_min))
 
         rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, effect_key)
-        metrics = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste, prevision_item)
+        metrics = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste, None)
         metric = next((m for m in metrics if m.get("key") == effect_key), None) or {"level": "Risque faible", "score": 0}
 
         clean_level = str(risk_level or "").strip()
@@ -8013,7 +7996,7 @@ def get_analyse_ishikawa_pdf(
         meta_cards = Table([[
             _analyse_pdf_kpi_card("Effet identifié", effect["title"], "Lecture cause / effet", 66, 24),
             _analyse_pdf_kpi_card("Périmètre", scope.nom_service, "Périmètre analysé", 66, 24),
-            _analyse_pdf_kpi_card("Horizon", f"{horizon_years} an(s)", "Projection retenue", 66, 24),
+            _analyse_pdf_kpi_card("Analyse", "Risques actuels", "Situation à date", 66, 24),
             _analyse_pdf_risk_gauge_card(_analyse_pdf_safe_int(metric.get("score")), str(metric.get("level") or "Risque faible"), 66, 24),
         ]], colWidths=[68 * mm, 68 * mm, 68 * mm, 68 * mm])
         meta_cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
@@ -8100,9 +8083,8 @@ def get_analyse_risques_report_pdf(
                 comp_ids = [str(r.get("id_comp") or "").strip() for r in comp_records if str(r.get("id_comp") or "").strip()]
                 last_eval_map = _analyse_last_eval_map(cur, id_ent, scope.id_service, comp_ids)
                 renfort_by_poste = {}
-                prevision_item = _analyse_prevision_synthesis_item(cur, id_ent, scope.id_service, int(horizon_years), int(criticite_min))
 
-        raw_effects = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste, prevision_item)
+        raw_effects = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste, None)
         effects = []
         family_counts: Dict[str, int] = {}
         query_params = request.query_params
@@ -8172,7 +8154,7 @@ def get_analyse_risques_report_pdf(
             _analyse_pdf_kpi_card("Postes analysés", str(nb_postes), "Périmètre lu", 62, 22),
             _analyse_pdf_kpi_card("Compétences analysées", str(nb_comps), "Compétences critiques retenues", 62, 22),
             _analyse_pdf_kpi_card("Effets détectés", str(effects_detected), "Effets terrain suivis", 62, 22),
-            _analyse_pdf_kpi_card("Horizon", f"{horizon_years} an(s)", "Projection du rapport", 62, 22),
+            _analyse_pdf_kpi_card("Analyse", "Risques actuels", "Situation à date", 62, 22),
         ]], colWidths=[65 * mm, 65 * mm, 65 * mm, 65 * mm])
         top_cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
         story.append(top_cards)
