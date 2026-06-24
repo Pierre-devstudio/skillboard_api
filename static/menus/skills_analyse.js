@@ -5711,14 +5711,53 @@ function renderDetail(mode) {
     return `<tr><td colspan="${Number(colspan || 1)}" class="sb-muted" style="text-align:center; padding:18px;">${escapeHtml(text || "Aucune donnée à afficher.")}</td></tr>`;
   }
 
+  function analysePrevisionCompetencePdfButton(c) {
+    const key = (c?.id_comp || c?.code || "").toString().trim();
+    if (!key) return "";
+    return `
+      <button type="button" class="sb-icon-btn sb-icon-btn--doc sb-prev-capacity-pdf-btn" data-poste-dep-comp-pdf="${escapeHtml(key)}" title="Voir la fiche compétence" aria-label="Voir la fiche compétence">
+        ${analysePdfIconSvg()}
+      </button>
+    `;
+  }
+
+  function analysePrevisionTransmitterNameHtml(p) {
+    const full = (p?.full || `${p?.prenom_effectif || ""} ${p?.nom_effectif || ""}`.trim() || "—").toString().trim() || "—";
+    return `<span class="sb-prev-transmitter-label">${escapeHtml(full)}</span>`;
+  }
+
   function analysePrevisionCapacityTransmittersHtml(list) {
     const items = Array.isArray(list) ? list : [];
     if (!items.length) return `<span class="sb-muted">Aucun transmetteur disponible</span>`;
     return `
       <div class="sb-prev-transmitter-list">
-        ${items.map(p => `<span class="sb-badge">${escapeHtml(p.full || `${p.prenom_effectif || ""} ${p.nom_effectif || ""}`.trim() || "—")}</span>`).join("")}
+        ${items.map(p => analysePrevisionTransmitterNameHtml(p)).join("")}
       </div>
     `;
+  }
+
+  function analysePrevisionOtherAccordionRows(list) {
+    const rows = Array.isArray(list) ? list : [];
+    if (!rows.length) return analysePrevisionCapacityRowsEmpty(3, "Aucune compétence non transmissible par le sortant n’est rattachée à son poste.");
+    return rows.map((c, idx) => {
+      const rowId = `prev_other_${idx}`;
+      const nb = Math.max(0, Math.round(Number(c.autres_transmissibles || 0)));
+      return `
+        <tr class="sb-prev-capacity-acc-row" data-prev-other-row="${escapeHtml(rowId)}">
+          <td>
+            <button type="button" class="sb-prev-capacity-acc-btn" data-prev-other-toggle="${escapeHtml(rowId)}" aria-expanded="false" title="Afficher les porteurs">
+              <span class="sb-acc-chevron">⌄</span>
+              <span class="sb-prev-capacity-acc-label">${analysePrevisionCapacityCompLabel(c)}</span>
+            </button>
+          </td>
+          <td class="col-center"><span class="sb-badge ${nb > 0 ? "sb-badge--success" : ""}">${escapeHtml(String(nb))}</span></td>
+          <td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td>
+        </tr>
+        <tr class="sb-prev-capacity-acc-detail" data-prev-other-detail="${escapeHtml(rowId)}" style="display:none;">
+          <td colspan="3">${analysePrevisionCapacityTransmittersHtml(c.autres_transmetteurs)}</td>
+        </tr>
+      `;
+    }).join("");
   }
 
   function ensureAnalysePrevisionCapacityDetailModal() {
@@ -5745,7 +5784,21 @@ function renderDetail(mode) {
     };
     byId("btnCloseAnalysePrevisionCapacityDetail")?.addEventListener("click", close);
     byId("btnAnalysePrevisionCapacityDetailClose")?.addEventListener("click", close);
-    modal.addEventListener("click", (ev) => { if (ev.target === modal) close(); });
+    modal.addEventListener("click", (ev) => {
+      const toggle = ev.target?.closest?.("[data-prev-other-toggle]");
+      if (toggle) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const key = (toggle.getAttribute("data-prev-other-toggle") || "").trim();
+        const detail = key ? modal.querySelector(`[data-prev-other-detail="${key}"]`) : null;
+        const open = detail && detail.style.display === "none";
+        if (detail) detail.style.display = open ? "table-row" : "none";
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        toggle.classList.toggle("is-open", !!open);
+        return;
+      }
+      if (ev.target === modal) close();
+    });
     return modal;
   }
 
@@ -5764,13 +5817,14 @@ function renderDetail(mode) {
     const requiredLabel = cap.threshold_label || "Avancé haut ou Expert";
 
     if (key === "unique") {
-      if (title) title.textContent = "Compétences à porteur unique";
+      const firstName = analysePrevisionFirstName(item.full || `${item.prenom_effectif || ""} ${item.nom_effectif || ""}`.trim());
+      if (title) title.textContent = `Compétences possédées uniquement par ${firstName}`;
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-            <thead><tr><th>Compétence</th><th class="col-center">Criticité</th></tr></thead>
+            <thead><tr><th>Compétence</th><th class="col-center">Criticité</th><th class="col-center"></th></tr></thead>
             <tbody>
-              ${unique.length ? unique.map(c => `<tr><td>${analysePrevisionCapacityCompLabel(c)}</td><td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td></tr>`).join("") : analysePrevisionCapacityRowsEmpty(2, "Aucune compétence transmissible ne repose uniquement sur le sortant.")}
+              ${unique.length ? unique.map(c => `<tr><td>${analysePrevisionCapacityCompLabel(c)}</td><td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td><td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td></tr>`).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence transmissible ne repose uniquement sur le sortant.")}
             </tbody>
           </table>
         </div>
@@ -5779,16 +5833,10 @@ function renderDetail(mode) {
       if (title) title.textContent = "Autres transmetteurs disponibles";
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
-          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-            <thead><tr><th>Compétence</th><th class="col-center">Potentiel de transmission</th><th>Porteurs transmetteurs potentiels</th></tr></thead>
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-prev-capacity-acc-table">
+            <thead><tr><th>Compétence</th><th class="col-center">Potentiel de transmission</th><th class="col-center"></th></tr></thead>
             <tbody>
-              ${other.length ? other.map(c => `
-                <tr>
-                  <td>${analysePrevisionCapacityCompLabel(c)}</td>
-                  <td class="col-center"><span class="sb-badge ${Number(c.autres_transmissibles || 0) > 0 ? "sb-badge--success" : ""}">${escapeHtml(String(c.autres_transmissibles || 0))}</span></td>
-                  <td>${analysePrevisionCapacityTransmittersHtml(c.autres_transmetteurs)}</td>
-                </tr>
-              `).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence non transmissible par le sortant n’est rattachée à son poste.")}
+              ${analysePrevisionOtherAccordionRows(other)}
             </tbody>
           </table>
         </div>
@@ -5798,13 +5846,13 @@ function renderDetail(mode) {
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-            <thead><tr><th>Compétence</th><th>Niveau requis de transmission</th><th class="col-center">Statut</th></tr></thead>
+            <thead><tr><th>Compétence</th><th class="col-center">Niveau requis de transmission</th><th class="col-center"></th></tr></thead>
             <tbody>
               ${all.length ? all.map(c => `
                 <tr>
                   <td>${analysePrevisionCapacityCompLabel(c)}</td>
-                  <td><span class="sb-badge">${escapeHtml(c.transmission_required_label || requiredLabel)}</span></td>
-                  <td class="col-center">${analysePrevisionCapacityStatusBadge(!!c.sortant_transmissible)}</td>
+                  <td class="col-center"><span title="${escapeHtml(c.transmission_required_label || requiredLabel)}">${analysePrevisionCapacityStatusBadge(!!c.sortant_transmissible)}</span></td>
+                  <td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td>
                 </tr>
               `).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence active n’est rattachée au poste du sortant.")}
             </tbody>
