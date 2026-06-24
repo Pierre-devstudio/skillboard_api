@@ -923,7 +923,24 @@ def _options_payload(dataset: Dict[str, Any]) -> Dict[str, Any]:
             "domaine": c.get("domaine") or "",
         })
 
-    return {"postes": postes, "effectifs": effectifs, "competences": competences}
+    requirements = []
+    seen_req = set()
+    for r in dataset.get("requirements") or []:
+        key = (str(r.get("id_poste") or ""), str(r.get("id_comp") or ""))
+        if not key[0] or not key[1] or key in seen_req:
+            continue
+        seen_req.add(key)
+        requirements.append({
+            "id_poste": r.get("id_poste"),
+            "id_comp": r.get("id_comp"),
+            "code": r.get("code") or "",
+            "intitule": r.get("intitule") or "Compétence",
+            "domaine": r.get("domaine") or "",
+            "niveau_requis": r.get("niveau_requis") or "",
+            "poids_criticite": _safe_int(r.get("poids_criticite"), 0),
+        })
+
+    return {"postes": postes, "effectifs": effectifs, "competences": competences, "requirements": requirements}
 
 
 # ======================================================

@@ -36,6 +36,7 @@
   const STORE_POSTES_SCOPE_EXPANDED = "sb_analyse_postes_scope_expanded";
   const STORE_RISK_DETAIL_EXPANDED = "sb_analyse_risk_detail_expanded";
   const STORE_SIM_ANALYSE_HYPOTHESES = "sb_simulations_rh_hypotheses_from_analyse_v1";
+  const STORE_SIM_ANALYSE_PENDING_HYPOTHESIS = "sb_simulations_rh_pending_hypothesis_from_analyse_v1";
   const CRITICITE_MIN_DEFAULT = 70;
   const POSTES_SCOPE_PREVIEW_LIMIT = 10;
   const PREV_TABLE_PREVIEW_LIMIT = 10;
@@ -1064,32 +1065,43 @@
       created_at: new Date().toISOString(),
       source: "analyse_competences",
       source_label: p.source_label || "Analyse des compétences",
+      source_context: p.source_context || "analyse",
       type: p.type || "securisation",
+      simulation_mode: p.simulation_mode || p.mode || p.type || "securisation",
+      objective: p.objective || p.objectif || "",
+      action_label: p.action_label || p.title || "Hypothèse de sécurisation",
       title: p.title || "Hypothèse de sécurisation",
-      poste_id: p.poste_id || "",
+      poste_id: p.poste_id || p.id_poste || "",
       poste_label: p.poste_label || "",
-      competence_id: p.competence_id || "",
+      competence_id: p.competence_id || p.id_comp || "",
       competence_code: p.competence_code || "",
       competence_label: p.competence_label || "",
-      effectif_id: p.effectif_id || "",
+      effectif_id: p.effectif_id || p.id_effectif || "",
       effectif_label: p.effectif_label || "",
       cause: p.cause || "Point de fragilité détecté",
+      raison: p.raison || p.reason || p.cause || "Point de fragilité détecté",
       effet: p.effet || "Point à tester avant arbitrage RH.",
       horizon: p.horizon || "actuel",
       criticite: p.criticite || "",
-      niveau_attendu: p.niveau_attendu || "",
+      priorite: p.priorite || "",
+      niveau_attendu: p.niveau_attendu || p.niveau_requis || "",
       niveau_constate: p.niveau_constate || "",
+      niveau_simule: p.niveau_simule || p.niveau_vise || p.niveau_attendu || "C",
+      auto_evaluate: p.auto_evaluate === true,
       scope_label: getScopeLabel(),
       criticite_min: getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)
     };
 
     const list = readAnalyseHypotheses();
-    const dedupeKey = [hyp.type, hyp.poste_id, hyp.competence_id, hyp.effectif_id, hyp.horizon, hyp.cause].join("|");
-    const filtered = list.filter(x => [x.type, x.poste_id, x.competence_id, x.effectif_id, x.horizon, x.cause].join("|") !== dedupeKey);
+    const dedupeKey = [hyp.type, hyp.simulation_mode, hyp.poste_id, hyp.competence_id, hyp.effectif_id, hyp.horizon, hyp.cause].join("|");
+    const filtered = list.filter(x => [x.type, x.simulation_mode || x.type, x.poste_id, x.competence_id, x.effectif_id, x.horizon, x.cause].join("|") !== dedupeKey);
     filtered.unshift(hyp);
     writeAnalyseHypotheses(filtered.slice(0, 20));
 
-    if (_portalref?.showAlert) _portalref.showAlert("success", "Hypothèse ajoutée aux Simulations RH.");
+    if (opts.pending !== false) {
+      try { localStorage.setItem(STORE_SIM_ANALYSE_PENDING_HYPOTHESIS, hyp.id); } catch (_) {}
+    }
+    if (_portalref?.showAlert) _portalref.showAlert("success", "Piste prête dans Simulations RH.");
     if (opts.openSimulation !== false) openSimulationsRh();
     return hyp;
   }
@@ -2317,22 +2329,259 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
   }
 
-  // Plan de sécurisation (possibilités)
-
-
-
-  // Plan de sécurisation (possibilités)
+  // Pistes recommandées à tester : analyse du poste -> hypothèses ciblées pour Simulation RH.
   const idPoste = String(p?.id_poste || p?.id || diag?.id_poste || "").trim();
+  const codePoste = String(p?.codif_client || p?.codif_poste || "").trim();
+  const posteLabel = [codePoste, p?.intitule_poste || "Poste"].filter(Boolean).join(" · ");
 
-  // NOTE : "causes" existe déjà plus haut (bloc Causes racines). On le réutilise.
-  const depList = Array.isArray(causes?.dependance) ? causes.dependance : [];
-  const effList = Array.isArray(causes?.efficacite) ? causes.efficacite : [];
+  function niveauForSimulation(raw) {
+    const code = nsLevelCode(raw || "");
+    return code || "C";
+  }
 
-  // Levier "Former" : uniquement si on a un sujet compétences actionnable (efficacité ou couverture insuffisante).
-  // Fallback : si causes pas rempli, on garde la composante historique nb1_a_former.
-  const canTrainFromCauses = (effList.length > 0) || depList.some(x => Number(x?.nb_porteurs_ok || 0) > 0);
-  const canTrainFromComp = Number(comp?.nb1_a_former || 0) > 0;
-  const canTrain = !!(canTrainFromCauses || canTrainFromComp);
+  function compSuggestionMeta(row) {
+    const code = String(row?.code_comp || row?.code || "").trim();
+    const compId = String(row?.id_comp || row?.id_competence || "").trim();
+    const label = String(row?.intitule || "Compétence").trim();
+    return {
+      id: compId,
+      code,
+      label,
+      full: [code, label].filter(Boolean).join(" · "),
+      criticite: Number(row?.poids_criticite || 0),
+      niveau: niveauForSimulation(row?.niveau_requis || row?.niveau_attendu || row?.niveau || "C"),
+      niveauLabel: nsLevelLabel(row?.niveau_requis || row?.niveau_attendu || row?.niveau || "C"),
+    };
+  }
+
+  function addSecuritySuggestion(list, raw) {
+    if (!raw) return;
+    const item = {
+      id: raw.id || `poste_sec_${list.length + 1}`,
+      priority: Number(raw.priority || 0),
+      tag: raw.tag || "À tester",
+      title: raw.title || "Piste à tester",
+      subtitle: raw.subtitle || "Hypothèse à vérifier en simulation.",
+      why: raw.why || "Cause détectée dans l’analyse du poste.",
+      effect: raw.effect || "Mesurer l’impact avant arbitrage RH.",
+      payload: raw.payload || {},
+    };
+    const key = [item.payload.simulation_mode || item.payload.type, item.payload.poste_id, item.payload.competence_id, item.payload.effectif_id].join("|");
+    if (list.some(x => [x.payload.simulation_mode || x.payload.type, x.payload.poste_id, x.payload.competence_id, x.payload.effectif_id].join("|") === key)) return;
+    list.push(item);
+  }
+
+  function buildPosteSecuritySuggestions() {
+    const out = [];
+    const depRows = Array.isArray(causes?.dependance) ? causes.dependance : [];
+    const effRows = Array.isArray(causes?.efficacite) ? causes.efficacite : [];
+    const sortieRows = Array.isArray(cSorties?.items) ? cSorties.items : [];
+
+    if (hasStruct) {
+      const gapTxt = Number(cStruct?.gap_titulaires || 0) > 0
+        ? `${Number(cStruct?.gap_titulaires || 0)} titulaire(s) manquant(s)`
+        : (cStruct?.poste_non_tenu ? "poste non tenu" : "couverture poste à consolider");
+      addSecuritySuggestion(out, {
+        priority: 100 + Number(cStruct?.gap_titulaires || 0) * 10 + (cStruct?.poste_non_tenu ? 30 : 0),
+        tag: "Couverture poste",
+        title: "Tester un renfort sur ce poste",
+        subtitle: posteLabel,
+        why: `Cause détectée : ${gapTxt}.`,
+        effect: "Vérifier si un renfort réduit la fragilité du poste sans décider du recrutement ici.",
+        payload: {
+          type: "recrutement_virtuel",
+          simulation_mode: "recrutement_virtuel",
+          objective: "securiser_poste",
+          action_label: "Tester un renfort sur ce poste",
+          title: `Renfort sur ${posteLabel}`,
+          poste_id: idPoste,
+          poste_label: posteLabel,
+          cause: "Couverture du poste insuffisante",
+          raison: gapTxt,
+          effet: "Mesurer l’effet d’un renfort sur la fragilité du poste.",
+          criticite: s,
+          auto_evaluate: true,
+          source_context: "analyse_poste",
+        }
+      });
+    }
+
+    depRows.slice(0, 4).forEach((row, idx) => {
+      const meta = compSuggestionMeta(row);
+      if (!meta.id) return;
+      const sansRelais = String(row?.type_risque || "").toUpperCase() === "SANS_RELAIS";
+      addSecuritySuggestion(out, {
+        priority: 85 + meta.criticite + (sansRelais ? 20 : 0) - idx,
+        tag: sansRelais ? "Sans relais" : "Dépendance",
+        title: "Préparer un relais interne",
+        subtitle: meta.full,
+        why: sansRelais ? "Cause détectée : aucun relais confirmé sur cette compétence." : "Cause détectée : la compétence repose sur trop peu de personnes.",
+        effect: "Tester l’effet d’un relais virtuel sur la fragilité du poste et la capacité de transmission.",
+        payload: {
+          type: "securiser_competence",
+          simulation_mode: "securiser_competence",
+          objective: "securiser_poste",
+          action_label: "Préparer un relais interne",
+          title: `Relais interne · ${meta.full}`,
+          poste_id: idPoste,
+          poste_label: posteLabel,
+          competence_id: meta.id,
+          competence_code: meta.code,
+          competence_label: meta.label,
+          cause: sansRelais ? "Aucun relais confirmé" : "Dépendance individuelle",
+          raison: sansRelais ? "Compétence sans relais identifié." : "Compétence trop concentrée sur un porteur.",
+          effet: "Mesurer si un relais au niveau attendu sécurise le poste.",
+          criticite: meta.criticite || s,
+          niveau_attendu: meta.niveau,
+          niveau_simule: meta.niveau,
+          auto_evaluate: true,
+          source_context: "analyse_poste",
+        }
+      });
+    });
+
+    effRows.slice(0, 4).forEach((row, idx) => {
+      if (String(row?.kind || "") === "salarie") return;
+      const meta = compSuggestionMeta(row);
+      if (!meta.id) return;
+      addSecuritySuggestion(out, {
+        priority: 70 + meta.criticite + Number(row?.nb_en_defaut || 0) * 6 - idx,
+        tag: "Niveau à sécuriser",
+        title: "Tester une montée en compétence",
+        subtitle: meta.full,
+        why: `Cause détectée : ${Number(row?.nb_en_defaut || 0)} titulaire(s) sous le niveau attendu.`,
+        effect: `Tester un relais au niveau ${meta.niveauLabel} pour vérifier la baisse de fragilité du poste.`,
+        payload: {
+          type: "securiser_competence",
+          simulation_mode: "securiser_competence",
+          objective: "securiser_poste",
+          action_label: "Tester une montée en compétence",
+          title: `Montée en compétence · ${meta.full}`,
+          poste_id: idPoste,
+          poste_label: posteLabel,
+          competence_id: meta.id,
+          competence_code: meta.code,
+          competence_label: meta.label,
+          cause: "Niveau attendu non atteint",
+          raison: "Une compétence attendue du poste n’est pas couverte au niveau requis.",
+          effet: "Mesurer si une montée au niveau attendu réduit la fragilité du poste.",
+          criticite: meta.criticite || s,
+          niveau_attendu: meta.niveau,
+          niveau_simule: meta.niveau,
+          auto_evaluate: true,
+          source_context: "analyse_poste",
+        }
+      });
+    });
+
+    if (hasTrans && !out.some(x => x.payload.simulation_mode === "recrutement_virtuel")) {
+      const imm = Number(cTrans?.nb_renforts_immediats || 0);
+      const prep = Number(cTrans?.nb_renforts_a_preparer || 0);
+      const best = Number(cTrans?.meilleur_matching || 0);
+      addSecuritySuggestion(out, {
+        priority: 55 + best + prep * 4 + imm * 8,
+        tag: "Renfort potentiel",
+        title: "Tester un renfort compatible",
+        subtitle: posteLabel,
+        why: prep > 0 ? `${prep} profil(s) à préparer détecté(s), meilleur matching ${best}%.` : `Aucun renfort immédiat détecté, meilleur matching ${best}%.`,
+        effect: "Comparer l’effet d’un renfort sur ce poste avant de choisir une action RH.",
+        payload: {
+          type: "recrutement_virtuel",
+          simulation_mode: "recrutement_virtuel",
+          objective: "securiser_poste",
+          action_label: "Tester un renfort compatible",
+          title: `Renfort compatible · ${posteLabel}`,
+          poste_id: idPoste,
+          poste_label: posteLabel,
+          cause: "Renfort potentiel insuffisant",
+          raison: "Le moteur ne trouve pas de relais immédiatement sécurisant sur ce poste.",
+          effet: "Mesurer l’effet d’un renfort sur la fragilité du poste.",
+          criticite: s,
+          auto_evaluate: true,
+          source_context: "analyse_poste",
+        }
+      });
+    }
+
+    sortieRows.slice(0, 2).forEach((row, idx) => {
+      const eid = String(row?.id_effectif || "").trim();
+      if (!eid) return;
+      addSecuritySuggestion(out, {
+        priority: 50 - idx,
+        tag: "Sortie à anticiper",
+        title: "Tester la perte du titulaire",
+        subtitle: String(row?.full || "Collaborateur"),
+        why: `Sortie approchante : ${row?.date_sortie || "date à confirmer"}.`,
+        effect: "Mesurer le risque si cette personne sort sans sécurisation préalable.",
+        payload: {
+          type: "depart_effectif",
+          simulation_mode: "depart_effectif",
+          objective: "anticiper_depart",
+          action_label: "Tester la perte du titulaire",
+          title: `Départ potentiel · ${row?.full || "collaborateur"}`,
+          poste_id: idPoste,
+          poste_label: posteLabel,
+          effectif_id: eid,
+          effectif_label: row?.full || "Collaborateur",
+          cause: "Sortie approchante",
+          raison: "Sortie susceptible d’aggraver la fragilité du poste.",
+          effet: "Mesurer l’impact si le départ intervient sans relais.",
+          criticite: s,
+          auto_evaluate: true,
+          source_context: "analyse_poste",
+        }
+      });
+    });
+
+    out.sort((a, b) => b.priority - a.priority);
+    return out.slice(0, 5);
+  }
+
+  const posteSecuritySuggestions = buildPosteSecuritySuggestions();
+
+  function renderPosteSecuritySuggestions(list) {
+    const rows = Array.isArray(list) ? list : [];
+    if (!rows.length) {
+      return `
+        <div class="card analyse-poste-secu-card">
+          <div class="analyse-poste-secu-head">
+            <div>
+              <div class="card-title analyse-poste-secu-title">Pistes à tester pour sécuriser ce poste</div>
+              <div class="card-sub">Aucune piste automatique suffisamment précise. Relisez les causes ou ouvrez la simulation en mode manuel.</div>
+            </div>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="card analyse-poste-secu-card">
+        <div class="analyse-poste-secu-head">
+          <div>
+            <div class="card-title analyse-poste-secu-title">Pistes recommandées à tester</div>
+            <div class="card-sub">Ces pistes sont préparées depuis les causes du poste. Elles ne décident pas l’action : elles lancent une simulation d’impact.</div>
+          </div>
+          <span class="sb-badge sb-badge--info">${escapeHtml(String(rows.length))} piste(s)</span>
+        </div>
+        <div class="analyse-poste-secu-list">
+          ${rows.map((item, idx) => `
+            <div class="analyse-poste-secu-item ${idx === 0 ? "is-recommended" : ""}">
+              <div class="analyse-poste-secu-item-main">
+                <div class="analyse-poste-secu-meta">
+                  <span class="sb-badge ${idx === 0 ? "sb-badge--success" : ""}">${escapeHtml(idx === 0 ? "Prioritaire" : item.tag)}</span>
+                  ${idx === 0 ? `<span class="sb-badge">${escapeHtml(item.tag)}</span>` : ``}
+                </div>
+                <div class="analyse-poste-secu-item-title">${escapeHtml(item.title)}</div>
+                <div class="analyse-poste-secu-item-sub">${escapeHtml(item.subtitle)}</div>
+                <div class="analyse-poste-secu-reason"><b>Pourquoi :</b> ${escapeHtml(item.why)}</div>
+                <div class="analyse-poste-secu-reason"><b>Simulation :</b> ${escapeHtml(item.effect)}</div>
+              </div>
+              <div class="analyse-poste-secu-actions">
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-analyse-poste-security="${idx}">Tester cette piste</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>`;
+  }
 
   // Rendu
   host.innerHTML = `
@@ -2364,13 +2613,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     ${causesCard}
 
-    ${analyseSecurityBlockHtml({
-      id: "btnAnalysePosteCreateHypothesis",
-      kind: "poste",
-      title: "Sécurisation à tester",
-      subtitle: "Préparer une action RH possible à partir du diagnostic de ce poste.",
-      buttonLabel: "Préparer dans Simulation RH"
-    })}
+    ${renderPosteSecuritySuggestions(posteSecuritySuggestions)}
   `;
 
     // Accordéons (Causes racines)
@@ -2388,31 +2631,21 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     });
   });
 
-  // Points à sécuriser - création d'hypothèse vers Simulations RH
-  const bHypoPoste = byId("btnAnalysePosteCreateHypothesis");
-  if (bHypoPoste && !bHypoPoste.dataset.bound) {
-    bHypoPoste.dataset.bound = "1";
-    bHypoPoste.addEventListener("click", () => {
-      if (!idPoste) {
-        if (_portalref) _portalref.showAlert("error", "Impossible de créer l’hypothèse : poste manquant.");
+  // Pistes recommandées : création d’hypothèse précise vers Simulation RH.
+  host.querySelectorAll("[data-analyse-poste-security]").forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-analyse-poste-security") || -1);
+      const item = posteSecuritySuggestions[idx];
+      if (!item || !item.payload) {
+        if (_portalref) _portalref.showAlert("error", "Impossible de préparer cette piste : données manquantes.");
         return;
       }
-      const codePoste = String(p?.codif_client || p?.codif_poste || "").trim();
-      const posteLabel = [codePoste, p?.intitule_poste || "Poste"].filter(Boolean).join(" · ");
-      const cause = hasStruct ? "Couverture du poste insuffisante" : hasDep ? "Couverture trop dépendante" : hasEff ? "Niveau attendu non atteint" : hasTrans ? "Transmission à anticiper" : "Point de fragilité détecté";
-      addAnalyseHypothesis({
-        type: "securiser_poste",
-        title: `Sécuriser le poste ${posteLabel || "sélectionné"}`,
-        poste_id: idPoste,
-        poste_label: posteLabel,
-        cause: cause,
-        effet: "Tester une hypothèse de sécurisation sans décider depuis l’analyse.",
-        horizon: "actuel",
-        criticite: s
-      });
+      addAnalyseHypothesis(item.payload, { pending: true, openSimulation: true });
       closeAnalysePosteModal();
     });
-  }
+  });
 
 }
 
