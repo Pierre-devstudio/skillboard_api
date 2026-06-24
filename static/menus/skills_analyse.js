@@ -6150,33 +6150,39 @@ function renderDetail(mode) {
       const out = [];
       const seen = new Set();
 
-      if (Array.isArray(raw)) {
-        raw.forEach((item) => {
-          if (!item || typeof item !== "object") return;
-          const name = String(item.full || `${item.prenom_effectif || ""} ${item.nom_effectif || ""}`.trim()).trim();
-          if (!name || seen.has(name.toLowerCase())) return;
-          seen.add(name.toLowerCase());
-          out.push({
-            full: name,
-            niveau: item.niveau_actuel || item.niveau || "",
-            poste_code: item.codif_client || item.codif_poste || "",
-            poste_label: item.intitule_poste || ""
-          });
+      const pushItem = (item) => {
+        if (!item || typeof item !== "object") return;
+        const name = String(item.full || `${item.prenom_effectif || ""} ${item.nom_effectif || ""}`.trim()).trim();
+        if (!name || seen.has(name.toLowerCase())) return;
+        seen.add(name.toLowerCase());
+        out.push({
+          full: name,
+          niveau: item.niveau_actuel || item.niveau || "",
+          poste_code: item.codif_client || item.codif_poste || "",
+          poste_label: item.intitule_poste || "",
+          date_derniere_eval: item.date_derniere_eval || item.date_eval || item.last_eval_date || "",
+          transmission_status: item.transmission_status || "review",
+          transmission_status_label: item.transmission_status_label || "Entretien recommandé"
         });
-      }
+      };
+
+      if (Array.isArray(raw)) raw.forEach(pushItem);
 
       if (!out.length) {
         String(fallbackLabel || "")
           .split(",")
           .map(x => x.trim())
           .filter(Boolean)
-          .forEach((name) => {
-            if (seen.has(name.toLowerCase())) return;
-            seen.add(name.toLowerCase());
-            out.push({ full: name, niveau: "", poste_code: "", poste_label: "" });
-          });
+          .forEach((name) => pushItem({ full: name, transmission_status: "review", transmission_status_label: "Entretien recommandé" }));
       }
       return out;
+    }
+
+    function transmissionStatusBadgeHtml(status, label) {
+      const s = String(status || "review").toLowerCase();
+      if (s === "validated") return `<span class="sb-badge sb-badge--success">Validé</span>`;
+      if (s === "confirm") return `<span class="sb-badge sb-badge--info">À confirmer</span>`;
+      return `<span class="sb-badge sb-badge--formateur">${escapeHtml(label || "Entretien recommandé")}</span>`;
     }
 
     const transmitters = parseTransmitters(
@@ -6185,16 +6191,29 @@ function renderDetail(mode) {
     );
 
     const transmittersHtml = transmitters.length ? `
-      <div class="sb-prev-transmitter-list">
-        ${transmitters.map((p) => `
-          <div class="sb-prev-transmitter-row">
-            <div class="sb-prev-transmitter-main">
-              <strong>${escapeHtml(p.full || "—")}</strong>
-              ${(p.poste_code || p.poste_label) ? `<span>${p.poste_code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.poste_code)}</span>` : ""}${p.poste_label ? ` ${escapeHtml(p.poste_label)}` : ""}</span>` : ""}
-            </div>
-            ${p.niveau ? `<div class="sb-prev-transmitter-level">${nsLevelBadgeHtml(p.niveau, "Niveau de maîtrise")}</div>` : ""}
-          </div>
-        `).join("")}
+      <div class="table-wrap sb-prev-transmission-table-wrap">
+        <table class="sb-table sb-table--airy sb-prev-transmission-table">
+          <thead>
+            <tr>
+              <th>Personne</th>
+              <th>Poste</th>
+              <th class="col-center">Niveau</th>
+              <th class="col-center">Dernière éval.</th>
+              <th class="col-center">Transmission</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${transmitters.map((p) => `
+              <tr>
+                <td><strong>${escapeHtml(p.full || "—")}</strong></td>
+                <td>${p.poste_code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.poste_code)}</span> ` : ""}${escapeHtml(p.poste_label || "—")}</td>
+                <td class="col-center">${p.niveau ? nsLevelBadgeHtml(p.niveau, "Niveau de maîtrise") : `<span class="sb-muted">—</span>`}</td>
+                <td class="col-center">${analysePrevisionDate(p.date_derniere_eval)}</td>
+                <td class="col-center">${transmissionStatusBadgeHtml(p.transmission_status, p.transmission_status_label)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
       </div>
     ` : `
       <div class="sb-prev-empty" style="margin:0;">Aucune personne en capacité de transmettre n’est identifiée sur le périmètre.</div>
@@ -6232,7 +6251,6 @@ function renderDetail(mode) {
               <span>Criticité ${analysePrevisionCriticityBadge(r.max_criticite)}</span>
               <span>${impactCount} poste${impactCount > 1 ? "s" : ""} concerné${impactCount > 1 ? "s" : ""}</span>
               <span>À transmettre avant ${dateTxt && dateTxt !== "—" ? escapeHtml(dateTxt) : "l’échéance identifiée"}</span>
-              <span>${escapeHtml(full)}</span>
             </div>
           </div>
 
@@ -6311,9 +6329,16 @@ function renderDetail(mode) {
     `;
   }
   function renderPrevisionTableTransmissionItems(rows) {
+    const transmissionOrderFallback = (r) => {
+      const status = String(r.expertise_status || r.expertise_color || "red").toLowerCase();
+      if (status === "green") return 3;
+      if (status === "blue") return 2;
+      if (status === "pink" || status === "orange") return 1;
+      return 0;
+    };
     const list = (Array.isArray(rows) ? rows.slice() : []).sort((a, b) => {
-      const ao = Number(a.expertise_order ?? (String(a.expertise_status || a.expertise_color || "red").toLowerCase() === "red" ? 0 : String(a.expertise_status || a.expertise_color || "").toLowerCase() === "orange" ? 1 : 2));
-      const bo = Number(b.expertise_order ?? (String(b.expertise_status || b.expertise_color || "red").toLowerCase() === "red" ? 0 : String(b.expertise_status || b.expertise_color || "").toLowerCase() === "orange" ? 1 : 2));
+      const ao = Number(a.expertise_order ?? transmissionOrderFallback(a));
+      const bo = Number(b.expertise_order ?? transmissionOrderFallback(b));
       if (ao !== bo) return ao - bo;
       const bc = Number(b.max_criticite || 0) - Number(a.max_criticite || 0);
       if (bc !== 0) return bc;
@@ -6327,13 +6352,17 @@ function renderDetail(mode) {
     const expertiseDot = (r) => {
       const status = String(r.expertise_status || r.expertise_color || "red").toLowerCase();
       const cfg = status === "green"
-        ? { color: "#16a34a", label: "Expert disponible", title: "Un expert reste disponible après les sorties prévues." }
-        : status === "orange"
-          ? { color: "#f59e0b", label: "Expert concerné par une sortie", title: "Un expert existe, mais il est concerné par une sortie prévue." }
-          : { color: "#dc2626", label: "Aucun expert identifié", title: "Aucun expert n’est identifié sur cette compétence." };
+        ? { color: "#16a34a", label: "Transmission validée", title: "Au moins une personne au niveau Expert dispose d’une évaluation récente." }
+        : status === "blue"
+          ? { color: "#2563eb", label: "À confirmer", title: "Au moins une personne en Avancé haut dispose d’une évaluation récente." }
+          : status === "pink"
+            ? { color: "#db2777", label: "Entretien recommandé", title: "Une personne semble en capacité de transmettre, mais l’évaluation doit être reprise." }
+            : { color: "#dc2626", label: "Aucune personne identifiée", title: "Aucune personne en capacité de transmettre n’est identifiée sur cette compétence." };
+      const count = Number(r.transmetteurs_potentiels_count ?? r.receveurs_potentiels_count ?? 0);
       const title = r.expertise_tooltip || cfg.title;
-      return `<span title="${escapeHtml(title)}" aria-label="${escapeHtml(cfg.label)}" style="display:inline-flex; align-items:center; justify-content:center; width:100%;">
-        <span style="display:inline-block; width:12px; height:12px; border-radius:999px; background:${cfg.color}; box-shadow:0 0 0 3px rgba(148,163,184,.16);"></span>
+      return `<span title="${escapeHtml(title)}" aria-label="${escapeHtml(cfg.label)}" class="sb-prev-transmission-status-dot-wrap">
+        <span class="sb-prev-transmission-status-dot" style="background:${cfg.color};"></span>
+        ${Number.isFinite(count) && count > 0 ? `<span class="sb-prev-transmission-status-count">${escapeHtml(String(count))}</span>` : ""}
       </span>`;
     };
 
@@ -6347,12 +6376,12 @@ function renderDetail(mode) {
               <th style="width:140px;">Impact</th>
               <th class="col-center" style="width:120px;">
                 <span class="sb-th-with-tip">
-                  <span>Expertise</span>
+                  <span>Transmission</span>
                   <span class="sb-iinfo"
                         data-sbtip="prevision-transmission-expertise"
                         tabindex="0"
                         role="button"
-                        aria-label="Informations sur l’expertise">i</span>
+                        aria-label="Informations sur la transmission">i</span>
                 </span>
               </th>
               <th class="col-center" style="width:82px;">Actions</th>
@@ -6986,14 +7015,15 @@ function bindOnce(portal) {
     }
     if (key === "prevision-transmission-expertise") {
       return `
-        <div class="sb-tip-title">Expertise</div>
+        <div class="sb-tip-title">Transmission</div>
         <div class="sb-tip-text">
-          Cet indicateur signale si un niveau expert reste disponible pour sécuriser la transmission de la compétence.
+          Cet indicateur signale si une personne est en capacité de transmettre la compétence : niveau Expert ou Avancé haut, avec prise en compte de la fraîcheur de la dernière évaluation.
         </div>
         <div class="sb-tip-block">
-          <div class="sb-tip-scale"><b style="color:#16a34a;">Point vert</b> : un expert reste disponible.</div>
-          <div class="sb-tip-scale"><b style="color:#f59e0b;">Point orange</b> : l’expert identifié est concerné par une sortie prévue.</div>
-          <div class="sb-tip-scale"><b style="color:#dc2626;">Point rouge</b> : aucun expert n’est identifié.</div>
+          <div class="sb-tip-scale"><b style="color:#16a34a;">Point vert</b> : niveau Expert avec évaluation récente.</div>
+          <div class="sb-tip-scale"><b style="color:#2563eb;">Point bleu</b> : niveau Avancé haut avec évaluation récente.</div>
+          <div class="sb-tip-scale"><b style="color:#db2777;">Point rose</b> : entretien recommandé, évaluation absente ou trop ancienne.</div>
+          <div class="sb-tip-scale"><b style="color:#dc2626;">Point rouge</b> : aucune personne identifiée.</div>
         </div>
       `;
     }

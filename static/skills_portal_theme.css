@@ -8039,3 +8039,36 @@ body{
     grid-template-columns:1fr;
   }
 }
+
+/* Analyse prévisions — transmission à préparer : statut agrégé et tableau des personnes */
+.sb-prev-transmission-status-dot-wrap{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:100%;
+}
+
+.sb-prev-transmission-status-dot{
+  display:inline-block;
+  width:12px;
+  height:12px;
+  border-radius:999px;
+  box-shadow:0 0 0 3px rgba(148,163,184,.16);
+}
+
+.sb-prev-transmission-status-count{
+  font-size:12px;
+  font-weight:700;
+  color:var(--sb-gray-700);
+  line-height:1;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-table-wrap{
+  margin-top:8px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmission-table td,
+#modalAnalysePrevisionAction .sb-prev-transmission-table th{
+  vertical-align:middle;
+}

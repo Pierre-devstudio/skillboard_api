@@ -3321,14 +3321,30 @@ def _fetch_prevision_transmission_items(
         FROM leaving_comp lc
         ORDER BY lc.id_comp, lc.exit_date ASC, lc.nom_effectif ASC, lc.prenom_effectif ASC
     ),
-    receveurs AS (
+    transmetteurs_base AS (
         SELECT
             ec.id_comp,
-            COUNT(DISTINCT e.id_effectif)::int AS receveurs_potentiels_count,
-            STRING_AGG(DISTINCT TRIM(CONCAT(COALESCE(e.prenom_effectif, ''), ' ', COALESCE(e.nom_effectif, ''))), ', ') AS receveurs_potentiels_label
+            e.id_effectif,
+            COALESCE(e.prenom_effectif, '') AS prenom_effectif,
+            COALESCE(e.nom_effectif, '') AS nom_effectif,
+            e.id_poste_actuel,
+            COALESCE(fp.codif_poste, '') AS codif_poste,
+            COALESCE(fp.codif_client, '') AS codif_client,
+            COALESCE(fp.intitule_poste, '') AS intitule_poste,
+            COALESCE(ec.niveau_actuel, '')::text AS niveau_actuel,
+            COALESCE(a.date_audit, ec.date_derniere_eval)::date AS date_derniere_eval,
+            CASE
+                WHEN a.resultat_eval IS NULL THEN NULL
+                WHEN a.resultat_eval <= 24 THEN (a.resultat_eval / 24.0) * 100.0
+                ELSE a.resultat_eval
+            END AS score_pct
         FROM public.tbl_effectif_client_competence ec
         JOIN public.tbl_effectif_client e ON e.id_effectif = ec.id_effectif_client
         JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+        LEFT JOIN public.tbl_fiche_poste fp ON fp.id_poste = e.id_poste_actuel
+        LEFT JOIN public.tbl_effectif_client_audit_competence a
+          ON a.id_audit_competence = ec.id_dernier_audit
+         AND a.id_effectif_competence = ec.id_effectif_competence
         WHERE e.id_ent = %s
           AND COALESCE(e.archive, FALSE) = FALSE
           AND COALESCE(e.is_temp, FALSE) = FALSE
@@ -3336,7 +3352,64 @@ def _fetch_prevision_transmission_items(
           AND COALESCE(ec.actif, TRUE) = TRUE
           AND COALESCE(ec.archive, FALSE) = FALSE
           AND NOT EXISTS (SELECT 1 FROM leaving l WHERE l.id_effectif = e.id_effectif)
-        GROUP BY ec.id_comp
+          AND (
+                UPPER(COALESCE(ec.niveau_actuel, '')) IN ('D', 'EXPERT', '4')
+                OR (
+                    a.resultat_eval IS NOT NULL
+                    AND (
+                        CASE
+                            WHEN a.resultat_eval <= 24 THEN (a.resultat_eval / 24.0) * 100.0
+                            ELSE a.resultat_eval
+                        END
+                    ) >= 63
+                )
+          )
+    ),
+    transmetteurs_qualifies AS (
+        SELECT
+            tb.*,
+            CASE
+                WHEN tb.date_derniere_eval IS NULL OR tb.date_derniere_eval < (CURRENT_DATE - interval '6 months')::date THEN 'review'
+                WHEN UPPER(COALESCE(tb.niveau_actuel, '')) IN ('D', 'EXPERT', '4') OR COALESCE(tb.score_pct, 0) > 75 THEN 'validated'
+                ELSE 'confirm'
+            END AS transmission_status,
+            CASE
+                WHEN tb.date_derniere_eval IS NULL OR tb.date_derniere_eval < (CURRENT_DATE - interval '6 months')::date THEN 'Entretien recommandé'
+                WHEN UPPER(COALESCE(tb.niveau_actuel, '')) IN ('D', 'EXPERT', '4') OR COALESCE(tb.score_pct, 0) > 75 THEN 'Validé'
+                ELSE 'À confirmer'
+            END AS transmission_status_label
+        FROM transmetteurs_base tb
+    ),
+    receveurs AS (
+        SELECT
+            tq.id_comp,
+            COUNT(DISTINCT tq.id_effectif)::int AS receveurs_potentiels_count,
+            COUNT(DISTINCT CASE WHEN tq.transmission_status = 'validated' THEN tq.id_effectif END)::int AS transmission_valides_count,
+            COUNT(DISTINCT CASE WHEN tq.transmission_status = 'confirm' THEN tq.id_effectif END)::int AS transmission_confirm_count,
+            COUNT(DISTINCT CASE WHEN tq.transmission_status = 'review' THEN tq.id_effectif END)::int AS transmission_review_count,
+            STRING_AGG(DISTINCT TRIM(CONCAT(tq.prenom_effectif, ' ', tq.nom_effectif)), ', ') AS receveurs_potentiels_label,
+            COALESCE(
+                jsonb_agg(
+                    DISTINCT jsonb_build_object(
+                        'id_effectif', tq.id_effectif,
+                        'prenom_effectif', tq.prenom_effectif,
+                        'nom_effectif', tq.nom_effectif,
+                        'full', BTRIM(CONCAT(tq.prenom_effectif, ' ', tq.nom_effectif)),
+                        'id_poste_actuel', tq.id_poste_actuel,
+                        'codif_poste', tq.codif_poste,
+                        'codif_client', tq.codif_client,
+                        'intitule_poste', tq.intitule_poste,
+                        'niveau_actuel', tq.niveau_actuel,
+                        'score_pct', tq.score_pct,
+                        'date_derniere_eval', tq.date_derniere_eval,
+                        'transmission_status', tq.transmission_status,
+                        'transmission_status_label', tq.transmission_status_label
+                    )
+                ),
+                '[]'::jsonb
+            ) AS receveurs_potentiels_json
+        FROM transmetteurs_qualifies tq
+        GROUP BY tq.id_comp
     ),
     expertise AS (
         SELECT
@@ -3381,29 +3454,37 @@ def _fetch_prevision_transmission_items(
         COALESCE(ir.nb_postes_impactes, 0)::int AS nb_postes_impactes,
         COALESCE(ir.max_criticite, 0)::int AS max_criticite,
         COALESCE(r.receveurs_potentiels_count, 0)::int AS receveurs_potentiels_count,
+        COALESCE(r.transmission_valides_count, 0)::int AS transmission_valides_count,
+        COALESCE(r.transmission_confirm_count, 0)::int AS transmission_confirm_count,
+        COALESCE(r.transmission_review_count, 0)::int AS transmission_review_count,
         COALESCE(r.receveurs_potentiels_label, '') AS receveurs_potentiels_label,
+        COALESCE(r.receveurs_potentiels_json, '[]'::jsonb) AS receveurs_potentiels_json,
         COALESCE(x.experts_total, 0)::int AS experts_total,
         COALESCE(x.experts_restants, 0)::int AS experts_restants,
         COALESCE(x.experts_sortants, 0)::int AS experts_sortants,
         CASE
-            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 'green'
-            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 'orange'
+            WHEN COALESCE(r.transmission_valides_count, 0)::int > 0 THEN 'green'
+            WHEN COALESCE(r.transmission_confirm_count, 0)::int > 0 THEN 'blue'
+            WHEN COALESCE(r.transmission_review_count, 0)::int > 0 THEN 'pink'
             ELSE 'red'
         END AS expertise_status,
         CASE
-            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 2
-            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 1
+            WHEN COALESCE(r.transmission_valides_count, 0)::int > 0 THEN 3
+            WHEN COALESCE(r.transmission_confirm_count, 0)::int > 0 THEN 2
+            WHEN COALESCE(r.transmission_review_count, 0)::int > 0 THEN 1
             ELSE 0
         END AS expertise_order,
         CASE
-            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 'Expert disponible'
-            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 'Expert concerné par une sortie'
-            ELSE 'Aucun expert identifié'
+            WHEN COALESCE(r.transmission_valides_count, 0)::int > 0 THEN 'Transmission validée'
+            WHEN COALESCE(r.transmission_confirm_count, 0)::int > 0 THEN 'Transmission à confirmer'
+            WHEN COALESCE(r.transmission_review_count, 0)::int > 0 THEN 'Entretien recommandé'
+            ELSE 'Aucune personne identifiée'
         END AS expertise_label,
         CASE
-            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 'Un expert reste disponible après les sorties prévues.'
-            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 'Un expert existe, mais il est concerné par une sortie prévue.'
-            ELSE 'Aucun expert n’est identifié sur cette compétence.'
+            WHEN COALESCE(r.transmission_valides_count, 0)::int > 0 THEN 'Au moins une personne au niveau Expert dispose d’une évaluation récente.'
+            WHEN COALESCE(r.transmission_confirm_count, 0)::int > 0 THEN 'Au moins une personne en Avancé haut dispose d’une évaluation récente.'
+            WHEN COALESCE(r.transmission_review_count, 0)::int > 0 THEN 'Une personne semble en capacité de transmettre, mais l’évaluation doit être reprise.'
+            ELSE 'Aucune personne en capacité de transmettre n’est identifiée sur cette compétence.'
         END AS expertise_tooltip
     FROM impacted_req ir
     JOIN leaving_summary ls ON ls.id_comp = ir.id_comp
@@ -3415,8 +3496,9 @@ def _fetch_prevision_transmission_items(
     LEFT JOIN expertise x ON x.id_comp = ir.id_comp
     ORDER BY
         CASE
-            WHEN COALESCE(x.experts_restants, 0)::int > 0 THEN 2
-            WHEN COALESCE(x.experts_total, 0)::int > 0 THEN 1
+            WHEN COALESCE(r.transmission_valides_count, 0)::int > 0 THEN 3
+            WHEN COALESCE(r.transmission_confirm_count, 0)::int > 0 THEN 2
+            WHEN COALESCE(r.transmission_review_count, 0)::int > 0 THEN 1
             ELSE 0
         END ASC,
         COALESCE(ir.max_criticite, 0)::int DESC,
@@ -3443,6 +3525,12 @@ def _fetch_prevision_transmission_items(
         item["event_kind_label"] = _prevision_exit_kind_label(item.get("exit_kind") or "")
         item["expertise_color"] = item.get("expertise_status") or "red"
         item["expertise_order"] = _safe_int(item.get("expertise_order"), 0)
+        item["transmetteurs_potentiels_count"] = _safe_int(item.get("receveurs_potentiels_count"), 0)
+        item["transmission_valides_count"] = _safe_int(item.get("transmission_valides_count"), 0)
+        item["transmission_confirm_count"] = _safe_int(item.get("transmission_confirm_count"), 0)
+        item["transmission_review_count"] = _safe_int(item.get("transmission_review_count"), 0)
+        item["transmetteurs_potentiels_label"] = item.get("receveurs_potentiels_label") or ""
+        item["transmetteurs_potentiels_json"] = item.get("receveurs_potentiels_json") or []
         out.append(item)
     return out
 
