@@ -1096,22 +1096,55 @@
 
   function securityPointsHtml(kind) {
     const mode = (kind || "poste").toString();
-    if (mode === "competence") {
-      return `
-        <div class="analyse-secu-grid">
-          <div class="analyse-secu-card"><strong>Confirmer la maîtrise réelle</strong><small>Vérifier les niveaux déclarés ou non évalués avant d’interpréter la couverture.</small></div>
-          <div class="analyse-secu-card"><strong>Réduire la dépendance</strong><small>Identifier une couverture complémentaire si la compétence repose sur trop peu de personnes.</small></div>
-          <div class="analyse-secu-card"><strong>Tester une relève</strong><small>Préparer une hypothèse dans les Simulations RH, sans décider depuis l’analyse.</small></div>
-          <div class="analyse-secu-card"><strong>Maintenir la donnée à jour</strong><small>Après arbitrage externe, actualiser les niveaux, rattachements ou évaluations dans Novoskill.</small></div>
-        </div>`;
-    }
+    const items = mode === "competence"
+      ? [
+          ["Transmission", "Identifier ou préparer une personne capable de transmettre la compétence."],
+          ["Relais interne", "Tester une montée en compétence ou un binôme pour réduire la dépendance."],
+          ["Données", "Confirmer les évaluations avant d’arbitrer."],
+          ["Action RH", "Envoyer l’hypothèse vers Simulation RH pour mesurer l’impact."],
+        ]
+      : mode === "matching"
+        ? [
+            ["Mobilité", "Tester l’effet d’une correspondance profil / poste sans la valider ici."],
+            ["Écarts", "Mesurer ce que la mobilité améliore et ce qu’elle peut fragiliser."],
+            ["Cotation", "Vérifier l’impact classification si les cotations sont disponibles."],
+            ["Comparatif", "Conserver l’option pour la comparer à une formation ou un renfort."],
+          ]
+        : [
+            ["Couverture", "Tester un renfort, une mobilité ou une formation sur le poste."],
+            ["Transmission", "Préparer un relais sur les compétences qui concentrent le savoir-faire."],
+            ["Effet domino", "Vérifier si l’action sécurise ce poste sans en fragiliser un autre."],
+            ["Arbitrage", "Envoyer l’hypothèse vers Simulation RH avant décision."],
+          ];
+
     return `
-      <div class="analyse-secu-grid">
-        <div class="analyse-secu-card"><strong>Consolider la couverture</strong><small>Identifier les compétences du poste qui fragilisent la continuité.</small></div>
-        <div class="analyse-secu-card"><strong>Vérifier les niveaux attendus</strong><small>Contrôler les écarts entre le niveau requis et les niveaux confirmés.</small></div>
-        <div class="analyse-secu-card"><strong>Préparer une hypothèse</strong><small>Envoyer le contexte vers Simulations RH pour tester une sécurisation.</small></div>
-        <div class="analyse-secu-card"><strong>Actualiser après arbitrage</strong><small>Mettre à jour Novoskill après décision réelle pour garder l’analyse fiable.</small></div>
+      <div class="analyse-secu-grid analyse-secu-grid--compact">
+        ${items.map(([title, body]) => `
+          <div class="analyse-secu-card">
+            <strong>${escapeHtml(title)}</strong>
+            <small>${escapeHtml(body)}</small>
+          </div>
+        `).join("")}
       </div>`;
+  }
+
+  function analyseSecurityBlockHtml({ id, kind, title, subtitle, buttonLabel }) {
+    return `
+      <div class="card analyse-hypothesis-card analyse-hypothesis-card--action">
+        <div class="analyse-hypothesis-head">
+          <div>
+            <div class="card-title">${escapeHtml(title || "Hypothèse de sécurisation")}</div>
+            <div class="card-sub">${escapeHtml(subtitle || "Préparer une hypothèse dans Simulation RH, sans décider depuis l’analyse.")}</div>
+          </div>
+        </div>
+        ${securityPointsHtml(kind || "poste")}
+        <div class="sb-actions sb-actions--end analyse-hypothesis-actions">
+          <button type="button" id="${escapeHtml(id || "btnAnalyseCreateHypothesis")}" class="sb-btn sb-btn--accent">
+            ${escapeHtml(buttonLabel || "Préparer dans Simulation RH")}
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   function getAnalyseServiceRawValue() {
@@ -2331,16 +2364,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     ${causesCard}
 
-    <div class="card analyse-hypothesis-card" style="padding:12px; margin-top:12px;">
-      <div class="card-title" style="margin:0 0 6px 0;">Points à sécuriser</div>
-      <div class="card-sub" style="margin:0;">Ces points servent à préparer une hypothèse dans les Simulations RH. La décision finale reste hors Novoskill.</div>
-      ${securityPointsHtml("poste")}
-      <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-        <button type="button" id="btnAnalysePosteCreateHypothesis" class="sb-btn sb-btn--accent">
-          Créer une hypothèse de sécurisation
-        </button>
-      </div>
-    </div>
+    ${analyseSecurityBlockHtml({
+      id: "btnAnalysePosteCreateHypothesis",
+      kind: "poste",
+      title: "Sécurisation à tester",
+      subtitle: "Préparer une action RH possible à partir du diagnostic de ce poste.",
+      buttonLabel: "Préparer dans Simulation RH"
+    })}
   `;
 
     // Accordéons (Causes racines)
@@ -3287,13 +3317,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
         </div>
 
-        <div class="card analyse-hypothesis-card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Hypothèse de sécurisation</div>
-          <div class="card-sub" style="margin:0;">Tester cette correspondance dans Simulations RH, sans valider une mobilité depuis l’analyse.</div>
-          <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnMatchCreateHypothesis">Créer une hypothèse de sécurisation</button>
-          </div>
-        </div>
+        ${analyseSecurityBlockHtml({
+          id: "btnMatchCreateHypothesis",
+          kind: "matching",
+          title: "Option à tester",
+          subtitle: "Tester cette correspondance dans Simulation RH, sans valider une mobilité depuis l’analyse.",
+          buttonLabel: "Préparer dans Simulation RH"
+        })}
 
       </div>
     `;
@@ -4522,7 +4552,37 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </table>
         </div>
       </div>
+
+      ${analyseSecurityBlockHtml({
+        id: "btnAnalyseCompetenceCreateHypothesis",
+        kind: "competence",
+        title: "Sécurisation à tester",
+        subtitle: "Préparer une hypothèse de transmission, formation ou relais sur cette compétence.",
+        buttonLabel: "Préparer dans Simulation RH"
+      })}
     `;
+
+    const bHypoComp = byId("btnAnalyseCompetenceCreateHypothesis");
+    if (bHypoComp && !bHypoComp.dataset.bound) {
+      bHypoComp.dataset.bound = "1";
+      bHypoComp.addEventListener("click", () => {
+        const compCode = String(comp?.code || "").trim();
+        const compLabel = String(comp?.intitule || "Compétence").trim() || "Compétence";
+        addAnalyseHypothesis({
+          type: "securiser_competence",
+          title: `Sécuriser la compétence ${compCode ? compCode + " · " : ""}${compLabel}`,
+          competence_id: String(comp?.id_comp || comp?.id || "").trim(),
+          competence_code: compCode,
+          competence_label: compLabel,
+          cause: scoreSafe >= 50 ? "Fragilité compétence à sécuriser" : "Relais ou transmission à tester",
+          effet: "Tester une action RH possible sur cette compétence : transmission, formation ou relais.",
+          horizon: "actuel",
+          criticite: data?.criticite_min ?? getCriticiteMinSafe(CRITICITE_MIN_DEFAULT),
+          niveau_simule: "C"
+        });
+        closeAnalyseCompetenceModal();
+      });
+    }
   }
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
@@ -5941,7 +6001,7 @@ function renderDetail(mode) {
         const compLabel = `${code ? code + " - " : ""}${comp}`;
         const horizon = analysePrevisionDate(r.exit_date || r.first_exit_date);
         addAnalyseHypothesis({
-          type: "montee_competence",
+          type: "transmission_interne",
           title: `Sécuriser la transmission de ${compLabel}`,
           poste_id: String(r.id_poste_actuel || "").trim(),
           poste_label: r.intitule_poste || "Poste non renseigné",
@@ -5951,7 +6011,8 @@ function renderDetail(mode) {
           cause: labels.join(" · "),
           effet: `Préparer la transmission de ${compLabel}${horizon && horizon !== "—" ? " avant le " + horizon : ""}.`,
           horizon,
-          criticite: r.max_criticite || getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)
+          criticite: r.max_criticite || getCriticiteMinSafe(CRITICITE_MIN_DEFAULT),
+          niveau_simule: "C"
         });
         close();
         return;

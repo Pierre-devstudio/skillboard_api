@@ -8258,3 +8258,74 @@ body{
 #modalAnalysePrevisionAction .sb-prev-transmission-table th{
   vertical-align:middle;
 }
+
+/* ======================================================
+   Analyse / Simulation RH — sécurisation homogène
+   ====================================================== */
+.analyse-hypothesis-card--action{
+  padding:12px;
+  margin-top:12px;
+}
+
+.analyse-hypothesis-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.analyse-hypothesis-card--action .card-title{
+  margin:0 0 4px 0;
+  font-weight:650;
+}
+
+.analyse-hypothesis-card--action .card-sub{
+  margin:0;
+  line-height:1.4;
+}
+
+.analyse-secu-grid--compact{
+  grid-template-columns:repeat(4, minmax(145px, 1fr));
+  gap:8px;
+}
+
+.analyse-secu-grid--compact .analyse-secu-card{
+  padding:9px 10px;
+  border-radius:10px;
+}
+
+.analyse-secu-grid--compact .analyse-secu-card strong{
+  font-size:12.5px;
+  font-weight:650;
+  margin-bottom:4px;
+}
+
+.analyse-secu-grid--compact .analyse-secu-card small{
+  font-size:12px;
+  line-height:1.3;
+}
+
+.analyse-hypothesis-actions{
+  margin-top:10px;
+}
+
+@media (max-width: 1050px){
+  .analyse-secu-grid--compact{ grid-template-columns:repeat(2, minmax(160px, 1fr)); }
+}
+
+@media (max-width: 640px){
+  .analyse-secu-grid--compact{ grid-template-columns:1fr; }
+}
+
+/* La simulation affiche maintenant un KPI transmission en plus. Oui, un chiffre utile, quelle extravagance. */
+.sim2-result-grid{
+  grid-template-columns:repeat(5, minmax(155px, 1fr));
+}
+
+@media (max-width: 1300px){
+  .sim2-result-grid{ grid-template-columns:repeat(3, minmax(170px, 1fr)); }
+}
+
+@media (max-width: 760px){
+  .sim2-result-grid{ grid-template-columns:1fr; }
+}
