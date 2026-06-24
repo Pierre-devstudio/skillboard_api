@@ -2730,24 +2730,119 @@ def _dashboard_month_bounds(base: date, month_offset: int) -> Tuple[date, date]:
     return start, end
 
 
-def _dashboard_compute_health_from_records(records: List[Dict[str, Any]], scope_label: str) -> Dict[str, Any]:
+def _dashboard_fetch_current_competence_records(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+    limit: int = 100000,
+) -> List[Dict[str, Any]]:
+    records = _fetch_competence_fragility_records(
+        cur,
+        id_ent,
+        id_service,
+        _dashboard_normalize_criticite_min(criticite_min),
+        comp_id=None,
+        limit=int(limit),
+    )
+    return _analyse_fragility_records_analyzed(records)
+
+
+def _dashboard_component(value: Any, weight: int, key: str, label: str, source: str) -> Dict[str, Any]:
+    pct = round(max(0.0, min(100.0, float(value or 0.0))), 1)
+    w = max(0, min(100, _safe_int(weight, 0)))
+    return {
+        "key": key,
+        "label": label,
+        "pct": pct,
+        "weight": w,
+        "weighted_score": round(pct * (w / 100.0), 1),
+        "source": source,
+    }
+
+
+def _dashboard_health_component_value(payload: Optional[Dict[str, Any]], key: str = "pct") -> float:
+    if not payload:
+        return 0.0
+    try:
+        return max(0.0, min(100.0, float(payload.get(key) or 0.0)))
+    except Exception:
+        return 0.0
+
+
+def _dashboard_compute_health_from_records(
+    records: List[Dict[str, Any]],
+    scope_label: str,
+    competence_records: Optional[List[Dict[str, Any]]] = None,
+    transmission: Optional[Dict[str, Any]] = None,
+    reliability: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Santé globale dashboard.
-    Source : moteur de fragilité postes. La santé est l'inverse lisible de la
-    fragilité moyenne actuelle, pour éviter une deuxième logique de couverture.
+    Source : composants centralisés du moteur analyse.
+    Pondération validée :
+    - robustesse postes 40 % ;
+    - robustesse compétences 25 % ;
+    - fiabilité des données 15 % ;
+    - capacité de transmission 20 %.
     """
-    analysed = _analyse_fragility_records_analyzed(records)
-    nb_items = len(analysed)
-    fragility = _analyse_fragility_average(analysed)
-    pct = round(max(0.0, min(100.0, 100.0 - float(fragility))), 1) if nb_items else 0.0
-    max_score = float(nb_items * 100)
-    score = round((pct / 100.0) * max_score, 1) if max_score > 0 else 0.0
+    poste_records = _analyse_fragility_records_analyzed(records)
+    comp_records_all = _analyse_fragility_records_analyzed(competence_records or [])
+    comp_records_fragiles = [r for r in comp_records_all if _safe_int(r.get("indice_fragilite"), 0) > 0]
+
+    postes_fragility = _analyse_fragility_average(poste_records)
+    competences_fragility = _analyse_fragility_average(comp_records_fragiles) if comp_records_all else 100
+
+    postes_health = 100.0 - float(postes_fragility) if poste_records else 0.0
+    competences_health = 100.0 - float(competences_fragility) if comp_records_all else 0.0
+    reliability_health = _dashboard_health_component_value(reliability)
+    transmission_health = _dashboard_health_component_value(transmission)
+
+    components = [
+        _dashboard_component(
+            postes_health,
+            40,
+            "postes",
+            "Robustesse des postes",
+            "Inverse de la fragilité moyenne des postes issue du moteur analyse.",
+        ),
+        _dashboard_component(
+            competences_health,
+            25,
+            "competences",
+            "Robustesse des compétences",
+            "Inverse de la fragilité moyenne des compétences critiques fragiles du périmètre.",
+        ),
+        _dashboard_component(
+            reliability_health,
+            15,
+            "fiabilite",
+            "Fiabilité des données",
+            "Part des évaluations récentes sur les éléments analysés.",
+        ),
+        _dashboard_component(
+            transmission_health,
+            20,
+            "transmission",
+            "Capacité de transmission",
+            "Part des postes disposant d'une capacité de transmission suffisante.",
+        ),
+    ]
+
+    pct = round(sum(float(c.get("weighted_score") or 0.0) for c in components), 1)
+    max_score = 100.0
+    score = pct
+    nb_items = len(poste_records)
+
     return {
         "pct": pct,
         "score": score,
         "max_score": max_score,
         "nb_items": nb_items,
         "scope_label": scope_label or "Tous les services",
+        "components": components,
+        "postes_fragilite_moyenne": int(round(float(postes_fragility))) if poste_records else 0,
+        "competences_fragilite_moyenne": int(round(float(competences_fragility))) if comp_records_all else 0,
     }
 
 

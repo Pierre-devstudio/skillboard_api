@@ -3343,7 +3343,7 @@ body{
 #view-dashboard .sb-health-status{
   width:max-content;
   max-width:100%;
-  margin:0 auto;
+  margin:6px auto 0;
   height:24px;
   display:flex;
   align-items:center;

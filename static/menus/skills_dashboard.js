@@ -18,7 +18,7 @@
   const HELP_TEXTS = {
     health: {
       title: "Santé globale",
-      body: "Cet indicateur présente le niveau global de couverture des compétences attendues sur les postes du périmètre sélectionné. Il sert à lire rapidement l’état général de maîtrise de l’organisation ou du service affiché."
+      body: "Cet indicateur synthétise quatre dimensions du périmètre : robustesse des postes, robustesse des compétences, fiabilité des données et capacité de transmission. Le score est pondéré pour donner plus de poids aux risques opérationnels et à la transmission des savoir-faire."
     },
     timeline: {
       title: "Évolution des risques",
@@ -522,11 +522,34 @@
 
   function healthDetailInterpretation(pct) {
     const p = clamp(pct, 0, 100);
-    if (p >= 92) return "La couverture est robuste : les postes du périmètre disposent globalement des niveaux attendus sur les compétences analysées.";
-    if (p >= 80) return "La couverture est solide, avec quelques points à surveiller dans les détails de l’analyse.";
-    if (p >= 65) return "La couverture reste correcte, mais plusieurs écarts peuvent déjà fragiliser la continuité des postes.";
-    if (p >= 50) return "Le périmètre est sous vigilance : la couverture des compétences attendues doit être consolidée.";
-    return "Le périmètre est fragile : les postes analysés présentent une couverture insuffisante ou trop incertaine.";
+    if (p >= 92) return "La situation globale est robuste : les postes, compétences, données et capacités de transmission sont globalement sécurisés.";
+    if (p >= 80) return "La situation globale est solide, avec quelques points de vigilance à confirmer dans les détails.";
+    if (p >= 65) return "La situation reste correcte, mais plusieurs composantes peuvent déjà fragiliser la continuité.";
+    if (p >= 50) return "Le périmètre est sous vigilance : la transmission, la fiabilité ou la couverture des postes doivent être consolidées.";
+    return "Le périmètre est fragile : les risques actuels pèsent fortement sur la continuité ou la transmission des savoir-faire.";
+  }
+
+  function healthComponentRowsHtml(components) {
+    const rows = Array.isArray(components) ? components : [];
+    if (!rows.length) {
+      return `<tr><td colspan="4" class="sb-muted">Aucun détail de calcul disponible.</td></tr>`;
+    }
+
+    return rows.map(c => {
+      const label = (c?.label || "Composante").toString();
+      const pct = Number(c?.pct);
+      const weight = Number(c?.weight);
+      const weighted = Number(c?.weighted_score);
+      const source = (c?.source || "Calcul issu du moteur analyse.").toString();
+      return `
+        <tr>
+          <td><strong>${esc(label)}</strong><div class="card-sub" style="margin:3px 0 0 0;">${esc(source)}</div></td>
+          <td class="col-center">${Number.isFinite(pct) ? pctTxt(pct, 0) : "—"}</td>
+          <td class="col-center">${Number.isFinite(weight) ? `${Math.round(weight)}%` : "—"}</td>
+          <td class="col-center"><strong>${Number.isFinite(weighted) ? numTxt(weighted, 1) : "—"}</strong></td>
+        </tr>
+      `;
+    }).join("");
   }
 
   function renderHealthDetailModal() {
@@ -541,7 +564,7 @@
     const maxScore = Number(health?.max_score);
     const nbItems = Number(health?.nb_items);
     const scoreLabel = (Number.isFinite(score) && Number.isFinite(maxScore) && maxScore > 0)
-      ? `${numTxt(score, 1)} / ${numTxt(maxScore, 1)}`
+      ? `${numTxt(score, 1)} / ${numTxt(maxScore, 0)}`
       : "—";
     const nbLabel = Number.isFinite(nbItems) ? numTxt(nbItems, 0) : "—";
     const scopeLabel = health?.scope_label || _lastData?.scope?.nom_service || "—";
@@ -552,7 +575,7 @@
       <div class="sb-stack">
         <div class="card" style="padding:12px; margin:0;">
           <div class="sb-block-title" style="margin-bottom:8px;">Lecture immédiate</div>
-          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
             <div style="font-size:28px; font-weight:800; color:#111827; line-height:1;">${pctTxt(pct, 0)}</div>
             <span class="sb-health-status ${esc(st.cls)}" style="margin:0;">${esc(st.label)}</span>
           </div>
@@ -571,13 +594,29 @@
                 <td>${esc(criticiteLabel)}</td>
               </tr>
               <tr>
-                <th>Éléments analysés</th>
-                <td>${esc(nbLabel)} couple(s) poste / compétence</td>
+                <th>Postes analysés</th>
+                <td>${esc(nbLabel)}</td>
               </tr>
               <tr>
-                <th>Score technique</th>
+                <th>Score pondéré</th>
                 <td>${esc(scoreLabel)}</td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sb-dashboard-table-wrap">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-dashboard-detail-table">
+            <thead>
+              <tr>
+                <th>Composante</th>
+                <th class="col-center">Résultat</th>
+                <th class="col-center">Poids</th>
+                <th class="col-center">Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${healthComponentRowsHtml(health?.components)}
             </tbody>
           </table>
         </div>
@@ -585,9 +624,9 @@
         <div class="card" style="padding:12px; margin:0;">
           <div class="sb-block-title" style="margin-bottom:8px;">Comment lire la jauge</div>
           <div class="card-sub" style="margin:0; line-height:1.45;">
-            L’aiguille se déplace de gauche à droite selon le niveau de couverture du périmètre.
-            Plus elle avance vers la droite, plus les compétences attendues sur les postes analysés sont couvertes.
-            Le statut affiché sous la jauge traduit cette valeur en lecture RH : fragile, sous vigilance, correct, solide ou robuste.
+            La jauge n’est plus le simple inverse de la fragilité des postes. Elle combine quatre résultats :
+            robustesse des postes (40%), robustesse des compétences (25%), fiabilité des données (15%)
+            et capacité de transmission (20%). Le statut traduit ce score global en lecture RH : fragile, sous vigilance, correct, solide ou robuste.
           </div>
         </div>
       </div>

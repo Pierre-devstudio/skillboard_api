@@ -1,7 +1,7 @@
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import (
@@ -14,6 +14,7 @@ from app.services.skills_analyse_engine import (
     NON_LIE_ID,
     _dashboard_compute_health_from_records,
     _dashboard_compute_postes_watch_from_records,
+    _dashboard_fetch_current_competence_records,
     _dashboard_compute_reliability,
     _dashboard_compute_risk_timeline,
     _dashboard_compute_risks_without_action,
@@ -71,6 +72,9 @@ class DashboardHealth(BaseModel):
     max_score: float = 0.0
     nb_items: int = 0
     scope_label: str = "Tous les services"
+    components: List[Dict[str, Any]] = Field(default_factory=list)
+    postes_fragilite_moyenne: int = 0
+    competences_fragilite_moyenne: int = 0
 
 
 class DashboardRiskTimelinePoint(BaseModel):
@@ -281,6 +285,18 @@ def _model_list(model_cls, rows):
     return [_model(model_cls, r) for r in (rows or [])]
 
 
+def _as_payload(value):
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if hasattr(value, "dict"):
+        return value.dict()
+    return dict(value or {})
+
+
 # ======================================================
 # Builder commun
 # ======================================================
@@ -309,10 +325,13 @@ def build_dashboard_risk_overview_for_scope(
         criticite,
     )
 
-    health = _model(
-        DashboardHealth,
-        _dashboard_compute_health_from_records(current_records, scope.nom_service),
+    competence_records = _dashboard_fetch_current_competence_records(
+        cur,
+        id_ent,
+        scope.id_service,
+        criticite,
     )
+
     risk_timeline = _model_list(
         DashboardRiskTimelinePoint,
         _dashboard_compute_risk_timeline(cur, id_ent, scope.id_service, current_records, criticite),
@@ -338,6 +357,16 @@ def build_dashboard_risk_overview_for_scope(
             scope.id_service,
             criticite,
             seuil_mois=DASHBOARD_RELIABILITY_MONTHS,
+        ),
+    )
+    health = _model(
+        DashboardHealth,
+        _dashboard_compute_health_from_records(
+            current_records,
+            scope.nom_service,
+            competence_records=competence_records,
+            transmission=_as_payload(transmission),
+            reliability=_as_payload(reliability),
         ),
     )
     risks_without_action = _model(
