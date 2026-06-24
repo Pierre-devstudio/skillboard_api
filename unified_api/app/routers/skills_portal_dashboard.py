@@ -20,6 +20,7 @@ from app.services.skills_analyse_engine import (
     _dashboard_compute_transmission_from_records,
     _dashboard_fetch_current_poste_records,
     _dashboard_normalize_criticite_min,
+    _dashboard_enrich_records_poste_criticite as _enrich_records_poste_criticite,
     _fetch_service_label,
 )
 
