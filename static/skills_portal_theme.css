@@ -7950,6 +7950,60 @@ body{
   line-height:1.25;
 }
 
+
+#modalAnalysePrevisionAction .sb-prev-transmission-modal--simple{
+  gap:12px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmitter-list{
+  display:grid;
+  gap:8px;
+  margin-top:2px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmitter-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#ffffff;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmitter-main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmitter-main strong{
+  color:var(--sb-gray-900);
+  font-size:13px;
+  line-height:1.2;
+  font-weight:700;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmitter-main span{
+  min-width:0;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.25;
+}
+
+#modalAnalysePrevisionAction .sb-prev-transmitter-level{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+#modalAnalysePrevisionAction .sb-prev-scenario-grid--compact{
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+}
+
 #modalAnalysePrevisionAction .sb-prev-scenario-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
@@ -7980,7 +8034,8 @@ body{
 @media (max-width:900px){
   #modalAnalysePrevisionAction .sb-prev-kpi-grid,
   #modalAnalysePrevisionAction .sb-prev-kpi-grid--4,
-  #modalAnalysePrevisionAction .sb-prev-transmission-grid2{
+  #modalAnalysePrevisionAction .sb-prev-transmission-grid2,
+  #modalAnalysePrevisionAction .sb-prev-scenario-grid--compact{
     grid-template-columns:1fr;
   }
 }
