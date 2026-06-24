@@ -5675,8 +5675,8 @@ function renderDetail(mode) {
     const who = (firstName || "ce collaborateur").toString().trim() || "ce collaborateur";
     const n = Math.max(0, Math.round(Number(uniqueCount || 0)));
     if (n <= 0) return `Dans les compétences que ${who} peut transmettre, aucune ne repose uniquement sur ${who}.`;
-    if (n === 1) return `Dans les compétences que ${who} peut transmettre, 1 compétence n’a aucun autre porteur capable d’assurer la transmission.`;
-    return `Dans les compétences que ${who} peut transmettre, ${n} compétences n’ont aucun autre porteur capable d’assurer la transmission.`;
+    if (n === 1) return `Dans les compétences que ${who} peut transmettre, 1 compétence n’a aucune autre personne capable d’assurer la transmission.`;
+    return `Dans les compétences que ${who} peut transmettre, ${n} compétences n’ont aucune autre personne capable d’assurer la transmission.`;
   }
 
   function analysePrevisionOtherTransmitterSentence(firstName, otherCount, nonTransmissibleCount) {
@@ -5738,23 +5738,24 @@ function renderDetail(mode) {
 
   function analysePrevisionOtherAccordionRows(list) {
     const rows = Array.isArray(list) ? list : [];
-    if (!rows.length) return analysePrevisionCapacityRowsEmpty(3, "Aucune compétence non transmissible par le sortant n’est rattachée à son poste.");
+    if (!rows.length) return analysePrevisionCapacityRowsEmpty(4, "Aucune compétence non transmissible par le sortant n’est rattachée à son poste.");
     return rows.map((c, idx) => {
       const rowId = `prev_other_${idx}`;
       const nb = Math.max(0, Math.round(Number(c.autres_transmissibles || 0)));
       return `
         <tr class="sb-prev-capacity-acc-row" data-prev-other-row="${escapeHtml(rowId)}">
           <td>
-            <button type="button" class="sb-prev-capacity-acc-btn" data-prev-other-toggle="${escapeHtml(rowId)}" aria-expanded="false" title="Afficher les porteurs">
+            <button type="button" class="sb-prev-capacity-acc-btn" data-prev-other-toggle="${escapeHtml(rowId)}" aria-expanded="false" title="Afficher les personnes">
               <span class="sb-acc-chevron">⌄</span>
               <span class="sb-prev-capacity-acc-label">${analysePrevisionCapacityCompLabel(c)}</span>
             </button>
           </td>
           <td class="col-center"><span class="sb-badge ${nb > 0 ? "sb-badge--success" : ""}">${escapeHtml(String(nb))}</span></td>
+          <td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td>
           <td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td>
         </tr>
         <tr class="sb-prev-capacity-acc-detail" data-prev-other-detail="${escapeHtml(rowId)}" style="display:none;">
-          <td colspan="3">${analysePrevisionCapacityTransmittersHtml(c.autres_transmetteurs)}</td>
+          <td colspan="4">${analysePrevisionCapacityTransmittersHtml(c.autres_transmetteurs)}</td>
         </tr>
       `;
     }).join("");
@@ -5824,7 +5825,7 @@ function renderDetail(mode) {
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
             <thead><tr><th>Compétence</th><th class="col-center">Criticité</th><th class="col-center"></th></tr></thead>
             <tbody>
-              ${unique.length ? unique.map(c => `<tr><td>${analysePrevisionCapacityCompLabel(c)}</td><td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td><td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td></tr>`).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence transmissible ne repose uniquement sur le sortant.")}
+              ${unique.length ? unique.map(c => `<tr><td>${analysePrevisionCapacityCompLabel(c)}</td><td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td><td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td></tr>`).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence transmissible n’est détenue uniquement par le sortant.")}
             </tbody>
           </table>
         </div>
@@ -5834,7 +5835,7 @@ function renderDetail(mode) {
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-prev-capacity-acc-table">
-            <thead><tr><th>Compétence</th><th class="col-center">Potentiel de transmission</th><th class="col-center"></th></tr></thead>
+            <thead><tr><th>Compétence</th><th class="col-center">Potentiel de transmission</th><th class="col-center">Criticité</th><th class="col-center"></th></tr></thead>
             <tbody>
               ${analysePrevisionOtherAccordionRows(other)}
             </tbody>
@@ -5846,15 +5847,16 @@ function renderDetail(mode) {
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-            <thead><tr><th>Compétence</th><th class="col-center">Niveau requis de transmission</th><th class="col-center"></th></tr></thead>
+            <thead><tr><th>Compétence</th><th class="col-center">Niveau requis de transmission</th><th class="col-center">Criticité</th><th class="col-center"></th></tr></thead>
             <tbody>
               ${all.length ? all.map(c => `
                 <tr>
                   <td>${analysePrevisionCapacityCompLabel(c)}</td>
                   <td class="col-center"><span title="${escapeHtml(c.transmission_required_label || requiredLabel)}">${analysePrevisionCapacityStatusBadge(!!c.sortant_transmissible)}</span></td>
+                  <td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td>
                   <td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td>
                 </tr>
-              `).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence active n’est rattachée au poste du sortant.")}
+              `).join("") : analysePrevisionCapacityRowsEmpty(4, "Aucune compétence active n’est rattachée au poste du sortant.")}
             </tbody>
           </table>
         </div>
@@ -6032,7 +6034,7 @@ function renderDetail(mode) {
           <div class="sb-prev-modal-title">Capacité de transmission à son poste</div>
           <div class="sb-prev-ring-grid">
             ${analysePrevisionRingHtml(capPct, "Compétences transmissibles", `${transmissibles} / ${total}`, transmissionText, { mode: "good", detailKey: "transmissible" })}
-            ${analysePrevisionRingHtml(uniquePct, "Porteur unique", `${uniques} / ${transmissibles}`, uniqueText, { mode: "risk", detailKey: "unique" })}
+            ${analysePrevisionRingHtml(uniquePct, "Sans relais identifié", `${uniques} / ${transmissibles}`, uniqueText, { mode: "risk", detailKey: "unique" })}
             ${analysePrevisionRingHtml(otherPct, "Autre transmetteur", `${otherTransmitters} / ${nonTransmissibles}`, otherText, { mode: "good", detailKey: "other" })}
           </div>
         </div>

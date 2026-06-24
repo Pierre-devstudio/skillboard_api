@@ -7069,9 +7069,9 @@ body{
 
 .sb-prev-transmitter-list{
   display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  align-items:center;
+  flex-direction:column;
+  gap:5px;
+  align-items:flex-start;
 }
 
 .sb-prev-capacity-pdf-btn{
