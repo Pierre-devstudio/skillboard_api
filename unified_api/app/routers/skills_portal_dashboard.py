@@ -18,7 +18,7 @@ from app.services.skills_analyse_engine import (
     _dashboard_compute_reliability,
     _dashboard_compute_risk_timeline,
     _dashboard_compute_risks_without_action,
-    _dashboard_compute_transmission_from_records,
+    _dashboard_compute_transmission_capacity,
     _dashboard_fetch_current_poste_records,
     _dashboard_normalize_criticite_min,
     _dashboard_enrich_records_poste_criticite as _enrich_records_poste_criticite,
@@ -95,9 +95,23 @@ class DashboardPostesWatch(BaseModel):
 
 class DashboardTransmission(BaseModel):
     pct: float = 0.0
+    # Champs historiques conservés pour compatibilité API.
+    # Ils reprennent désormais les volumes de compétences, car la capacité
+    # de transmission ne se calcule plus par poste.
     postes_total: int = 0
     postes_transmissibles: int = 0
     postes_risque: int = 0
+    competences_total: int = 0
+    competences_transmissibles: int = 0
+    competences_risque: int = 0
+    transmission_valides_count: int = 0
+    transmission_confirm_count: int = 0
+    transmission_review_count: int = 0
+    sans_transmetteur_count: int = 0
+    transmetteurs_identifies_count: int = 0
+    threshold_score: int = 63
+    threshold_label: str = "Avancé haut ou Expert"
+    seuil_mois: int = DASHBOARD_RELIABILITY_MONTHS
 
 
 class DashboardReliability(BaseModel):
@@ -347,7 +361,13 @@ def build_dashboard_risk_overview_for_scope(
     )
     transmission = _model(
         DashboardTransmission,
-        _dashboard_compute_transmission_from_records(current_records),
+        _dashboard_compute_transmission_capacity(
+            cur,
+            id_ent,
+            scope.id_service,
+            criticite,
+            seuil_mois=DASHBOARD_RELIABILITY_MONTHS,
+        ),
     )
     reliability = _model(
         DashboardReliability,

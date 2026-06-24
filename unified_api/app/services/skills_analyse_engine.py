@@ -2811,7 +2811,7 @@ def _dashboard_compute_health_from_records(
             25,
             "competences",
             "Robustesse des compétences",
-            "Inverse de la fragilité moyenne des compétences critiques fragiles du périmètre.",
+            "Inverse de la fragilité moyenne des compétences fragiles du périmètre.",
         ),
         _dashboard_component(
             reliability_health,
@@ -2825,7 +2825,7 @@ def _dashboard_compute_health_from_records(
             20,
             "transmission",
             "Capacité de transmission",
-            "Part des postes disposant d'une capacité de transmission suffisante.",
+            "Part des compétences disposant d'une transmission validée ou à confirmer.",
         ),
     ]
 
@@ -2910,35 +2910,179 @@ def _dashboard_compute_postes_watch_from_records(
     }
 
 
-def _dashboard_compute_transmission_from_records(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _dashboard_compute_transmission_capacity(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+    seuil_mois: int = 6,
+) -> Dict[str, Any]:
     """
     Capacité de transmission dashboard.
-    Source : records postes du moteur, après enrichissement du potentiel de renfort
-    par _augment_poste_records_with_matching_potential().
+
+    Lecture métier : une compétence du périmètre est transmissible si elle
+    dispose d'au moins un transmetteur identifié avec une donnée exploitable :
+    - niveau Expert ;
+    - ou niveau Avancé haut, matérialisé par un score normalisé >= 63 %.
+
+    Le taux dashboard retient les compétences en transmission validée ou à
+    confirmer. Les compétences avec transmetteur potentiel mais donnée trop
+    ancienne / absente restent visibles en "entretien recommandé", sans entrer
+    dans le taux sécurisé.
     """
-    analysed = _analyse_fragility_records_analyzed(records)
-    total = len(analysed)
-    ok = 0
-    risk = 0
+    cmin = _dashboard_normalize_criticite_min(criticite_min)
+    months = max(1, min(60, _safe_int(seuil_mois, 6)))
+    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
 
-    for r in analysed:
-        rupture = bool(r.get("rupture"))
-        besoin_local = _safe_int(r.get("besoin_local"), 0)
-        score_transmission = _safe_int(r.get("score_transmission", r.get("score_renfort_potentiel")), 0)
-        sans_releve = _safe_int(r.get("nb_critiques_sans_releve"), 0)
-        releve_faible = _safe_int(r.get("nb_critiques_releve_faible"), 0)
-        transmissible = (not rupture) and besoin_local > 0 and score_transmission <= 0 and sans_releve == 0 and releve_faible == 0
-        if transmissible:
-            ok += 1
-        else:
-            risk += 1
+    sql = f"""
+    WITH
+    {cte_sql},
+    competences_scope AS (
+        SELECT DISTINCT
+            c.id_comp,
+            COALESCE(c.code, '') AS code,
+            COALESCE(c.intitule, '') AS intitule
+        FROM postes_scope ps
+        JOIN public.tbl_fiche_poste_competence fpc
+          ON fpc.id_poste = ps.id_poste
+        JOIN public.tbl_competence c
+          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+        WHERE COALESCE(fpc.masque, FALSE) = FALSE
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+          AND COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(c.etat, 'active') = 'active'
+    ),
+    porteurs_base AS (
+        SELECT
+            cs.id_comp,
+            e.id_effectif,
+            COALESCE(a.date_audit, ec.date_derniere_eval)::date AS date_derniere_eval,
+            CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
+                WHEN 'a' THEN 1
+                WHEN 'initial' THEN 1
+                WHEN 'débutant' THEN 1
+                WHEN 'debutant' THEN 1
+                WHEN 'b' THEN 2
+                WHEN 'intermediaire' THEN 2
+                WHEN 'intermédiaire' THEN 2
+                WHEN 'c' THEN 3
+                WHEN 'avance' THEN 3
+                WHEN 'avancé' THEN 3
+                WHEN 'avancee' THEN 3
+                WHEN 'avancée' THEN 3
+                WHEN 'd' THEN 4
+                WHEN 'expert' THEN 4
+                ELSE 0
+            END AS niveau_rank,
+            CASE
+                WHEN a.resultat_eval IS NULL THEN NULL
+                WHEN a.resultat_eval <= 24 THEN (a.resultat_eval / 24.0) * 100.0
+                ELSE a.resultat_eval
+            END AS score_pct
+        FROM competences_scope cs
+        JOIN public.tbl_effectif_client_competence ec
+          ON ec.id_comp = cs.id_comp
+         AND COALESCE(ec.actif, TRUE) = TRUE
+         AND COALESCE(ec.archive, FALSE) = FALSE
+        JOIN public.tbl_effectif_client e
+          ON e.id_effectif = ec.id_effectif_client
+        JOIN effectifs_scope es
+          ON es.id_effectif = e.id_effectif
+        LEFT JOIN public.tbl_effectif_client_audit_competence a
+          ON a.id_audit_competence = ec.id_dernier_audit
+         AND a.id_effectif_competence = ec.id_effectif_competence
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.is_temp, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
+          AND NOT EXISTS (
+              SELECT 1
+              FROM public.tbl_effectif_client_break b
+              WHERE b.id_effectif = e.id_effectif
+                AND COALESCE(b.archive, FALSE) = FALSE
+                AND b.date_debut <= CURRENT_DATE
+                AND b.date_fin >= CURRENT_DATE
+          )
+    ),
+    transmetteurs AS (
+        SELECT
+            pb.*,
+            CASE
+                WHEN pb.niveau_rank >= 4 THEN TRUE
+                WHEN COALESCE(pb.score_pct, -1) >= 63 THEN TRUE
+                ELSE FALSE
+            END AS is_transmetteur,
+            CASE
+                WHEN pb.date_derniere_eval IS NOT NULL
+                 AND pb.date_derniere_eval >= (CURRENT_DATE - (%s::int * INTERVAL '1 month'))::date
+                THEN TRUE ELSE FALSE
+            END AS is_recent,
+            CASE
+                WHEN pb.niveau_rank >= 4 THEN TRUE
+                WHEN COALESCE(pb.score_pct, 0) > 75 THEN TRUE
+                ELSE FALSE
+            END AS is_valide_fort
+        FROM porteurs_base pb
+    ),
+    agg AS (
+        SELECT
+            cs.id_comp,
+            COUNT(DISTINCT CASE WHEN t.is_transmetteur THEN t.id_effectif END)::int AS transmetteurs_total,
+            COUNT(DISTINCT CASE WHEN t.is_transmetteur AND t.is_recent AND t.is_valide_fort THEN t.id_effectif END)::int AS valid_count,
+            COUNT(DISTINCT CASE WHEN t.is_transmetteur AND t.is_recent AND NOT t.is_valide_fort THEN t.id_effectif END)::int AS confirm_count,
+            COUNT(DISTINCT CASE WHEN t.is_transmetteur AND NOT t.is_recent THEN t.id_effectif END)::int AS review_count
+        FROM competences_scope cs
+        LEFT JOIN transmetteurs t ON t.id_comp = cs.id_comp
+        GROUP BY cs.id_comp
+    )
+    SELECT
+        COUNT(*)::int AS competences_total,
+        COALESCE(SUM(CASE WHEN valid_count > 0 THEN 1 ELSE 0 END), 0)::int AS transmission_valides_count,
+        COALESCE(SUM(CASE WHEN valid_count <= 0 AND confirm_count > 0 THEN 1 ELSE 0 END), 0)::int AS transmission_confirm_count,
+        COALESCE(SUM(CASE WHEN valid_count <= 0 AND confirm_count <= 0 AND review_count > 0 THEN 1 ELSE 0 END), 0)::int AS transmission_review_count,
+        COALESCE(SUM(CASE WHEN transmetteurs_total <= 0 THEN 1 ELSE 0 END), 0)::int AS sans_transmetteur_count,
+        COALESCE(SUM(transmetteurs_total), 0)::int AS transmetteurs_identifies_count
+    FROM agg
+    """
+    params = list(cte_params) + [cmin, id_ent, months]
+    if sql.count("%s") != len(params):
+        raise RuntimeError(
+            f"Paramètres SQL incohérents pour la capacité de transmission dashboard : "
+            f"{sql.count('%s')} placeholders / {len(params)} paramètres"
+        )
 
-    pct = round((ok / total * 100.0), 1) if total else 0.0
+    cur.execute(sql, tuple(params))
+    row = cur.fetchone() or {}
+    total = _safe_int(row.get("competences_total"), 0)
+    valid = _safe_int(row.get("transmission_valides_count"), 0)
+    confirm = _safe_int(row.get("transmission_confirm_count"), 0)
+    review = _safe_int(row.get("transmission_review_count"), 0)
+    none = _safe_int(row.get("sans_transmetteur_count"), 0)
+    transmitters = _safe_int(row.get("transmetteurs_identifies_count"), 0)
+
+    ok = valid + confirm
+    risk = review + none
+    pct = round((ok / float(total)) * 100.0, 1) if total else 0.0
+
     return {
         "pct": pct,
+        # Compatibilité avec l'ancien payload dashboard : les noms sont conservés,
+        # mais les volumes représentent désormais des compétences.
         "postes_total": total,
         "postes_transmissibles": ok,
         "postes_risque": risk,
+        "competences_total": total,
+        "competences_transmissibles": ok,
+        "competences_risque": risk,
+        "transmission_valides_count": valid,
+        "transmission_confirm_count": confirm,
+        "transmission_review_count": review,
+        "sans_transmetteur_count": none,
+        "transmetteurs_identifies_count": transmitters,
+        "threshold_score": 63,
+        "threshold_label": "Avancé haut ou Expert",
+        "seuil_mois": months,
     }
 
 

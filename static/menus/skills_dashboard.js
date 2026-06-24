@@ -18,7 +18,7 @@
   const HELP_TEXTS = {
     health: {
       title: "Santé globale",
-      body: "Cet indicateur synthétise quatre dimensions du périmètre : robustesse des postes, robustesse des compétences, fiabilité des données et capacité de transmission. Le score est pondéré pour donner plus de poids aux risques opérationnels et à la transmission des savoir-faire."
+      body: "Cet indicateur synthétise quatre dimensions du périmètre : robustesse des postes, robustesse des compétences, fiabilité des données et capacité de transmission. La transmission est calculée sur les compétences disposant d’un transmetteur Expert ou Avancé haut."
     },
     timeline: {
       title: "Évolution des risques",
@@ -30,7 +30,7 @@
     },
     transmission: {
       title: "Capacité de transmission",
-      body: "Cet indicateur mesure la capacité à transmettre les savoir-faire nécessaires pour réaliser l’ensemble des tâches des postes du périmètre. Une capacité faible signale un risque de perte de savoir-faire."
+      body: "Cet indicateur mesure la part des compétences du périmètre disposant d’une transmission validée ou à confirmer. Un transmetteur est identifié lorsqu’il est Expert ou en Avancé haut avec un score d’au moins 63 %."
     },
     reliability: {
       title: "Fiabilité des données analysées",
@@ -626,7 +626,8 @@
           <div class="card-sub" style="margin:0; line-height:1.45;">
             La jauge n’est plus le simple inverse de la fragilité des postes. Elle combine quatre résultats :
             robustesse des postes (40%), robustesse des compétences (25%), fiabilité des données (15%)
-            et capacité de transmission (20%). Le statut traduit ce score global en lecture RH : fragile, sous vigilance, correct, solide ou robuste.
+            et capacité de transmission (20%). La transmission mesure la part des compétences disposant d’une transmission validée ou à confirmer.
+            Le statut traduit ce score global en lecture RH : fragile, sous vigilance, correct, solide ou robuste.
           </div>
         </div>
       </div>
