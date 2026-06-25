@@ -18,9 +18,11 @@ class SimulationHypothese(BaseModel):
     id_effectif: Optional[str] = None
     id_poste: Optional[str] = None
     id_poste_cible: Optional[str] = None
+    id_poste_source: Optional[str] = None
     id_comp: Optional[str] = None
     niveau_simule: Optional[str] = None
     libelle: Optional[str] = None
+    temporalite: Optional[str] = None
 
 
 class SimulationEvalRequest(BaseModel):
@@ -888,6 +890,203 @@ def _build_conseil(req: SimulationEvalRequest, current_summary: Dict[str, Any], 
     }
 
 
+
+
+def _effectif_label(e: Dict[str, Any]) -> str:
+    return " ".join([
+        str(e.get("prenom_effectif") or "").strip(),
+        str(e.get("nom_effectif") or "").strip(),
+    ]).strip() or "Collaborateur"
+
+
+def _skill_score_for_matching(skill: Optional[Dict[str, Any]], niveau_requis: Any) -> Tuple[int, int, str]:
+    if not skill:
+        return 0, _level_rank(niveau_requis), "absent"
+    req_rank = _level_rank(niveau_requis)
+    current_rank = _level_rank(skill.get("niveau_actuel"))
+    score_pct = _skill_score_pct(skill)
+    # Le score d'évaluation est le plus fiable quand il existe ; le niveau déclaré reste un fallback.
+    if score_pct > 0:
+        req_score = {1: 6, 2: 12, 3: 18, 4: 24}.get(req_rank, 0)
+        raw = _safe_float(skill.get("resultat_eval"), 0.0)
+        if raw > 24:
+            raw = (raw / 100.0) * 24.0
+        ratio = _ratio(raw, req_score) if req_score else 0.0
+        pct = int(round(ratio * 100.0))
+    else:
+        pct = int(round(_ratio(current_rank, req_rank) * 100.0)) if req_rank else 0
+    if current_rank <= 0 and score_pct <= 0:
+        status = "absent"
+    elif pct >= 100:
+        status = "pret"
+    elif pct >= 70:
+        status = "proche"
+    else:
+        status = "a_preparer"
+    return max(0, min(100, pct)), req_rank, status
+
+
+def _build_candidate_recommendations(dataset: Dict[str, Any], limit_per_poste: int = 8) -> Dict[str, Any]:
+    requirements_by_poste: Dict[str, List[Dict[str, Any]]] = {}
+    for r in dataset.get("requirements") or []:
+        pid = str(r.get("id_poste") or "").strip()
+        if pid:
+            requirements_by_poste.setdefault(pid, []).append(r)
+
+    skills_by_effectif: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for row in dataset.get("skills") or []:
+        eid = str(row.get("id_effectif") or "").strip()
+        cid = str(row.get("id_comp") or "").strip()
+        if eid and cid:
+            skills_by_effectif.setdefault(eid, {})[cid] = row
+
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for poste in dataset.get("postes") or []:
+        pid = str(poste.get("id_poste") or "").strip()
+        reqs = requirements_by_poste.get(pid) or []
+        if not pid or not reqs:
+            continue
+        poids_total = sum(max(1, _safe_int(r.get("poids_criticite"), 1)) for r in reqs) or 1
+        rows: List[Dict[str, Any]] = []
+        for eff in dataset.get("effectifs") or []:
+            eid = str(eff.get("id_effectif") or "").strip()
+            if not eid or str(eff.get("id_poste_actuel") or "") == pid:
+                continue
+            score_sum = 0.0
+            gaps = []
+            for req in reqs:
+                cid = str(req.get("id_comp") or "").strip()
+                poids = max(1, _safe_int(req.get("poids_criticite"), 1))
+                pct, _req_rank, status = _skill_score_for_matching(skills_by_effectif.get(eid, {}).get(cid), req.get("niveau_requis"))
+                score_sum += poids * min(1.0, pct / 100.0)
+                if pct < 100:
+                    gaps.append({
+                        "id_comp": cid,
+                        "code": req.get("code") or "",
+                        "intitule": req.get("intitule") or "Compétence",
+                        "niveau_requis": req.get("niveau_requis") or "",
+                        "poids_criticite": _safe_int(req.get("poids_criticite"), 0),
+                        "couverture_pct": pct,
+                        "statut": status,
+                    })
+            score = int(round((score_sum / float(poids_total)) * 100.0))
+            if score <= 0:
+                continue
+            if score >= 80:
+                statut = "mobilité immédiate à étudier"
+            elif score >= 60:
+                statut = "profil proche à préparer"
+            else:
+                statut = "profil éloigné"
+            gaps.sort(key=lambda x: (-_safe_int(x.get("poids_criticite"), 0), _safe_int(x.get("couverture_pct"), 0), str(x.get("intitule") or "")))
+            rows.append({
+                "id_effectif": eid,
+                "nom_complet": _effectif_label(eff),
+                "id_poste_actuel": eff.get("id_poste_actuel") or "",
+                "poste_actuel": eff.get("intitule_poste") or "",
+                "codif_poste_actuel": eff.get("codif_poste") or "",
+                "nom_service": eff.get("nom_service") or "",
+                "score_pct": score,
+                "statut": statut,
+                "competences_a_renforcer": gaps[:5],
+            })
+        rows.sort(key=lambda x: (-_safe_int(x.get("score_pct"), 0), str(x.get("nom_complet") or "")))
+        out[pid] = rows[:limit_per_poste]
+    return {"candidats_par_poste": out}
+
+
+def _hypothese_is_immediate(h: SimulationHypothese) -> bool:
+    ht = str(h.type or "").strip()
+    return ht in ("depart_effectif", "absence_effectif", "mobilite_effectif", "tester_correspondance_profil_poste", "recrutement_virtuel", "securiser_poste")
+
+
+def _compute_delta(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "fragilite_moyenne": int(after.get("fragilite_moyenne") or 0) - int(before.get("fragilite_moyenne") or 0),
+        "postes_rouges": int(after.get("postes_rouges") or 0) - int(before.get("postes_rouges") or 0),
+        "capacite_transmission": int(after.get("capacite_transmission") or 0) - int(before.get("capacite_transmission") or 0),
+    }
+
+
+def _service_impacts(current: List[Dict[str, Any]], simulated: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    cur_by_service: Dict[str, List[Dict[str, Any]]] = {}
+    sim_by_id = {str(r.get("id_poste") or ""): r for r in simulated or []}
+    for r in current or []:
+        label = str(r.get("nom_service") or "Sans service")
+        cur_by_service.setdefault(label, []).append(r)
+    out = []
+    for label, rows in cur_by_service.items():
+        before_vals = [int(r.get("indice_fragilite") or 0) for r in rows]
+        after_vals = []
+        changed = 0
+        for r in rows:
+            sim = sim_by_id.get(str(r.get("id_poste") or "")) or r
+            before = int(r.get("indice_fragilite") or 0)
+            after = int(sim.get("indice_fragilite") or 0)
+            after_vals.append(after)
+            if abs(after - before) >= 5:
+                changed += 1
+        if not before_vals:
+            continue
+        before_avg = int(round(sum(before_vals) / len(before_vals)))
+        after_avg = int(round(sum(after_vals) / len(after_vals))) if after_vals else before_avg
+        delta = after_avg - before_avg
+        if abs(delta) >= 1 or changed > 0:
+            out.append({
+                "nom_service": label,
+                "fragilite_avant": before_avg,
+                "fragilite_apres": after_avg,
+                "delta": delta,
+                "postes_impactes": changed,
+            })
+    out.sort(key=lambda x: abs(int(x.get("delta") or 0)), reverse=True)
+    return out[:20]
+
+
+def _build_development_needs(req: SimulationEvalRequest, dataset: Dict[str, Any]) -> List[Dict[str, Any]]:
+    skills_by_effectif: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for row in dataset.get("skills") or []:
+        eid = str(row.get("id_effectif") or "").strip()
+        cid = str(row.get("id_comp") or "").strip()
+        if eid and cid:
+            skills_by_effectif.setdefault(eid, {})[cid] = row
+    reqs_by_poste: Dict[str, List[Dict[str, Any]]] = {}
+    for r in dataset.get("requirements") or []:
+        pid = str(r.get("id_poste") or "").strip()
+        if pid:
+            reqs_by_poste.setdefault(pid, []).append(r)
+    effectifs = {str(e.get("id_effectif") or ""): e for e in dataset.get("effectifs") or []}
+    out = []
+    for h in req.hypotheses or []:
+        ht = str(h.type or "").strip()
+        if ht not in ("mobilite_effectif", "tester_correspondance_profil_poste"):
+            continue
+        eid = str(h.id_effectif or "").strip()
+        pid = str(h.id_poste_cible or h.id_poste or "").strip()
+        if not eid or not pid:
+            continue
+        eff = effectifs.get(eid) or {}
+        for r in reqs_by_poste.get(pid) or []:
+            cid = str(r.get("id_comp") or "").strip()
+            pct, _rank, status = _skill_score_for_matching(skills_by_effectif.get(eid, {}).get(cid), r.get("niveau_requis"))
+            if pct >= 100:
+                continue
+            out.append({
+                "id_effectif": eid,
+                "nom_complet": _effectif_label(eff),
+                "id_poste": pid,
+                "id_comp": cid,
+                "code": r.get("code") or "",
+                "intitule": r.get("intitule") or "Compétence",
+                "niveau_requis": r.get("niveau_requis") or "",
+                "couverture_pct": pct,
+                "statut": status,
+                "priorite_score": _safe_int(r.get("poids_criticite"), 0) + (100 - pct),
+                "lecture": "À former en priorité" if pct < 60 else "À consolider",
+            })
+    out.sort(key=lambda x: (-_safe_int(x.get("priorite_score"), 0), str(x.get("nom_complet") or ""), str(x.get("intitule") or "")))
+    return out[:30]
+
 def _options_payload(dataset: Dict[str, Any]) -> Dict[str, Any]:
     cotations = dataset.get("cotations") or {}
     postes = []
@@ -949,6 +1148,7 @@ def _options_payload(dataset: Dict[str, Any]) -> Dict[str, Any]:
 def build_simulation_options_payload(cur, id_ent: str, scope: Any, criticite_min: int) -> Dict[str, Any]:
     dataset = _fetch_simulation_dataset(cur, id_ent, getattr(scope, "id_service", None), int(criticite_min))
     payload = _options_payload(dataset)
+    payload["recommendations"] = _build_candidate_recommendations(dataset)
     payload["scope"] = scope.dict() if hasattr(scope, "dict") else dict(scope or {})
     payload["updated_at"] = _now_iso()
     return payload
@@ -958,18 +1158,32 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
     dataset = _fetch_simulation_dataset(cur, id_ent, getattr(scope, "id_service", None), int(criticite_min))
 
     current_state = _build_state(dataset, [], simulated=False)
+    immediate_hypotheses = [h for h in (payload.hypotheses or []) if _hypothese_is_immediate(h)]
+    immediate_state = _build_state(dataset, immediate_hypotheses, simulated=True)
     simulated_state = _build_state(dataset, payload.hypotheses or [], simulated=True)
 
     current_records = _compute_poste_records(dataset, current_state)
-    simulated_records = _compute_poste_records(dataset, simulated_state)
     current_comp_records = _compute_competence_records(dataset, current_state)
-    simulated_comp_records = _compute_competence_records(dataset, simulated_state)
-
     current_summary = _compute_summary(current_records, current_comp_records)
+
+    immediate_records = _compute_poste_records(dataset, immediate_state)
+    immediate_comp_records = _compute_competence_records(dataset, immediate_state)
+    immediate_summary = _compute_summary(immediate_records, immediate_comp_records)
+    immediate_impacts = _compute_impacts(current_records, immediate_records, current_comp_records, immediate_comp_records)
+    immediate_impacts["services_impactes"] = _service_impacts(current_records, immediate_records)
+
+    simulated_records = _compute_poste_records(dataset, simulated_state)
+    simulated_comp_records = _compute_competence_records(dataset, simulated_state)
     simulated_summary = _compute_summary(simulated_records, simulated_comp_records)
     impacts = _compute_impacts(current_records, simulated_records, current_comp_records, simulated_comp_records)
+    impacts["services_impactes"] = _service_impacts(current_records, simulated_records)
+
     cotation = _compute_cotation_context(payload, dataset)
     conseil = _build_conseil(payload, current_summary, simulated_summary, impacts, cotation)
+    developpement = {
+        "besoins_formation": _build_development_needs(payload, dataset),
+        "lecture": "Les besoins listés correspondent aux écarts entre les personnes déplacées et les postes ciblés. Ils servent à préparer l'étape formation/transmission après l'arbitrage immédiat.",
+    }
 
     return {
         "scope": scope.dict() if hasattr(scope, "dict") else dict(scope or {}),
@@ -979,12 +1193,21 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
         "hypotheses": [h.dict() for h in (payload.hypotheses or [])],
         "actuel": current_summary,
         "simule": simulated_summary,
-        "ecart": {
-            "fragilite_moyenne": int(simulated_summary.get("fragilite_moyenne") or 0) - int(current_summary.get("fragilite_moyenne") or 0),
-            "postes_rouges": int(simulated_summary.get("postes_rouges") or 0) - int(current_summary.get("postes_rouges") or 0),
-            "capacite_transmission": int(simulated_summary.get("capacite_transmission") or 0) - int(current_summary.get("capacite_transmission") or 0),
+        "ecart": _compute_delta(current_summary, simulated_summary),
+        "resultats": {
+            "immediat": {
+                "summary": immediate_summary,
+                "ecart": _compute_delta(current_summary, immediate_summary),
+                "impact": immediate_impacts,
+            },
+            "projete": {
+                "summary": simulated_summary,
+                "ecart": _compute_delta(current_summary, simulated_summary),
+                "impact": impacts,
+            },
         },
         "impact": impacts,
+        "developpement": developpement,
         "competences": {
             "actuel": current_comp_records[:100],
             "simule": simulated_comp_records[:100],

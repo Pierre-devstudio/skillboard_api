@@ -1,166 +1,539 @@
 /* ======================================================
    static/menus/skills_simulations_rh.js
-   V2 - Lecture manager / RH
+   Simulation RH - bac à sable d'organisation
    ====================================================== */
 
 (function () {
   let _bound = false;
   let _portal = null;
   let _optionsLoaded = false;
-  let _options = { postes: [], effectifs: [], competences: [], requirements: [] };
-  let _selectedObjective = "anticiper_depart";
+  let _options = { postes: [], effectifs: [], competences: [], requirements: [], recommendations: {} };
+  let _selectedPosteId = "";
+  let _selectedBrick = "mobilite_effectif";
+  let _scenario = [];
   let _lastResult = null;
+  let _context = null;
 
-  const STORE_COMPARE = "sb_simulations_rh_compare_v2";
+  const STORE_COMPARE = "sb_simulations_rh_compare_v3";
   const STORE_SERVICE = "sb_simulations_rh_service";
   const STORE_CRIT = "sb_simulations_rh_criticite";
-  const STORE_OBJECTIVE = "sb_simulations_rh_objective";
-  const STORE_ANALYSE_HYPOTHESES = "sb_simulations_rh_hypotheses_from_analyse_v1";
-  const STORE_ANALYSE_PENDING_HYPOTHESIS = "sb_simulations_rh_pending_hypothesis_from_analyse_v1";
+  const STORE_CONTEXT = "sb_simulations_rh_context_v1";
 
-  const OBJECTIVES = {
-    anticiper_depart: { title: "Anticiper un départ", short: "Mesurer l’impact d’une sortie et préparer les sécurisations associées.", tag: "Continuité", icon: "↘", defaultMode: "depart_effectif", intro: "Sélectionnez le collaborateur concerné. Novoskill mesurera l’impact et les actions à tester." },
-    preparer_absence: { title: "Préparer une absence", short: "Identifier ce qui se fragilise pendant une indisponibilité longue.", tag: "Absence", icon: "⏱", defaultMode: "absence_effectif", intro: "Sélectionnez le collaborateur indisponible. La simulation retire temporairement sa contribution du périmètre." },
-    tester_mobilite: { title: "Tester une mobilité interne", short: "Vérifier si une évolution sécurise un poste sans en fragiliser un autre.", tag: "Mobilité", icon: "⇄", defaultMode: "mobilite_effectif", intro: "Choisissez le collaborateur et le poste cible. L’impact cotation devient central dans cet arbitrage." },
-    comparer_recrutement_formation: { title: "Comparer des actions RH", short: "Tester formation, transmission, relais ou recrutement.", tag: "Arbitrage", icon: "⚖", defaultMode: "montee_competence", intro: "Testez une action de sécurisation, puis ajoutez les options au comparatif." },
-    securiser_poste: { title: "Sécuriser un poste", short: "Tester les leviers possibles sur un poste exposé.", tag: "Action", icon: "◇", defaultMode: "recrutement_virtuel", intro: "Choisissez le poste ou le relais à préparer : renfort, transmission ou montée en compétence." }
+  const BRICKS = {
+    mobilite_effectif: {
+      title: "Déplacer / remplacer",
+      short: "Affecter une personne à un autre poste.",
+      temporalite: "immediate",
+    },
+    renfort_poste: {
+      title: "Ajouter un renfort",
+      short: "Créer un profil virtuel ou un recrutement sur un poste.",
+      temporalite: "immediate",
+    },
+    depart_effectif: {
+      title: "Retirer une personne",
+      short: "Tester un départ ou une absence.",
+      temporalite: "immediate",
+    },
+    montee_competence: {
+      title: "Monter en compétence",
+      short: "Préparer l'étape formation / transmission après l'arbitrage.",
+      temporalite: "development",
+    },
   };
 
   function byId(id) { return document.getElementById(id); }
-  function escapeHtml(s) { return (s ?? "").toString().replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;"); }
+  function esc(s) { return (s ?? "").toString().replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;"); }
   function errMsg(e) { if (!e) return "Erreur inconnue"; if (typeof e === "string") return e; if (e.message) return e.message; if (e.detail) return typeof e.detail === "string" ? e.detail : JSON.stringify(e.detail); try { return JSON.stringify(e); } catch (_) { return String(e); } }
   function setStatus(message, type) { const el = byId("simStatus"); if (!el) return; if (!message) { el.style.display = "none"; el.textContent = ""; el.className = "sb-hint"; return; } el.style.display = "block"; el.className = "sb-hint" + (type === "error" ? " error" : ""); el.textContent = message; }
-
   function apiUrl(path, params) { const url = new URL(`${_portal.apiBase}${path}`); Object.entries(params || {}).forEach(([k, v]) => { if (v !== null && v !== undefined && v !== "") url.searchParams.set(k, v); }); return url.toString(); }
-  function readCompare() { try { const raw = localStorage.getItem(STORE_COMPARE); const list = raw ? JSON.parse(raw) : []; return Array.isArray(list) ? list : []; } catch (_) { return []; } }
-  function readAnalyseHypotheses() { try { const raw = localStorage.getItem(STORE_ANALYSE_HYPOTHESES); const list = raw ? JSON.parse(raw) : []; return Array.isArray(list) ? list : []; } catch (_) { return []; } }
-  function writeAnalyseHypotheses(list) { localStorage.setItem(STORE_ANALYSE_HYPOTHESES, JSON.stringify(Array.isArray(list) ? list : [])); renderAnalyseHypotheses(); }
-  function writeCompare(list) { localStorage.setItem(STORE_COMPARE, JSON.stringify(Array.isArray(list) ? list : [])); updateCompareCount(); renderCompare(); }
-  function updateCompareCount() { const el = byId("simCompareCount"); if (el) el.textContent = String(readCompare().length); }
+  function readJson(key, fallback) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; } }
+  function writeJson(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
   function getCriticiteMin() { const raw = parseInt(byId("simCriticiteRange")?.value || localStorage.getItem(STORE_CRIT) || "70", 10); return Number.isNaN(raw) ? 70 : Math.max(0, Math.min(100, raw)); }
   function setCriticiteMin(v) { const n = Math.max(0, Math.min(100, parseInt(v || 70, 10) || 70)); const input = byId("simCriticiteRange"); const label = byId("simCriticiteValue"); if (input) input.value = String(n); if (label) label.textContent = String(n); localStorage.setItem(STORE_CRIT, String(n)); return n; }
   function getServiceId() { return window.portal?.serviceFilter?.toQueryId?.(byId("simServiceSelect")?.value || "") || null; }
 
-  function optionLabelPoste(p) { const code = (p.codif_poste || "").trim(); const svc = (p.nom_service || "").trim(); const cot = p.cotation_validee ? ` · ${p.cotation_label || "coté"}` : " · cotation à compléter"; return `${code ? code + " · " : ""}${p.intitule_poste || "Poste"}${svc ? " — " + svc : ""}${cot}`; }
-  function optionLabelEffectif(e) { const poste = (e.intitule_poste || "").trim(); const svc = (e.nom_service || "").trim(); return `${e.nom_complet || "Collaborateur"}${poste ? " — " + poste : ""}${svc ? " · " + svc : ""}`; }
-  function optionLabelCompetence(c) { const code = (c.code || "").trim(); const dom = (c.domaine || "").trim(); return `${code ? code + " · " : ""}${c.intitule || "Compétence"}${dom ? " — " + dom : ""}`; }
+  function posteById(id) { return (_options.postes || []).find(p => String(p.id_poste || "") === String(id || "")) || null; }
+  function effectifById(id) { return (_options.effectifs || []).find(e => String(e.id_effectif || "") === String(id || "")) || null; }
+  function compById(id) { return (_options.competences || []).find(c => String(c.id_comp || "") === String(id || "")) || (_options.requirements || []).find(c => String(c.id_comp || "") === String(id || "")) || null; }
+  function posteLabel(p) { if (!p) return "Poste"; const code = (p.codif_poste || "").trim(); return `${code ? code + " · " : ""}${p.intitule_poste || "Poste"}`; }
+  function effectifLabel(e) { if (!e) return "Collaborateur"; const poste = (e.intitule_poste || "").trim(); return `${e.nom_complet || "Collaborateur"}${poste ? " — " + poste : ""}`; }
+  function compLabel(c) { if (!c) return "Compétence"; const code = (c.code || "").trim(); return `${code ? code + " · " : ""}${c.intitule || "Compétence"}`; }
+  function deltaText(v) { const n = Math.round(Number(v || 0)); if (n === 0) return "0 pt"; return `${n > 0 ? "+" : ""}${n} pt${Math.abs(n) > 1 ? "s" : ""}`; }
+  function deltaBadge(v) { const n = Math.round(Number(v || 0)); const cls = n < 0 ? "sb-badge--success" : n > 0 ? "sb-badge--warning" : ""; return `<span class="sb-badge ${cls}">${esc(deltaText(n))}</span>`; }
 
-  function fillSelect(el, list, valueKey, labelFn, placeholder) { if (!el) return; const previous = el.value; el.innerHTML = ""; const opt0 = document.createElement("option"); opt0.value = ""; opt0.textContent = placeholder || "Sélectionner…"; el.appendChild(opt0); (Array.isArray(list) ? list : []).forEach((item) => { const opt = document.createElement("option"); opt.value = item[valueKey] || ""; opt.textContent = labelFn(item); el.appendChild(opt); }); if (previous && Array.from(el.options).some(o => o.value === previous)) el.value = previous; }
-  function normalizeRequirementAsCompetence(r) { return { id_comp: r.id_comp, code: r.code || "", intitule: r.intitule || "Compétence", domaine: r.domaine || "", niveau_requis: r.niveau_requis || "", poids_criticite: r.poids_criticite || 0 }; }
-  function currentCompetenceOptions() { const mode = currentMode(); const posteId = byId("simDecisionPoste")?.value || ""; if (posteId && mode === "securiser_competence") { const seen = new Set(); const rows = (_options.requirements || []).filter(r => r.id_poste === posteId).map(normalizeRequirementAsCompetence).filter(c => { if (!c.id_comp || seen.has(c.id_comp)) return false; seen.add(c.id_comp); return true; }); if (rows.length) return rows; } return _options.competences || []; }
+  function fillSelect(el, list, valueKey, labelFn, placeholder) {
+    if (!el) return;
+    const previous = el.value;
+    el.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = placeholder || "Sélectionner…";
+    el.appendChild(opt0);
+    (Array.isArray(list) ? list : []).forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item[valueKey] || "";
+      opt.textContent = labelFn(item);
+      el.appendChild(opt);
+    });
+    if (previous && Array.from(el.options).some(o => o.value === previous)) el.value = previous;
+  }
 
-  async function populateServices() { if (!window.portal?.serviceFilter?.populateSelect) return; await window.portal.serviceFilter.populateSelect({ portal: _portal, contactId: _portal.contactId, selectId: "simServiceSelect", storageKey: STORE_SERVICE, includeAll: true, includeNonLie: true, labelAll: "Tous les services", labelNonLie: "Non liés" }); }
-  async function loadOptions(force) { if (_optionsLoaded && !force) return _options; if (!_portal || !_portal.contactId) return _options; setStatus("Chargement des données RH…"); const data = await _portal.apiJson(apiUrl(`/skills/simulations/options/${encodeURIComponent(_portal.contactId)}`, { id_service: getServiceId(), criticite_min: getCriticiteMin() })); _options = { postes: Array.isArray(data?.postes) ? data.postes : [], effectifs: Array.isArray(data?.effectifs) ? data.effectifs : [], competences: Array.isArray(data?.competences) ? data.competences : [], requirements: Array.isArray(data?.requirements) ? data.requirements : [], scope: data?.scope || null }; _optionsLoaded = true; setStatus(""); renderBuilder(); renderScenarioPreview(); return _options; }
+  async function populateServices() {
+    if (!window.portal?.serviceFilter?.populateSelect) return;
+    await window.portal.serviceFilter.populateSelect({
+      portal: _portal,
+      contactId: _portal.contactId,
+      selectId: "simServiceSelect",
+      storageKey: STORE_SERVICE,
+      includeAll: true,
+      includeNonLie: true,
+      labelAll: "Tous les services",
+      labelNonLie: "Non liés",
+    });
+  }
 
-  function renderAnalyseHypotheses() { const root = byId("simAnalyseHypothesesCard"); if (!root) return; const list = readAnalyseHypotheses(); if (!list.length) { root.style.display = "none"; root.innerHTML = ""; return; } root.style.display = "block"; root.innerHTML = `<div class="sim2-hero-layout"><div><div class="card-title">Hypothèses issues de l’analyse</div><div class="card-sub sim2-muted-top">Ces hypothèses ont été préparées depuis la page Analyse des compétences. Elles cadrent le sujet à tester, sans lancer encore le résultat de simulation.</div></div><button type="button" class="sb-btn sb-btn--soft" id="btnSimClearAnalyseHypotheses">Vider</button></div><div class="sim2-source-list">${list.map((h, idx) => `<div class="sim2-source-item"><div><div class="sim2-source-title">${escapeHtml(h.title || "Hypothèse de sécurisation")}</div><div class="sim2-source-meta">${escapeHtml([h.scope_label || "Périmètre", h.horizon ? "Horizon : " + h.horizon : "", h.cause || ""].filter(Boolean).join(" · "))}</div>${h.effet ? `<div class="sim2-source-meta">Effet à vérifier : ${escapeHtml(h.effet)}</div>` : ""}</div><div class="sb-actions sb-actions--end" style="flex-shrink:0;"><button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-use-analyse-hypothesis="${idx}">Utiliser</button><button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-remove-analyse-hypothesis="${idx}">Retirer</button></div></div>`).join("")}</div>`; byId("btnSimClearAnalyseHypotheses")?.addEventListener("click", () => writeAnalyseHypotheses([])); root.querySelectorAll("[data-remove-analyse-hypothesis]").forEach(btn => btn.addEventListener("click", () => { const idx = parseInt(btn.getAttribute("data-remove-analyse-hypothesis"), 10); const next = readAnalyseHypotheses(); next.splice(idx, 1); writeAnalyseHypotheses(next); })); root.querySelectorAll("[data-use-analyse-hypothesis]").forEach(btn => btn.addEventListener("click", async () => { const idx = parseInt(btn.getAttribute("data-use-analyse-hypothesis"), 10); const h = readAnalyseHypotheses()[idx]; if (!h) return; applyAnalyseHypothesis(h); })); }
-  async function applyAnalyseHypothesis(h) {
-    if (!h) return;
+  async function loadOptions(force) {
+    if (_optionsLoaded && !force) return _options;
+    if (!_portal || !_portal.contactId) return _options;
+    setStatus("Chargement des données RH…");
+    const data = await _portal.apiJson(apiUrl(`/skills/simulations/options/${encodeURIComponent(_portal.contactId)}`, { id_service: getServiceId(), criticite_min: getCriticiteMin() }));
+    _options = {
+      postes: Array.isArray(data?.postes) ? data.postes : [],
+      effectifs: Array.isArray(data?.effectifs) ? data.effectifs : [],
+      competences: Array.isArray(data?.competences) ? data.competences : [],
+      requirements: Array.isArray(data?.requirements) ? data.requirements : [],
+      recommendations: data?.recommendations || {},
+      scope: data?.scope || null,
+    };
+    _optionsLoaded = true;
+    setStatus("");
+    if (!_selectedPosteId && _options.postes.length) _selectedPosteId = _options.postes[0].id_poste || "";
+    renderAll();
+    return _options;
+  }
 
-    const type = String(h.type || "").trim();
-    const wantedMode = String(h.simulation_mode || h.mode || h.type || "").trim();
-    const wantedObjective = String(h.objective || h.objectif || "").trim();
+  function consumeContext() {
+    const ctx = readJson(STORE_CONTEXT, null);
+    if (!ctx || typeof ctx !== "object") return null;
+    try { localStorage.removeItem(STORE_CONTEXT); } catch (_) {}
+    return ctx;
+  }
 
-    if (wantedObjective && OBJECTIVES[wantedObjective]) _selectedObjective = wantedObjective;
-    else if (type === "depart_effectif") _selectedObjective = "anticiper_depart";
-    else if (type === "absence_effectif") _selectedObjective = "preparer_absence";
-    else if (type === "mobilite_effectif" || type === "tester_correspondance_profil_poste") _selectedObjective = "tester_mobilite";
-    else if (["securiser_poste", "recrutement_virtuel", "securiser_competence"].includes(type) || wantedMode === "securiser_competence") _selectedObjective = "securiser_poste";
-    else _selectedObjective = "comparer_recrutement_formation";
+  function applyContext(ctx) {
+    if (!ctx) return;
+    _context = ctx;
+    const posteId = ctx.poste_id || ctx.id_poste || ctx.id_poste_cible || "";
+    if (posteId) _selectedPosteId = posteId;
+    renderAll();
+    setStatus(`Point de départ chargé : ${ctx.title || ctx.poste_label || ctx.effectif_label || "élément d’analyse"}.`);
+  }
 
-    localStorage.setItem(STORE_OBJECTIVE, _selectedObjective);
-    await loadOptions(false);
-    renderObjectiveCards();
-    renderBuilder();
+  function recommendationsForPoste(posteId) {
+    return ((_options.recommendations || {}).candidats_par_poste || {})[posteId] || [];
+  }
 
-    const mode = byId("simDecisionMode");
-    if (mode) {
-      const normalizedMode = wantedMode === "tester_correspondance_profil_poste" ? "mobilite_effectif" : (wantedMode || type);
-      if (Array.from(mode.options).some(o => o.value === normalizedMode)) mode.value = normalizedMode;
-      else if (type === "securiser_poste") mode.value = "recrutement_virtuel";
-      else if (type === "securiser_competence") mode.value = "securiser_competence";
-      renderModeFields();
+  function requirementsForPoste(posteId) {
+    const seen = new Set();
+    return (_options.requirements || []).filter(r => String(r.id_poste || "") === String(posteId || "")).filter(r => {
+      const k = String(r.id_comp || "");
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
+  function renderContextCard() {
+    const root = byId("simContextCard");
+    if (!root) return;
+    if (!_context) {
+      root.style.display = "none";
+      root.innerHTML = "";
+      return;
     }
+    root.style.display = "block";
+    root.innerHTML = `
+      <div class="sim-lego-context-head">
+        <div>
+          <div class="card-title">Point de départ issu de l’analyse</div>
+          <div class="card-sub sim2-muted-top">${esc(_context.title || _context.poste_label || _context.effectif_label || "Contexte chargé depuis l’analyse")}</div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSimClearContext">Retirer</button>
+      </div>
+      ${_context.reason ? `<div class="sim-lego-context-line">${esc(_context.reason)}</div>` : ""}
+    `;
+    byId("btnSimClearContext")?.addEventListener("click", () => { _context = null; renderAll(); });
+  }
 
-    const idEffectif = String(h.effectif_id || h.id_effectif || "").trim();
-    const effSel = byId("simDecisionEffectif");
-    if (effSel && idEffectif && Array.from(effSel.options).some(o => o.value === idEffectif)) effSel.value = idEffectif;
+  function renderPostePicker() {
+    const sel = byId("simFocusPosteSelect");
+    fillSelect(sel, _options.postes || [], "id_poste", posteLabel, "Choisir un poste…");
+    if (sel && _selectedPosteId && Array.from(sel.options).some(o => o.value === _selectedPosteId)) sel.value = _selectedPosteId;
+    const p = posteById(_selectedPosteId);
+    const meta = byId("simFocusPosteMeta");
+    if (meta) {
+      meta.innerHTML = p ? `
+        <div class="sim-lego-focus-title">${esc(posteLabel(p))}</div>
+        <div class="card-sub" style="margin-top:4px;">${esc(p.nom_service || "Tous les services")} · cible titulaires ${esc(p.nb_titulaires_cible ?? "—")} · ${esc(p.cotation_label || "Cotation à compléter")}</div>
+      ` : `<div class="sim-empty-state">Choisissez le poste à travailler.</div>`;
+    }
+  }
 
-    const posteId = String(h.poste_id || h.id_poste || h.id_poste_cible || h.poste_cible_id || "").trim();
-    const posteSel = byId("simDecisionPoste");
-    if (posteSel && posteId && Array.from(posteSel.options).some(o => o.value === posteId)) posteSel.value = posteId;
+  function renderRecommendations() {
+    const root = byId("simRecommendations");
+    if (!root) return;
+    const rows = recommendationsForPoste(_selectedPosteId).slice(0, 6);
+    if (!rows.length) {
+      root.innerHTML = `<div class="sim-empty-state">Aucun profil proche identifié pour ce poste. Vous pouvez tout de même tester un renfort ou une mobilité manuelle.</div>`;
+      return;
+    }
+    root.innerHTML = rows.map((r, idx) => `
+      <div class="sim-lego-person-card ${idx === 0 ? "is-best" : ""}">
+        <div class="sim-lego-person-main">
+          <div class="sim-lego-person-title">${esc(r.nom_complet || "Collaborateur")}</div>
+          <div class="card-sub" style="margin-top:2px;">${esc(r.poste_actuel || "Poste actuel non renseigné")} · ${esc(r.nom_service || "")}</div>
+          <div class="sim-lego-person-gaps">${(r.competences_a_renforcer || []).slice(0, 3).map(c => `<span>${esc(c.code || c.intitule || "Compétence")}</span>`).join("")}</div>
+        </div>
+        <div class="sim-lego-person-score">
+          <span class="sb-badge ${idx === 0 ? "sb-badge--success" : ""}">${esc(r.score_pct || 0)}%</span>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-add-move="${esc(r.id_effectif)}">Déplacer</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-prepare-training="${esc(r.id_effectif)}">Former</button>
+        </div>
+      </div>
+    `).join("");
+    root.querySelectorAll("[data-sim-add-move]").forEach(btn => btn.addEventListener("click", () => {
+      const eid = btn.getAttribute("data-sim-add-move") || "";
+      addBrick({ type: "mobilite_effectif", id_effectif: eid, id_poste: _selectedPosteId, id_poste_cible: _selectedPosteId, temporalite: "immediate", libelle: `Déplacer ${effectifById(eid)?.nom_complet || "un collaborateur"} vers ${posteLabel(posteById(_selectedPosteId))}` });
+    }));
+    root.querySelectorAll("[data-sim-prepare-training]").forEach(btn => btn.addEventListener("click", () => {
+      const eid = btn.getAttribute("data-sim-prepare-training") || "";
+      const rec = recommendationsForPoste(_selectedPosteId).find(x => String(x.id_effectif || "") === eid) || {};
+      const gap = (rec.competences_a_renforcer || [])[0] || requirementsForPoste(_selectedPosteId)[0];
+      if (!gap) return setStatus("Aucune compétence à renforcer identifiée pour cette personne.", "error");
+      addBrick({ type: "montee_competence", id_effectif: eid, id_poste: _selectedPosteId, id_comp: gap.id_comp, niveau_simule: gap.niveau_requis || "C", temporalite: "development", libelle: `Former ${effectifById(eid)?.nom_complet || "un collaborateur"} sur ${gap.code || gap.intitule || "une compétence"}` });
+    }));
+  }
 
-    fillAllSelects();
+  function renderPalette() {
+    const root = byId("simBrickPalette");
+    if (!root) return;
+    root.innerHTML = Object.entries(BRICKS).map(([key, b]) => `
+      <button type="button" class="sim-lego-brick ${_selectedBrick === key ? "is-active" : ""}" data-sim-brick="${esc(key)}">
+        <strong>${esc(b.title)}</strong>
+        <small>${esc(b.short)}</small>
+      </button>
+    `).join("");
+    root.querySelectorAll("[data-sim-brick]").forEach(btn => btn.addEventListener("click", () => {
+      _selectedBrick = btn.getAttribute("data-sim-brick") || "mobilite_effectif";
+      renderBuilderFields();
+      renderPalette();
+    }));
+  }
 
-    const compId = String(h.competence_id || h.id_comp || "").trim();
-    const compSel = byId("simDecisionComp");
-    if (compSel && compId && Array.from(compSel.options).some(o => o.value === compId)) compSel.value = compId;
+  function renderBuilderFields() {
+    const root = byId("simBrickEditor");
+    if (!root) return;
+    const p = posteById(_selectedPosteId);
+    const posteOptions = _options.postes || [];
+    const effectifs = _options.effectifs || [];
+    const reqs = requirementsForPoste(_selectedPosteId);
+    if (_selectedBrick === "renfort_poste") {
+      root.innerHTML = `
+        <div class="sim-form-grid"><div class="info-item"><div class="label">Poste à renforcer</div><select id="simBrickPoste" class="sb-select"></select></div></div>
+        <div class="card-sub sim2-muted-top">Le moteur ajoute un profil virtuel couvrant les compétences attendues du poste. Cela sert à tester l’effet d’un recrutement ou d’un renfort, sans créer de collaborateur réel.</div>
+      `;
+      fillSelect(byId("simBrickPoste"), posteOptions, "id_poste", posteLabel, "Choisir un poste…");
+      if (byId("simBrickPoste")) byId("simBrickPoste").value = _selectedPosteId || "";
+      return;
+    }
+    if (_selectedBrick === "depart_effectif") {
+      root.innerHTML = `
+        <div class="sim-form-grid"><div class="info-item"><div class="label">Personne retirée du scénario</div><select id="simBrickEffectif" class="sb-select"></select></div><div class="info-item"><div class="label">Nature</div><select id="simBrickDepartType" class="sb-select"><option value="depart_effectif">Départ / sortie</option><option value="absence_effectif">Absence longue</option></select></div></div>
+      `;
+      fillSelect(byId("simBrickEffectif"), effectifs, "id_effectif", effectifLabel, "Choisir une personne…");
+      return;
+    }
+    if (_selectedBrick === "montee_competence") {
+      root.innerHTML = `
+        <div class="sim-form-grid">
+          <div class="info-item"><div class="label">Personne à préparer</div><select id="simBrickEffectif" class="sb-select"></select></div>
+          <div class="info-item"><div class="label">Compétence</div><select id="simBrickCompetence" class="sb-select"></select></div>
+          <div class="info-item"><div class="label">Niveau visé</div><select id="simBrickNiveau" class="sb-select"><option value="B">Intermédiaire</option><option value="C" selected>Avancé</option><option value="D">Expert</option></select></div>
+        </div>
+        <div class="card-sub sim2-muted-top">Cette brique sert au résultat projeté : formation, transmission ou montée en compétence après l’arbitrage immédiat.</div>
+      `;
+      fillSelect(byId("simBrickEffectif"), effectifs, "id_effectif", effectifLabel, "Choisir une personne…");
+      fillSelect(byId("simBrickCompetence"), reqs.length ? reqs : (_options.competences || []), "id_comp", compLabel, "Choisir une compétence…");
+      return;
+    }
+    root.innerHTML = `
+      <div class="sim-form-grid">
+        <div class="info-item"><div class="label">Personne déplacée</div><select id="simBrickEffectif" class="sb-select"></select></div>
+        <div class="info-item"><div class="label">Poste cible</div><select id="simBrickPoste" class="sb-select"></select></div>
+      </div>
+      <div class="card-sub sim2-muted-top">Le poste d’origine est automatiquement surveillé pour détecter l’effet domino.</div>
+    `;
+    fillSelect(byId("simBrickEffectif"), effectifs, "id_effectif", effectifLabel, "Choisir une personne…");
+    fillSelect(byId("simBrickPoste"), posteOptions, "id_poste", posteLabel, "Choisir un poste…");
+    if (byId("simBrickPoste")) byId("simBrickPoste").value = (p?.id_poste || _selectedPosteId || "");
+  }
 
-    const niveau = String(h.niveau_simule || h.niveau_vise || h.niveau_attendu || "C").trim().toUpperCase();
-    const nivSel = byId("simDecisionNiveau");
-    if (nivSel && niveau && Array.from(nivSel.options).some(o => o.value === niveau)) nivSel.value = niveau;
-
+  function addBrick(payload) {
+    const item = { id: `brick_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, ...payload };
+    _scenario.push(item);
+    renderScenario();
     renderScenarioPreview();
-    setStatus(`Piste chargée : ${h.title || "sécurisation à tester"}. ${h.auto_evaluate ? "Simulation lancée automatiquement si les données sont complètes." : "Complétez les champs manquants avant d’analyser l’impact."}`);
-    switchTab("build");
+    setStatus("Brique ajoutée au scénario.");
+  }
 
-    if (h.auto_evaluate === true) {
-      const draft = buildDraft();
-      if (!draft.missing.length) {
-        setTimeout(() => evaluateScenario().catch(e => setStatus(errMsg(e), "error")), 120);
-      }
+  function addBrickFromEditor() {
+    const posteId = byId("simBrickPoste")?.value || _selectedPosteId || "";
+    const effId = byId("simBrickEffectif")?.value || "";
+    const compId = byId("simBrickCompetence")?.value || "";
+    const niveau = byId("simBrickNiveau")?.value || "C";
+    if (_selectedBrick === "renfort_poste") {
+      if (!posteId) return setStatus("Choisissez un poste à renforcer.", "error");
+      return addBrick({ type: "recrutement_virtuel", id_poste: posteId, id_poste_cible: posteId, temporalite: "immediate", libelle: `Ajouter un renfort sur ${posteLabel(posteById(posteId))}` });
+    }
+    if (_selectedBrick === "depart_effectif") {
+      if (!effId) return setStatus("Choisissez la personne à retirer du scénario.", "error");
+      const t = byId("simBrickDepartType")?.value || "depart_effectif";
+      return addBrick({ type: t, id_effectif: effId, temporalite: "immediate", libelle: `${t === "absence_effectif" ? "Absence" : "Départ"} de ${effectifById(effId)?.nom_complet || "collaborateur"}` });
+    }
+    if (_selectedBrick === "montee_competence") {
+      if (!effId || !compId) return setStatus("Choisissez une personne et une compétence.", "error");
+      return addBrick({ type: "montee_competence", id_effectif: effId, id_poste: _selectedPosteId, id_comp: compId, niveau_simule: niveau, temporalite: "development", libelle: `Former ${effectifById(effId)?.nom_complet || "collaborateur"} sur ${compLabel(compById(compId))}` });
+    }
+    if (!effId || !posteId) return setStatus("Choisissez une personne et un poste cible.", "error");
+    return addBrick({ type: "mobilite_effectif", id_effectif: effId, id_poste: posteId, id_poste_cible: posteId, temporalite: "immediate", libelle: `Déplacer ${effectifById(effId)?.nom_complet || "collaborateur"} vers ${posteLabel(posteById(posteId))}` });
+  }
+
+  function renderScenario() {
+    const root = byId("simScenarioBricks");
+    if (!root) return;
+    if (!_scenario.length) {
+      root.innerHTML = `<div class="sim-empty-state">Ajoutez une ou plusieurs briques : mobilité, renfort, retrait, formation.</div>`;
+      return;
+    }
+    root.innerHTML = _scenario.map((b, idx) => `
+      <div class="sim-lego-scenario-brick ${b.temporalite === "development" ? "is-dev" : ""}">
+        <div>
+          <div class="sim-lego-brick-index">${idx + 1}. ${esc(BRICKS[b.type === "recrutement_virtuel" ? "renfort_poste" : b.type === "absence_effectif" || b.type === "depart_effectif" ? "depart_effectif" : b.type]?.title || "Brique")}</div>
+          <div class="sim-lego-brick-label">${esc(b.libelle || "Action RH")}</div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-remove-brick="${idx}">Retirer</button>
+      </div>
+    `).join("");
+    root.querySelectorAll("[data-sim-remove-brick]").forEach(btn => btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-sim-remove-brick") || -1);
+      if (idx >= 0) _scenario.splice(idx, 1);
+      renderScenario();
+      renderScenarioPreview();
+    }));
+  }
+
+  function renderScenarioPreview() {
+    const root = byId("simScenarioPreview");
+    if (!root) return;
+    const immediate = _scenario.filter(x => x.temporalite !== "development").length;
+    const dev = _scenario.filter(x => x.temporalite === "development").length;
+    root.innerHTML = `
+      <div class="sim-lego-preview-title">${esc(posteLabel(posteById(_selectedPosteId)))}</div>
+      <div class="sim-lego-preview-row"><strong>${esc(String(_scenario.length))}</strong><span>brique(s) dans le scénario</span></div>
+      <div class="sim-lego-preview-row"><strong>${esc(String(immediate))}</strong><span>impact immédiat</span></div>
+      <div class="sim-lego-preview-row"><strong>${esc(String(dev))}</strong><span>développement / formation</span></div>
+    `;
+  }
+
+  function buildPayload() {
+    return {
+      titre: `Scénario organisation · ${posteLabel(posteById(_selectedPosteId))}`,
+      objectif: "Tester une organisation RH composée de plusieurs briques.",
+      hypotheses: _scenario.map(b => ({
+        type: b.type,
+        id_effectif: b.id_effectif || null,
+        id_poste: b.id_poste || b.id_poste_cible || null,
+        id_poste_cible: b.id_poste_cible || b.id_poste || null,
+        id_comp: b.id_comp || null,
+        niveau_simule: b.niveau_simule || null,
+        libelle: b.libelle || null,
+        temporalite: b.temporalite || null,
+      })),
+    };
+  }
+
+  async function evaluateScenario() {
+    await loadOptions(false);
+    if (!_scenario.length) return setStatus("Ajoutez au moins une brique au scénario.", "error");
+    setStatus("Calcul des impacts du scénario…");
+    const payload = buildPayload();
+    const result = await _portal.apiJson(apiUrl(`/skills/simulations/evaluer/${encodeURIComponent(_portal.contactId)}`, { id_service: getServiceId(), criticite_min: getCriticiteMin() }), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    _lastResult = result;
+    setStatus("");
+    renderResult(result);
+    switchTab("result");
+  }
+
+  function resultKpi(title, before, after) {
+    const b = Math.round(Number(before || 0));
+    const a = Math.round(Number(after || 0));
+    return `<div class="sim-lego-kpi"><div class="label">${esc(title)}</div><div class="value">${esc(b)} → ${esc(a)}</div>${deltaBadge(a - b)}</div>`;
+  }
+
+  function renderResultBlock(title, resultPart, currentSummary) {
+    const summary = resultPart?.summary || {};
+    const impact = resultPart?.impact || {};
+    const postes = impact.postes_impactes || [];
+    const services = impact.services_impactes || [];
+    return `
+      <div class="card sim-lego-result-block">
+        <div class="card-title">${esc(title)}</div>
+        <div class="sim-lego-kpi-grid">
+          ${resultKpi("Fragilité moyenne", currentSummary.fragilite_moyenne, summary.fragilite_moyenne)}
+          ${resultKpi("Postes en danger", currentSummary.postes_rouges, summary.postes_rouges)}
+          ${resultKpi("Transmission", currentSummary.capacite_transmission, summary.capacite_transmission)}
+        </div>
+        <details class="sim2-details" open>
+          <summary>Postes impactés (${postes.length})</summary>
+          <div class="sim2-detail-body">
+            ${postes.length ? postes.map(p => `<div class="sim-impact-row"><div><div class="sim-impact-title">${esc(p.codif_poste ? p.codif_poste + " · " : "")}${esc(p.intitule_poste || "Poste")}</div><div class="card-sub" style="margin:3px 0 0 0;">${esc(p.nom_service || "")}</div></div><div class="sim-impact-score">${esc(p.fragilite_avant)} → ${esc(p.fragilite_apres)}</div><div>${deltaBadge(p.delta || 0)}</div></div>`).join("") : `<div class="sim-empty-state">Aucun poste ne varie de façon significative.</div>`}
+          </div>
+        </details>
+        <details class="sim2-details">
+          <summary>Services concernés (${services.length})</summary>
+          <div class="sim2-detail-body">
+            ${services.length ? services.map(s => `<div class="sim-impact-row"><div class="sim-impact-title">${esc(s.nom_service || "Service")}</div><div class="sim-impact-score">${esc(s.fragilite_avant)} → ${esc(s.fragilite_apres)}</div><div>${deltaBadge(s.delta || 0)}</div></div>`).join("") : `<div class="sim-empty-state">Aucun service ne varie de façon significative.</div>`}
+          </div>
+        </details>
+      </div>`;
+  }
+
+  function renderDevelopmentNeeds(result) {
+    const needs = result?.developpement?.besoins_formation || [];
+    if (!needs.length) return `<div class="sim-empty-state">Aucun besoin complémentaire de montée en compétence détecté sur les mobilités du scénario.</div>`;
+    return needs.slice(0, 10).map(n => `
+      <div class="sim-lego-dev-row">
+        <div>
+          <div class="sim-impact-title">${esc(n.nom_complet || "Collaborateur")}</div>
+          <div class="card-sub" style="margin:3px 0 0 0;">${esc(n.code ? n.code + " · " : "")}${esc(n.intitule || "Compétence")} · niveau attendu ${esc(n.niveau_requis || "—")}</div>
+        </div>
+        <span class="sb-badge ${Number(n.couverture_pct || 0) < 60 ? "sb-badge--warning" : ""}">${esc(n.lecture || "À renforcer")}</span>
+      </div>
+    `).join("");
+  }
+
+  function renderResult(result) {
+    const root = byId("simResultContainer");
+    if (!root) return;
+    if (!result) {
+      root.innerHTML = `<div class="card"><div class="card-title">Résultat du scénario</div><div class="card-sub sim2-muted-top">Construisez un scénario puis lancez le calcul.</div></div>`;
+      return;
+    }
+    const current = result.actuel || {};
+    const immediat = result.resultats?.immediat || { summary: result.simule || {}, impact: result.impact || {} };
+    const projete = result.resultats?.projete || { summary: result.simule || {}, impact: result.impact || {} };
+    root.innerHTML = `
+      <div class="card sim2-ai-card">
+        <div class="sim2-hero-layout">
+          <div>
+            <div class="card-title">Lecture du scénario</div>
+            <div class="sim2-ai-text">${esc(result.conseil?.lecture_assistee || result.conseil?.lecture || "Scénario calculé.")}</div>
+          </div>
+          <div class="sb-actions sb-actions--end">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimBackBuild">Modifier</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddCompare">Conserver</button>
+          </div>
+        </div>
+      </div>
+      ${renderResultBlock("Impact immédiat : mouvements, renforts, absences", immediat, current)}
+      ${renderResultBlock("Impact projeté : après formation / transmission", projete, current)}
+      <div class="card sim-lego-result-block">
+        <div class="card-title">Compétences à renforcer pour rendre le scénario viable</div>
+        <div class="card-sub sim2-muted-top">${esc(result.developpement?.lecture || "Lecture des écarts à traiter après mobilité ou remplacement.")}</div>
+        <div class="sim-lego-dev-list">${renderDevelopmentNeeds(result)}</div>
+      </div>
+    `;
+    byId("btnSimBackBuild")?.addEventListener("click", () => switchTab("build"));
+    byId("btnSimAddCompare")?.addEventListener("click", addLastResultToCompare);
+  }
+
+  function readCompare() { const list = readJson(STORE_COMPARE, []); return Array.isArray(list) ? list : []; }
+  function writeCompare(list) { writeJson(STORE_COMPARE, Array.isArray(list) ? list : []); renderCompare(); updateCompareCount(); }
+  function updateCompareCount() { const el = byId("simCompareCount"); if (el) el.textContent = String(readCompare().length); }
+  function addLastResultToCompare() { if (!_lastResult) return; const list = readCompare(); list.unshift({ id: `sim_${Date.now()}`, saved_at: new Date().toISOString(), result: _lastResult }); writeCompare(list.slice(0, 8)); switchTab("compare"); }
+
+  function renderCompare() {
+    const root = byId("simCompareContainer");
+    if (!root) return;
+    const list = readCompare();
+    updateCompareCount();
+    if (!list.length) { root.innerHTML = `<div class="card"><div class="sim-empty-state">Aucun scénario conservé.</div></div>`; return; }
+    root.innerHTML = `<div class="card" style="overflow:auto;"><table class="sb-table sim2-compare-table"><thead><tr><th>Scénario</th><th>Immédiat</th><th>Projeté</th><th>Postes dégradés</th><th></th></tr></thead><tbody>${list.map((x, idx) => { const r = x.result || {}; return `<tr><td><strong>${esc(r.titre || "Scénario")}</strong><div class="card-sub" style="margin-top:3px;">${esc(r.scope?.nom_service || "Tous les services")}</div></td><td>${deltaBadge(r.resultats?.immediat?.ecart?.fragilite_moyenne || 0)}</td><td>${deltaBadge(r.resultats?.projete?.ecart?.fragilite_moyenne || r.ecart?.fragilite_moyenne || 0)}</td><td>${esc(r.impact?.postes_degrades || 0)}</td><td><button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-remove-compare="${idx}">Retirer</button></td></tr>`; }).join("")}</tbody></table></div>`;
+    root.querySelectorAll("[data-remove-compare]").forEach(btn => btn.addEventListener("click", () => { const idx = Number(btn.getAttribute("data-remove-compare") || -1); const next = readCompare(); if (idx >= 0) next.splice(idx, 1); writeCompare(next); }));
+  }
+
+  function switchTab(tab) {
+    const wanted = tab || "build";
+    document.querySelectorAll(".sim-tab-btn").forEach(btn => btn.classList.toggle("is-active", btn.getAttribute("data-sim-tab") === wanted));
+    document.querySelectorAll(".sim-panel").forEach(panel => { panel.style.display = panel.getAttribute("data-sim-panel") === wanted ? "block" : "none"; });
+    if (wanted === "compare") renderCompare();
+  }
+
+  function renderAll() {
+    renderContextCard();
+    renderPostePicker();
+    renderRecommendations();
+    renderPalette();
+    renderBuilderFields();
+    renderScenario();
+    renderScenarioPreview();
+    renderCompare();
+  }
+
+  function resetScenario() {
+    _scenario = [];
+    _lastResult = null;
+    renderAll();
+    renderResult(null);
+    switchTab("build");
+    setStatus("");
+  }
+
+  function bindOnce() {
+    if (_bound) return;
+    _bound = true;
+    document.querySelectorAll(".sim-tab-btn").forEach(btn => btn.addEventListener("click", () => switchTab(btn.getAttribute("data-sim-tab") || "build")));
+    byId("simFocusPosteSelect")?.addEventListener("change", e => { _selectedPosteId = e.target.value || ""; renderAll(); });
+    byId("btnSimAddBrick")?.addEventListener("click", addBrickFromEditor);
+    byId("btnSimEvaluate")?.addEventListener("click", () => evaluateScenario().catch(e => setStatus(errMsg(e), "error")));
+    byId("btnSimResetScenario")?.addEventListener("click", resetScenario);
+    byId("btnSimReloadOptions")?.addEventListener("click", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
+    byId("btnSimClearCompare")?.addEventListener("click", () => writeCompare([]));
+    byId("simCriticiteRange")?.addEventListener("input", e => setCriticiteMin(e.target.value));
+    byId("simCriticiteRange")?.addEventListener("change", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
+    byId("simServiceSelect")?.addEventListener("change", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
+  }
+
+  async function onShow(portal) {
+    _portal = portal;
+    bindOnce();
+    setCriticiteMin(localStorage.getItem(STORE_CRIT) || 70);
+    renderAll();
+    updateCompareCount();
+    try {
+      await populateServices();
+      const ctx = consumeContext();
+      await loadOptions(false);
+      if (ctx) applyContext(ctx);
+    } catch (e) {
+      setStatus(errMsg(e), "error");
     }
   }
-
-  function switchTab(tab) { const wanted = tab || "build"; document.querySelectorAll(".sim-tab-btn").forEach(btn => { btn.classList.toggle("is-active", btn.getAttribute("data-sim-tab") === wanted); }); document.querySelectorAll(".sim-panel").forEach(panel => { panel.style.display = panel.getAttribute("data-sim-panel") === wanted ? "block" : "none"; }); if (wanted === "compare") renderCompare(); }
-
-  function renderObjectiveCards() { const root = byId("simObjectiveCards"); if (!root) return; root.innerHTML = Object.entries(OBJECTIVES).map(([key, obj]) => `<button type="button" class="sim2-objective-card ${key === _selectedObjective ? "is-active" : ""}" data-objective="${escapeHtml(key)}"><span class="sim2-objective-icon">${escapeHtml(obj.icon)}</span><span class="sim2-objective-copy"><strong>${escapeHtml(obj.title)}</strong><small>${escapeHtml(obj.short)}</small></span><span class="sim2-objective-tag">${escapeHtml(obj.tag)}</span></button>`).join(""); root.querySelectorAll("[data-objective]").forEach(btn => { btn.addEventListener("click", () => { _selectedObjective = btn.getAttribute("data-objective") || "anticiper_depart"; localStorage.setItem(STORE_OBJECTIVE, _selectedObjective); renderObjectiveCards(); renderBuilder(); renderScenarioPreview(); }); }); }
-  function currentMode() { const modeSelect = byId("simDecisionMode"); if (modeSelect?.value) return modeSelect.value; return OBJECTIVES[_selectedObjective]?.defaultMode || "depart_effectif"; }
-  function fieldEffectif(label) { return `<div class="info-item"><div class="label">${escapeHtml(label || "Collaborateur concerné")}</div><select id="simDecisionEffectif" class="sb-select"></select></div>`; }
-  function fieldPoste(label) { return `<div class="info-item"><div class="label">${escapeHtml(label || "Poste cible")}</div><select id="simDecisionPoste" class="sb-select"></select></div>`; }
-  function fieldCompetence(label) { return `<div class="info-item"><div class="label">${escapeHtml(label || "Compétence à renforcer")}</div><select id="simDecisionComp" class="sb-select"></select></div>`; }
-  function fieldLevel() { return `<div class="info-item"><div class="label">Niveau visé</div><select id="simDecisionNiveau" class="sb-select"><option value="A">Débutant</option><option value="B">Intermédiaire</option><option value="C" selected>Avancé</option><option value="D">Expert</option></select></div>`; }
-
-  function renderBuilder() { const obj = OBJECTIVES[_selectedObjective] || OBJECTIVES.anticiper_depart; const intro = byId("simBuilderIntro"); const root = byId("simDecisionBuilder"); if (intro) intro.textContent = obj.intro; if (!root) return; let modeBlock = ""; let body = ""; if (_selectedObjective === "comparer_recrutement_formation") { modeBlock = `<div class="info-item sim2-wide"><div class="label">Action à tester</div><select id="simDecisionMode" class="sb-select"><option value="montee_competence">Former un collaborateur</option><option value="transmission_interne">Organiser une transmission / relais</option><option value="securiser_competence">Tester un relais virtuel sur une compétence</option><option value="recrutement_virtuel">Recruter ou ajouter un renfort virtuel</option></select></div>`; body = `<div id="simModeFields" class="sim-form-grid"></div>`; } else if (_selectedObjective === "securiser_poste") { modeBlock = `<div class="info-item sim2-wide"><div class="label">Option de sécurisation</div><select id="simDecisionMode" class="sb-select"><option value="recrutement_virtuel">Ajouter un renfort sur le poste</option><option value="securiser_competence">Tester un relais sur une compétence du poste</option><option value="transmission_interne">Préparer un relais avec une personne</option><option value="montee_competence">Former un titulaire ou relais</option></select></div>`; body = `<div id="simModeFields" class="sim-form-grid"></div>`; } else { const mode = obj.defaultMode; if (mode === "mobilite_effectif") body = `<div class="sim-form-grid">${fieldEffectif("Collaborateur à faire évoluer")}${fieldPoste("Poste cible")}</div>`; else body = `<div class="sim-form-grid">${fieldEffectif(mode === "absence_effectif" ? "Collaborateur absent" : "Collaborateur concerné")}</div>`; } root.innerHTML = modeBlock + body; const modeSelect = byId("simDecisionMode"); if (modeSelect) { modeSelect.addEventListener("change", () => { renderModeFields(); renderScenarioPreview(); }); renderModeFields(); } fillAllSelects(); root.querySelectorAll("select").forEach(sel => sel.addEventListener("change", renderScenarioPreview)); }
-  function renderModeFields() { const box = byId("simModeFields"); if (!box) return; const mode = currentMode(); if (mode === "montee_competence" || mode === "transmission_interne") box.innerHTML = `${fieldEffectif(mode === "transmission_interne" ? "Relais à préparer" : "Collaborateur à renforcer")}${fieldCompetence()}${fieldLevel()}`; else if (mode === "securiser_competence") box.innerHTML = `${fieldPoste("Poste à sécuriser")}${fieldCompetence("Compétence du poste à sécuriser")}${fieldLevel()}`; else if (mode === "recrutement_virtuel") box.innerHTML = `${fieldPoste("Poste à sécuriser")}`; else box.innerHTML = `${fieldEffectif("Collaborateur concerné")}`; fillAllSelects(); const posteSel = byId("simDecisionPoste"); if (posteSel) posteSel.addEventListener("change", () => { fillAllSelects(); renderScenarioPreview(); }); box.querySelectorAll("select").forEach(sel => sel.addEventListener("change", renderScenarioPreview)); }
-  function fillAllSelects() { fillSelect(byId("simDecisionEffectif"), _options.effectifs, "id_effectif", optionLabelEffectif, "Choisir un collaborateur…"); fillSelect(byId("simDecisionPoste"), _options.postes, "id_poste", optionLabelPoste, "Choisir un poste…"); fillSelect(byId("simDecisionComp"), currentCompetenceOptions(), "id_comp", optionLabelCompetence, currentMode() === "securiser_competence" ? "Choisir une compétence du poste…" : "Choisir une compétence…"); }
-
-  function findEffectif(id) { return _options.effectifs.find(x => x.id_effectif === id) || null; }
-  function findPoste(id) { return _options.postes.find(x => x.id_poste === id) || null; }
-  function findComp(id) { return _options.competences.find(x => x.id_comp === id) || null; }
-
-  function buildDraft() { const mode = currentMode(); const id_effectif = byId("simDecisionEffectif")?.value || ""; const id_poste_cible = byId("simDecisionPoste")?.value || ""; const id_comp = byId("simDecisionComp")?.value || ""; const niveau_simule = byId("simDecisionNiveau")?.value || "B"; const objectif = _selectedObjective; const hyp = { type: mode }; const missing = []; if (["depart_effectif", "absence_effectif", "mobilite_effectif", "montee_competence", "transmission_interne"].includes(mode)) { if (!id_effectif) missing.push("collaborateur"); hyp.id_effectif = id_effectif; } if (["mobilite_effectif", "recrutement_virtuel", "securiser_competence"].includes(mode)) { if (!id_poste_cible) missing.push("poste"); hyp.id_poste_cible = id_poste_cible; hyp.id_poste = id_poste_cible; } if (["montee_competence", "transmission_interne", "securiser_competence"].includes(mode)) { if (!id_comp) missing.push("compétence"); hyp.id_comp = id_comp; hyp.niveau_simule = niveau_simule || "B"; } const eff = findEffectif(id_effectif); const poste = findPoste(id_poste_cible); const comp = findComp(id_comp); const title = scenarioTitle(objectif, mode, eff, poste, comp, niveau_simule); const plain = scenarioSentence(objectif, mode, eff, poste, comp, niveau_simule); return { objectif, mode, hypotheses: [hyp], missing, title, plain, eff, poste, comp, niveau_simule }; }
-  function scenarioTitle(objectif, mode, eff, poste, comp, niveau) { const name = eff?.nom_complet || "Collaborateur"; const posteName = poste?.intitule_poste || "poste cible"; const compName = comp?.intitule || "compétence"; if (mode === "depart_effectif") return `Départ de ${name}`; if (mode === "absence_effectif") return `Absence de ${name}`; if (mode === "mobilite_effectif") return `Mobilité ${name} vers ${posteName}`; if (mode === "montee_competence") return `Formation ${name} sur ${compName}`; if (mode === "transmission_interne") return `Transmission ${compName} vers ${name}`; if (mode === "securiser_competence") return `Relais sur ${compName}`; if (mode === "recrutement_virtuel") return `Renfort sur ${posteName}`; return OBJECTIVES[objectif]?.title || "Arbitrage RH"; }
-  function scenarioSentence(objectif, mode, eff, poste, comp, niveau) { const name = eff?.nom_complet || "un collaborateur"; const posteName = poste?.intitule_poste || "un poste"; const compName = comp?.intitule || "une compétence"; if (mode === "depart_effectif") return `Vous simulez le départ de ${name} pour mesurer les risques de continuité et les actions nécessaires.`; if (mode === "absence_effectif") return `Vous simulez l’absence temporaire de ${name} pour identifier les relais nécessaires.`; if (mode === "mobilite_effectif") return `Vous testez la mobilité de ${name} vers le poste ${posteName}, avec lecture de l’impact sur le poste d’origine et la cotation.`; if (mode === "montee_competence") return `Vous testez une montée en compétence de ${name} sur ${compName}, niveau visé ${niveau || "B"}.`; if (mode === "transmission_interne") return `Vous testez la préparation d’un relais : ${name} sur ${compName}, niveau visé ${niveau || "C"}.`; if (mode === "securiser_competence") return `Vous testez un relais virtuel sur ${compName} pour sécuriser le poste ${posteName}, niveau visé ${niveau || "C"}.`; if (mode === "recrutement_virtuel") return `Vous testez l’ajout d’un renfort virtuel sur le poste ${posteName}.`; return "Vous préparez un arbitrage RH."; }
-  function renderScenarioPreview() { const root = byId("simScenarioPreview"); if (!root) return; const draft = buildDraft(); const obj = OBJECTIVES[_selectedObjective] || OBJECTIVES.anticiper_depart; if (draft.missing.length) { root.innerHTML = `<div class="sim2-preview-title">${escapeHtml(obj.title)}</div><div class="sim2-preview-text">Complétez : ${escapeHtml(draft.missing.join(", "))}.</div><div class="sim2-chip-row"><span class="sb-badge sb-badge--info">${escapeHtml(obj.tag)}</span></div>`; return; } root.innerHTML = `<div class="sim2-preview-title">${escapeHtml(draft.title)}</div><div class="sim2-preview-text">${escapeHtml(draft.plain)}</div><div class="sim2-chip-row"><span class="sb-badge sb-badge--info">${escapeHtml(obj.tag)}</span><span class="sb-badge">${escapeHtml(_options.scope?.nom_service || "Tous les services")}</span></div>`; }
-
-  function meterHtml(value, label) { const v = Math.max(0, Math.min(100, parseInt(value || 0, 10) || 0)); return `<div class="sim-meter-wrap"><div class="sim-meter-head"><span>${escapeHtml(label || "Score")}</span><strong>${v}%</strong></div><div class="sim-meter"><span style="width:${v}%"></span></div></div>`; }
-  function deltaBadge(delta) { const d = parseInt(delta || 0, 10) || 0; if (d <= -8) return `<span class="sb-badge sb-badge--success">Risque en baisse ${d}</span>`; if (d >= 8) return `<span class="sb-badge sb-badge--danger">Risque en hausse +${d}</span>`; return `<span class="sb-badge sb-badge--info">Impact limité ${d >= 0 ? "+" : ""}${d}</span>`; }
-  function verdictData(result) { const delta = parseInt(result?.ecart?.fragilite_moyenne || 0, 10) || 0; const degraded = parseInt(result?.impact?.postes_degrades || 0, 10) || 0; const secured = parseInt(result?.impact?.postes_securises || 0, 10) || 0; const cotOk = result?.cotation?.fiabilite === "complète"; if (delta >= 8 || degraded > secured) return { label: "À sécuriser avant décision", tone: "danger", text: result?.conseil?.verdict || result?.conseil?.lecture || "Le scénario crée ou révèle un risque secondaire. L’arbitrage mérite un contrôle avant validation." }; if (delta <= -8 && degraded === 0) return { label: cotOk ? "Option favorable" : "Option favorable à confirmer", tone: cotOk ? "success" : "warning", text: result?.conseil?.verdict || result?.conseil?.lecture || "Le scénario réduit le risque sans dégrader de poste identifié." }; return { label: "Option à comparer", tone: cotOk ? "info" : "warning", text: result?.conseil?.verdict || result?.conseil?.lecture || "Le scénario apporte un effet modéré. Il prend de la valeur dans le comparatif avec une autre option." }; }
-  function cotationText(result) { if (!result?.cotation) return "Cotation non estimée."; if (result.cotation.fiabilite === "complète") return `Cotation complète. Impact classification : ${result.cotation.niveau || "stable"}.`; const n = (result.cotation.postes_non_cotes || []).length; return `Analyse financière partielle : ${n || "certains"} poste(s) sans cotation validée. Finalisez les cotations dans Studio pour affiner l’arbitrage.`; }
-  function secondaryRiskText(result) { const degraded = parseInt(result?.impact?.postes_degrades || 0, 10) || 0; if (degraded > 0) return `${degraded} poste(s) se dégradent : contrôlez l’effet domino avant décision.`; const impacted = (result?.impact?.postes_impactes || []).length; if (impacted > 0) return "Aucun effet domino majeur détecté, mais certains postes bougent légèrement."; return "Aucune variation significative détectée sur les postes du périmètre."; }
-  function transmissionDeltaText(result) {
-    const before = parseInt(result?.actuel?.capacite_transmission ?? 0, 10) || 0;
-    const after = parseInt(result?.simule?.capacite_transmission ?? 0, 10) || 0;
-    const rawDelta = result?.ecart?.capacite_transmission;
-    const delta = rawDelta === null || rawDelta === undefined || rawDelta === "" ? (after - before) : (parseInt(rawDelta, 10) || 0);
-    const sign = delta > 0 ? "+" : "";
-    const unit = Math.abs(delta) > 1 ? "pts" : "pt";
-    return `${before}% → ${after}% (${sign}${delta} ${unit})`;
-  }
-
-  function renderResult(result) { const root = byId("simResultContainer"); if (!root) return; if (!result) { root.innerHTML = `<div class="card"><div class="card-title">Verdict RH</div><div class="card-sub sim2-muted-top">Lancez une analyse depuis l’onglet Préparer.</div></div>`; return; } const verdict = verdictData(result); const impacted = result.impact?.postes_impactes || []; const missingCot = result.cotation?.postes_non_cotes || []; const cotLines = result.cotation?.lignes || []; const alternatives = result.conseil?.alternatives || []; const missingData = result.conseil?.donnees_manquantes || []; root.innerHTML = `<div class="card sim2-verdict-card sim2-tone-${escapeHtml(verdict.tone)}"><div class="sim2-hero-layout"><div><div class="sim2-verdict-label">Verdict RH</div><div class="sim2-verdict-title">${escapeHtml(verdict.label)}</div><div class="sim2-verdict-text">${escapeHtml(verdict.text)}</div></div><div class="sb-actions sb-actions--end"><button type="button" class="sb-btn sb-btn--accent" id="btnSimAddCompare">Ajouter au comparatif</button><button type="button" class="sb-btn sb-btn--soft" id="btnSimBackBuild">Modifier</button></div></div></div><div class="sim2-result-grid" style="margin-top:12px;"><div class="card sim2-result-card"><div class="label">Scénario analysé</div><div class="sim2-result-title">${escapeHtml(result.titre || "Arbitrage RH")}</div><div class="card-sub sim2-muted-top">Périmètre : ${escapeHtml(result.scope?.nom_service || "Tous les services")}</div></div><div class="card sim2-result-card"><div class="label">Impact avant / après</div><div class="sim-before-after">${meterHtml(result.actuel?.fragilite_moyenne || 0, "Avant")}${meterHtml(result.simule?.fragilite_moyenne || 0, "Après")}</div><div style="margin-top:10px;">${deltaBadge(result.ecart?.fragilite_moyenne || 0)}</div></div><div class="card sim2-result-card"><div class="label">Transmission</div><div class="sim2-result-title">${escapeHtml(transmissionDeltaText(result))}</div><div class="card-sub sim2-muted-top">Compétences sécurisées : ${escapeHtml(result.impact?.competences_securisees || 0)}</div></div><div class="card sim2-result-card"><div class="label">Impact cotation</div><div class="sim2-result-title">${escapeHtml(result.cotation?.niveau || "non estimé")}</div><div class="card-sub sim2-muted-top">${escapeHtml(cotationText(result))}</div></div><div class="card sim2-result-card"><div class="label">Risque secondaire</div><div class="sim2-result-title">${escapeHtml(result.impact?.postes_degrades ?? 0)} poste(s)</div><div class="card-sub sim2-muted-top">${escapeHtml(secondaryRiskText(result))}</div></div></div><div class="card sim2-ai-card" style="margin-top:12px;"><div class="card-title">Arbitrage recommandé</div><div class="sim2-ai-text">${escapeHtml(result.conseil?.option_recommandee || result.conseil?.decision_prioritaire || "Option à conserver dans le comparatif avant décision.")}</div>${alternatives.length ? `<details class="sim2-details"><summary>Options alternatives à tester</summary><div class="sim2-detail-body">${alternatives.map(x => `<div class="sim-line">${escapeHtml(x)}</div>`).join("")}</div></details>` : ""}${missingData.length ? `<details class="sim2-details"><summary>Données à compléter</summary><div class="sim2-detail-body">${missingData.map(x => `<div class="sim-line sim-line-warning">${escapeHtml(x)}</div>`).join("")}</div></details>` : ""}</div><div class="card" style="margin-top:12px;"><div class="card-title">Détails activables</div><div class="card-sub sim2-muted-top">Ouvrez uniquement ce qui sert à justifier l’arbitrage.</div><details class="sim2-details"><summary>Postes impactés (${impacted.length})</summary><div class="sim2-detail-body">${impacted.length ? impacted.map(p => `<div class="sim-impact-row"><div><div class="sim-impact-title">${escapeHtml(p.intitule_poste || "Poste")}</div><div class="card-sub" style="margin:3px 0 0 0;">${escapeHtml(p.nom_service || "")}</div></div><div class="sim-impact-score">${escapeHtml(p.fragilite_avant)} → ${escapeHtml(p.fragilite_apres)}</div><div>${deltaBadge(p.delta || 0)}</div></div>`).join("") : `<div class="sim-empty-state">Aucun poste avec variation significative.</div>`}</div></details><details class="sim2-details"><summary>Compétences impactées (${(result.impact?.competences_impactees || []).length})</summary><div class="sim2-detail-body">${(result.impact?.competences_impactees || []).length ? (result.impact.competences_impactees || []).map(c => `<div class="sim-impact-row"><div><div class="sim-impact-title">${escapeHtml(c.code ? c.code + " · " : "")}${escapeHtml(c.intitule || "Compétence")}</div><div class="card-sub" style="margin:3px 0 0 0;">${escapeHtml(c.label_avant || "—")} → ${escapeHtml(c.label_apres || "—")}</div></div><div>${c.sens === "ameliore" ? `<span class="sb-badge sb-badge--success">sécurisée</span>` : c.sens === "degrade" ? `<span class="sb-badge sb-badge--danger">fragilisée</span>` : `<span class="sb-badge">modifiée</span>`}</div></div>`).join("") : `<div class="sim-empty-state">Aucune compétence avec variation de transmission.</div>`}</div></details><details class="sim2-details"><summary>Cotation et classification (${cotLines.length})</summary><div class="sim2-detail-body">${cotLines.length ? cotLines.map(c => `<div class="sim-impact-row"><div><div class="sim-impact-title">${escapeHtml(c.poste_source)} → ${escapeHtml(c.poste_cible)}</div><div class="card-sub" style="margin:3px 0 0 0;">${escapeHtml(c.cotation_source)} → ${escapeHtml(c.cotation_cible)}</div></div><div class="sim-impact-score">${c.delta === null || c.delta === undefined ? "—" : escapeHtml(c.delta)}</div><div><span class="sb-badge ${c.fiable ? "sb-badge--success" : "sb-badge--warning"}">${escapeHtml(c.fiable ? "fiable" : "partiel")}</span></div></div>`).join("") : `<div class="sim-empty-state">Aucun impact cotation estimé.</div>`}${missingCot.length ? `<div style="margin-top:10px;"><div class="label">Postes à coter pour affiner</div>${missingCot.map(p => `<div class="sim-line sim-line-warning">${escapeHtml(p.codif_poste ? p.codif_poste + " · " : "")}${escapeHtml(p.intitule_poste)}</div>`).join("")}</div>` : ""}</div></details><details class="sim2-details"><summary>Données utilisées</summary><div class="sim2-detail-body"><div class="sim-line">Postes analysés : ${escapeHtml(result.actuel?.postes_total ?? "—")}</div><div class="sim-line">Postes rouges avant simulation : ${escapeHtml(result.actuel?.postes_rouges ?? "—")}</div><div class="sim-line">Postes rouges après simulation : ${escapeHtml(result.simule?.postes_rouges ?? "—")}</div><div class="sim-line">Capacité de transmission avant / après : ${escapeHtml(transmissionDeltaText(result))}</div><div class="sim-line">Compétences prises en compte : criticité ≥ ${escapeHtml(getCriticiteMin())}</div></div></details></div>`; byId("btnSimBackBuild")?.addEventListener("click", () => switchTab("build")); byId("btnSimAddCompare")?.addEventListener("click", () => addLastResultToCompare()); }
-
-  async function evaluateScenario() { await loadOptions(false); const draft = buildDraft(); if (draft.missing.length) return setStatus(`Complétez le scénario avant analyse : ${draft.missing.join(", ")}.`, "error"); setStatus("Analyse de l’impact RH en cours…"); const result = await _portal.apiJson(apiUrl(`/skills/simulations/evaluer/${encodeURIComponent(_portal.contactId)}`, { id_service: getServiceId(), criticite_min: getCriticiteMin() }), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ titre: draft.title, objectif: draft.objectif, hypotheses: draft.hypotheses }) }); _lastResult = result; setStatus(""); renderResult(result); switchTab("result"); }
-  function addLastResultToCompare() { if (!_lastResult) return; const list = readCompare(); list.unshift({ id: `sim_${Date.now()}`, saved_at: new Date().toISOString(), result: _lastResult }); writeCompare(list.slice(0, 8)); setStatus("Option ajoutée au comparatif temporaire."); switchTab("compare"); }
-  function decisionText(result) { const v = verdictData(result); if (v.tone === "success") return "Option favorable"; if (v.tone === "danger") return "À sécuriser"; if (v.tone === "warning") return "À confirmer"; return "À comparer"; }
-  function effortText(result) { const cot = result?.cotation || {}; if (cot.fiabilite !== "complète") return "Partiel"; if (cot.niveau === "hausse probable") return "Hausse probable"; if (cot.niveau === "baisse probable") return "Baisse probable"; if (cot.niveau === "stable") return "Stable"; return "Non estimé"; }
-  function compareReco(list) { if (!list.length) return "Aucun scénario à comparer."; const scored = list.map(x => { const r = x.result || {}; const delta = parseInt(r.ecart?.fragilite_moyenne || 0, 10) || 0; const degraded = parseInt(r.impact?.postes_degrades || 0, 10) || 0; const cotPenalty = r.cotation?.fiabilite === "complète" ? 0 : 8; const score = (-delta * 2) - (degraded * 10) - cotPenalty; return { result: r, score }; }).sort((a, b) => b.score - a.score); const best = scored[0]?.result; return `Option la plus équilibrée selon les données disponibles : « ${best?.titre || "Scénario RH"} ». Comparez toujours le risque secondaire et la cotation avant décision.`; }
-  function renderCompare() { const root = byId("simCompareContainer"); if (!root) return; const list = readCompare(); updateCompareCount(); if (!list.length) { root.innerHTML = `<div class="card"><div class="sim-empty-state">Aucune option dans le comparatif.</div></div>`; return; } root.innerHTML = `<div class="card sim2-ai-card"><div class="card-title">Lecture comparative</div><div class="sim2-ai-text">${escapeHtml(compareReco(list))}</div></div><div class="card" style="margin-top:12px; overflow:auto;"><table class="sb-table sim2-compare-table"><thead><tr><th>Option</th><th>Effet RH</th><th>Risque secondaire</th><th>Impact cotation</th><th>Décision</th><th></th></tr></thead><tbody>${list.map((x, idx) => { const r = x.result || {}; return `<tr><td><div class="sim-impact-title">${escapeHtml(r.titre || "Option RH")}</div><div class="card-sub" style="margin:3px 0 0 0;">${escapeHtml(r.scope?.nom_service || "Tous les services")}</div></td><td>${deltaBadge(r.ecart?.fragilite_moyenne || 0)}</td><td>${escapeHtml(secondaryRiskText(r))}</td><td>${escapeHtml(effortText(r))}</td><td><span class="sb-badge">${escapeHtml(decisionText(r))}</span></td><td><button type="button" class="sb-btn sb-btn--soft" data-remove-compare="${idx}">Retirer</button></td></tr><tr class="sim-compare-detail-row"><td colspan="6"><details class="sim2-details"><summary>Pourquoi cette lecture ?</summary><div class="sim2-detail-body"><div class="sim-line">${escapeHtml(r.conseil?.lecture || "—")}</div><div class="sim-line">${escapeHtml(r.conseil?.decision_prioritaire || "—")}</div><div class="sim-line">${escapeHtml(cotationText(r))}</div></div></details></td></tr>`; }).join("")}</tbody></table></div>`; root.querySelectorAll("[data-remove-compare]").forEach(btn => { btn.addEventListener("click", () => { const idx = parseInt(btn.getAttribute("data-remove-compare"), 10); const next = readCompare(); next.splice(idx, 1); writeCompare(next); }); }); }
-  function resetScenario() { _lastResult = null; setStatus(""); renderBuilder(); renderScenarioPreview(); renderResult(null); switchTab("build"); }
-  function bindOnce() { if (_bound) return; _bound = true; document.querySelectorAll(".sim-tab-btn").forEach(btn => { btn.addEventListener("click", () => switchTab(btn.getAttribute("data-sim-tab") || "build")); }); byId("btnSimEvaluate")?.addEventListener("click", () => evaluateScenario().catch(e => setStatus(errMsg(e), "error"))); byId("btnSimResetScenario")?.addEventListener("click", resetScenario); byId("btnSimReloadOptions")?.addEventListener("click", () => loadOptions(true).catch(e => setStatus(errMsg(e), "error"))); byId("btnSimClearCompare")?.addEventListener("click", () => writeCompare([])); byId("simCriticiteRange")?.addEventListener("input", (e) => setCriticiteMin(e.target.value)); byId("simCriticiteRange")?.addEventListener("change", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); }); byId("simServiceSelect")?.addEventListener("change", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); }); }
-  async function applyPendingAnalyseHypothesis() { const pendingId = localStorage.getItem(STORE_ANALYSE_PENDING_HYPOTHESIS) || ""; if (!pendingId) return; const list = readAnalyseHypotheses(); const h = list.find(x => String(x.id || "") === pendingId) || list[0]; localStorage.removeItem(STORE_ANALYSE_PENDING_HYPOTHESIS); if (h) await applyAnalyseHypothesis(h); }
-  async function onShow(portal) { _portal = portal; renderAnalyseHypotheses(); _selectedObjective = localStorage.getItem(STORE_OBJECTIVE) || "anticiper_depart"; if (!OBJECTIVES[_selectedObjective]) _selectedObjective = "anticiper_depart"; bindOnce(); setCriticiteMin(localStorage.getItem(STORE_CRIT) || 70); renderObjectiveCards(); renderBuilder(); renderScenarioPreview(); updateCompareCount(); renderCompare(); renderAnalyseHypotheses(); try { await populateServices(); await loadOptions(false); renderAnalyseHypotheses(); await applyPendingAnalyseHypothesis(); } catch (e) { setStatus(errMsg(e), "error"); } }
 
   window.SkillsSimulationsRH = { onShow };
 })();

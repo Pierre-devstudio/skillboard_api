@@ -2,36 +2,37 @@
   <div class="card sim2-hero-card">
     <div class="sim2-hero-layout">
       <div>
-        <div class="card-title">Simulations RH & arbitrages</div>
+        <div class="card-title">Simulation RH · bac à sable d’organisation</div>
         <div class="card-sub sim2-hero-sub">
-          Préparez une décision RH : départ, absence, mobilité, formation ou recrutement. L’écran affiche le verdict, les impacts et les points à arbitrer, les détails restent repliés.
+          Construisez un scénario avec des briques : mobilité, remplacement, renfort, absence, recrutement, puis montée en compétence. Le moteur mesure l’impact immédiat et l’impact projeté.
         </div>
       </div>
       <div class="sb-actions sb-actions--end sim2-tabs">
-        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn is-active" data-sim-tab="build">Préparer</button>
-        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="result">Verdict</button>
+        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn is-active" data-sim-tab="build">Construire</button>
+        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="result">Résultat</button>
         <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="compare">Comparer <span id="simCompareCount" class="sb-badge" style="margin-left:6px;">0</span></button>
       </div>
     </div>
   </div>
 
   <div id="simStatus" class="sb-hint" style="display:none;"></div>
+  <div id="simContextCard" class="card sim2-source-card" style="display:none; margin-bottom:12px;"></div>
 
   <div class="sim-panel" data-sim-panel="build">
-    <div id="simAnalyseHypothesesCard" class="card sim2-source-card" style="display:none; margin-bottom:12px;"></div>
-    <div class="sim2-grid-main">
-      <div class="sim2-grid-left">
-        <div class="card">
-          <div class="sim2-section-head">
-            <div>
-              <div class="card-title">Quel arbitrage RH voulez-vous préparer ?</div>
-              <div class="card-sub sim2-muted-top">Choisissez une situation terrain. Le moteur technique travaille derrière, comme il se doit.</div>
+    <div class="sim-lego-grid-main">
+      <div class="sim-lego-left">
+        <div class="card sim-lego-card">
+          <div class="card-title">1. Point de départ</div>
+          <div class="card-sub sim2-muted-top">Choisissez le poste à travailler. Depuis l’analyse, il est préchargé automatiquement.</div>
+          <div class="sim-form-grid" style="margin-top:12px;">
+            <div class="info-item">
+              <div class="label">Poste étudié</div>
+              <select id="simFocusPosteSelect" class="sb-select"></select>
             </div>
           </div>
+          <div id="simFocusPosteMeta" class="sim-lego-focus-box"></div>
 
-          <div id="simObjectiveCards" class="sim2-objective-grid" aria-label="Objectifs de simulation"></div>
-
-          <details class="sim2-details" style="margin-top:14px;">
+          <details class="sim2-details" style="margin-top:12px;">
             <summary>Réglages du périmètre</summary>
             <div class="sim2-detail-body">
               <div class="sim-form-grid">
@@ -59,31 +60,42 @@
           </details>
         </div>
 
-        <div class="card sim2-builder-card" style="margin-top:12px;">
-          <div class="card-title">Situation à tester</div>
-          <div id="simBuilderIntro" class="card-sub sim2-muted-top">Sélectionnez d’abord un arbitrage.</div>
-          <div id="simDecisionBuilder" class="sim2-builder-body"></div>
-          <div class="sb-actions sb-actions--end sim2-builder-actions">
-            <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">Réinitialiser</button>
-            <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">Analyser l’impact</button>
+        <div class="card sim-lego-card" style="margin-top:12px;">
+          <div class="card-title">2. Ajouter des briques au scénario</div>
+          <div class="card-sub sim2-muted-top">Composez une option RH complète : qui bouge, quel poste est renforcé, qui reste à former.</div>
+          <div id="simBrickPalette" class="sim-lego-palette"></div>
+          <div id="simBrickEditor" class="sim-lego-editor"></div>
+          <div class="sb-actions sb-actions--end" style="margin-top:12px;">
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddBrick">Ajouter la brique</button>
           </div>
+        </div>
+
+        <div class="card sim-lego-card" style="margin-top:12px;">
+          <div class="sim2-hero-layout">
+            <div>
+              <div class="card-title">3. Scénario composé</div>
+              <div class="card-sub sim2-muted-top">Les briques sont rejouées ensemble. Les effets domino apparaissent dans le résultat.</div>
+            </div>
+            <div class="sb-actions sb-actions--end">
+              <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">Réinitialiser</button>
+              <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">Calculer l’impact</button>
+            </div>
+          </div>
+          <div id="simScenarioBricks" class="sim-lego-scenario-list"></div>
         </div>
       </div>
 
-      <div class="sim2-grid-right">
-        <div class="card sim2-side-card">
-          <div class="card-title">Scénario prêt</div>
-          <div id="simScenarioPreview" class="sim2-scenario-preview">
-            <div class="sim-empty-state">Choisissez un arbitrage pour préparer une simulation.</div>
-          </div>
+      <div class="sim-lego-right">
+        <div class="card sim-lego-card">
+          <div class="card-title">Personnel à regarder</div>
+          <div class="card-sub sim2-muted-top">Profils proches du poste, classés par correspondance Novoskill. À confirmer avec le terrain, évidemment, parce que les gens ne sont pas des pions même si les logiciels adorent faire semblant.</div>
+          <div id="simRecommendations" class="sim-lego-person-list"></div>
         </div>
 
-        <div class="card sim2-side-card" style="margin-top:12px;">
-          <div class="card-title">Lecture attendue</div>
-          <div id="simReadingPreview" class="sim2-reading-preview">
-            <div class="sim2-read-row"><strong>Verdict</strong><span>Risque, bénéfice et limites</span></div>
-            <div class="sim2-read-row"><strong>Cotation</strong><span>Impact classification si disponible</span></div>
-            <div class="sim2-read-row"><strong>Comparatif</strong><span>Options conservées temporairement</span></div>
+        <div class="card sim-lego-card" style="margin-top:12px;">
+          <div class="card-title">Lecture du scénario</div>
+          <div id="simScenarioPreview" class="sim2-scenario-preview">
+            <div class="sim-empty-state">Ajoutez des briques pour construire une option RH.</div>
           </div>
         </div>
       </div>
@@ -93,8 +105,8 @@
   <div class="sim-panel" data-sim-panel="result" style="display:none;">
     <div id="simResultContainer" class="sim-result-container">
       <div class="card">
-        <div class="card-title">Verdict RH</div>
-        <div class="card-sub sim2-muted-top">Lancez une analyse depuis l’onglet Préparer.</div>
+        <div class="card-title">Résultat du scénario</div>
+        <div class="card-sub sim2-muted-top">Construisez un scénario puis lancez le calcul.</div>
       </div>
     </div>
   </div>
@@ -103,8 +115,8 @@
     <div class="card">
       <div class="sim2-hero-layout">
         <div>
-          <div class="card-title">Comparatif temporaire</div>
-          <div class="card-sub sim2-muted-top">Comparez les options conservées pendant la session : effet RH, risque secondaire, cotation et décision à préparer.</div>
+          <div class="card-title">Comparatif des scénarios</div>
+          <div class="card-sub sim2-muted-top">Comparez les options conservées : impact immédiat, impact projeté et effets domino.</div>
         </div>
         <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompare">Vider le comparatif</button>
       </div>
