@@ -1,6 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, date, timedelta
+import io
+import json
+import os
+import re
+import uuid
+import urllib.error
+import urllib.request
 
 from app.services.skills_analyse_engine import (
     _analyse_fragility_average,
@@ -25,6 +32,10 @@ class SimulationHypothese(BaseModel):
     niveau_simule: Optional[str] = None
     libelle: Optional[str] = None
     temporalite: Optional[str] = None
+    id_analyse_cv: Optional[str] = None
+    candidat_nom: Optional[str] = None
+    competences_cv: Optional[List[Dict[str, Any]]] = None
+    analyse_cv_json: Optional[Dict[str, Any]] = None
 
 
 class SimulationEvalRequest(BaseModel):
@@ -355,15 +366,19 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
             "is_simulated": True,
         }
 
-    def add_virtual_profile(target_poste: str, label: str = "Profil virtuel") -> str:
+    def add_virtual_profile(target_poste: str, label: str = "Profil virtuel", forced_id: Optional[str] = None) -> str:
         nonlocal virtual_index
-        virtual_index += 1
-        veid = f"__VIRTUEL_{virtual_index}__"
+        if forced_id:
+            veid = str(forced_id)
+        else:
+            virtual_index += 1
+            veid = f"__VIRTUEL_{virtual_index}__"
         poste = next((p for p in dataset.get("postes") or [] if str(p.get("id_poste") or "") == target_poste), None) or {}
         effectifs[veid] = {
             "id_effectif": veid,
             "prenom_effectif": label,
-            "nom_effectif": str(virtual_index),
+            "nom_effectif": "" if forced_id else str(virtual_index),
+            "nom_complet": label,
             "id_poste_actuel": target_poste,
             "intitule_poste": poste.get("intitule_poste") or "Profil recruté / renfort",
             "codif_poste": poste.get("codif_poste") or "",
@@ -402,6 +417,46 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
             nr["source_poste"] = source_poste
             requirements.append(nr)
 
+    def cv_virtual_effectif_id(h: SimulationHypothese) -> str:
+        raw = str(h.id_analyse_cv or h.candidat_nom or "cv").strip()
+        raw = re.sub(r"[^A-Za-z0-9_-]+", "_", raw)[:48] or "cv"
+        return f"__CV_{raw}__"
+
+    def cv_skill_level_map(h: SimulationHypothese) -> Dict[str, str]:
+        out: Dict[str, str] = {}
+        for row in h.competences_cv or []:
+            cid = str(row.get("id_comp") or "").strip()
+            level = _level_label(row.get("niveau_estime") or row.get("niveau_simule") or row.get("niveau") or "")
+            if cid and level != "—":
+                out[cid] = level
+        return out
+
+    def dependent_requirements_for_poste(target_poste: str) -> List[Dict[str, Any]]:
+        target_poste = str(target_poste or "").strip()
+        if not target_poste:
+            return []
+
+        global_ok: Dict[str, int] = {}
+        for req in requirements:
+            cid = str(req.get("id_comp") or "").strip()
+            if not cid:
+                continue
+            req_rank = _level_rank(req.get("niveau_requis"))
+            count_ok = 0
+            for eid0 in effectifs.keys():
+                s = skills.get((eid0, cid))
+                if req_rank > 0 and _level_rank(s.get("niveau_actuel") if s else None) >= req_rank:
+                    count_ok += 1
+            global_ok[cid] = max(global_ok.get(cid, 0), count_ok)
+
+        rows = [
+            dict(r) for r in requirements
+            if str(r.get("id_poste") or "").strip() == target_poste
+            and global_ok.get(str(r.get("id_comp") or "").strip(), 0) <= 1
+        ]
+        rows.sort(key=lambda r: (-_safe_int(r.get("poids_criticite"), 0), str(r.get("intitule") or "")))
+        return rows
+
     if simulated:
         for h in hypotheses or []:
             h_type = str(h.type or "").strip()
@@ -426,6 +481,21 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
                 niv = _level_label(h.niveau_simule or "C")
                 if cid and niv != "—":
                     add_or_update_skill(eid, cid, niv)
+
+            elif h_type == "relais_interne" and eid:
+                target = str(h.id_poste_cible or h.id_poste or "").strip()
+                if target:
+                    for req in dependent_requirements_for_poste(target):
+                        add_or_update_skill(eid, str(req.get("id_comp") or ""), req.get("niveau_requis") or "C", req)
+
+            elif h_type == "recrutement_cv":
+                target = str(h.id_poste_cible or h.id_poste or "").strip()
+                if target:
+                    veid = add_virtual_profile(target, h.candidat_nom or "Candidat CV", cv_virtual_effectif_id(h))
+                    levels = cv_skill_level_map(h)
+                    req_by_comp = {str(r.get("id_comp") or ""): r for r in requirements if str(r.get("id_poste") or "") == target}
+                    for cid, level in levels.items():
+                        add_or_update_skill(veid, cid, level, req_by_comp.get(cid))
 
             elif h_type in ("recrutement_virtuel", "securiser_poste"):
                 target = str(h.id_poste_cible or h.id_poste or "").strip()
@@ -806,7 +876,7 @@ def _compute_cotation_context(req: SimulationEvalRequest, dataset: Dict[str, Any
         tgt_pid = ""
         if h.id_effectif and str(h.id_effectif) in effectifs:
             src_pid = str(effectifs[str(h.id_effectif)].get("id_poste_actuel") or "")
-        if ht in ("mobilite_effectif", "recrutement_virtuel"):
+        if ht in ("mobilite_effectif", "recrutement_virtuel", "recrutement_cv"):
             tgt_pid = str(h.id_poste_cible or h.id_poste or "").strip()
         elif ht == "transfert_charge":
             src_pid = str(h.id_poste or "").strip()
@@ -896,8 +966,10 @@ def _build_conseil(req: SimulationEvalRequest, current_summary: Dict[str, Any], 
         alternatives.append("Comparer avec un recrutement ou un transfert de charge pour éviter de fragiliser le poste d’origine.")
     if "transfert_charge" in types:
         alternatives.append("Vérifier que le poste cible peut absorber la charge transférée sans créer une nouvelle fragilité.")
-    if "recrutement_virtuel" in types or "securiser_poste" in types:
+    if "recrutement_virtuel" in types or "recrutement_cv" in types or "securiser_poste" in types:
         alternatives.append("Comparer avec une mobilité interne ou un transfert de charge avant recrutement.")
+    if "relais_interne" in types:
+        alternatives.append("Vérifier que le relais interne ne fragilise pas son poste actuel et planifier les besoins associés.")
     if "depart_effectif" in types or "absence_effectif" in types:
         alternatives.append("Ajouter une hypothèse de transmission ou de doublure interne avant l’échéance.")
     if "montee_competence" in types or "formation_ciblee" in types or "transmission_interne" in types:
@@ -1040,7 +1112,7 @@ def _build_candidate_recommendations(dataset: Dict[str, Any], limit_per_poste: i
 
 def _hypothese_is_immediate(h: SimulationHypothese) -> bool:
     ht = str(h.type or "").strip()
-    return ht in ("depart_effectif", "absence_effectif", "mobilite_effectif", "tester_correspondance_profil_poste", "transfert_charge", "recrutement_virtuel", "securiser_poste")
+    return ht in ("depart_effectif", "absence_effectif", "mobilite_effectif", "tester_correspondance_profil_poste", "transfert_charge", "recrutement_virtuel", "recrutement_cv", "securiser_poste")
 
 
 def _compute_delta(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
@@ -1109,6 +1181,42 @@ def _build_development_needs(req: SimulationEvalRequest, dataset: Dict[str, Any]
     seen = set()
     out = []
 
+    def cv_virtual_effectif_id(h: SimulationHypothese) -> str:
+        raw = str(h.id_analyse_cv or h.candidat_nom or "cv").strip()
+        raw = re.sub(r"[^A-Za-z0-9_-]+", "_", raw)[:48] or "cv"
+        return f"__CV_{raw}__"
+
+    def dependent_requirements_for_poste(pid: str) -> List[Dict[str, Any]]:
+        pid = str(pid or "").strip()
+        if not pid:
+            return []
+        global_ok: Dict[str, int] = {}
+        for req_row in dataset.get("requirements") or []:
+            cid0 = str(req_row.get("id_comp") or "").strip()
+            if not cid0:
+                continue
+            req_rank = _level_rank(req_row.get("niveau_requis"))
+            count_ok = 0
+            for eid0, rows in skills_by_effectif.items():
+                if req_rank > 0 and _level_rank(rows.get(cid0, {}).get("niveau_actuel")) >= req_rank:
+                    count_ok += 1
+            global_ok[cid0] = max(global_ok.get(cid0, 0), count_ok)
+        rows = [
+            dict(r) for r in reqs_by_poste.get(pid) or []
+            if global_ok.get(str(r.get("id_comp") or "").strip(), 0) <= 1
+        ]
+        rows.sort(key=lambda r: (-_safe_int(r.get("poids_criticite"), 0), str(r.get("intitule") or "")))
+        return rows
+
+    def cv_skill_row_map(h: SimulationHypothese) -> Dict[str, Dict[str, Any]]:
+        out_map: Dict[str, Dict[str, Any]] = {}
+        for row in h.competences_cv or []:
+            cid = str(row.get("id_comp") or "").strip()
+            level = _level_label(row.get("niveau_estime") or row.get("niveau_simule") or row.get("niveau") or "")
+            if cid and level != "—":
+                out_map[cid] = {"niveau_actuel": level, "resultat_eval": {1: 6, 2: 12, 3: 18, 4: 24}.get(_level_rank(level), 0)}
+        return out_map
+
     def add_need(eid: str, pid: str, cid: str, target_level: Any, source: str, fallback_req: Optional[Dict[str, Any]] = None) -> None:
         eid = str(eid or "").strip()
         pid = str(pid or "").strip()
@@ -1140,7 +1248,12 @@ def _build_development_needs(req: SimulationEvalRequest, dataset: Dict[str, Any]
             "statut": status,
             "source": source,
             "priorite_score": _safe_int(req_row.get("poids_criticite"), 0) + (100 - pct),
-            "lecture": "Besoin généré par la simulation" if source == "projection" else ("À former en priorité" if pct < 60 else "À consolider"),
+            "lecture": (
+                "Écart candidat à couvrir" if source == "cv"
+                else "Relais interne à préparer" if source == "relais"
+                else "Besoin généré par la simulation" if source in ("projection", "titulaire")
+                else ("À former en priorité" if pct < 60 else "À consolider")
+            ),
         })
 
     for h in req.hypotheses or []:
@@ -1168,6 +1281,38 @@ def _build_development_needs(req: SimulationEvalRequest, dataset: Dict[str, Any]
                 if pct >= 100:
                     continue
                 add_need(eid, pid, cid, r.get("niveau_requis"), "titulaire", r)
+            continue
+
+        if ht == "relais_interne":
+            pid = str(h.id_poste_cible or h.id_poste or "").strip()
+            if not eid or not pid:
+                continue
+            for r in dependent_requirements_for_poste(pid):
+                cid = str(r.get("id_comp") or "").strip()
+                pct, _rank, _status = _skill_score_for_matching(skills_by_effectif.get(eid, {}).get(cid), r.get("niveau_requis"))
+                if pct >= 100:
+                    continue
+                add_need(eid, pid, cid, r.get("niveau_requis"), "relais", r)
+            continue
+
+        if ht == "recrutement_cv":
+            pid = str(h.id_poste_cible or h.id_poste or "").strip()
+            veid = cv_virtual_effectif_id(h)
+            if pid:
+                effectifs[veid] = {
+                    "id_effectif": veid,
+                    "prenom_effectif": h.candidat_nom or "Candidat CV",
+                    "nom_effectif": "",
+                    "id_poste_actuel": pid,
+                }
+                cv_skills = cv_skill_row_map(h)
+                skills_by_effectif[veid] = cv_skills
+                for r in reqs_by_poste.get(pid) or []:
+                    cid = str(r.get("id_comp") or "").strip()
+                    pct, _rank, _status = _skill_score_for_matching(cv_skills.get(cid), r.get("niveau_requis"))
+                    if pct >= 100:
+                        continue
+                    add_need(veid, pid, cid, r.get("niveau_requis"), "cv", r)
             continue
 
         if ht not in ("mobilite_effectif", "tester_correspondance_profil_poste"):
@@ -1358,7 +1503,7 @@ def _projected_skill_poste_ids(req: SimulationEvalRequest, dataset: Dict[str, An
 
     for h in req.hypotheses or []:
         h_type = str(h.type or "").strip()
-        if h_type == "renforcer_titulaire":
+        if h_type in ("renforcer_titulaire", "relais_interne", "recrutement_cv"):
             if h.id_poste:
                 ids.add(str(h.id_poste))
             if h.id_poste_cible:
@@ -1421,6 +1566,336 @@ def _align_records_on_analyse_baseline(
             out.append(dict(analyse_row))
 
     return sorted(out, key=lambda x: int(x.get("indice_fragilite") or 0), reverse=True)
+
+
+
+def _extract_cv_text(filename: str, content_type: str, data: bytes) -> str:
+    name = (filename or "").lower()
+    ctype = (content_type or "").lower()
+    raw = data or b""
+    if not raw:
+        return ""
+
+    if name.endswith(".pdf") or "pdf" in ctype:
+        try:
+            from pypdf import PdfReader  # type: ignore
+            reader = PdfReader(io.BytesIO(raw))
+            chunks = []
+            for page in reader.pages:
+                try:
+                    chunks.append(page.extract_text() or "")
+                except Exception:
+                    continue
+            return "\n".join(chunks).strip()
+        except Exception as exc:
+            raise RuntimeError(f"Extraction PDF impossible. Installer pypdf ou fournir un fichier texte/DOCX. Détail: {exc}")
+
+    if name.endswith(".docx") or "wordprocessingml" in ctype:
+        try:
+            from docx import Document  # type: ignore
+            doc = Document(io.BytesIO(raw))
+            return "\n".join([p.text for p in doc.paragraphs if p.text]).strip()
+        except Exception as exc:
+            raise RuntimeError(f"Extraction DOCX impossible. Installer python-docx ou fournir un fichier texte. Détail: {exc}")
+
+    for enc in ("utf-8", "utf-8-sig", "latin-1"):
+        try:
+            return raw.decode(enc).strip()
+        except Exception:
+            continue
+    return raw.decode("utf-8", errors="ignore").strip()
+
+
+def _simulation_poste_payload(dataset: Dict[str, Any], id_poste: str) -> Dict[str, Any]:
+    poste = next((p for p in dataset.get("postes") or [] if str(p.get("id_poste") or "") == str(id_poste or "")), None) or {}
+    requirements = [
+        dict(r) for r in dataset.get("requirements") or []
+        if str(r.get("id_poste") or "") == str(id_poste or "")
+    ]
+    return {
+        "id_poste": poste.get("id_poste") or id_poste,
+        "code": poste.get("codif_client") or poste.get("codif_poste") or "",
+        "intitule": poste.get("intitule_poste") or "Poste",
+        "service": poste.get("nom_service") or "",
+        "nb_titulaires_cible": _safe_int(poste.get("nb_titulaires_cible"), 1),
+        "competences_attendues": [
+            {
+                "id_comp": r.get("id_comp"),
+                "code": r.get("code") or "",
+                "intitule": r.get("intitule") or "Compétence",
+                "domaine": r.get("domaine") or "",
+                "niveau_requis": _level_label(r.get("niveau_requis")),
+                "criticite": _safe_int(r.get("poids_criticite"), 0),
+            }
+            for r in requirements
+        ],
+    }
+
+
+def _cv_ai_system_prompt() -> str:
+    return (
+        "Tu es un recruteur senior et un analyste compétences pour Novoskill. "
+        "Tu compares un CV à un poste cible. Tu ne fais pas de tri discriminant, "
+        "tu analyses uniquement les expériences, formations, compétences, preuves observables "
+        "et écarts par rapport aux compétences attendues. "
+        "Tu réponds uniquement en JSON valide."
+    )
+
+
+def _cv_ai_user_prompt(cv_text: str, poste_payload: Dict[str, Any], projet_professionnel: str) -> str:
+    return json.dumps(
+        {
+            "instruction": (
+                "Analyse le CV comme un recruteur. Déduis les compétences à partir des expériences, "
+                "missions, formations, outils, réalisations et projet professionnel. Compare-les aux "
+                "compétences attendues du poste cible. Pour chaque compétence attendue, estime le niveau "
+                "du candidat sur A/B/C/D ou null si non démontré, donne une preuve courte issue du CV, "
+                "un niveau de confiance entre 0 et 1, et indique l'écart restant. "
+                "Ne fais pas de matching par mots-clés : raisonne métier."
+            ),
+            "format_attendu": {
+                "nom_candidat": "string",
+                "resume_profil": "string",
+                "adequation_pct": "integer 0-100",
+                "experiences_retenues": [{"periode": "string", "organisation": "string", "lecture": "string"}],
+                "formations_retenues": [{"intitule": "string", "lecture": "string"}],
+                "competences_detectees": [{"titre": "string", "niveau_estime": "A|B|C|D", "preuve": "string", "confiance": 0.0}],
+                "matching_poste": [
+                    {
+                        "id_comp": "id exact fourni dans competences_attendues",
+                        "code": "code exact",
+                        "intitule": "intitulé exact",
+                        "niveau_requis": "A|B|C|D",
+                        "niveau_estime": "A|B|C|D|null",
+                        "couverture_pct": "integer 0-100",
+                        "preuve_cv": "string",
+                        "confiance": 0.0,
+                        "ecart": "string",
+                        "besoin": True
+                    }
+                ],
+                "points_favorables": ["string"],
+                "points_vigilance": ["string"],
+                "questions_entretien": ["string"],
+                "lecture_recruteur": "string"
+            },
+            "poste_cible": poste_payload,
+            "projet_professionnel": projet_professionnel or "",
+            "cv": cv_text[:18000],
+        },
+        ensure_ascii=False,
+    )
+
+
+def _call_cv_ai(cv_text: str, poste_payload: Dict[str, Any], projet_professionnel: str) -> Dict[str, Any]:
+    api_key = (os.getenv("NOVOSKILL_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise RuntimeError("Analyse CV IA non configurée : variable NOVOSKILL_OPENAI_API_KEY ou OPENAI_API_KEY absente.")
+
+    model = (os.getenv("NOVOSKILL_CV_AI_MODEL") or os.getenv("OPENAI_MODEL") or "gpt-4o-mini").strip()
+    payload = {
+        "model": model,
+        "temperature": 0.2,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": _cv_ai_system_prompt()},
+            {"role": "user", "content": _cv_ai_user_prompt(cv_text, poste_payload, projet_professionnel)},
+        ],
+    }
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"Analyse CV IA impossible : {detail or exc}")
+    except Exception as exc:
+        raise RuntimeError(f"Analyse CV IA impossible : {exc}")
+
+    data = json.loads(raw)
+    content = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+    if not content:
+        raise RuntimeError("Analyse CV IA vide.")
+    try:
+        return json.loads(content)
+    except Exception as exc:
+        raise RuntimeError(f"Analyse CV IA non JSON : {exc}")
+
+
+def _normalize_cv_ai_result(ai: Dict[str, Any], poste_payload: Dict[str, Any]) -> Dict[str, Any]:
+    expected = {str(c.get("id_comp") or ""): c for c in poste_payload.get("competences_attendues") or []}
+    matching = []
+    competences_cv = []
+    besoins = []
+
+    for item in ai.get("matching_poste") or []:
+        cid = str(item.get("id_comp") or "").strip()
+        if not cid or cid not in expected:
+            continue
+        exp = expected[cid]
+        niveau_estime = _level_label(item.get("niveau_estime"))
+        niveau_requis = _level_label(exp.get("niveau_requis"))
+        couverture = max(0, min(100, _safe_int(item.get("couverture_pct"), 0)))
+        row = {
+            "id_comp": cid,
+            "code": exp.get("code") or item.get("code") or "",
+            "intitule": exp.get("intitule") or item.get("intitule") or "Compétence",
+            "niveau_requis": niveau_requis,
+            "niveau_estime": niveau_estime if niveau_estime != "—" else None,
+            "couverture_pct": couverture,
+            "preuve_cv": str(item.get("preuve_cv") or item.get("preuve") or "").strip(),
+            "confiance": max(0.0, min(1.0, _safe_float(item.get("confiance"), 0.0))),
+            "ecart": str(item.get("ecart") or "").strip(),
+            "besoin": bool(item.get("besoin")) or couverture < 100 or niveau_estime == "—",
+            "criticite": _safe_int(exp.get("criticite"), 0),
+        }
+        matching.append(row)
+        if row["niveau_estime"]:
+            competences_cv.append({
+                "id_comp": cid,
+                "code": row["code"],
+                "intitule": row["intitule"],
+                "niveau_estime": row["niveau_estime"],
+                "preuve_cv": row["preuve_cv"],
+                "confiance": row["confiance"],
+            })
+        if row["besoin"]:
+            besoins.append({
+                "id_comp": cid,
+                "code": row["code"],
+                "intitule": row["intitule"],
+                "niveau_requis": niveau_requis,
+                "niveau_estime": row["niveau_estime"],
+                "couverture_pct": couverture,
+                "ecart": row["ecart"],
+                "criticite": row["criticite"],
+            })
+
+    matching.sort(key=lambda x: (-_safe_int(x.get("criticite"), 0), _safe_int(x.get("couverture_pct"), 0), str(x.get("intitule") or "")))
+    besoins.sort(key=lambda x: (-_safe_int(x.get("criticite"), 0), _safe_int(x.get("couverture_pct"), 0), str(x.get("intitule") or "")))
+
+    return {
+        "nom_candidat": str(ai.get("nom_candidat") or "Candidat CV").strip() or "Candidat CV",
+        "resume_profil": str(ai.get("resume_profil") or "").strip(),
+        "adequation_pct": max(0, min(100, _safe_int(ai.get("adequation_pct"), 0))),
+        "experiences_retenues": ai.get("experiences_retenues") if isinstance(ai.get("experiences_retenues"), list) else [],
+        "formations_retenues": ai.get("formations_retenues") if isinstance(ai.get("formations_retenues"), list) else [],
+        "competences_detectees": ai.get("competences_detectees") if isinstance(ai.get("competences_detectees"), list) else [],
+        "matching_poste": matching,
+        "competences_cv": competences_cv,
+        "besoins_generes": besoins,
+        "points_favorables": ai.get("points_favorables") if isinstance(ai.get("points_favorables"), list) else [],
+        "points_vigilance": ai.get("points_vigilance") if isinstance(ai.get("points_vigilance"), list) else [],
+        "questions_entretien": ai.get("questions_entretien") if isinstance(ai.get("questions_entretien"), list) else [],
+        "lecture_recruteur": str(ai.get("lecture_recruteur") or "").strip(),
+    }
+
+
+def analyser_cv_recrutement_payload(
+    cur,
+    id_ent: str,
+    id_contact: str,
+    scope: Any,
+    id_poste: str,
+    filename: str,
+    content_type: str,
+    file_bytes: bytes,
+    projet_professionnel: str,
+    criticite_min: int,
+) -> Dict[str, Any]:
+    id_service = getattr(scope, "id_service", None)
+    dataset = _fetch_simulation_dataset(cur, id_ent, id_service, int(criticite_min))
+    poste_payload = _simulation_poste_payload(dataset, id_poste)
+    if not poste_payload.get("id_poste"):
+        raise RuntimeError("Poste cible introuvable pour l'analyse CV.")
+    if not poste_payload.get("competences_attendues"):
+        raise RuntimeError("Le poste cible ne contient pas de compétences attendues sur le seuil de criticité retenu.")
+
+    cv_text = _extract_cv_text(filename, content_type, file_bytes)
+    if len(cv_text.strip()) < 120:
+        raise RuntimeError("Le texte extrait du CV est insuffisant pour une analyse fiable.")
+
+    ai_raw = _call_cv_ai(cv_text, poste_payload, projet_professionnel)
+    normalized = _normalize_cv_ai_result(ai_raw, poste_payload)
+    analyse_id = str(uuid.uuid4())
+
+    analyse_json = {
+        "poste_cible": poste_payload,
+        "analyse": normalized,
+        "ai_raw": ai_raw,
+        "criticite_min": int(criticite_min),
+        "scope": scope.dict() if hasattr(scope, "dict") else dict(scope or {}),
+    }
+
+    cur.execute(
+        """
+        INSERT INTO public.tbl_insights_simulation_cv_analyse (
+            id_analyse_cv,
+            id_ent,
+            id_contact,
+            id_poste,
+            id_service,
+            nom_fichier,
+            content_type,
+            nom_candidat,
+            texte_cv,
+            projet_professionnel,
+            analyse_json,
+            competences_cv_json,
+            besoins_json,
+            statut_analyse,
+            created_at,
+            updated_at,
+            archive
+        )
+        VALUES (
+            %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s,
+            %s::jsonb, %s::jsonb, %s::jsonb,
+            'analysee', NOW(), NOW(), FALSE
+        )
+        """,
+        (
+            analyse_id,
+            id_ent,
+            id_contact,
+            id_poste,
+            id_service,
+            filename or "",
+            content_type or "",
+            normalized.get("nom_candidat") or "Candidat CV",
+            cv_text[:50000],
+            projet_professionnel or "",
+            json.dumps(analyse_json, ensure_ascii=False),
+            json.dumps(normalized.get("competences_cv") or [], ensure_ascii=False),
+            json.dumps(normalized.get("besoins_generes") or [], ensure_ascii=False),
+        ),
+    )
+
+    return {
+        "id_analyse_cv": analyse_id,
+        "id_poste": id_poste,
+        "nom_candidat": normalized.get("nom_candidat") or "Candidat CV",
+        "resume_profil": normalized.get("resume_profil") or "",
+        "adequation_pct": normalized.get("adequation_pct") or 0,
+        "competences_cv": normalized.get("competences_cv") or [],
+        "besoins_generes": normalized.get("besoins_generes") or [],
+        "matching_poste": normalized.get("matching_poste") or [],
+        "points_favorables": normalized.get("points_favorables") or [],
+        "points_vigilance": normalized.get("points_vigilance") or [],
+        "questions_entretien": normalized.get("questions_entretien") or [],
+        "lecture_recruteur": normalized.get("lecture_recruteur") or "",
+        "updated_at": _now_iso(),
+    }
+
 
 
 def build_simulation_options_payload(cur, id_ent: str, scope: Any, criticite_min: int) -> Dict[str, Any]:

@@ -12,6 +12,7 @@
   let _selectedBrick = "mobilite_effectif";
   let _scenario = [];
   let _lastResult = null;
+  let _lastCvAnalysis = null;
   let _context = null;
 
   const STORE_COMPARE = "sb_simulations_rh_compare_v3";
@@ -36,7 +37,7 @@
     },
     renfort_poste: {
       title: "Ajouter un renfort",
-      short: "Tester un recrutement ou un profil virtuel sur un poste.",
+      short: "Tester un relais interne, un profil virtuel ou un CV candidat.",
       icon: "+",
       group: "immediate",
       temporalite: "immediate",
@@ -174,7 +175,9 @@
 
   function brickKind(b) {
     if (!b) return "Action";
-    if (b.type === "recrutement_virtuel") return "Renfort";
+    if (b.type === "recrutement_virtuel") return "Profil virtuel";
+    if (b.type === "recrutement_cv") return "Analyse CV";
+    if (b.type === "relais_interne") return "Relais interne";
     if (b.type === "absence_effectif") return "Absence longue";
     if (b.type === "depart_effectif") return "Départ";
     if (b.type === "transfert_charge") return "Charge transférée";
@@ -195,7 +198,13 @@
       return `${compShort(comp)} · ${posteShort(source)} → ${posteShort(target)}`;
     }
     if (b.type === "recrutement_virtuel") {
-      return `Renfort · ${posteShort(target)}`;
+      return `Profil virtuel · ${posteShort(target)}`;
+    }
+    if (b.type === "recrutement_cv") {
+      return `${b.candidat_nom || "Candidat CV"} · ${posteShort(target)}`;
+    }
+    if (b.type === "relais_interne") {
+      return `${person} · relais ${posteShort(target)}`;
     }
     if (b.type === "absence_effectif") {
       return `${person} · ${b.duree_libelle || "durée à confirmer"}`;
@@ -385,6 +394,36 @@
     return (_options.effectifs || []).filter(e => String(e.id_poste_actuel || "").trim() === pid);
   }
 
+  function relaisCandidatesForPoste(posteId) {
+    const pid = String(posteId || "").trim();
+    const recs = recommendationsForPoste(pid);
+    const byId = new Map();
+    recs.forEach(r => {
+      const eid = String(r.id_effectif || "").trim();
+      if (!eid) return;
+      byId.set(eid, {
+        ...r,
+        id_effectif: eid,
+        nom_complet: r.nom_complet || "Collaborateur",
+        intitule_poste: r.poste_actuel || "",
+        nom_service: r.nom_service || "",
+        _score: Number(r.score_pct || 0),
+      });
+    });
+    (_options.effectifs || []).forEach(e => {
+      const eid = String(e.id_effectif || "").trim();
+      if (!eid || String(e.id_poste_actuel || "").trim() === pid || byId.has(eid)) return;
+      byId.set(eid, { ...e, _score: 0 });
+    });
+    return Array.from(byId.values()).sort((a, b) => Number(b._score || 0) - Number(a._score || 0) || String(a.nom_complet || "").localeCompare(String(b.nom_complet || "")));
+  }
+
+  function relaisCandidateLabel(e) {
+    const score = Number(e._score || e.score_pct || 0);
+    const poste = (e.intitule_poste || e.poste_actuel || "").trim();
+    return `${e.nom_complet || "Collaborateur"}${score ? " · " + score + "%" : ""}${poste ? " — " + poste : ""}`;
+  }
+
   function renderPostePicker() {
     const title = byId("simFocusPosteTitle");
     if (title) title.textContent = _context ? "Poste de départ - Issu de l’analyse" : "Poste de départ";
@@ -515,13 +554,61 @@
     const intro = `<div class="sim-brick-editor-title"><span>${esc(brick.icon || "•")}</span><strong>${esc(brick.title)}</strong></div>`;
 
     if (_selectedBrick === "renfort_poste") {
+      const relais = relaisCandidatesForPoste(_selectedPosteId);
+      _lastCvAnalysis = null;
       root.innerHTML = `
         ${intro}
-        <div class="sim-form-grid"><div class="info-item"><div class="label">Poste à renforcer</div><select id="simBrickPoste" class="sb-select"></select></div></div>
-        <div class="card-sub sim2-muted-top">Le moteur ajoute un profil virtuel couvrant les compétences attendues du poste. Le résultat sert à voir si un renfort règle le problème ou déplace seulement le risque.</div>
+        <div class="sim-form-grid">
+          <div class="info-item"><div class="label">Mode de renfort</div><select id="simBrickRenfortMode" class="sb-select"><option value="relais_interne">Relais interne</option><option value="recrutement_virtuel">Recrutement · profil virtuel</option><option value="analyse_cv">Recrutement · analyse CV</option></select></div>
+          <div class="info-item"><div class="label">Poste à renforcer</div><select id="simBrickPoste" class="sb-select"></select></div>
+        </div>
+
+        <div id="simRenfortRelaisPanel" class="sim-renfort-mode-panel">
+          <div class="sim-form-grid">
+            <div class="info-item sb-span-2"><div class="label">Relais interne proposé</div><select id="simBrickEffectif" class="sb-select"></select></div>
+          </div>
+          <div class="card-sub sim2-muted-top">Les personnes sont proposées dans l’ordre des meilleurs profils disponibles pour ce poste. Le moteur projette le relais sur les compétences dépendantes.</div>
+        </div>
+
+        <div id="simRenfortVirtuelPanel" class="sim-renfort-mode-panel" style="display:none;">
+          <div class="card-sub sim2-muted-top">Le moteur ajoute un profil virtuel couvrant les compétences attendues du poste. Utile pour comparer avec un relais interne.</div>
+        </div>
+
+        <div id="simRenfortCvPanel" class="sim-renfort-mode-panel" style="display:none;">
+          <div class="sim-form-grid">
+            <div class="info-item"><div class="label">CV candidat</div><input type="file" id="simBrickCvFile" class="sb-input" accept=".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"></div>
+            <div class="info-item"><div class="label">Projet professionnel / contexte candidat</div><textarea id="simBrickCvProjet" class="sb-input" rows="3" placeholder="Optionnel : projet professionnel, motivation, éléments transmis par le candidat..."></textarea></div>
+          </div>
+          <div class="sb-actions" style="margin-top:10px;">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimAnalyseCv">Analyser le CV</button>
+          </div>
+          <div id="simCvAnalysisPreview" class="sim-empty-state" style="margin-top:10px;">Analysez le CV avant d’ajouter le candidat au scénario.</div>
+        </div>
       `;
       fillSelect(byId("simBrickPoste"), posteOptions, "id_poste", posteLabel, "Choisir un poste…");
       if (byId("simBrickPoste")) byId("simBrickPoste").value = _selectedPosteId || "";
+      fillSelect(byId("simBrickEffectif"), relais, "id_effectif", relaisCandidateLabel, relais.length ? "Choisir un relais interne…" : "Aucun relais proposé…");
+
+      const modeSel = byId("simBrickRenfortMode");
+      const syncRenfortMode = () => {
+        const mode = modeSel?.value || "relais_interne";
+        const panels = {
+          relais_interne: byId("simRenfortRelaisPanel"),
+          recrutement_virtuel: byId("simRenfortVirtuelPanel"),
+          analyse_cv: byId("simRenfortCvPanel"),
+        };
+        Object.entries(panels).forEach(([key, el]) => { if (el) el.style.display = key === mode ? "" : "none"; });
+      };
+      modeSel?.addEventListener("change", syncRenfortMode);
+      byId("simBrickPoste")?.addEventListener("change", () => {
+        const pid = byId("simBrickPoste")?.value || _selectedPosteId || "";
+        fillSelect(byId("simBrickEffectif"), relaisCandidatesForPoste(pid), "id_effectif", relaisCandidateLabel, "Choisir un relais interne…");
+        _lastCvAnalysis = null;
+        const preview = byId("simCvAnalysisPreview");
+        if (preview) preview.innerHTML = "Analysez le CV avant d’ajouter le candidat au scénario.";
+      });
+      byId("btnSimAnalyseCv")?.addEventListener("click", analyseCvForRenfort);
+      syncRenfortMode();
       return;
     }
 
@@ -613,6 +700,54 @@
     if (byId("simBrickPoste")) byId("simBrickPoste").value = (p?.id_poste || _selectedPosteId || "");
   }
 
+
+  async function analyseCvForRenfort() {
+    const posteId = byId("simBrickPoste")?.value || _selectedPosteId || "";
+    const file = byId("simBrickCvFile")?.files?.[0] || null;
+    const preview = byId("simCvAnalysisPreview");
+    if (!posteId) return setStatus("Choisissez le poste à renforcer avant l’analyse CV.", "error");
+    if (!file) return setStatus("Choisissez un CV à analyser.", "error");
+
+    const fd = new FormData();
+    fd.append("id_poste", posteId);
+    fd.append("projet_professionnel", byId("simBrickCvProjet")?.value || "");
+    fd.append("cv_file", file);
+
+    if (preview) preview.innerHTML = "Analyse IA du CV en cours…";
+    setStatus("Analyse IA du CV en cours…");
+    try {
+      const data = await _portal.apiJson(apiUrl(`/skills/simulations/analyse-cv/${encodeURIComponent(_portal.contactId)}`, {
+        id_service: getServiceId(),
+        criticite_min: getCriticiteMin(),
+      }), {
+        method: "POST",
+        body: fd,
+      });
+      _lastCvAnalysis = data || null;
+      const needs = Array.isArray(data?.besoins_generes) ? data.besoins_generes : [];
+      if (preview) {
+        preview.innerHTML = `
+          <div class="sim-lego-person-card is-best">
+            <div class="sim-lego-person-main">
+              <div class="sim-lego-person-title">${esc(data?.nom_candidat || "Candidat CV")}</div>
+              <div class="card-sub" style="margin-top:2px;">Adéquation estimée : ${esc(data?.adequation_pct || 0)}% · ${esc(needs.length)} besoin${needs.length > 1 ? "s" : ""} détecté${needs.length > 1 ? "s" : ""}</div>
+              <div class="sim-lego-person-gaps">
+                ${needs.slice(0, 4).map(n => `<span>${esc(n.code || n.intitule || "Compétence")}</span>`).join("")}
+              </div>
+            </div>
+            <div class="sim-lego-person-score"><span class="sb-badge sb-badge--success">CV analysé</span></div>
+          </div>
+          ${(data?.points_vigilance || []).length ? `<div class="card-sub sim2-muted-top">À vérifier : ${esc((data.points_vigilance || []).slice(0, 2).join(" · "))}</div>` : ""}
+        `;
+      }
+      setStatus("Analyse CV prête à ajouter au scénario.");
+    } catch (e) {
+      _lastCvAnalysis = null;
+      if (preview) preview.innerHTML = `<div class="sim-empty-state">Analyse CV impossible : ${esc(errMsg(e))}</div>`;
+      setStatus(errMsg(e), "error");
+    }
+  }
+
   function addBrick(payload) {
     const item = { id: `brick_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, ...payload };
     _scenario.push(item);
@@ -631,8 +766,39 @@
     const absenceDurationLabel = byId("simBrickAbsenceDuration")?.selectedOptions?.[0]?.textContent || "3 mois";
 
     if (_selectedBrick === "renfort_poste") {
+      const mode = byId("simBrickRenfortMode")?.value || "relais_interne";
       if (!posteId) return setStatus("Choisissez un poste à renforcer.", "error");
-      return addBrick({ type: "recrutement_virtuel", id_poste: posteId, id_poste_cible: posteId, temporalite: "immediate", libelle: `Ajouter un renfort sur ${posteLabel(posteById(posteId))}` });
+
+      if (mode === "relais_interne") {
+        if (!effId) return setStatus("Choisissez le relais interne à tester.", "error");
+        return addBrick({
+          type: "relais_interne",
+          id_effectif: effId,
+          id_poste: posteId,
+          id_poste_cible: posteId,
+          temporalite: "development",
+          libelle: `Créer un relais interne avec ${effectifById(effId)?.nom_complet || "un collaborateur"} sur ${posteLabel(posteById(posteId))}`
+        });
+      }
+
+      if (mode === "analyse_cv") {
+        if (!_lastCvAnalysis || String(_lastCvAnalysis.id_poste || "") !== String(posteId || "")) {
+          return setStatus("Analysez le CV avant d’ajouter ce renfort au scénario.", "error");
+        }
+        return addBrick({
+          type: "recrutement_cv",
+          id_poste: posteId,
+          id_poste_cible: posteId,
+          id_analyse_cv: _lastCvAnalysis.id_analyse_cv || null,
+          candidat_nom: _lastCvAnalysis.nom_candidat || "Candidat CV",
+          competences_cv: _lastCvAnalysis.competences_cv || [],
+          analyse_cv_json: _lastCvAnalysis,
+          temporalite: "immediate",
+          libelle: `Tester le recrutement de ${_lastCvAnalysis.nom_candidat || "candidat CV"} sur ${posteLabel(posteById(posteId))}`
+        });
+      }
+
+      return addBrick({ type: "recrutement_virtuel", id_poste: posteId, id_poste_cible: posteId, temporalite: "immediate", libelle: `Ajouter un profil virtuel sur ${posteLabel(posteById(posteId))}` });
     }
 
     if (_selectedBrick === "depart_effectif") {
@@ -683,7 +849,7 @@
       return;
     }
     root.innerHTML = _scenario.map((b, idx) => {
-      const key = b.type === "recrutement_virtuel" ? "renfort_poste" : (b.type === "absence_effectif" || b.type === "depart_effectif" ? "depart_effectif" : b.type);
+      const key = (b.type === "recrutement_virtuel" || b.type === "recrutement_cv" || b.type === "relais_interne") ? "renfort_poste" : (b.type === "absence_effectif" || b.type === "depart_effectif" ? "depart_effectif" : b.type);
       const meta = BRICKS[key] || BRICKS.mobilite_effectif;
       return `
         <div class="sim-lego-scenario-brick ${b.temporalite === "development" ? "is-dev" : ""}">
@@ -733,6 +899,10 @@
         niveau_simule: b.niveau_simule || null,
         libelle: b.libelle || null,
         temporalite: b.temporalite || null,
+        id_analyse_cv: b.id_analyse_cv || null,
+        candidat_nom: b.candidat_nom || null,
+        competences_cv: b.competences_cv || null,
+        analyse_cv_json: b.analyse_cv_json || null,
       })),
     };
   }
@@ -952,7 +1122,7 @@
     const imImpact = immediat.impact || {};
     const prImpact = projete.impact || result.impact || {};
     const needs = result?.developpement?.besoins_formation || [];
-    const hasProjected = needs.length > 0 || _scenario.some(b => ["montee_competence", "projection_competence"].includes((b?.type || "").toString()));
+    const hasProjected = needs.length > 0 || _scenario.some(b => ["montee_competence", "projection_competence", "renforcer_titulaire", "relais_interne", "recrutement_cv"].includes((b?.type || "").toString()));
     const finalSummary = hasProjected ? prSummary : imSummary;
     const finalImpact = hasProjected ? prImpact : imImpact;
     const finalDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
