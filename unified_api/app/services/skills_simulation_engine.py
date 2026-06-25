@@ -1156,6 +1156,20 @@ def _build_development_needs(req: SimulationEvalRequest, dataset: Dict[str, Any]
                 add_need(eid, pid, cid, h.niveau_simule or "C", "projection")
             continue
 
+        if ht == "renforcer_titulaire":
+            pid = str(h.id_poste_cible or h.id_poste or "").strip()
+            if not pid and eid in effectifs:
+                pid = str(effectifs[eid].get("id_poste_actuel") or "").strip()
+            if not eid or not pid:
+                continue
+            for r in reqs_by_poste.get(pid) or []:
+                cid = str(r.get("id_comp") or "").strip()
+                pct, _rank, _status = _skill_score_for_matching(skills_by_effectif.get(eid, {}).get(cid), r.get("niveau_requis"))
+                if pct >= 100:
+                    continue
+                add_need(eid, pid, cid, r.get("niveau_requis"), "titulaire", r)
+            continue
+
         if ht not in ("mobilite_effectif", "tester_correspondance_profil_poste"):
             continue
 
@@ -1343,7 +1357,14 @@ def _projected_skill_poste_ids(req: SimulationEvalRequest, dataset: Dict[str, An
             reqs_by_comp.setdefault(cid, set()).add(pid)
 
     for h in req.hypotheses or []:
-        if str(h.type or "").strip() not in ("montee_competence", "formation_ciblee", "transmission_interne"):
+        h_type = str(h.type or "").strip()
+        if h_type == "renforcer_titulaire":
+            if h.id_poste:
+                ids.add(str(h.id_poste))
+            if h.id_poste_cible:
+                ids.add(str(h.id_poste_cible))
+            continue
+        if h_type not in ("montee_competence", "formation_ciblee", "transmission_interne"):
             continue
         if h.id_poste:
             ids.add(str(h.id_poste))

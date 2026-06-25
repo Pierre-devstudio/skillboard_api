@@ -48,6 +48,13 @@
       group: "immediate",
       temporalite: "immediate",
     },
+    renforcer_titulaire: {
+      title: "Renforcer le titulaire",
+      short: "Projeter la mise à niveau du titulaire sur les compétences attendues du poste.",
+      icon: "⇡",
+      group: "projected",
+      temporalite: "development",
+    },
     montee_competence: {
       title: "Projeter une compétence",
       short: "Mesurer l’impact si un niveau cible est atteint.",
@@ -171,6 +178,7 @@
     if (b.type === "absence_effectif") return "Absence longue";
     if (b.type === "depart_effectif") return "Départ";
     if (b.type === "transfert_charge") return "Charge transférée";
+    if (b.type === "renforcer_titulaire") return "Renforcement titulaire";
     if (b.type === "montee_competence") return "Compétence projetée";
     return "Déplacement";
   }
@@ -194,6 +202,9 @@
     }
     if (b.type === "depart_effectif") {
       return person;
+    }
+    if (b.type === "renforcer_titulaire") {
+      return `${person} · mise à niveau ${posteShort(target)}`;
     }
     if (b.type === "montee_competence") {
       return `${person} · ${compShort(comp)} → ${levelLabel(b.niveau_simule)}`;
@@ -367,6 +378,11 @@
       seen.add(k);
       return true;
     });
+  }
+
+  function titulairesForPoste(posteId) {
+    const pid = String(posteId || "").trim();
+    return (_options.effectifs || []).filter(e => String(e.id_poste_actuel || "").trim() === pid);
   }
 
   function renderPostePicker() {
@@ -554,6 +570,21 @@
       return;
     }
 
+    if (_selectedBrick === "renforcer_titulaire") {
+      const titulaires = titulairesForPoste(_selectedPosteId);
+      root.innerHTML = `
+        ${intro}
+        <div class="sim-form-grid">
+          <div class="info-item"><div class="label">Titulaire concerné</div><select id="simBrickEffectif" class="sb-select"></select></div>
+          <div class="info-item"><div class="label">Poste</div><input type="text" class="sb-input" value="${esc(posteTitle(p))}" disabled></div>
+          <div class="info-item"><div class="label">Niveau visé</div><input type="text" class="sb-input" value="Niveau attendu du poste" disabled></div>
+        </div>
+        <div class="card-sub sim2-muted-top">Cette brique projette la mise à niveau du titulaire sur les compétences du poste où le niveau attendu n’est pas atteint.</div>
+      `;
+      fillSelect(byId("simBrickEffectif"), titulaires.length ? titulaires : effectifs, "id_effectif", effectifLabel, titulaires.length ? "Choisir un titulaire…" : "Choisir une personne…");
+      return;
+    }
+
     if (_selectedBrick === "montee_competence") {
       root.innerHTML = `
         ${intro}
@@ -621,6 +652,18 @@
       if (!sourcePosteId || !posteId || !compId) return setStatus("Choisissez le poste source, le poste cible et la charge transférée.", "error");
       if (sourcePosteId === posteId) return setStatus("Le poste source et le poste cible doivent être différents.", "error");
       return addBrick({ type: "transfert_charge", id_poste: sourcePosteId, id_poste_cible: posteId, id_comp: compId, temporalite: "immediate", libelle: `Transférer ${compLabel(compById(compId))} de ${posteLabel(posteById(sourcePosteId))} vers ${posteLabel(posteById(posteId))}` });
+    }
+
+    if (_selectedBrick === "renforcer_titulaire") {
+      if (!effId) return setStatus("Choisissez le titulaire à renforcer.", "error");
+      return addBrick({
+        type: "renforcer_titulaire",
+        id_effectif: effId,
+        id_poste: _selectedPosteId,
+        id_poste_cible: _selectedPosteId,
+        temporalite: "development",
+        libelle: `Renforcer ${effectifById(effId)?.nom_complet || "titulaire"} sur ${posteLabel(posteById(_selectedPosteId))}`
+      });
     }
 
     if (_selectedBrick === "montee_competence") {
