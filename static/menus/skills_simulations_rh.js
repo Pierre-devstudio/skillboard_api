@@ -283,8 +283,15 @@
   }
 
   function renderRecommendations() {
+    const card = byId("simRecommendationsCard");
     const root = byId("simRecommendations");
     if (!root) return;
+    if (_selectedBrick !== "mobilite_effectif") {
+      if (card) card.style.display = "none";
+      root.innerHTML = "";
+      return;
+    }
+    if (card) card.style.display = "";
     const rows = recommendationsForPoste(_selectedPosteId).slice(0, 6);
     if (!rows.length) {
       root.innerHTML = `<div class="sim-empty-state">Aucun profil proche identifié pour ce poste. Vous pouvez tout de même tester un renfort ou une mobilité manuelle.</div>`;
@@ -362,6 +369,7 @@
     root.querySelectorAll("[data-sim-brick]").forEach(btn => btn.addEventListener("click", () => {
       _selectedBrick = btn.getAttribute("data-sim-brick") || "mobilite_effectif";
       renderBuilderFields();
+      renderRecommendations();
       renderPalette();
     }));
   }
@@ -429,7 +437,7 @@
         <div class="sim-form-grid">
           <div class="info-item"><div class="label">Personne concernée</div><select id="simBrickEffectif" class="sb-select"></select></div>
           <div class="info-item"><div class="label">Compétence</div><select id="simBrickCompetence" class="sb-select"></select></div>
-          <div class="info-item"><div class="label">Niveau visé</div><select id="simBrickNiveau" class="sb-select"><option value="B">Intermédiaire</option><option value="C" selected>Avancé</option><option value="D">Expert</option></select></div>
+          <div class="info-item"><div class="label">Niveau visé</div><select id="simBrickNiveau" class="sb-select"><option value="A">Débutant</option><option value="B">Intermédiaire</option><option value="C" selected>Avancé</option><option value="D">Expert</option></select></div>
         </div>
         <div class="card-sub sim2-muted-top">Cette brique projette l’état si le niveau cible est atteint. Le besoin réel se traite ensuite dans Besoins & formations / Studio / Learn.</div>
       `;
