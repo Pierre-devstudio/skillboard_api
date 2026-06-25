@@ -291,6 +291,11 @@
       .sim-cv-upload-copy em{font-style:normal;font-size:12px;color:var(--sb-gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
       .sim-cv-file-input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
       .sim-cv-analysis-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+      .sim-cv-loading-state{display:flex;align-items:center;gap:10px;color:var(--sb-gray-700);font-size:13px;}
+      .sim-cv-loading-ring{width:22px;height:22px;border-radius:50%;border:3px solid #e5e7eb;border-top-color:var(--accent);animation:simCvSpin .85s linear infinite;flex:0 0 auto;}
+      .sim-cv-error-title{font-weight:700;color:var(--sb-gray-900);margin-bottom:4px;}
+      .sim-cv-error-text{font-size:13px;line-height:1.45;color:var(--sb-gray-700);}
+      @keyframes simCvSpin{to{transform:rotate(360deg);}}
       .sim-cv-modal-title-stack{display:flex;flex-direction:column;gap:4px;min-width:0;}
       .sim-cv-modal-title-line,.sim-cv-modal-title-sub{display:flex;align-items:center;gap:8px;min-width:0;}
       .sim-cv-modal-title-line span:first-child,.sim-cv-modal-title-sub span:last-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -930,6 +935,58 @@
   }
 
 
+  function cvAnalysisLoadingHtml() {
+    return `
+      <div class="sim-empty-state">
+        <div class="sim-cv-loading-state">
+          <span class="sim-cv-loading-ring" aria-hidden="true"></span>
+          <span>Analyse IA du CV en cours…</span>
+        </div>
+      </div>`;
+  }
+
+  function cvAnalysisReadableError(e) {
+    let msg = errMsg(e);
+    try {
+      const parsed = typeof msg === "string" && msg.trim().startsWith("{") ? JSON.parse(msg) : null;
+      if (parsed?.detail) msg = typeof parsed.detail === "string" ? parsed.detail : JSON.stringify(parsed.detail);
+    } catch (_) {
+      /* garde le message brut */
+    }
+
+    msg = String(msg || "").trim();
+    msg = msg.replace(/^skills\/simulations\/analyse-cv error:\s*/i, "");
+    msg = msg.replace(/^Analyse CV IA impossible\s*:\s*/i, "");
+
+    const lower = msg.toLowerCase();
+    if (lower.includes("extraction pdf impossible") || lower.includes("pypdf")) {
+      return "Le PDF n’a pas pu être lu automatiquement. Essayez un PDF texte, un DOCX ou un fichier TXT.";
+    }
+    if (lower.includes("extraction docx impossible") || lower.includes("python-docx")) {
+      return "Le document Word n’a pas pu être lu automatiquement. Essayez un DOCX valide ou un fichier TXT.";
+    }
+    if (lower.includes("texte extrait") && lower.includes("insuffisant")) {
+      return "Le fichier a été ouvert, mais le texte récupéré est trop faible pour produire une analyse fiable. Le CV est peut-être scanné comme une image.";
+    }
+    if (lower.includes("cv vide") || lower.includes("illisible")) {
+      return "Le fichier transmis est vide ou illisible. Choisissez un autre CV.";
+    }
+    if (lower.includes("trop volumineux")) {
+      return msg;
+    }
+    if (lower.includes("api key") || lower.includes("non configur")) {
+      return "L’analyse IA n’est pas configurée sur le serveur. La clé API doit être renseignée avant d’utiliser cette fonction.";
+    }
+    if (lower.includes("non json") || lower.includes("json")) {
+      return "L’IA a répondu dans un format inexploitable. Relancez l’analyse ou vérifiez le contenu du CV.";
+    }
+    if (lower.includes("timeout") || lower.includes("timed out")) {
+      return "L’analyse a mis trop de temps à répondre. Réessayez dans quelques instants.";
+    }
+
+    return msg || "Le CV n’a pas pu être analysé. Vérifiez le fichier puis relancez l’analyse.";
+  }
+
   async function analyseCvForRenfort() {
     const posteId = byId("simBrickPoste")?.value || _selectedPosteId || "";
     const file = byId("simBrickCvFile")?.files?.[0] || null;
@@ -944,7 +1001,7 @@
     fd.append("cv_file", file);
     if (motivationFile) fd.append("motivation_file", motivationFile);
 
-    if (preview) preview.innerHTML = "Analyse IA du CV en cours…";
+    if (preview) preview.innerHTML = cvAnalysisLoadingHtml();
     setStatus("Analyse IA du CV en cours…");
     try {
       const data = await _portal.apiJson(apiUrl(`/skills/simulations/analyse-cv/${encodeURIComponent(_portal.contactId)}`, {
@@ -962,13 +1019,9 @@
             <div class="sim-lego-person-main">
               <div class="sim-lego-person-title">${esc(data?.nom_candidat || "Candidat CV")}</div>
               <div class="card-sub" style="margin-top:2px;">Adéquation estimée : ${esc(data?.adequation_pct || 0)}% · ${esc(needs.length)} besoin${needs.length > 1 ? "s" : ""} détecté${needs.length > 1 ? "s" : ""}</div>
-              <div class="sim-lego-person-gaps">
-                ${needs.slice(0, 4).map(n => `<span>${esc(n.code || n.intitule || "Compétence")}</span>`).join("")}
-              </div>
             </div>
             <div class="sim-lego-person-score">
               <span class="sb-badge sb-badge--success">CV analysé</span>
-              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-cv-view-analysis>Voir l’analyse</button>
             </div>
           </div>
           ${(data?.points_vigilance || []).length ? `<div class="card-sub sim2-muted-top">À vérifier : ${esc((data.points_vigilance || []).slice(0, 2).join(" · "))}</div>` : ""}
@@ -976,13 +1029,20 @@
             <button type="button" class="sb-btn sb-btn--soft" data-sim-cv-view-analysis>Voir l’analyse complète</button>
           </div>
         `;
-        preview.querySelectorAll("[data-sim-cv-view-analysis]").forEach(btn => btn.addEventListener("click", () => openCvAnalysisModal(_lastCvAnalysis)));
+        preview.querySelector("[data-sim-cv-view-analysis]")?.addEventListener("click", () => openCvAnalysisModal(_lastCvAnalysis));
       }
       setStatus("Analyse CV prête à ajouter au scénario.");
     } catch (e) {
       _lastCvAnalysis = null;
-      if (preview) preview.innerHTML = `<div class="sim-empty-state">Analyse CV impossible : ${esc(errMsg(e))}</div>`;
-      setStatus(errMsg(e), "error");
+      const readable = cvAnalysisReadableError(e);
+      if (preview) {
+        preview.innerHTML = `
+          <div class="sim-empty-state">
+            <div class="sim-cv-error-title">CV non analysé</div>
+            <div class="sim-cv-error-text">${esc(readable)}</div>
+          </div>`;
+      }
+      setStatus(readable, "error");
     }
   }
 
