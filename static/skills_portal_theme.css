@@ -8439,9 +8439,14 @@ body{
   padding:10px 12px;
   background:#fff;
 }
-.analyse-formation-need-card{
-  border-left:4px solid var(--reading-accent);
-  background:color-mix(in srgb, var(--reading-accent) 4%, #ffffff);
+.analyse-competence-reading-card{
+  border-left:4px solid var(--sb-gray-300);
+  background:#ffffff;
+}
+
+#view-besoins-formations .bf-person-card--focus{
+  border-color:color-mix(in srgb, var(--accent) 62%, var(--sb-gray-200));
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .10);
 }
 @media (max-width: 1100px){
   .sim-lego-grid-main{ grid-template-columns:1fr; }

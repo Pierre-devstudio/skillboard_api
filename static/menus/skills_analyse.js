@@ -36,6 +36,7 @@
   const STORE_POSTES_SCOPE_EXPANDED = "sb_analyse_postes_scope_expanded";
   const STORE_RISK_DETAIL_EXPANDED = "sb_analyse_risk_detail_expanded";
   const STORE_SIM_ORG_CONTEXT = "sb_simulations_rh_context_v1";
+  const STORE_BF_FOCUS = "sb_bf_focus_v1";
   const CRITICITE_MIN_DEFAULT = 70;
   const POSTES_SCOPE_PREVIEW_LIMIT = 10;
   const PREV_TABLE_PREVIEW_LIMIT = 10;
@@ -1058,7 +1059,19 @@
     window.location.hash = "#simulations-rh";
   }
 
-  function openBesoinsFormations() {
+  function openBesoinsFormations(focusPayload) {
+    const focus = focusPayload && typeof focusPayload === "object" ? {
+      id: `analyse_bf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      created_at: new Date().toISOString(),
+      source: "analyse_competences",
+      source_label: "Analyse des compétences",
+      scope_label: getScopeLabel(),
+      criticite_min: getCriticiteMinSafe(CRITICITE_MIN_DEFAULT),
+      ...focusPayload,
+    } : null;
+    try {
+      if (focus) localStorage.setItem(STORE_BF_FOCUS, JSON.stringify(focus));
+    } catch (_) {}
     try {
       if (_portalref && typeof _portalref.switchView === "function") {
         _portalref.switchView("besoins-formations");
@@ -2732,6 +2745,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
 
           <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnMatchPersonOpenBesoins" style="display:none;">Voir les besoins de formation</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnMatchPersonUseInSimulation" style="display:none;">Tester cette mobilité en Simulation RH</button>
             <button type="button" class="btn-secondary" id="btnMatchPersonModalClose">Fermer</button>
           </div>
@@ -2791,6 +2805,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
 
     configureActionButton("btnMatchPersonUseInSimulation", null);
+    configureActionButton("btnMatchPersonOpenBesoins", null);
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
@@ -3220,19 +3235,44 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
     `;
 
+    const effectifIdForAction = String(person.id_effectif || person.id_collaborateur || person.id || "").trim();
+    const posteIdForAction = String(poste.id_poste || poste.id || "").trim();
+    const needsCount = items.filter((it) => {
+      const etat = String(it?.etat || "").trim().toLowerCase();
+      if (!etat) return false;
+      return !["ok", "valid", "valide", "validé"].includes(etat);
+    }).length;
+
     const matchSimulationPayload = !isTit ? {
       type: "matching_candidat",
       title: `Mobilité à tester · ${String(personLabel || "Profil")} vers ${String(posteLabel || "Poste")}`,
-      poste_id: String(poste.id_poste || poste.id || "").trim(),
+      poste_id: posteIdForAction,
       poste_label: posteLabel,
-      effectif_id: String(person.id_effectif || person.id_collaborateur || person.id || "").trim(),
+      effectif_id: effectifIdForAction,
       effectif_label: personLabel,
       reason: "Matching candidat : tester une mobilité interne, l'effet sur le poste cible et l'effet domino sur le poste d'origine.",
       suggested_brick: "mobilite_effectif",
     } : null;
 
+    const titularTrainingPayload = (isTit && effectifIdForAction && needsCount > 0) ? {
+      type: "matching_titulaire",
+      focus: "effectif",
+      id_effectif: effectifIdForAction,
+      effectif_id: effectifIdForAction,
+      effectif_label: personLabel,
+      id_poste: posteIdForAction,
+      poste_id: posteIdForAction,
+      poste_label: posteLabel,
+      message: `${needsCount} compétence${needsCount > 1 ? "s" : ""} à renforcer sur le poste actuel.`,
+    } : null;
+
     configureActionButton("btnMatchPersonUseInSimulation", matchSimulationPayload, (payload) => {
       openSimulationsRhContext(payload);
+      closeMatchPersonModal();
+    });
+
+    configureActionButton("btnMatchPersonOpenBesoins", titularTrainingPayload, (payload) => {
+      openBesoinsFormations(payload);
       closeMatchPersonModal();
     });
 
@@ -4443,26 +4483,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
 
 
-      <div class="card analyse-formation-need-card" style="padding:14px;margin-top:12px;">
-        <div class="card-title" style="margin-bottom:6px;">Besoin de montée en compétences</div>
+      <div class="card analyse-competence-reading-card" style="padding:14px;margin-top:12px;">
+        <div class="card-title" style="margin-bottom:6px;">Lecture transversale</div>
         <div class="card-sub" style="margin:0;line-height:1.45;">
-          Une compétence fragile peut générer un besoin individuel de montée en compétences.
-          L’arbitrage et l’envoi au Studio se font dans le menu Besoins & formations.
-        </div>
-        <div class="sb-actions sb-actions--end" style="margin-top:10px;">
-          <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseCompetenceOpenBesoinsFormations">Ouvrir Besoins & formations</button>
+          Cette vue sert à comprendre où la compétence est fragile : postes concernés, porteurs identifiés,
+          couverture disponible et données à confirmer. Les besoins individuels de montée en compétences
+          se traitent depuis l’adéquation titulaire ou le menu Besoins & formations, quand une personne et son poste actuel sont clairement identifiés.
         </div>
       </div>
     `;
-
-    const bCompBesoins = byId("btnAnalyseCompetenceOpenBesoinsFormations");
-    if (bCompBesoins && !bCompBesoins.dataset.bound) {
-      bCompBesoins.dataset.bound = "1";
-      bCompBesoins.addEventListener("click", () => {
-        openBesoinsFormations();
-        closeAnalyseCompetenceModal();
-      });
-    }
   }
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
