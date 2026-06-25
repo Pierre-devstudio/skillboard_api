@@ -234,7 +234,7 @@
     const posteId = ctx.poste_id || ctx.id_poste || ctx.id_poste_cible || "";
     if (posteId) _selectedPosteId = posteId;
     renderAll();
-    setStatus(`Point de départ chargé : ${ctx.title || ctx.poste_label || ctx.effectif_label || "élément d’analyse"}.`);
+    setStatus("");
   }
 
   function recommendationsForPoste(posteId) {
@@ -251,29 +251,10 @@
     });
   }
 
-  function renderContextCard() {
-    const root = byId("simContextCard");
-    if (!root) return;
-    if (!_context) {
-      root.style.display = "none";
-      root.innerHTML = "";
-      return;
-    }
-    root.style.display = "block";
-    root.innerHTML = `
-      <div class="sim-lego-context-head">
-        <div>
-          <div class="card-title">Point de départ issu de l’analyse</div>
-          <div class="card-sub sim2-muted-top">${esc(_context.title || _context.poste_label || _context.effectif_label || "Contexte chargé depuis l’analyse")}</div>
-        </div>
-        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSimClearContext">Retirer</button>
-      </div>
-      ${_context.reason ? `<div class="sim-lego-context-line">${esc(_context.reason)}</div>` : ""}
-    `;
-    byId("btnSimClearContext")?.addEventListener("click", () => { _context = null; renderAll(); });
-  }
-
   function renderPostePicker() {
+    const title = byId("simFocusPosteTitle");
+    if (title) title.textContent = _context ? "Poste de départ - Issu de l’analyse" : "Poste de départ";
+
     const sel = byId("simFocusPosteSelect");
     fillSelect(sel, _options.postes || [], "id_poste", posteLabel, "Choisir un poste…");
     if (sel && _selectedPosteId && Array.from(sel.options).some(o => o.value === _selectedPosteId)) sel.value = _selectedPosteId;
@@ -845,7 +826,6 @@
   }
 
   function renderAll() {
-    renderContextCard();
     renderPostePicker();
     renderRecommendations();
     renderPalette();
