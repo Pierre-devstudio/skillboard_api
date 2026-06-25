@@ -288,6 +288,34 @@
     return ctx;
   }
 
+  function applyContextFilters(ctx) {
+    if (!ctx) return;
+
+    if (ctx.criticite_min !== null && ctx.criticite_min !== undefined && ctx.criticite_min !== "") {
+      setCriticiteMin(ctx.criticite_min);
+    }
+
+    const sel = byId("simServiceSelect");
+    if (!sel) return;
+
+    const raw = (ctx.service_raw || "").toString().trim();
+    const queryId = (ctx.id_service || "").toString().trim();
+    const options = Array.from(sel.options || []);
+
+    if (raw && options.some(o => (o.value || "").toString().trim() === raw)) {
+      sel.value = raw;
+      return;
+    }
+
+    if (queryId && window.portal?.serviceFilter?.toQueryId) {
+      const match = options.find(o => window.portal.serviceFilter.toQueryId(o.value || "") === queryId);
+      if (match) {
+        sel.value = match.value;
+        return;
+      }
+    }
+  }
+
   function applyContext(ctx) {
     if (!ctx) return;
     _context = ctx;
@@ -838,7 +866,7 @@
     const imImpact = immediat.impact || {};
     const prImpact = projete.impact || result.impact || {};
     const needs = result?.developpement?.besoins_formation || [];
-    const hasProjected = JSON.stringify(imSummary) !== JSON.stringify(prSummary) || needs.length > 0 || _scenario.some(b => (b?.type || "") === "projection_competence");
+    const hasProjected = JSON.stringify(imSummary) !== JSON.stringify(prSummary) || needs.length > 0 || _scenario.some(b => ["montee_competence", "projection_competence"].includes((b?.type || "").toString()));
     const finalSummary = hasProjected ? prSummary : imSummary;
     const finalImpact = hasProjected ? prImpact : imImpact;
     const finalDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
@@ -1066,6 +1094,10 @@
     try {
       await populateServices();
       const ctx = consumeContext();
+      if (ctx) {
+        applyContextFilters(ctx);
+        _optionsLoaded = false;
+      }
       await loadOptions(false);
       if (ctx) applyContext(ctx);
     } catch (e) {

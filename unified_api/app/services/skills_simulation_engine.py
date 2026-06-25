@@ -7,6 +7,7 @@ from app.services.skills_analyse_engine import (
     _analyse_fragility_records_analyzed,
     _build_scope_cte,
     _compute_poste_fragility_record,
+    _fetch_postes_fragility_records,
 )
 
 
@@ -1185,6 +1186,90 @@ def _options_payload(dataset: Dict[str, Any]) -> Dict[str, Any]:
 # ======================================================
 # API moteur publique
 # ======================================================
+
+def _clamp_score(v: Any) -> int:
+    return max(0, min(100, _safe_int(v, 0)))
+
+
+def _fetch_current_poste_records_from_analyse_engine(cur, id_ent: str, id_service: Optional[str], criticite_min: int) -> List[Dict[str, Any]]:
+    """
+    L'état réel de référence vient exclusivement du moteur Analyse.
+    La simulation ne reconstruit pas le diagnostic actuel avec un moteur parallèle.
+    """
+    return [dict(r) for r in _fetch_postes_fragility_records(cur, id_ent, id_service, int(criticite_min))]
+
+
+def _projected_skill_poste_ids(req: SimulationEvalRequest, dataset: Dict[str, Any]) -> set:
+    """Garde-fou : une montée en compétence ne doit pas dégrader le poste concerné."""
+    ids = set()
+    effectifs = {str(e.get("id_effectif") or ""): e for e in dataset.get("effectifs") or []}
+    reqs_by_comp: Dict[str, set] = {}
+    for r in dataset.get("requirements") or []:
+        cid = str(r.get("id_comp") or "").strip()
+        pid = str(r.get("id_poste") or "").strip()
+        if cid and pid:
+            reqs_by_comp.setdefault(cid, set()).add(pid)
+
+    for h in req.hypotheses or []:
+        if str(h.type or "").strip() not in ("montee_competence", "formation_ciblee", "transmission_interne"):
+            continue
+        if h.id_poste:
+            ids.add(str(h.id_poste))
+        if h.id_poste_cible:
+            ids.add(str(h.id_poste_cible))
+        if h.id_effectif and str(h.id_effectif) in effectifs:
+            pid = str(effectifs[str(h.id_effectif)].get("id_poste_actuel") or "").strip()
+            if pid:
+                ids.add(pid)
+        cid = str(h.id_comp or "").strip()
+        if cid:
+            ids.update(reqs_by_comp.get(cid, set()))
+    return {x for x in ids if x}
+
+
+def _align_records_on_analyse_baseline(
+    analyse_current: List[Dict[str, Any]],
+    raw_current: List[Dict[str, Any]],
+    raw_after: List[Dict[str, Any]],
+    *,
+    monotonic_poste_ids: Optional[set] = None,
+) -> List[Dict[str, Any]]:
+    """
+    On conserve le delta produit par les hypothèses, mais on l'applique sur le score réel
+    issu du moteur Analyse. Analyse reste donc la source de vérité de l'état initial.
+    """
+    analyse_by_id = {str(r.get("id_poste") or ""): dict(r) for r in analyse_current or []}
+    raw_current_by_id = {str(r.get("id_poste") or ""): dict(r) for r in raw_current or []}
+    monotonic_ids = {str(x) for x in (monotonic_poste_ids or set()) if str(x or "").strip()}
+
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for after_row in raw_after or []:
+        pid = str(after_row.get("id_poste") or "")
+        seen.add(pid)
+        raw_before = raw_current_by_id.get(pid) or {}
+        analyse_before = analyse_by_id.get(pid) or {}
+        row = {**analyse_before, **dict(after_row)} if analyse_before else dict(after_row)
+
+        if analyse_before and raw_before:
+            base_score = _clamp_score(analyse_before.get("indice_fragilite"))
+            raw_delta = _clamp_score(after_row.get("indice_fragilite")) - _clamp_score(raw_before.get("indice_fragilite"))
+            aligned_score = _clamp_score(base_score + raw_delta)
+            if pid in monotonic_ids and aligned_score > base_score:
+                aligned_score = base_score
+            row["indice_fragilite"] = aligned_score
+            row["score_total"] = aligned_score
+            row["niveau_risque"] = _risk_label(aligned_score)
+            row["is_fragile"] = bool(aligned_score > 0)
+        out.append(row)
+
+    for pid, analyse_row in analyse_by_id.items():
+        if pid not in seen:
+            out.append(dict(analyse_row))
+
+    return sorted(out, key=lambda x: int(x.get("indice_fragilite") or 0), reverse=True)
+
+
 def build_simulation_options_payload(cur, id_ent: str, scope: Any, criticite_min: int) -> Dict[str, Any]:
     dataset = _fetch_simulation_dataset(cur, id_ent, getattr(scope, "id_service", None), int(criticite_min))
     payload = _options_payload(dataset)
@@ -1195,24 +1280,43 @@ def build_simulation_options_payload(cur, id_ent: str, scope: Any, criticite_min
 
 
 def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: SimulationEvalRequest, criticite_min: int) -> Dict[str, Any]:
-    dataset = _fetch_simulation_dataset(cur, id_ent, getattr(scope, "id_service", None), int(criticite_min))
+    id_service = getattr(scope, "id_service", None)
+    dataset = _fetch_simulation_dataset(cur, id_ent, id_service, int(criticite_min))
 
     current_state = _build_state(dataset, [], simulated=False)
     immediate_hypotheses = [h for h in (payload.hypotheses or []) if _hypothese_is_immediate(h)]
     immediate_state = _build_state(dataset, immediate_hypotheses, simulated=True)
     simulated_state = _build_state(dataset, payload.hypotheses or [], simulated=True)
 
-    current_records = _compute_poste_records(dataset, current_state)
+    # Source de vérité de l'état réel : moteur Analyse, sans recopie de formule.
+    current_records_analyse = _fetch_current_poste_records_from_analyse_engine(cur, id_ent, id_service, int(criticite_min))
+    raw_current_records = _compute_poste_records(dataset, current_state)
+
+    current_records = current_records_analyse
     current_comp_records = _compute_competence_records(dataset, current_state)
     current_summary = _compute_summary(current_records, current_comp_records)
 
-    immediate_records = _compute_poste_records(dataset, immediate_state)
+    projected_poste_ids = _projected_skill_poste_ids(payload, dataset)
+
+    raw_immediate_records = _compute_poste_records(dataset, immediate_state)
+    immediate_records = _align_records_on_analyse_baseline(
+        current_records,
+        raw_current_records,
+        raw_immediate_records,
+        monotonic_poste_ids=set(),
+    )
     immediate_comp_records = _compute_competence_records(dataset, immediate_state)
     immediate_summary = _compute_summary(immediate_records, immediate_comp_records)
     immediate_impacts = _compute_impacts(current_records, immediate_records, current_comp_records, immediate_comp_records)
     immediate_impacts["services_impactes"] = _service_impacts(current_records, immediate_records)
 
-    simulated_records = _compute_poste_records(dataset, simulated_state)
+    raw_simulated_records = _compute_poste_records(dataset, simulated_state)
+    simulated_records = _align_records_on_analyse_baseline(
+        current_records,
+        raw_current_records,
+        raw_simulated_records,
+        monotonic_poste_ids=projected_poste_ids,
+    )
     simulated_comp_records = _compute_competence_records(dataset, simulated_state)
     simulated_summary = _compute_summary(simulated_records, simulated_comp_records)
     impacts = _compute_impacts(current_records, simulated_records, current_comp_records, simulated_comp_records)
@@ -1254,4 +1358,9 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
         },
         "cotation": cotation,
         "conseil": conseil,
+        "reference_calcul": {
+            "etat_reel": "skills_analyse_engine._fetch_postes_fragility_records",
+            "criticite_min": int(criticite_min),
+            "id_service": id_service,
+        },
     }

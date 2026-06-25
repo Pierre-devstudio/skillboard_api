@@ -1040,12 +1040,15 @@
   // La construction de scénarios RH se fait désormais dans Simulation RH.
 
   function openSimulationsRhContext(payload = {}) {
+    const filters = getFilters();
     const ctx = {
       id: `analyse_ctx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       created_at: new Date().toISOString(),
       source: "analyse_competences",
       source_label: "Analyse des compétences",
       scope_label: getScopeLabel(),
+      id_service: filters.id_service || null,
+      service_raw: getAnalyseServiceRawValue(),
       criticite_min: getCriticiteMinSafe(CRITICITE_MIN_DEFAULT),
       ...payload,
     };
