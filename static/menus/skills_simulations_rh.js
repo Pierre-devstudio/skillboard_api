@@ -276,6 +276,225 @@
     document.head.appendChild(style);
   }
 
+  function ensureCvRenfortStyles() {
+    if (document.getElementById("simCvRenfortStylesV1")) return;
+    const style = document.createElement("style");
+    style.id = "simCvRenfortStylesV1";
+    style.textContent = `
+      .sim-cv-upload-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+      .sim-cv-upload-zone{display:flex;align-items:center;gap:12px;min-height:72px;border:1px dashed color-mix(in srgb,var(--accent) 35%,#cbd5e1);border-radius:14px;background:linear-gradient(180deg,#fff 0%,color-mix(in srgb,var(--accent) 4%,#fff) 100%);padding:12px;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease;}
+      .sim-cv-upload-zone:hover{border-color:var(--accent);box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 10%,transparent);transform:translateY(-1px);}
+      .sim-cv-upload-icon{width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--accent);font-weight:800;font-size:18px;flex:0 0 auto;}
+      .sim-cv-upload-copy{min-width:0;display:flex;flex-direction:column;gap:3px;}
+      .sim-cv-upload-copy strong{font-size:13px;font-weight:700;color:var(--sb-gray-900);}
+      .sim-cv-upload-copy small{font-size:12px;color:var(--sb-gray-500);line-height:1.35;}
+      .sim-cv-upload-copy em{font-style:normal;font-size:12px;color:var(--sb-gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+      .sim-cv-file-input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
+      .sim-cv-analysis-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+      .sim-cv-modal-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:12px;align-items:start;}
+      .sim-cv-modal-side{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:10px;}
+      .sim-cv-modal-summary{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;}
+      .sim-cv-modal-summary p{margin:0;color:var(--sb-gray-700);font-size:13px;line-height:1.55;}
+      .sim-cv-modal-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+      .sim-cv-mini-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;}
+      .sim-cv-mini-card{border:1px solid var(--sb-gray-200);border-radius:12px;padding:10px;background:#fff;}
+      .sim-cv-mini-card h4{margin:0 0 6px 0;font-size:12px;font-weight:700;color:var(--sb-gray-900);}
+      .sim-cv-mini-card ul{margin:0;padding-left:16px;color:var(--sb-gray-700);font-size:12px;line-height:1.45;}
+      @media(max-width:980px){.sim-cv-upload-grid,.sim-cv-modal-grid,.sim-cv-mini-list{grid-template-columns:1fr;}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function cvUploadZoneHtml(inputId, nameId, title, subtitle, accept) {
+    return `
+      <div class="sim-cv-upload">
+        <input type="file" id="${esc(inputId)}" class="sim-cv-file-input" accept="${esc(accept || ".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain")}">
+        <label class="sim-cv-upload-zone" for="${esc(inputId)}">
+          <span class="sim-cv-upload-icon">+</span>
+          <span class="sim-cv-upload-copy">
+            <strong>${esc(title)}</strong>
+            <small>${esc(subtitle)}</small>
+            <em id="${esc(nameId)}">Aucun fichier sélectionné</em>
+          </span>
+        </label>
+      </div>`;
+  }
+
+  function bindCvUploadZone(inputId, nameId) {
+    const input = byId(inputId);
+    const nameEl = byId(nameId);
+    if (!input || !nameEl) return;
+    const sync = () => {
+      const file = input.files?.[0] || null;
+      nameEl.textContent = file ? file.name : "Aucun fichier sélectionné";
+    };
+    input.addEventListener("change", sync);
+    sync();
+  }
+
+  function cvScoreRing(score100) {
+    const s = Math.max(0, Math.min(100, int(score100)));
+    const hue = Math.round(12 + (s * 1.08));
+    const color = `hsl(${hue} 70% 45%)`;
+    const size = 108;
+    const stroke = 10;
+    const r = (size - stroke) / 2;
+    const c = 2 * Math.PI * r;
+    const offset = c * (1 - s / 100);
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <div style="position:relative;width:${size}px;height:${size}px;">
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute;inset:0;">
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}" transform="rotate(-90 ${size / 2} ${size / 2})" />
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+            <div style="font-weight:800;font-size:28px;line-height:1;">${s}<span style="font-size:12px;font-weight:700;">%</span></div>
+          </div>
+        </div>
+        <div class="card-sub" style="margin:0;">Adéquation</div>
+      </div>`;
+  }
+
+  function cvLevelBadge(level) {
+    const v = (level || "—").toString().trim() || "—";
+    return `<span class="sb-badge">${esc(levelLabel(v) || v)}</span>`;
+  }
+
+  function ensureCvAnalysisModal() {
+    ensureCvRenfortStyles();
+    let modal = byId("modalSimCvAnalysis");
+    if (modal) return modal;
+    const html = `
+      <div class="modal" id="modalSimCvAnalysis" aria-hidden="true">
+        <div class="modal-card modal-card--wide">
+          <div class="modal-header">
+            <div class="modal-title-inline">
+              <span id="simCvAnalysisModalTitle" style="font-weight:600;">Analyse CV</span>
+              <span class="sb-badge sb-badge--candidat" id="simCvAnalysisModalBadge">Candidat CV</span>
+              <span class="sb-badge sb-badge-ref-poste-code" id="simCvAnalysisPosteCode" style="display:none;"></span>
+              <span id="simCvAnalysisPosteText" style="font-weight:600;"></span>
+            </div>
+            <button type="button" class="modal-x" id="btnCloseSimCvAnalysisModal" aria-label="Fermer">×</button>
+          </div>
+          <div class="modal-body" id="simCvAnalysisModalBody"></div>
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimCvAnalysisModalClose">Fermer</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML("beforeend", html);
+    modal = byId("modalSimCvAnalysis");
+    byId("btnCloseSimCvAnalysisModal")?.addEventListener("click", closeCvAnalysisModal);
+    byId("btnSimCvAnalysisModalClose")?.addEventListener("click", closeCvAnalysisModal);
+    modal?.addEventListener("click", ev => { if (ev.target === modal) closeCvAnalysisModal(); });
+    document.addEventListener("keydown", ev => {
+      if (ev.key === "Escape" && byId("modalSimCvAnalysis")?.classList.contains("show")) closeCvAnalysisModal();
+    });
+    return modal;
+  }
+
+  function closeCvAnalysisModal() {
+    const modal = byId("modalSimCvAnalysis");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function openCvAnalysisModal(data) {
+    const modal = ensureCvAnalysisModal();
+    if (!modal || !data) return;
+    const poste = posteById(data.id_poste) || {};
+    const code = posteCode(poste);
+    const matching = Array.isArray(data.matching_poste) ? data.matching_poste : [];
+    const needs = Array.isArray(data.besoins_generes) ? data.besoins_generes : [];
+    const fav = Array.isArray(data.points_favorables) ? data.points_favorables : [];
+    const vigil = Array.isArray(data.points_vigilance) ? data.points_vigilance : [];
+    const questions = Array.isArray(data.questions_entretien) ? data.questions_entretien : [];
+
+    const title = byId("simCvAnalysisModalTitle");
+    const codeEl = byId("simCvAnalysisPosteCode");
+    const textEl = byId("simCvAnalysisPosteText");
+    const body = byId("simCvAnalysisModalBody");
+    if (title) title.textContent = data.nom_candidat || "Candidat CV";
+    if (codeEl) {
+      codeEl.textContent = code || "";
+      codeEl.style.display = code ? "inline-flex" : "none";
+    }
+    if (textEl) textEl.textContent = posteTitle(poste);
+
+    if (body) {
+      body.innerHTML = `
+        <div class="sim-cv-modal-grid">
+          <div class="sim-cv-modal-side">
+            ${cvScoreRing(data.adequation_pct || 0)}
+            <div style="text-align:center;">
+              <div class="card-sub" style="margin:0;">Besoins détectés</div>
+              <div style="font-size:22px;font-weight:800;color:var(--sb-gray-900);">${esc(needs.length)}</div>
+            </div>
+          </div>
+          <div class="sim-cv-modal-summary">
+            <div class="card-title" style="font-size:15px;font-weight:700;margin:0 0 6px 0;">Lecture recruteur</div>
+            <p>${esc(data.lecture_recruteur || data.resume_profil || "Analyse disponible.")}</p>
+            <div class="sim-cv-modal-chip-row">
+              ${matching.slice(0, 6).map(x => `<span class="sb-badge">${esc(x.code || x.intitule || "Compétence")}</span>`).join("")}
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Compétence attendue</th>
+                <th style="width:110px;">Requis</th>
+                <th style="width:120px;">Estimé CV</th>
+                <th style="width:110px;" class="col-center">Couverture</th>
+                <th>Preuve / écart</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${matching.length ? matching.map(row => `
+                <tr>
+                  <td>
+                    <strong>${esc(row.code || "—")}</strong>
+                    <div class="card-sub" style="margin:2px 0 0 0;">${esc(row.intitule || "Compétence")}</div>
+                  </td>
+                  <td>${cvLevelBadge(row.niveau_requis)}</td>
+                  <td>${row.niveau_estime ? cvLevelBadge(row.niveau_estime) : `<span class="sb-badge sb-badge--warning">Non démontré</span>`}</td>
+                  <td class="col-center"><span class="sb-badge ${int(row.couverture_pct) >= 75 ? "sb-badge--success" : int(row.couverture_pct) >= 50 ? "" : "sb-badge--warning"}">${esc(int(row.couverture_pct))}%</span></td>
+                  <td>
+                    <div>${esc(row.preuve_cv || "Preuve non explicite dans le CV.")}</div>
+                    ${row.ecart ? `<div class="card-sub" style="margin:3px 0 0 0;">Écart : ${esc(row.ecart)}</div>` : ""}
+                  </td>
+                </tr>`).join("") : `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune correspondance détaillée retournée.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sim-cv-mini-list">
+          <div class="sim-cv-mini-card">
+            <h4>Points favorables</h4>
+            <ul>${fav.length ? fav.slice(0, 5).map(x => `<li>${esc(x)}</li>`).join("") : `<li>À confirmer en entretien.</li>`}</ul>
+          </div>
+          <div class="sim-cv-mini-card">
+            <h4>Points de vigilance</h4>
+            <ul>${vigil.length ? vigil.slice(0, 5).map(x => `<li>${esc(x)}</li>`).join("") : `<li>Aucun point majeur remonté.</li>`}</ul>
+          </div>
+          <div class="sim-cv-mini-card">
+            <h4>Questions d’entretien</h4>
+            <ul>${questions.length ? questions.slice(0, 5).map(x => `<li>${esc(x)}</li>`).join("") : `<li>Préciser les expériences liées au poste.</li>`}</ul>
+          </div>
+        </div>
+      `;
+    }
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+    const mb = modal.querySelector(".modal-body");
+    if (mb) mb.scrollTop = 0;
+  }
+
   function fillSelect(el, list, valueKey, labelFn, placeholder) {
     if (!el) return;
     const previous = el.value;
@@ -575,9 +794,12 @@
         </div>
 
         <div id="simRenfortCvPanel" class="sim-renfort-mode-panel" style="display:none;">
-          <div class="sim-form-grid">
-            <div class="info-item"><div class="label">CV candidat</div><input type="file" id="simBrickCvFile" class="sb-input" accept=".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"></div>
-            <div class="info-item"><div class="label">Projet professionnel / contexte candidat</div><textarea id="simBrickCvProjet" class="sb-input" rows="3" placeholder="Optionnel : projet professionnel, motivation, éléments transmis par le candidat..."></textarea></div>
+          <div class="sim-cv-upload-grid">
+            ${cvUploadZoneHtml("simBrickCvFile", "simBrickCvFileName", "Ajouter le CV candidat", "PDF, DOCX ou TXT · obligatoire", ".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain")}
+            ${cvUploadZoneHtml("simBrickMotivationFile", "simBrickMotivationFileName", "Ajouter une lettre de motivation", "PDF, DOCX ou TXT · optionnel", ".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain")}
+          </div>
+          <div class="sim-form-grid" style="margin-top:10px;">
+            <div class="info-item sb-span-2"><div class="label">Notes complémentaires / contexte candidat</div><textarea id="simBrickCvProjet" class="sb-input" rows="3" placeholder="Optionnel : disponibilité, contexte RH, éléments transmis hors CV et lettre..."></textarea></div>
           </div>
           <div class="sb-actions" style="margin-top:10px;">
             <button type="button" class="sb-btn sb-btn--soft" id="btnSimAnalyseCv">Analyser le CV</button>
@@ -607,6 +829,9 @@
         const preview = byId("simCvAnalysisPreview");
         if (preview) preview.innerHTML = "Analysez le CV avant d’ajouter le candidat au scénario.";
       });
+      ensureCvRenfortStyles();
+      bindCvUploadZone("simBrickCvFile", "simBrickCvFileName");
+      bindCvUploadZone("simBrickMotivationFile", "simBrickMotivationFileName");
       byId("btnSimAnalyseCv")?.addEventListener("click", analyseCvForRenfort);
       syncRenfortMode();
       return;
@@ -704,14 +929,16 @@
   async function analyseCvForRenfort() {
     const posteId = byId("simBrickPoste")?.value || _selectedPosteId || "";
     const file = byId("simBrickCvFile")?.files?.[0] || null;
+    const motivationFile = byId("simBrickMotivationFile")?.files?.[0] || null;
     const preview = byId("simCvAnalysisPreview");
     if (!posteId) return setStatus("Choisissez le poste à renforcer avant l’analyse CV.", "error");
-    if (!file) return setStatus("Choisissez un CV à analyser.", "error");
+    if (!file) return setStatus("Ajoutez le CV candidat avant de lancer l’analyse.", "error");
 
     const fd = new FormData();
     fd.append("id_poste", posteId);
     fd.append("projet_professionnel", byId("simBrickCvProjet")?.value || "");
     fd.append("cv_file", file);
+    if (motivationFile) fd.append("motivation_file", motivationFile);
 
     if (preview) preview.innerHTML = "Analyse IA du CV en cours…";
     setStatus("Analyse IA du CV en cours…");
@@ -735,10 +962,17 @@
                 ${needs.slice(0, 4).map(n => `<span>${esc(n.code || n.intitule || "Compétence")}</span>`).join("")}
               </div>
             </div>
-            <div class="sim-lego-person-score"><span class="sb-badge sb-badge--success">CV analysé</span></div>
+            <div class="sim-lego-person-score">
+              <span class="sb-badge sb-badge--success">CV analysé</span>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-cv-view-analysis>Voir l’analyse</button>
+            </div>
           </div>
           ${(data?.points_vigilance || []).length ? `<div class="card-sub sim2-muted-top">À vérifier : ${esc((data.points_vigilance || []).slice(0, 2).join(" · "))}</div>` : ""}
+          <div class="sim-cv-analysis-actions">
+            <button type="button" class="sb-btn sb-btn--soft" data-sim-cv-view-analysis>Voir l’analyse complète</button>
+          </div>
         `;
+        preview.querySelectorAll("[data-sim-cv-view-analysis]").forEach(btn => btn.addEventListener("click", () => openCvAnalysisModal(_lastCvAnalysis)));
       }
       setStatus("Analyse CV prête à ajouter au scénario.");
     } catch (e) {

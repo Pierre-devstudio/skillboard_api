@@ -1642,12 +1642,12 @@ def _cv_ai_system_prompt() -> str:
     )
 
 
-def _cv_ai_user_prompt(cv_text: str, poste_payload: Dict[str, Any], projet_professionnel: str) -> str:
+def _cv_ai_user_prompt(cv_text: str, poste_payload: Dict[str, Any], projet_professionnel: str, lettre_motivation: str = "") -> str:
     return json.dumps(
         {
             "instruction": (
                 "Analyse le CV comme un recruteur. Déduis les compétences à partir des expériences, "
-                "missions, formations, outils, réalisations et projet professionnel. Compare-les aux "
+                "missions, formations, outils, réalisations, projet professionnel et lettre de motivation éventuelle. Compare-les aux "
                 "compétences attendues du poste cible. Pour chaque compétence attendue, estime le niveau "
                 "du candidat sur A/B/C/D ou null si non démontré, donne une preuve courte issue du CV, "
                 "un niveau de confiance entre 0 et 1, et indique l'écart restant. "
@@ -1681,13 +1681,14 @@ def _cv_ai_user_prompt(cv_text: str, poste_payload: Dict[str, Any], projet_profe
             },
             "poste_cible": poste_payload,
             "projet_professionnel": projet_professionnel or "",
+            "lettre_motivation": lettre_motivation[:12000] if lettre_motivation else "",
             "cv": cv_text[:18000],
         },
         ensure_ascii=False,
     )
 
 
-def _call_cv_ai(cv_text: str, poste_payload: Dict[str, Any], projet_professionnel: str) -> Dict[str, Any]:
+def _call_cv_ai(cv_text: str, poste_payload: Dict[str, Any], projet_professionnel: str, lettre_motivation: str = "") -> Dict[str, Any]:
     api_key = (os.getenv("NOVOSKILL_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
     if not api_key:
         raise RuntimeError("Analyse CV IA non configurée : variable NOVOSKILL_OPENAI_API_KEY ou OPENAI_API_KEY absente.")
@@ -1699,7 +1700,7 @@ def _call_cv_ai(cv_text: str, poste_payload: Dict[str, Any], projet_professionne
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": _cv_ai_system_prompt()},
-            {"role": "user", "content": _cv_ai_user_prompt(cv_text, poste_payload, projet_professionnel)},
+            {"role": "user", "content": _cv_ai_user_prompt(cv_text, poste_payload, projet_professionnel, lettre_motivation)},
         ],
     }
     req = urllib.request.Request(
@@ -1809,7 +1810,10 @@ def analyser_cv_recrutement_payload(
     content_type: str,
     file_bytes: bytes,
     projet_professionnel: str,
-    criticite_min: int,
+    lettre_filename: str = "",
+    lettre_content_type: str = "",
+    lettre_bytes: Optional[bytes] = None,
+    criticite_min: int = 70,
 ) -> Dict[str, Any]:
     id_service = getattr(scope, "id_service", None)
     dataset = _fetch_simulation_dataset(cur, id_ent, id_service, int(criticite_min))
@@ -1823,7 +1827,13 @@ def analyser_cv_recrutement_payload(
     if len(cv_text.strip()) < 120:
         raise RuntimeError("Le texte extrait du CV est insuffisant pour une analyse fiable.")
 
-    ai_raw = _call_cv_ai(cv_text, poste_payload, projet_professionnel)
+    lettre_text = ""
+    if lettre_bytes:
+        lettre_text = _extract_cv_text(lettre_filename or "lettre_motivation", lettre_content_type or "", lettre_bytes)
+        if lettre_text and len(lettre_text.strip()) < 40:
+            lettre_text = ""
+
+    ai_raw = _call_cv_ai(cv_text, poste_payload, projet_professionnel, lettre_text)
     normalized = _normalize_cv_ai_result(ai_raw, poste_payload)
     analyse_id = str(uuid.uuid4())
 
@@ -1833,6 +1843,12 @@ def analyser_cv_recrutement_payload(
         "ai_raw": ai_raw,
         "criticite_min": int(criticite_min),
         "scope": scope.dict() if hasattr(scope, "dict") else dict(scope or {}),
+        "lettre_motivation": {
+            "nom_fichier": lettre_filename or "",
+            "content_type": lettre_content_type or "",
+            "presente": bool(lettre_text),
+            "texte": lettre_text[:20000],
+        },
     }
 
     cur.execute(
@@ -1893,6 +1909,7 @@ def analyser_cv_recrutement_payload(
         "points_vigilance": normalized.get("points_vigilance") or [],
         "questions_entretien": normalized.get("questions_entretien") or [],
         "lecture_recruteur": normalized.get("lecture_recruteur") or "",
+        "lettre_motivation_presente": bool(lettre_text),
         "updated_at": _now_iso(),
     }
 

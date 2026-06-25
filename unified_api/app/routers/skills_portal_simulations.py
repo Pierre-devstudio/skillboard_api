@@ -50,6 +50,7 @@ def analyser_cv_simulation(
     id_poste: str = Form(...),
     projet_professionnel: Optional[str] = Form(default=None),
     cv_file: UploadFile = File(...),
+    motivation_file: Optional[UploadFile] = File(default=None),
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
 ):
@@ -59,6 +60,16 @@ def analyser_cv_simulation(
             raise HTTPException(status_code=400, detail="CV vide ou illisible.")
         if len(raw) > 8 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="CV trop volumineux : limite 8 Mo.")
+
+        motivation_raw = b""
+        motivation_filename = ""
+        motivation_content_type = ""
+        if motivation_file and motivation_file.filename:
+            motivation_raw = motivation_file.file.read() or b""
+            motivation_filename = motivation_file.filename or ""
+            motivation_content_type = motivation_file.content_type or ""
+            if len(motivation_raw) > 4 * 1024 * 1024:
+                raise HTTPException(status_code=400, detail="Lettre de motivation trop volumineuse : limite 4 Mo.")
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -74,6 +85,9 @@ def analyser_cv_simulation(
                     cv_file.content_type or "",
                     raw,
                     projet_professionnel or "",
+                    motivation_filename,
+                    motivation_content_type,
+                    motivation_raw,
                     int(criticite_min),
                 )
                 conn.commit()
