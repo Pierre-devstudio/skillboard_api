@@ -1,0 +1,65 @@
+diff --git a/static/menus/skills_simulations_rh.js b/static/menus/skills_simulations_rh.js
+index 0894421..ea4a6be 100644
+--- a/static/menus/skills_simulations_rh.js
++++ b/static/menus/skills_simulations_rh.js
+@@ -43,7 +43,7 @@
+     },
+     depart_effectif: {
+       title: "Retirer une personne",
+-      short: "Tester une sortie, une absence ou une perte de couverture.",
++      short: "Tester une sortie ou une absence longue avec durée.",
+       icon: "−",
+       group: "immediate",
+       temporalite: "immediate",
+@@ -402,9 +402,19 @@
+         <div class="sim-form-grid">
+           <div class="info-item"><div class="label">Personne retirée du scénario</div><select id="simBrickEffectif" class="sb-select"></select></div>
+           <div class="info-item"><div class="label">Nature</div><select id="simBrickDepartType" class="sb-select"><option value="depart_effectif">Départ / sortie</option><option value="absence_effectif">Absence longue</option></select></div>
++          <div class="info-item" id="simBrickAbsenceDurationWrap" style="display:none;"><div class="label">Durée simulée</div><select id="simBrickAbsenceDuration" class="sb-select"><option value="30">1 mois</option><option value="60">2 mois</option><option value="90" selected>3 mois</option><option value="180">6 mois</option><option value="365">12 mois</option></select></div>
+         </div>
++        <div class="card-sub sim2-muted-top" id="simBrickDepartHint">Pour une absence longue, Novoskill mesure l’état du périmètre pendant la période simulée.</div>
+       `;
+       fillSelect(byId("simBrickEffectif"), effectifs, "id_effectif", effectifLabel, "Choisir une personne…");
++      const typeSel = byId("simBrickDepartType");
++      const toggleAbsenceDuration = () => {
++        const isAbsence = (typeSel?.value || "") === "absence_effectif";
++        const wrap = byId("simBrickAbsenceDurationWrap");
++        if (wrap) wrap.style.display = isAbsence ? "" : "none";
++      };
++      typeSel?.addEventListener("change", toggleAbsenceDuration);
++      toggleAbsenceDuration();
+       return;
+     }
+ 
+@@ -439,7 +449,7 @@
+           <div class="info-item"><div class="label">Compétence</div><select id="simBrickCompetence" class="sb-select"></select></div>
+           <div class="info-item"><div class="label">Niveau visé</div><select id="simBrickNiveau" class="sb-select"><option value="A">Débutant</option><option value="B">Intermédiaire</option><option value="C" selected>Avancé</option><option value="D">Expert</option></select></div>
+         </div>
+-        <div class="card-sub sim2-muted-top">Cette brique projette l’état si le niveau cible est atteint. Le besoin réel se traite ensuite dans Besoins & formations / Studio / Learn.</div>
++        <div class="card-sub sim2-muted-top">Cette brique projette l’état si le niveau cible est atteint. Le besoin réel se traite ensuite dans Besoins & formations.</div>
+       `;
+       fillSelect(byId("simBrickEffectif"), effectifs, "id_effectif", effectifLabel, "Choisir une personne…");
+       fillSelect(byId("simBrickCompetence"), reqs.length ? reqs : (_options.competences || []), "id_comp", compLabel, "Choisir une compétence…");
+@@ -473,6 +483,8 @@
+     const effId = byId("simBrickEffectif")?.value || "";
+     const compId = byId("simBrickCompetence")?.value || "";
+     const niveau = byId("simBrickNiveau")?.value || "C";
++    const absenceDuration = byId("simBrickAbsenceDuration")?.value || "90";
++    const absenceDurationLabel = byId("simBrickAbsenceDuration")?.selectedOptions?.[0]?.textContent || "3 mois";
+ 
+     if (_selectedBrick === "renfort_poste") {
+       if (!posteId) return setStatus("Choisissez un poste à renforcer.", "error");
+@@ -482,7 +494,12 @@
+     if (_selectedBrick === "depart_effectif") {
+       if (!effId) return setStatus("Choisissez la personne à retirer du scénario.", "error");
+       const t = byId("simBrickDepartType")?.value || "depart_effectif";
+-      return addBrick({ type: t, id_effectif: effId, temporalite: "immediate", libelle: `${t === "absence_effectif" ? "Absence" : "Départ"} de ${effectifById(effId)?.nom_complet || "collaborateur"}` });
++      return addBrick({
++        type: t,
++        id_effectif: effId,
++        temporalite: "immediate",
++        libelle: `${t === "absence_effectif" ? "Absence longue" : "Départ"} de ${effectifById(effId)?.nom_complet || "collaborateur"}${t === "absence_effectif" ? ` · ${absenceDurationLabel}` : ""}`
++      });
+     }
+ 
+     if (_selectedBrick === "transfert_charge") {
