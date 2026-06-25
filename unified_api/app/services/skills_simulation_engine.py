@@ -1733,18 +1733,46 @@ def _call_cv_ai(cv_text: str, poste_payload: Dict[str, Any], projet_professionne
 
 def _normalize_cv_ai_result(ai: Dict[str, Any], poste_payload: Dict[str, Any]) -> Dict[str, Any]:
     expected = {str(c.get("id_comp") or ""): c for c in poste_payload.get("competences_attendues") or []}
-    matching = []
-    competences_cv = []
-    besoins = []
+    matching: List[Dict[str, Any]] = []
+    competences_cv: List[Dict[str, Any]] = []
+    besoins: List[Dict[str, Any]] = []
+    seen_expected = set()
+
+    def append_row(row: Dict[str, Any]) -> None:
+        matching.append(row)
+        if row.get("niveau_estime"):
+            competences_cv.append({
+                "id_comp": row.get("id_comp"),
+                "code": row.get("code"),
+                "intitule": row.get("intitule"),
+                "niveau_estime": row.get("niveau_estime"),
+                "preuve_cv": row.get("preuve_cv"),
+                "confiance": row.get("confiance"),
+            })
+        if row.get("besoin"):
+            besoins.append({
+                "id_comp": row.get("id_comp"),
+                "code": row.get("code"),
+                "intitule": row.get("intitule"),
+                "niveau_requis": row.get("niveau_requis"),
+                "niveau_estime": row.get("niveau_estime"),
+                "couverture_pct": row.get("couverture_pct"),
+                "criticite": row.get("criticite"),
+            })
 
     for item in ai.get("matching_poste") or []:
         cid = str(item.get("id_comp") or "").strip()
-        if not cid or cid not in expected:
+        if not cid or cid not in expected or cid in seen_expected:
             continue
+        seen_expected.add(cid)
+
         exp = expected[cid]
         niveau_estime = _level_label(item.get("niveau_estime"))
         niveau_requis = _level_label(exp.get("niveau_requis"))
         couverture = max(0, min(100, _safe_int(item.get("couverture_pct"), 0)))
+        if niveau_estime == "—":
+            couverture = 0
+
         row = {
             "id_comp": cid,
             "code": exp.get("code") or item.get("code") or "",
@@ -1752,41 +1780,50 @@ def _normalize_cv_ai_result(ai: Dict[str, Any], poste_payload: Dict[str, Any]) -
             "niveau_requis": niveau_requis,
             "niveau_estime": niveau_estime if niveau_estime != "—" else None,
             "couverture_pct": couverture,
-            "preuve_cv": str(item.get("preuve_cv") or item.get("preuve") or "").strip(),
+            "preuve_cv": str(item.get("preuve_cv") or item.get("preuve") or "").strip() or "Non démontré dans le CV.",
             "confiance": max(0.0, min(1.0, _safe_float(item.get("confiance"), 0.0))),
-            "ecart": str(item.get("ecart") or "").strip(),
             "besoin": bool(item.get("besoin")) or couverture < 100 or niveau_estime == "—",
             "criticite": _safe_int(exp.get("criticite"), 0),
         }
-        matching.append(row)
-        if row["niveau_estime"]:
-            competences_cv.append({
-                "id_comp": cid,
-                "code": row["code"],
-                "intitule": row["intitule"],
-                "niveau_estime": row["niveau_estime"],
-                "preuve_cv": row["preuve_cv"],
-                "confiance": row["confiance"],
-            })
-        if row["besoin"]:
-            besoins.append({
-                "id_comp": cid,
-                "code": row["code"],
-                "intitule": row["intitule"],
-                "niveau_requis": niveau_requis,
-                "niveau_estime": row["niveau_estime"],
-                "couverture_pct": couverture,
-                "ecart": row["ecart"],
-                "criticite": row["criticite"],
-            })
+        append_row(row)
+
+    # Le score Novoskill ne doit pas dépendre d'une note globale libre retournée par l'IA.
+    # Toute compétence attendue absente de l'analyse est considérée non démontrée.
+    for cid, exp in expected.items():
+        if not cid or cid in seen_expected:
+            continue
+        row = {
+            "id_comp": cid,
+            "code": exp.get("code") or "",
+            "intitule": exp.get("intitule") or "Compétence",
+            "niveau_requis": _level_label(exp.get("niveau_requis")),
+            "niveau_estime": None,
+            "couverture_pct": 0,
+            "preuve_cv": "Non démontré dans le CV.",
+            "confiance": 0.0,
+            "besoin": True,
+            "criticite": _safe_int(exp.get("criticite"), 0),
+        }
+        append_row(row)
 
     matching.sort(key=lambda x: (-_safe_int(x.get("criticite"), 0), _safe_int(x.get("couverture_pct"), 0), str(x.get("intitule") or "")))
     besoins.sort(key=lambda x: (-_safe_int(x.get("criticite"), 0), _safe_int(x.get("couverture_pct"), 0), str(x.get("intitule") or "")))
 
+    total_weight = 0.0
+    weighted_score = 0.0
+    for row in matching:
+        weight = max(1, _safe_int(row.get("criticite"), 1))
+        total_weight += weight
+        weighted_score += max(0, min(100, _safe_int(row.get("couverture_pct"), 0))) * weight
+
+    adequation_pct = int(round(weighted_score / total_weight)) if total_weight > 0 else 0
+    adequation_pct = max(0, min(100, adequation_pct))
+
     return {
         "nom_candidat": str(ai.get("nom_candidat") or "Candidat CV").strip() or "Candidat CV",
         "resume_profil": str(ai.get("resume_profil") or "").strip(),
-        "adequation_pct": max(0, min(100, _safe_int(ai.get("adequation_pct"), 0))),
+        "adequation_pct": adequation_pct,
+        "adequation_ia_pct": max(0, min(100, _safe_int(ai.get("adequation_pct"), 0))),
         "experiences_retenues": ai.get("experiences_retenues") if isinstance(ai.get("experiences_retenues"), list) else [],
         "formations_retenues": ai.get("formations_retenues") if isinstance(ai.get("formations_retenues"), list) else [],
         "competences_detectees": ai.get("competences_detectees") if isinstance(ai.get("competences_detectees"), list) else [],

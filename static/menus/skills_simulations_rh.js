@@ -291,9 +291,17 @@
       .sim-cv-upload-copy em{font-style:normal;font-size:12px;color:var(--sb-gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
       .sim-cv-file-input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
       .sim-cv-analysis-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
-      .sim-cv-modal-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:12px;align-items:start;}
+      .sim-cv-modal-title-stack{display:flex;flex-direction:column;gap:4px;min-width:0;}
+      .sim-cv-modal-title-line,.sim-cv-modal-title-sub{display:flex;align-items:center;gap:8px;min-width:0;}
+      .sim-cv-modal-title-line span:first-child,.sim-cv-modal-title-sub span:last-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .sim-cv-modal-grid{display:grid;grid-template-columns:160px minmax(0,1fr);gap:12px;align-items:start;}
       .sim-cv-modal-side{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:10px;}
       .sim-cv-modal-summary{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;}
+      .sim-cv-comp-cell{display:flex;align-items:center;gap:8px;min-width:0;}
+      .sim-cv-comp-cell .sim-cv-comp-title{font-size:13px;font-weight:600;color:var(--sb-gray-900);line-height:1.35;}
+      .sim-cv-proof{font-size:12px;line-height:1.45;color:var(--sb-gray-700);}
+      .sim-cv-undemonstrated{display:inline-flex;align-items:center;justify-content:center;min-width:96px;height:22px;padding:0 10px;border:1px solid rgba(124,58,237,.32);border-radius:999px;background:rgba(124,58,237,.06);color:#6d28d9;font-size:12px;font-weight:700;line-height:1;white-space:nowrap;box-sizing:border-box;}
+      .sim-cv-center{text-align:center;}
       .sim-cv-modal-summary p{margin:0;color:var(--sb-gray-700);font-size:13px;line-height:1.55;}
       .sim-cv-modal-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
       .sim-cv-mini-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;}
@@ -357,8 +365,10 @@
   }
 
   function cvLevelBadge(level) {
-    const v = (level || "—").toString().trim() || "—";
-    return `<span class="sb-badge">${esc(levelLabel(v) || v)}</span>`;
+    const raw = (level || "").toString().trim().toUpperCase();
+    const rank = ({ A: 1, B: 2, C: 3, D: 4 }[raw]) || 0;
+    if (!rank) return `<span class="sim-cv-undemonstrated">Non démontré</span>`;
+    return `<span class="sb-badge sb-badge-niv sb-badge-niv-${raw.toLowerCase()}">${esc(levelLabel(raw))}</span>`;
   }
 
   function ensureCvAnalysisModal() {
@@ -369,11 +379,15 @@
       <div class="modal" id="modalSimCvAnalysis" aria-hidden="true">
         <div class="modal-card modal-card--wide">
           <div class="modal-header">
-            <div class="modal-title-inline">
-              <span id="simCvAnalysisModalTitle" style="font-weight:600;">Analyse CV</span>
-              <span class="sb-badge sb-badge--candidat" id="simCvAnalysisModalBadge">Candidat CV</span>
-              <span class="sb-badge sb-badge-ref-poste-code" id="simCvAnalysisPosteCode" style="display:none;"></span>
-              <span id="simCvAnalysisPosteText" style="font-weight:600;"></span>
+            <div class="sim-cv-modal-title-stack">
+              <div class="sim-cv-modal-title-line">
+                <span id="simCvAnalysisModalTitle" style="font-weight:600;">Analyse CV</span>
+                <span class="sb-badge sb-badge--candidat" id="simCvAnalysisModalBadge">Candidat CV</span>
+              </div>
+              <div class="sim-cv-modal-title-sub">
+                <span class="sb-badge sb-badge-ref-poste-code" id="simCvAnalysisPosteCode" style="display:none;"></span>
+                <span id="simCvAnalysisPosteText" style="font-weight:600;"></span>
+              </div>
             </div>
             <button type="button" class="modal-x" id="btnCloseSimCvAnalysisModal" aria-label="Fermer">×</button>
           </div>
@@ -428,17 +442,10 @@
         <div class="sim-cv-modal-grid">
           <div class="sim-cv-modal-side">
             ${cvScoreRing(data.adequation_pct || 0)}
-            <div style="text-align:center;">
-              <div class="card-sub" style="margin:0;">Besoins détectés</div>
-              <div style="font-size:22px;font-weight:800;color:var(--sb-gray-900);">${esc(needs.length)}</div>
-            </div>
           </div>
           <div class="sim-cv-modal-summary">
-            <div class="card-title" style="font-size:15px;font-weight:700;margin:0 0 6px 0;">Lecture recruteur</div>
+            <div class="card-title" style="font-size:15px;font-weight:700;margin:0 0 6px 0;">Avis Novoskill</div>
             <p>${esc(data.lecture_recruteur || data.resume_profil || "Analyse disponible.")}</p>
-            <div class="sim-cv-modal-chip-row">
-              ${matching.slice(0, 6).map(x => `<span class="sb-badge">${esc(x.code || x.intitule || "Compétence")}</span>`).join("")}
-            </div>
           </div>
         </div>
 
@@ -447,27 +454,24 @@
             <thead>
               <tr>
                 <th>Compétence attendue</th>
-                <th style="width:110px;">Requis</th>
-                <th style="width:120px;">Estimé CV</th>
-                <th style="width:110px;" class="col-center">Couverture</th>
-                <th>Preuve / écart</th>
+                <th style="width:130px;" class="col-center">Niveau<br>requis</th>
+                <th style="width:150px;" class="col-center">Estimation<br>Novoskill</th>
+                <th>Preuve</th>
               </tr>
             </thead>
             <tbody>
               ${matching.length ? matching.map(row => `
                 <tr>
                   <td>
-                    <strong>${esc(row.code || "—")}</strong>
-                    <div class="card-sub" style="margin:2px 0 0 0;">${esc(row.intitule || "Compétence")}</div>
+                    <div class="sim-cv-comp-cell">
+                      <span class="sb-badge sb-badge-ref-comp-code">${esc(row.code || "—")}</span>
+                      <span class="sim-cv-comp-title">${esc(row.intitule || "Compétence")}</span>
+                    </div>
                   </td>
-                  <td>${cvLevelBadge(row.niveau_requis)}</td>
-                  <td>${row.niveau_estime ? cvLevelBadge(row.niveau_estime) : `<span class="sb-badge sb-badge--warning">Non démontré</span>`}</td>
-                  <td class="col-center"><span class="sb-badge ${int(row.couverture_pct) >= 75 ? "sb-badge--success" : int(row.couverture_pct) >= 50 ? "" : "sb-badge--warning"}">${esc(int(row.couverture_pct))}%</span></td>
-                  <td>
-                    <div>${esc(row.preuve_cv || "Preuve non explicite dans le CV.")}</div>
-                    ${row.ecart ? `<div class="card-sub" style="margin:3px 0 0 0;">Écart : ${esc(row.ecart)}</div>` : ""}
-                  </td>
-                </tr>`).join("") : `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune correspondance détaillée retournée.</td></tr>`}
+                  <td class="col-center">${cvLevelBadge(row.niveau_requis)}</td>
+                  <td class="col-center">${cvLevelBadge(row.niveau_estime)}</td>
+                  <td><div class="sim-cv-proof">${esc(row.preuve_cv || "Non démontré dans le CV.")}</div></td>
+                </tr>`).join("") : `<tr><td colspan="4" class="col-center" style="color:#6b7280;">Aucune correspondance détaillée retournée.</td></tr>`}
             </tbody>
           </table>
         </div>
