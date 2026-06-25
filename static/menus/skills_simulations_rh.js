@@ -287,10 +287,11 @@
     });
   }
 
-  async function loadOptions(force) {
+  async function loadOptions(force, opts = {}) {
     if (_optionsLoaded && !force) return _options;
     if (!_portal || !_portal.contactId) return _options;
-    setStatus("Chargement des données RH…");
+    const silent = !!opts.silent;
+    if (!silent) setStatus("Chargement des données RH…");
     const data = await _portal.apiJson(apiUrl(`/skills/simulations/options/${encodeURIComponent(_portal.contactId)}`, {
       id_service: getServiceId(),
       criticite_min: getCriticiteMin(),
@@ -304,7 +305,7 @@
       scope: data?.scope || null,
     };
     _optionsLoaded = true;
-    setStatus("");
+    if (!silent) setStatus("");
     if (!_selectedPosteId && _options.postes.length) _selectedPosteId = _options.postes[0].id_poste || "";
     renderAll();
     return _options;
@@ -1115,7 +1116,10 @@
     byId("btnSimReloadOptions")?.addEventListener("click", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
     byId("btnSimClearCompare")?.addEventListener("click", () => writeCompare([]));
     byId("simCriticiteRange")?.addEventListener("input", e => setCriticiteMin(e.target.value));
-    byId("simCriticiteRange")?.addEventListener("change", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
+    byId("simCriticiteRange")?.addEventListener("change", () => {
+      _optionsLoaded = false;
+      loadOptions(true, { silent: true }).catch(e => setStatus(errMsg(e), "error"));
+    });
     byId("simServiceSelect")?.addEventListener("change", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
   }
 
