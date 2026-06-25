@@ -121,9 +121,14 @@
   function effectifById(id) { return (_options.effectifs || []).find(e => String(e.id_effectif || "") === String(id || "")) || null; }
   function compById(id) { return (_options.competences || []).find(c => String(c.id_comp || "") === String(id || "")) || (_options.requirements || []).find(c => String(c.id_comp || "") === String(id || "")) || null; }
 
+  function posteCode(p) {
+    if (!p) return "";
+    return String(p.codif_client || p.codif_poste || "").trim();
+  }
+
   function posteLabel(p) {
     if (!p) return "Poste";
-    const code = (p.codif_poste || "").trim();
+    const code = posteCode(p);
     return `${code ? code + " · " : ""}${p.intitule_poste || "Poste"}`;
   }
 
@@ -262,8 +267,12 @@
     const p = posteById(_selectedPosteId);
     const meta = byId("simFocusPosteMeta");
     if (meta) {
+      const code = posteCode(p);
       meta.innerHTML = p ? `
-        <div class="sim-lego-focus-title">${esc(posteLabel(p))}</div>
+        <div class="sim-lego-focus-title">
+          ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
+          <span class="sim-lego-focus-label">${esc(p.intitule_poste || "Poste")}</span>
+        </div>
         <div class="sim-workshop-meta-row">
           <span>${esc(p.nom_service || "Tous les services")}</span>
           <span>Cible titulaires : ${esc(p.nb_titulaires_cible ?? "—")}</span>

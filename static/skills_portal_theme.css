@@ -8256,15 +8256,32 @@ body{
 .sim-lego-focus-box{
   margin-top:10px;
   padding:10px 12px;
-  border:1px solid var(--sb-gray-200);
+  border:1px solid color-mix(in srgb, var(--reading-accent) 34%, var(--sb-gray-200));
   border-radius:12px;
   background:#fff;
+  box-shadow:0 10px 24px rgba(13,148,136,0.10);
 }
 .sim-lego-focus-title{
-  font-size:14px;
-  font-weight:800;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  font-size:13px;
+  font-weight:600;
   color:var(--sb-gray-900);
   line-height:1.25;
+}
+.sim-lego-focus-title .sb-badge-ref-poste-code{
+  height:20px;
+  padding:0 8px;
+  font-size:11px;
+  font-weight:600;
+}
+.sim-lego-focus-label{
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .sim-lego-palette{
   display:grid;
@@ -8540,6 +8557,16 @@ body{
 .sim-workshop-settings{
   min-width:260px;
   margin-top:0;
+}
+
+.sim-workshop-settings > summary{
+  padding:8px 12px;
+  font-size:13px;
+  font-weight:650;
+}
+
+.sim-workshop-settings > summary::after{
+  font-weight:700;
 }
 
 .sim-workshop-poste-row{
