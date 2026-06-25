@@ -8986,3 +8986,306 @@ body{
     flex-direction:column;
   }
 }
+
+/* ======================================================
+   Simulation RH - Résultat visuel lisible
+   Additif volontaire : surcharge sans dépendre de la position des anciens blocs
+   ====================================================== */
+
+.sim-result-hero{
+  border-left:4px solid var(--sb-gray-300);
+}
+
+.sim-result-hero.is-good{
+  border-left-color:var(--sb-success);
+}
+
+.sim-result-hero.is-bad{
+  border-left-color:var(--sb-warning);
+}
+
+.sim-result-label{
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  font-size:10px;
+  font-weight:700;
+  color:var(--sb-gray-500);
+}
+
+.sim-result-title{
+  margin-top:6px;
+  font-size:16px;
+  line-height:1.35;
+  color:var(--sb-gray-900);
+  font-weight:700;
+  max-width:860px;
+}
+
+.sim-result-sub{
+  margin-top:8px;
+  color:var(--sb-gray-700);
+  line-height:1.5;
+  font-size:13px;
+  max-width:860px;
+}
+
+.sim-result-overview-grid{
+  display:grid;
+  grid-template-columns:1.1fr 1fr 1fr 1fr;
+  gap:10px;
+  margin-top:14px;
+}
+
+.sim-result-gauge-card,
+.sim-result-count-card,
+.sim-result-metric-card{
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  padding:12px;
+  background:#fff;
+}
+
+.sim-result-gauge-card.is-good,
+.sim-result-count-card.is-good,
+.sim-result-metric-card.is-good{
+  border-color:color-mix(in srgb, var(--sb-success) 28%, var(--sb-gray-200));
+  box-shadow:0 8px 18px color-mix(in srgb, var(--sb-success) 10%, transparent);
+}
+
+.sim-result-gauge-card.is-watch,
+.sim-result-count-card.is-watch{
+  border-color:color-mix(in srgb, var(--accent) 28%, var(--sb-gray-200));
+  box-shadow:0 8px 18px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.sim-result-gauge-card.is-bad,
+.sim-result-count-card.is-bad,
+.sim-result-metric-card.is-bad{
+  border-color:color-mix(in srgb, var(--sb-warning) 30%, var(--sb-gray-200));
+  box-shadow:0 8px 18px color-mix(in srgb, var(--sb-warning) 10%, transparent);
+}
+
+.sim-result-metric-label{
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:600;
+}
+
+.sim-result-gauge-head,
+.sim-result-metric-values{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:6px;
+}
+
+.sim-result-gauge-head strong,
+.sim-result-count-main,
+.sim-result-metric-values{
+  color:var(--sb-gray-900);
+  font-size:17px;
+  font-weight:700;
+}
+
+.sim-result-gauge-head span,
+.sim-result-metric-values span{
+  color:var(--sb-gray-500);
+  font-size:12px;
+  font-weight:600;
+}
+
+.sim-result-gauge-track,
+.sim-result-compare-track,
+.sim-impact-bar-track{
+  width:100%;
+  height:10px;
+  background:linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.sim-result-gauge-track{
+  margin-top:10px;
+  height:12px;
+}
+
+.sim-result-gauge-fill,
+.sim-result-compare-fill,
+.sim-impact-bar-fill{
+  height:100%;
+  border-radius:999px;
+}
+
+.sim-result-gauge-fill.is-good,
+.sim-result-compare-fill.is-good,
+.sim-impact-bar-fill.is-good{
+  background:linear-gradient(90deg, color-mix(in srgb, var(--sb-success) 55%, #d1fae5) 0%, var(--sb-success) 100%);
+}
+
+.sim-result-gauge-fill.is-watch,
+.sim-result-compare-fill.is-watch,
+.sim-impact-bar-fill.is-watch,
+.sim-result-compare-fill.is-neutral,
+.sim-impact-bar-fill.is-neutral{
+  background:linear-gradient(90deg, color-mix(in srgb, var(--accent) 45%, #dbeafe) 0%, var(--accent) 100%);
+}
+
+.sim-result-gauge-fill.is-bad,
+.sim-result-compare-fill.is-bad,
+.sim-impact-bar-fill.is-bad{
+  background:linear-gradient(90deg, #f8b4b4 0%, var(--sb-warning) 100%);
+}
+
+.sim-result-compare-fill.is-before,
+.sim-impact-bar-fill.is-before{
+  background:linear-gradient(90deg, #cbd5e1 0%, #94a3b8 100%);
+}
+
+.sim-result-gauge-caption,
+.sim-result-count-sub,
+.sim-result-projection-note{
+  margin-top:8px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.sim-result-compare-bars,
+.sim-impact-bar-lines,
+.sim-result-visual-stack,
+.sim-result-summary-stack{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.sim-result-compare-line,
+.sim-impact-bar-line{
+  display:grid;
+  grid-template-columns:42px minmax(0, 1fr) auto;
+  align-items:center;
+  gap:8px;
+}
+
+.sim-result-compare-line span,
+.sim-impact-bar-line span{
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:600;
+}
+
+.sim-result-compare-line strong,
+.sim-impact-bar-line strong{
+  color:var(--sb-gray-700);
+  font-size:11px;
+  font-weight:700;
+}
+
+.sim-result-metric-delta{
+  margin-top:8px;
+  color:var(--sb-gray-700);
+  font-size:12px;
+  font-weight:600;
+}
+
+.sim-result-count-main{
+  margin-top:8px;
+}
+
+.sim-result-section-title{
+  font-size:15px;
+  font-weight:700;
+}
+
+.sim-result-summary-block{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  padding:12px;
+  background:linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,250,252,.98) 100%);
+}
+
+.sim-result-summary-label{
+  color:var(--accent);
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:6px;
+}
+
+.sim-result-summary-block p,
+.sim-result-bullet-list{
+  margin:0;
+  color:var(--sb-gray-700);
+  font-size:13px;
+  line-height:1.55;
+}
+
+.sim-result-bullet-list{
+  padding-left:18px;
+}
+
+.sim-impact-bar-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:12px;
+}
+
+.sim-impact-bar-card{
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  padding:12px;
+  background:#fff;
+  box-shadow:0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.sim-impact-bar-card.is-good{
+  border-color:color-mix(in srgb, var(--sb-success) 22%, var(--sb-gray-200));
+}
+
+.sim-impact-bar-card.is-bad{
+  border-color:color-mix(in srgb, var(--sb-warning) 22%, var(--sb-gray-200));
+}
+
+.sim-impact-bar-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.sim-impact-bar-side{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.sim-impact-score{
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:700;
+}
+
+.sim-result-detail-title{
+  font-weight:700;
+  color:var(--sb-gray-900);
+  margin-bottom:8px;
+  font-size:13px;
+}
+
+@media (max-width: 1180px){
+  .sim-result-overview-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 760px){
+  .sim-impact-bar-head,
+  .sim-impact-bar-side{
+    display:block;
+  }
+}

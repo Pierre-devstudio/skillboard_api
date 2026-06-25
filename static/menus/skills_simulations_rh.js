@@ -654,41 +654,101 @@
     switchTab("result");
   }
 
-  function resultKpi(title, before, after, inverse) {
+  function metricCard(label, before, after, inverse, opts) {
     const b = int(before);
     const a = int(after);
     const delta = a - b;
+    const suffix = opts?.suffix || "pts";
+    const deltaLabel = typeof opts?.deltaLabel === "function"
+      ? opts.deltaLabel(delta)
+      : `${delta > 0 ? "+" : ""}${delta} ${suffix}`;
     return `
-      <div class="sim-result-kpi ${trendClass(delta, inverse)}">
-        <div class="label">${esc(title)}</div>
-        <div class="value">${esc(b)} → ${esc(a)}</div>
-        <div class="sim-result-kpi-delta">${deltaBadge(delta, inverse)}</div>
+      <div class="sim-result-metric-card ${trendClass(delta, inverse)}">
+        <div class="sim-result-metric-label">${esc(label)}</div>
+        <div class="sim-result-metric-values">${esc(b)} <span>→</span> ${esc(a)}</div>
+        <div class="sim-result-compare-bars">
+          <div class="sim-result-compare-line">
+            <span>Avant</span>
+            <div class="sim-result-compare-track"><div class="sim-result-compare-fill is-before" style="width:${Math.max(0, Math.min(100, b))}%"></div></div>
+          </div>
+          <div class="sim-result-compare-line">
+            <span>Après</span>
+            <div class="sim-result-compare-track"><div class="sim-result-compare-fill ${trendClass(delta, inverse)}" style="width:${Math.max(0, Math.min(100, a))}%"></div></div>
+          </div>
+        </div>
+        <div class="sim-result-metric-delta">${esc(deltaLabel)}</div>
       </div>`;
   }
 
-  function impactRows(postes, limit) {
-    const list = Array.isArray(postes) ? postes.slice(0, limit || 8) : [];
-    if (!list.length) return `<div class="sim-empty-state">Aucun poste ne varie de façon significative.</div>`;
-    return list.map(p => `
-      <div class="sim-result-impact-row ${int(p.delta) < 0 ? "is-good" : int(p.delta) > 0 ? "is-bad" : "is-neutral"}">
-        <div>
-          <div class="sim-impact-title">${esc(p.codif_poste ? p.codif_poste + " · " : "")}${esc(p.intitule_poste || "Poste")}</div>
-          <div class="card-sub" style="margin:3px 0 0 0;">${esc(p.nom_service || "")}</div>
-        </div>
-        <div class="sim-impact-score">${esc(p.fragilite_avant)} → ${esc(p.fragilite_apres)}</div>
-        <div>${deltaBadge(p.delta || 0)}</div>
-      </div>`).join("");
+  function gaugeTone(score) {
+    if (score >= 70) return "is-good";
+    if (score <= 40) return "is-bad";
+    return "is-watch";
   }
 
-  function serviceRows(services, limit) {
-    const list = Array.isArray(services) ? services.slice(0, limit || 8) : [];
-    if (!list.length) return `<div class="sim-empty-state">Aucun service ne varie de façon significative.</div>`;
-    return list.map(s => `
-      <div class="sim-result-impact-row ${int(s.delta) < 0 ? "is-good" : int(s.delta) > 0 ? "is-bad" : "is-neutral"}">
-        <div class="sim-impact-title">${esc(s.nom_service || "Service")}</div>
-        <div class="sim-impact-score">${esc(s.fragilite_avant)} → ${esc(s.fragilite_apres)}</div>
-        <div>${deltaBadge(s.delta || 0)}</div>
-      </div>`).join("");
+  function gaugeLabel(score) {
+    if (score >= 70) return "Favorable";
+    if (score <= 40) return "À sécuriser";
+    return "À étudier";
+  }
+
+  function overviewGauge(result, current, finalSummary, finalImpact, needs) {
+    const fragDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
+    const transmissionDelta = int(finalSummary.capacite_transmission) - int(current.capacite_transmission);
+    const improved = int(finalImpact.postes_securises || 0);
+    const degraded = int(finalImpact.postes_degrades || 0);
+    let score = 50 + Math.max(0, -fragDelta) * 3 + Math.max(0, transmissionDelta) * 0.8 + improved * 8 - degraded * 14 - needs.length * 4;
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    const tone = gaugeTone(score);
+    return `
+      <div class="sim-result-gauge-card ${tone}">
+        <div class="sim-result-metric-label">Lecture globale</div>
+        <div class="sim-result-gauge-head">
+          <strong>${esc(gaugeLabel(score))}</strong>
+          <span>${score}/100</span>
+        </div>
+        <div class="sim-result-gauge-track"><div class="sim-result-gauge-fill ${tone}" style="width:${score}%"></div></div>
+        <div class="sim-result-gauge-caption">Lecture visuelle du scénario avant arbitrage final.</div>
+      </div>`;
+  }
+
+  function impactBarRows(items, limit, kind) {
+    const list = Array.isArray(items) ? items.slice(0, limit || 8) : [];
+    if (!list.length) return `<div class="sim-empty-state">${kind === "service" ? "Aucun service" : "Aucun poste"} ne varie de façon significative.</div>`;
+    return list.map(item => {
+      const before = int(item.fragilite_avant);
+      const after = int(item.fragilite_apres);
+      const delta = int(item.delta || 0);
+      const tone = delta < 0 ? "is-good" : delta > 0 ? "is-bad" : "is-neutral";
+      const code = item.codif_client || item.codif_poste || "";
+      const title = kind === "service" ? (item.nom_service || "Service") : (item.intitule_poste || "Poste");
+      const sub = kind === "service" ? "Lecture moyenne du service" : (item.nom_service || "");
+      return `
+        <div class="sim-impact-bar-card ${tone}">
+          <div class="sim-impact-bar-head">
+            <div>
+              <div class="sim-impact-title">${kind === "service" ? esc(title) : `${code ? `<span class="sb-badge sb-badge--code">${esc(code)}</span> ` : ""}${esc(title)}`}</div>
+              <div class="card-sub" style="margin:4px 0 0 0;">${esc(sub)}</div>
+            </div>
+            <div class="sim-impact-bar-side">
+              <div class="sim-impact-score">${esc(before)} → ${esc(after)}</div>
+              <div>${deltaBadge(delta)}</div>
+            </div>
+          </div>
+          <div class="sim-impact-bar-lines">
+            <div class="sim-impact-bar-line">
+              <span>Avant</span>
+              <div class="sim-impact-bar-track"><div class="sim-impact-bar-fill is-before" style="width:${Math.max(0, Math.min(100, before))}%"></div></div>
+              <strong>${before}</strong>
+            </div>
+            <div class="sim-impact-bar-line">
+              <span>Après</span>
+              <div class="sim-impact-bar-track"><div class="sim-impact-bar-fill ${tone}" style="width:${Math.max(0, Math.min(100, after))}%"></div></div>
+              <strong>${after}</strong>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
   }
 
   function renderDevelopmentNeeds(result) {
@@ -705,23 +765,61 @@
     `).join("");
   }
 
-  function resultSentence(result, immediat, projete) {
-    const cur = result?.actuel || {};
-    const im = immediat?.summary || {};
-    const pr = projete?.summary || {};
-    const imDelta = int(im.fragilite_moyenne) - int(cur.fragilite_moyenne);
-    const prDelta = int(pr.fragilite_moyenne) - int(cur.fragilite_moyenne);
-    const degraded = int(projete?.impact?.postes_degrades || result?.impact?.postes_degrades || 0);
-    const secured = int(projete?.impact?.postes_securises || result?.impact?.postes_securises || 0);
-    if (imDelta < 0 && degraded > 0) return `Le scénario améliore la fragilité moyenne (${deltaText(imDelta)}), mais dégrade ${degraded} poste${degraded > 1 ? "s" : ""}.`;
-    if (imDelta < 0 || secured > 0) return `Le scénario sécurise le périmètre : ${secured} poste${secured > 1 ? "s" : ""} amélioré${secured > 1 ? "s" : ""}, fragilité ${deltaText(imDelta)} en immédiat.`;
-    if (imDelta > 0 || degraded > 0) return `Le scénario dégrade le périmètre : ${degraded} poste${degraded > 1 ? "s" : ""} à surveiller, fragilité ${deltaText(imDelta)} en immédiat.`;
-    if (prDelta !== imDelta) return `L’impact immédiat est limité ; l’effet principal apparaît après montée en compétence (${deltaText(prDelta)} projeté).`;
-    return "Le scénario produit un impact limité. Il peut servir de base de comparaison avec une autre option.";
-  }
+  function buildResultNarrative(result, current, immediat, projete, finalSummary, finalImpact, hasProjected, needs) {
+    const imSummary = immediat?.summary || {};
+    const imDelta = int(imSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
+    const finalDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
+    const transmissionDelta = int(finalSummary.capacite_transmission) - int(current.capacite_transmission);
+    const improved = int(finalImpact.postes_securises || 0);
+    const degraded = int(finalImpact.postes_degrades || 0);
+    const topPost = (finalImpact.postes_impactes || immediat?.impact?.postes_impactes || [])[0] || null;
 
-  function resultPill(label, value, cls) {
-    return `<div class="sim-result-pill ${cls || ""}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
+    let title = "Le scénario produit un impact limité à ce stade.";
+    if (improved > 0 && degraded === 0 && finalDelta < 0) {
+      title = `Le scénario améliore ${improved} poste${improved > 1 ? "s" : ""} sans dégradation visible sur le périmètre.`;
+    } else if (improved > 0 && degraded > 0) {
+      title = `Le scénario sécurise une partie du périmètre, mais déplace aussi le risque sur ${degraded} poste${degraded > 1 ? "s" : ""}.`;
+    } else if (degraded > 0 || finalDelta > 0) {
+      title = `Le scénario augmente le niveau de vigilance sur le périmètre étudié.`;
+    }
+
+    const summaryParts = [];
+    summaryParts.push(`La fragilité moyenne passe de ${int(current.fragilite_moyenne)} à ${int(finalSummary.fragilite_moyenne)} (${deltaText(finalDelta)}).`);
+    if (transmissionDelta !== 0) {
+      summaryParts.push(`La capacité de transmission évolue de ${int(current.capacite_transmission)} à ${int(finalSummary.capacite_transmission)} (${deltaText(transmissionDelta)}).`);
+    }
+    if (topPost) {
+      summaryParts.push(`${topPost.intitule_poste || "Le poste principal"} est ${int(topPost.delta || 0) < 0 ? "le plus amélioré" : int(topPost.delta || 0) > 0 ? "le plus fragilisé" : "le plus impacté"}.`);
+    }
+
+    const rhParts = [];
+    if (improved > 0 && degraded === 0) {
+      rhParts.push(`Le scénario peut servir de base de discussion avec le manager ou le RH, car il améliore le poste étudié sans créer d’alerte visible sur les autres postes.`);
+    } else if (improved > 0 && degraded > 0) {
+      rhParts.push(`Le scénario apporte un gain local, mais il doit être arbitré avec prudence car il déplace une partie de la fragilité vers d’autres postes ou services.`);
+    } else if (degraded > 0) {
+      rhParts.push(`Le scénario n’est pas recommandé en l’état : il crée davantage de tensions qu’il n’en résout.`);
+    } else {
+      rhParts.push(`Le scénario a un effet modéré. Il reste utile pour comparer plusieurs options avant décision.`);
+    }
+    if (hasProjected && needs.length) {
+      rhParts.push(`Une partie du résultat dépend d’une montée en compétence projetée. Les besoins détectés devront être confirmés avant arbitrage.`);
+    } else if (hasProjected) {
+      rhParts.push(`L’effet projeté suppose que la montée en compétence simulée soit réellement atteinte.`);
+    }
+
+    const vigilance = [];
+    if (degraded > 0) vigilance.push(`Vérifier les postes ou services fragilisés avant de retenir ce scénario.`);
+    if (needs.length) vigilance.push(`Prévoir le traitement des besoins de montée en compétence générés par le scénario.`);
+    if (!degraded && !needs.length) vigilance.push(`Confirmer la faisabilité terrain : disponibilité des personnes, charge réelle et calendrier.`);
+    if (!hasProjected) vigilance.push(`Le résultat présenté porte sur l’effet organisationnel direct du scénario.`);
+
+    return {
+      title,
+      summary: summaryParts.join(" "),
+      rh: rhParts.join(" "),
+      vigilance,
+    };
   }
 
   function renderResult(result) {
@@ -740,17 +838,22 @@
     const imImpact = immediat.impact || {};
     const prImpact = projete.impact || result.impact || {};
     const needs = result?.developpement?.besoins_formation || [];
-    const imDelta = int(imSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
-    const prDelta = int(prSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
-    const services = prImpact.services_impactes || imImpact.services_impactes || [];
+    const hasProjected = JSON.stringify(imSummary) !== JSON.stringify(prSummary) || needs.length > 0 || _scenario.some(b => (b?.type || "") === "projection_competence");
+    const finalSummary = hasProjected ? prSummary : imSummary;
+    const finalImpact = hasProjected ? prImpact : imImpact;
+    const finalDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
+    const narrative = buildResultNarrative(result, current, immediat, projete, finalSummary, finalImpact, hasProjected, needs);
+    const improvedCount = int(finalImpact.postes_securises || 0);
+    const degradedCount = int(finalImpact.postes_degrades || 0);
+    const impactedCount = Array.isArray(finalImpact.postes_impactes) ? finalImpact.postes_impactes.length : 0;
 
     root.innerHTML = `
-      <div class="card sim-result-hero ${trendClass(imDelta)}">
+      <div class="card sim-result-hero ${trendClass(finalDelta)}">
         <div class="sim-result-hero-top">
           <div>
             <div class="sim-result-label">Résultat du scénario</div>
-            <div class="sim-result-title">${esc(resultSentence(result, immediat, projete))}</div>
-            <div class="sim-result-sub">${esc(result.conseil?.option_recommandee || result.conseil?.lecture || "À comparer avec une autre option avant arbitrage.")}</div>
+            <div class="sim-result-title">${esc(narrative.title)}</div>
+            <div class="sim-result-sub">${esc(narrative.summary)}</div>
           </div>
           <div class="sb-actions sb-actions--end">
             <button type="button" class="sb-btn sb-btn--soft" id="btnSimBackBuild">Modifier</button>
@@ -758,53 +861,62 @@
             <button type="button" class="sb-btn sb-btn--soft" id="btnSimShowCompare">Comparer</button>
           </div>
         </div>
-        <div class="sim-result-pill-row">
-          ${resultPill("Impact immédiat", deltaText(imDelta), trendClass(imDelta))}
-          ${resultPill("Impact projeté", deltaText(prDelta), trendClass(prDelta))}
-          ${resultPill("Postes améliorés", int(prImpact.postes_securises || 0), "is-good")}
-          ${resultPill("Postes dégradés", int(prImpact.postes_degrades || 0), int(prImpact.postes_degrades || 0) > 0 ? "is-bad" : "")}
-          ${resultPill("Besoins générés", needs.length, needs.length ? "is-watch" : "")}
+        <div class="sim-result-overview-grid">
+          ${overviewGauge(result, current, finalSummary, finalImpact, needs)}
+          ${metricCard("Fragilité moyenne", current.fragilite_moyenne, finalSummary.fragilite_moyenne, true)}
+          ${metricCard("Capacité de transmission", current.capacite_transmission, finalSummary.capacite_transmission, false)}
+          <div class="sim-result-count-card ${degradedCount > 0 ? "is-watch" : "is-good"}">
+            <div class="sim-result-metric-label">Repères rapides</div>
+            <div class="sim-result-count-main">${improvedCount} amélioré${improvedCount > 1 ? "s" : ""}</div>
+            <div class="sim-result-count-sub">${degradedCount} dégradé${degradedCount > 1 ? "s" : ""} · ${needs.length} besoin${needs.length > 1 ? "s" : ""} · ${impactedCount} poste${impactedCount > 1 ? "s" : ""} impacté${impactedCount > 1 ? "s" : ""}</div>
+          </div>
         </div>
       </div>
 
       <div class="sim-result-main-grid">
         <div class="card sim-result-readable-card">
-          <div class="card-title">1. Impact immédiat</div>
-          <div class="card-sub sim2-muted-top">Ce qui change dès que les mouvements, retraits ou renforts sont appliqués.</div>
-          <div class="sim-lego-kpi-grid sim-result-kpi-grid">
-            ${resultKpi("Fragilité moyenne", current.fragilite_moyenne, imSummary.fragilite_moyenne)}
-            ${resultKpi("Postes en danger", current.postes_rouges, imSummary.postes_rouges)}
-            ${resultKpi("Transmission", current.capacite_transmission, imSummary.capacite_transmission, true)}
+          <div class="card-title sim-result-section-title">Synthèse IA de lecture</div>
+          <div class="sim-result-summary-stack">
+            <div class="sim-result-summary-block">
+              <div class="sim-result-summary-label">Lecture rapide</div>
+              <p>${esc(narrative.rh)}</p>
+            </div>
+            <div class="sim-result-summary-block">
+              <div class="sim-result-summary-label">Points de vigilance</div>
+              <ul class="sim-result-bullet-list">
+                ${narrative.vigilance.map(item => `<li>${esc(item)}</li>`).join("")}
+              </ul>
+            </div>
           </div>
         </div>
 
         <div class="card sim-result-readable-card">
-          <div class="card-title">2. Impact projeté</div>
-          <div class="card-sub sim2-muted-top">Lecture après les briques de compétence acquise ou les besoins générés par la mobilité.</div>
-          <div class="sim-lego-kpi-grid sim-result-kpi-grid">
-            ${resultKpi("Fragilité moyenne", current.fragilite_moyenne, prSummary.fragilite_moyenne)}
-            ${resultKpi("Postes en danger", current.postes_rouges, prSummary.postes_rouges)}
-            ${resultKpi("Transmission", current.capacite_transmission, prSummary.capacite_transmission, true)}
+          <div class="card-title sim-result-section-title">Repères visuels</div>
+          <div class="sim-result-visual-stack">
+            ${metricCard("Fragilité moyenne", current.fragilite_moyenne, imSummary.fragilite_moyenne, true)}
+            ${metricCard("Postes en danger", current.postes_rouges, imSummary.postes_rouges, true, { suffix: "poste", deltaLabel: (delta) => `${delta > 0 ? "+" : ""}${delta} poste${Math.abs(delta) > 1 ? "s" : ""}` })}
+            ${metricCard("Capacité de transmission", current.capacite_transmission, imSummary.capacite_transmission, false)}
+            ${hasProjected ? `<div class="sim-result-projection-note">Projection après montée en compétence : fragilité ${esc(int(current.fragilite_moyenne))} → ${esc(int(prSummary.fragilite_moyenne))}, transmission ${esc(int(current.capacite_transmission))} → ${esc(int(prSummary.capacite_transmission))}.</div>` : `<div class="sim-result-projection-note">Aucune projection de montée en compétence n’est activée dans ce scénario.</div>`}
           </div>
         </div>
       </div>
 
       <div class="sim-result-main-grid" style="margin-top:12px;">
         <div class="card sim-result-readable-card">
-          <div class="card-title">3. Postes à regarder</div>
-          <div class="card-sub sim2-muted-top">Les postes dont la fragilité bouge le plus.</div>
-          <div class="sim-result-impact-list">${impactRows(prImpact.postes_impactes || imImpact.postes_impactes || [], 8)}</div>
+          <div class="card-title sim-result-section-title">Postes impactés par le scénario</div>
+          <div class="card-sub sim2-muted-top">Lecture avant / après sur les postes dont la fragilité évolue le plus.</div>
+          <div class="sim-impact-bar-list">${impactBarRows(finalImpact.postes_impactes || imImpact.postes_impactes || [], 8, "poste")}</div>
         </div>
 
         <div class="card sim-result-readable-card">
-          <div class="card-title">4. Services concernés</div>
-          <div class="card-sub sim2-muted-top">Lecture moyenne par service pour repérer l’effet domino.</div>
-          <div class="sim-result-impact-list">${serviceRows(services, 8)}</div>
+          <div class="card-title sim-result-section-title">Services concernés</div>
+          <div class="card-sub sim2-muted-top">Lecture visuelle par service pour repérer l’effet domino.</div>
+          <div class="sim-impact-bar-list">${impactBarRows(finalImpact.services_impactes || imImpact.services_impactes || [], 8, "service")}</div>
         </div>
       </div>
 
       <div class="card sim-result-readable-card" style="margin-top:12px;">
-        <div class="card-title">5. Besoins générés par le scénario</div>
+        <div class="card-title sim-result-section-title">Besoins générés par le scénario</div>
         <div class="card-sub sim2-muted-top">Ces besoins ne sont pas envoyés automatiquement. Ils servent à préparer l’étape Besoins & formations / Studio.</div>
         <div class="sim-lego-dev-list">${renderDevelopmentNeeds(result)}</div>
       </div>
@@ -815,11 +927,11 @@
           <div class="sim-result-main-grid">
             <div>
               <div class="sim-result-detail-title">Postes impactés en immédiat</div>
-              ${impactRows(imImpact.postes_impactes || [], 20)}
+              ${impactBarRows(imImpact.postes_impactes || [], 20, "poste")}
             </div>
             <div>
               <div class="sim-result-detail-title">Postes impactés en projeté</div>
-              ${impactRows(prImpact.postes_impactes || [], 20)}
+              ${impactBarRows(prImpact.postes_impactes || [], 20, "poste")}
             </div>
           </div>
           <details class="sim2-details" style="margin-top:12px;">
