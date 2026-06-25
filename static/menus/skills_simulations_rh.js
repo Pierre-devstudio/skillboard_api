@@ -104,7 +104,9 @@
   }
 
   function setCriticiteMin(v) {
-    const n = Math.max(0, Math.min(100, parseInt(v || 70, 10) || 70));
+    const raw = (v === null || v === undefined || v === "") ? "70" : String(v);
+    const parsed = parseInt(raw, 10);
+    const n = Math.max(0, Math.min(100, Number.isNaN(parsed) ? 70 : parsed));
     const input = byId("simCriticiteRange");
     const label = byId("simCriticiteValue");
     if (input) input.value = String(n);

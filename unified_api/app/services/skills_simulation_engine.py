@@ -1172,6 +1172,43 @@ def _build_development_needs(req: SimulationEvalRequest, dataset: Dict[str, Any]
     out.sort(key=lambda x: (-_safe_int(x.get("priorite_score"), 0), str(x.get("nom_complet") or ""), str(x.get("intitule") or "")))
     return out[:30]
 
+
+def _projection_hypotheses_from_generated_needs(needs: List[Dict[str, Any]]) -> List[SimulationHypothese]:
+    """
+    Projection métier:
+    les besoins générés par une mobilité ou une projection explicite sont appliqués
+    virtuellement au niveau attendu pour recalculer l'état "après montée en compétence".
+
+    Rien n'est écrit en base. On ne fait que mesurer l'effet potentiel si ces besoins
+    étaient réellement couverts.
+    """
+    out: List[SimulationHypothese] = []
+    seen = set()
+    for need in needs or []:
+        eid = str(need.get("id_effectif") or "").strip()
+        cid = str(need.get("id_comp") or "").strip()
+        pid = str(need.get("id_poste") or "").strip()
+        niveau = str(need.get("niveau_cible") or need.get("niveau_requis") or "C").strip() or "C"
+        if not eid or not cid:
+            continue
+
+        key = (eid, pid, cid, niveau)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        out.append(SimulationHypothese(
+            type="montee_competence",
+            id_effectif=eid,
+            id_poste=pid or None,
+            id_comp=cid,
+            niveau_simule=niveau,
+            libelle=f"Projection besoin généré · {need.get('code') or need.get('intitule') or cid}",
+            temporalite="development",
+        ))
+    return out
+
+
 def _options_payload(dataset: Dict[str, Any]) -> Dict[str, Any]:
     cotations = dataset.get("cotations") or {}
     postes = []
@@ -1381,7 +1418,10 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
     current_state = _build_state(dataset, [], simulated=False)
     immediate_hypotheses = [h for h in (payload.hypotheses or []) if _hypothese_is_immediate(h)]
     immediate_state = _build_state(dataset, immediate_hypotheses, simulated=True)
-    simulated_state = _build_state(dataset, payload.hypotheses or [], simulated=True)
+
+    development_needs = _build_development_needs(payload, dataset)
+    projected_hypotheses = list(payload.hypotheses or []) + _projection_hypotheses_from_generated_needs(development_needs)
+    simulated_state = _build_state(dataset, projected_hypotheses, simulated=True)
 
     # Source de vérité de l'état réel : moteur Analyse, sans recopie de formule.
     current_records_analyse = _fetch_current_poste_records_from_analyse_engine(cur, id_ent, id_service, int(criticite_min))
@@ -1432,8 +1472,9 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
     cotation = _compute_cotation_context(payload, dataset)
     conseil = _build_conseil(payload, current_summary, simulated_summary, impacts, cotation)
     developpement = {
-        "besoins_formation": _build_development_needs(payload, dataset),
-        "lecture": "Les besoins listés correspondent aux écarts entre les personnes déplacées et les postes ciblés. Ils servent à préparer l'étape formation/transmission après l'arbitrage immédiat.",
+        "besoins_formation": development_needs,
+        "besoins_projection_appliques": len(development_needs),
+        "lecture": "Les besoins listés correspondent aux écarts entre les personnes déplacées et les postes ciblés. La projection mesure l'effet potentiel si ces besoins sont couverts au niveau attendu.",
     }
 
     return {
