@@ -8460,3 +8460,496 @@ body{
   .sim-lego-dev-row{ flex-direction:column; }
   .sim-lego-person-score{ align-items:flex-start; }
 }
+
+/* ======================================================
+   Simulation RH — atelier lisible de scénarios
+   ====================================================== */
+.sim-workshop-hero{
+  margin-bottom:12px;
+}
+
+.sim-workshop-hero__main{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+}
+
+.sim-workshop-steps{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+.sim-workshop-steps span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 10px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:999px;
+  background:#fff;
+  color:var(--sb-gray-700);
+  font-size:12px;
+  font-weight:700;
+}
+
+.sim-workshop-steps strong{
+  display:inline-grid;
+  place-items:center;
+  width:20px;
+  height:20px;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color:var(--accent);
+  font-size:12px;
+}
+
+.sim-workshop-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 380px;
+  gap:12px;
+  align-items:start;
+}
+
+.sim-workshop-main,
+.sim-workshop-side{
+  min-width:0;
+}
+
+.sim-workshop-side{
+  position:sticky;
+  top:12px;
+}
+
+.sim-workshop-card{
+  padding:14px;
+}
+
+.sim-workshop-card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.sim-workshop-settings{
+  min-width:260px;
+  margin-top:0;
+}
+
+.sim-workshop-poste-row{
+  margin-top:12px;
+}
+
+.sim-workshop-meta-row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:6px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+}
+
+.sim-workshop-meta-row span{
+  border:1px solid var(--sb-gray-200);
+  background:#f8fafc;
+  border-radius:999px;
+  padding:4px 8px;
+}
+
+.sim-lego-palette{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:12px;
+}
+
+.sim-lego-brick-group-title{
+  font-size:12px;
+  font-weight:900;
+  color:var(--sb-gray-500);
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-bottom:7px;
+}
+
+.sim-lego-brick-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px;
+}
+
+.sim-lego-brick{
+  display:grid;
+  grid-template-columns:34px 1fr;
+  align-items:start;
+  gap:10px;
+  min-height:74px;
+  transition:border-color .12s ease, background .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+
+.sim-lego-brick:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb, var(--accent) 30%, var(--sb-gray-300));
+  box-shadow:0 8px 18px rgba(15,23,42,.05);
+}
+
+.sim-lego-brick-icon{
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  background:var(--sb-gray-100);
+  color:var(--accent);
+  font-weight:950;
+  font-size:16px;
+}
+
+.sim-lego-brick.is-active .sim-lego-brick-icon{
+  background:var(--accent);
+  color:#fff;
+}
+
+.sim-lego-brick.is-secondary.is-active .sim-lego-brick-icon{
+  background:var(--reading-accent);
+}
+
+.sim-lego-brick.is-secondary.is-active{
+  border-color:color-mix(in srgb, var(--reading-accent) 52%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+}
+
+.sim-brick-editor-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+  color:var(--sb-gray-900);
+}
+
+.sim-brick-editor-title span{
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  border-radius:8px;
+  background:color-mix(in srgb, var(--accent) 10%, #ffffff);
+  color:var(--accent);
+  font-weight:950;
+}
+
+.sim-brick-editor-title strong{
+  font-size:14px;
+  font-weight:900;
+}
+
+.sim-workshop-scenario-card{
+  border-left:4px solid var(--accent);
+}
+
+.sim-workshop-scenario-actions{
+  justify-content:space-between;
+  margin-top:12px;
+}
+
+.sim-workshop-scenario-actions .sb-btn--accent{
+  flex:1;
+}
+
+.sim-workshop-scenario-empty{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  padding:10px 0;
+}
+
+.sim-workshop-scenario-empty strong{
+  color:var(--sb-gray-900);
+  line-height:1.25;
+}
+
+.sim-workshop-scenario-empty span{
+  color:var(--sb-gray-500);
+  font-size:13px;
+  line-height:1.35;
+}
+
+.sim-workshop-help-card{
+  background:#f8fafc;
+}
+
+.sim-workshop-read-list{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  margin-top:10px;
+}
+
+.sim-workshop-read-list div{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  padding:9px 10px;
+}
+
+.sim-workshop-read-list strong{
+  color:var(--sb-gray-900);
+  font-size:13px;
+}
+
+.sim-workshop-read-list span{
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.3;
+}
+
+.sim-lego-scenario-brick{
+  align-items:flex-start;
+  border-left-width:0;
+}
+
+.sim-lego-scenario-icon{
+  flex:0 0 auto;
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  background:color-mix(in srgb, var(--accent) 10%, #ffffff);
+  color:var(--accent);
+  font-weight:950;
+}
+
+.sim-lego-scenario-brick.is-dev .sim-lego-scenario-icon{
+  background:color-mix(in srgb, var(--reading-accent) 10%, #ffffff);
+  color:var(--reading-accent);
+}
+
+.sim-lego-scenario-copy{
+  min-width:0;
+  flex:1;
+}
+
+.sim-result-hero{
+  border-left:5px solid var(--sb-gray-300);
+}
+
+.sim-result-hero.is-good{
+  border-left-color:var(--sb-success);
+}
+
+.sim-result-hero.is-bad{
+  border-left-color:var(--sb-warning);
+}
+
+.sim-result-hero-top{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+}
+
+.sim-result-label{
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  font-size:11px;
+  font-weight:900;
+  color:var(--sb-gray-500);
+}
+
+.sim-result-title{
+  margin-top:6px;
+  font-size:22px;
+  line-height:1.18;
+  color:var(--sb-gray-900);
+  font-weight:950;
+  max-width:900px;
+}
+
+.sim-result-sub{
+  margin-top:8px;
+  color:var(--sb-gray-700);
+  line-height:1.45;
+  max-width:900px;
+}
+
+.sim-result-pill-row{
+  display:grid;
+  grid-template-columns:repeat(5, minmax(130px, 1fr));
+  gap:8px;
+  margin-top:14px;
+}
+
+.sim-result-pill{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  padding:9px 10px;
+  background:#fff;
+}
+
+.sim-result-pill span{
+  display:block;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  font-weight:700;
+}
+
+.sim-result-pill strong{
+  display:block;
+  margin-top:4px;
+  color:var(--sb-gray-900);
+  font-size:18px;
+  font-weight:950;
+}
+
+.sim-result-pill.is-good{
+  border-color:color-mix(in srgb, var(--sb-success) 45%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--sb-success) 6%, #ffffff);
+}
+
+.sim-result-pill.is-bad,
+.sim-result-pill.is-watch{
+  border-color:color-mix(in srgb, var(--sb-warning) 50%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--sb-warning) 7%, #ffffff);
+}
+
+.sim-result-main-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+
+.sim-result-readable-card{
+  padding:14px;
+}
+
+.sim-result-kpi-grid{
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+}
+
+.sim-result-kpi{
+  border-left:4px solid var(--sb-gray-300);
+}
+
+.sim-result-kpi.is-good{
+  border-left-color:var(--sb-success);
+}
+
+.sim-result-kpi.is-bad{
+  border-left-color:var(--sb-warning);
+}
+
+.sim-result-kpi-delta{
+  margin-top:6px;
+}
+
+.sim-result-impact-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:12px;
+}
+
+.sim-result-impact-row{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto auto;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-left:4px solid var(--sb-gray-300);
+  border-radius:12px;
+  background:#fff;
+}
+
+.sim-result-impact-row.is-good{
+  border-left-color:var(--sb-success);
+}
+
+.sim-result-impact-row.is-bad{
+  border-left-color:var(--sb-warning);
+}
+
+.sim-result-technical{
+  margin-top:12px;
+}
+
+.sim-result-detail-title{
+  font-weight:900;
+  color:var(--sb-gray-900);
+  margin-bottom:8px;
+}
+
+.sim-compare-readable{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.sim-compare-card{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto auto;
+  gap:12px;
+  align-items:center;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  padding:10px 12px;
+}
+
+.sim-compare-metrics{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  font-size:12px;
+  color:var(--sb-gray-700);
+}
+
+.sim-compare-metrics span{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:999px;
+  padding:4px 8px;
+  background:#f8fafc;
+}
+
+@media (max-width: 1180px){
+  .sim-workshop-grid,
+  .sim-result-main-grid{
+    grid-template-columns:1fr;
+  }
+  .sim-workshop-side{
+    position:static;
+  }
+  .sim-result-pill-row{
+    grid-template-columns:repeat(2, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 760px){
+  .sim-lego-brick-grid,
+  .sim-result-kpi-grid,
+  .sim-result-pill-row{
+    grid-template-columns:1fr;
+  }
+  .sim-result-impact-row,
+  .sim-compare-card{
+    grid-template-columns:1fr;
+  }
+  .sim-result-hero-top{
+    flex-direction:column;
+  }
+}

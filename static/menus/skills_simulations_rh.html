@@ -1,16 +1,16 @@
 <section id="view-simulations-rh" style="display:none;">
-  <div class="card sim2-hero-card">
-    <div class="sim2-hero-layout">
+  <div class="card sim-workshop-hero">
+    <div class="sim-workshop-hero__main">
       <div>
-        <div class="card-title">Simulation RH · bac à sable d’organisation</div>
+        <div class="card-title">Simulation RH</div>
         <div class="card-sub sim2-hero-sub">
-          Construisez un scénario avec des briques : transfert de personne, transfert de charge, recrutement ou renfort. Le moteur mesure l’impact immédiat, puis l’impact projeté si des compétences sont renforcées.
+          Construisez une option d’organisation avec des briques simples : déplacer une personne, transférer une charge, ajouter un renfort ou projeter une compétence acquise.
         </div>
       </div>
-      <div class="sb-actions sb-actions--end sim2-tabs">
-        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn is-active" data-sim-tab="build">Construire</button>
-        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="result">Résultat</button>
-        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="compare">Comparer <span id="simCompareCount" class="sb-badge" style="margin-left:6px;">0</span></button>
+      <div class="sim-workshop-steps" aria-label="Étapes de simulation RH">
+        <span><strong>1</strong> Poste</span>
+        <span><strong>2</strong> Briques</span>
+        <span><strong>3</strong> Impact</span>
       </div>
     </div>
   </div>
@@ -19,86 +19,90 @@
   <div id="simContextCard" class="card sim2-source-card" style="display:none; margin-bottom:12px;"></div>
 
   <div class="sim-panel" data-sim-panel="build">
-    <div class="sim-lego-grid-main">
-      <div class="sim-lego-left">
-        <div class="card sim-lego-card">
-          <div class="card-title">1. Point de départ</div>
-          <div class="card-sub sim2-muted-top">Choisissez le poste à travailler. Depuis l’analyse, il est préchargé automatiquement.</div>
-          <div class="sim-form-grid" style="margin-top:12px;">
+    <div class="sim-workshop-grid">
+      <div class="sim-workshop-main">
+        <div class="card sim-workshop-card">
+          <div class="sim-workshop-card-head">
+            <div>
+              <div class="card-title">Poste de départ</div>
+              <div class="card-sub sim2-muted-top">Le poste charge le contexte. Depuis l’analyse, il est renseigné automatiquement.</div>
+            </div>
+            <details class="sim2-details sim-workshop-settings">
+              <summary>Réglages</summary>
+              <div class="sim2-detail-body">
+                <div class="sim-form-grid">
+                  <div class="info-item">
+                    <div class="label">Service analysé</div>
+                    <select id="simServiceSelect" class="sb-select">
+                      <option value="__ALL__">Tous les services</option>
+                    </select>
+                  </div>
+                  <div class="info-item">
+                    <div class="label">Criticité minimale</div>
+                    <div class="sb-filter-slider">
+                      <input type="range" id="simCriticiteRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
+                      <div class="sb-filter-slider__meta">
+                        <span>Compétences si criticité ≥</span>
+                        <strong id="simCriticiteValue">70</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="sb-actions" style="margin-top:12px;">
+                  <button type="button" class="sb-btn sb-btn--init" id="btnSimReloadOptions">Actualiser</button>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="sim-form-grid sim-workshop-poste-row">
             <div class="info-item">
               <div class="label">Poste étudié</div>
               <select id="simFocusPosteSelect" class="sb-select"></select>
             </div>
           </div>
           <div id="simFocusPosteMeta" class="sim-lego-focus-box"></div>
-
-          <details class="sim2-details" style="margin-top:12px;">
-            <summary>Réglages du périmètre</summary>
-            <div class="sim2-detail-body">
-              <div class="sim-form-grid">
-                <div class="info-item">
-                  <div class="label">Service analysé</div>
-                  <select id="simServiceSelect" class="sb-select">
-                    <option value="__ALL__">Tous les services</option>
-                  </select>
-                </div>
-                <div class="info-item">
-                  <div class="label">Criticité minimale</div>
-                  <div class="sb-filter-slider">
-                    <input type="range" id="simCriticiteRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
-                    <div class="sb-filter-slider__meta">
-                      <span>Compétences prises en compte si criticité ≥</span>
-                      <strong id="simCriticiteValue">70</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="sb-actions" style="margin-top:12px;">
-                <button type="button" class="sb-btn sb-btn--init" id="btnSimReloadOptions">Actualiser les données</button>
-              </div>
-            </div>
-          </details>
         </div>
 
-        <div class="card sim-lego-card" style="margin-top:12px;">
-          <div class="card-title">2. Ajouter des briques au scénario</div>
-          <div class="card-sub sim2-muted-top">Composez une option RH complète : qui bouge, quelle charge est déplacée, quel poste est renforcé, quelles compétences restent à développer.</div>
+        <div class="card sim-workshop-card" style="margin-top:12px;">
+          <div class="card-title">Ajouter une brique</div>
+          <div class="card-sub sim2-muted-top">Choisissez une action terrain. Le scénario peut combiner plusieurs briques pour mesurer les effets directs et les conséquences en chaîne.</div>
           <div id="simBrickPalette" class="sim-lego-palette"></div>
           <div id="simBrickEditor" class="sim-lego-editor"></div>
           <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddBrick">Ajouter la brique</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddBrick">Ajouter au scénario</button>
           </div>
         </div>
 
-        <div class="card sim-lego-card" style="margin-top:12px;">
-          <div class="sim2-hero-layout">
-            <div>
-              <div class="card-title">3. Scénario composé</div>
-              <div class="card-sub sim2-muted-top">Les briques sont rejouées ensemble. Les effets domino apparaissent dans le résultat.</div>
-            </div>
-            <div class="sb-actions sb-actions--end">
-              <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">Réinitialiser</button>
-              <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">Calculer l’impact</button>
-            </div>
-          </div>
-          <div id="simScenarioBricks" class="sim-lego-scenario-list"></div>
-        </div>
-      </div>
-
-      <div class="sim-lego-right">
-        <div class="card sim-lego-card">
-          <div class="card-title">Personnel à regarder</div>
-          <div class="card-sub sim2-muted-top">Profils proches du poste, classés par correspondance Novoskill. À confirmer avec le terrain, évidemment, parce que les gens ne sont pas des pions même si les logiciels adorent faire semblant.</div>
+        <div class="card sim-workshop-card" style="margin-top:12px;">
+          <div class="card-title">Profils proches du poste</div>
+          <div class="card-sub sim2-muted-top">Suggestions utiles pour tester une mobilité. Elles restent à confirmer avec le terrain.</div>
           <div id="simRecommendations" class="sim-lego-person-list"></div>
         </div>
+      </div>
 
-        <div class="card sim-lego-card" style="margin-top:12px;">
-          <div class="card-title">Lecture du scénario</div>
+      <aside class="sim-workshop-side">
+        <div class="card sim-workshop-card sim-workshop-scenario-card">
+          <div class="card-title">Scénario en cours</div>
           <div id="simScenarioPreview" class="sim2-scenario-preview">
-            <div class="sim-empty-state">Ajoutez des briques pour construire une option RH.</div>
+            <div class="sim-empty-state">Ajoutez une brique pour commencer.</div>
+          </div>
+          <div id="simScenarioBricks" class="sim-lego-scenario-list"></div>
+          <div class="sb-actions sim-workshop-scenario-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">Vider</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">Analyser l’impact</button>
           </div>
         </div>
-      </div>
+
+        <div class="card sim-workshop-card sim-workshop-help-card" style="margin-top:12px;">
+          <div class="card-title">Ce que Novoskill va lire</div>
+          <div class="sim-workshop-read-list">
+            <div><strong>Impact immédiat</strong><span>postes, services, effet domino</span></div>
+            <div><strong>Impact projeté</strong><span>après compétence acquise</span></div>
+            <div><strong>Besoins générés</strong><span>à traiter ensuite hors simulation</span></div>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 
