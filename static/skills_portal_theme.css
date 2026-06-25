@@ -8395,20 +8395,21 @@ body{
 }
 .sim-lego-brick-index{
   font-size:12px;
-  font-weight:800;
+  font-weight:650;
   color:var(--sb-gray-500);
 }
 .sim-lego-brick-label{
   margin-top:3px;
   color:var(--sb-gray-900);
-  font-weight:700;
+  font-weight:500;
   font-size:13px;
-  line-height:1.3;
+  line-height:1.28;
 }
 .sim-lego-preview-title{
-  font-weight:900;
+  font-weight:700;
   color:var(--sb-gray-900);
   margin-bottom:8px;
+  line-height:1.25;
 }
 .sim-lego-preview-row{
   display:flex;

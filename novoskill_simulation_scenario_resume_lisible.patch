@@ -1,0 +1,179 @@
+diff --git a/static/menus/skills_simulations_rh.js b/static/menus/skills_simulations_rh.js
+index ea4a6be..f005147 100644
+--- a/static/menus/skills_simulations_rh.js
++++ b/static/menus/skills_simulations_rh.js
+@@ -132,6 +132,15 @@
+     return `${code ? code + " · " : ""}${p.intitule_poste || "Poste"}`;
+   }
+ 
++  function posteTitle(p) {
++    return (p?.intitule_poste || "Poste").toString().trim() || "Poste";
++  }
++
++  function posteShort(p) {
++    const code = posteCode(p);
++    return code || posteTitle(p);
++  }
++
+   function effectifLabel(e) {
+     if (!e) return "Collaborateur";
+     const poste = (e.intitule_poste || "").trim();
+@@ -144,6 +153,52 @@
+     return `${code ? code + " · " : ""}${c.intitule || "Compétence"}`;
+   }
+ 
++  function compShort(c) {
++    const code = (c?.code || "").toString().trim();
++    return code || (c?.intitule || "Compétence");
++  }
++
++  function levelLabel(code) {
++    const c = (code || "").toString().trim().toUpperCase();
++    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" }[c]) || c || "niveau cible";
++  }
++
++  function brickKind(b) {
++    if (!b) return "Action";
++    if (b.type === "recrutement_virtuel") return "Renfort";
++    if (b.type === "absence_effectif") return "Absence longue";
++    if (b.type === "depart_effectif") return "Départ";
++    if (b.type === "transfert_charge") return "Charge transférée";
++    if (b.type === "montee_competence") return "Compétence projetée";
++    return "Déplacement";
++  }
++
++  function brickSummary(b) {
++    if (!b) return "Action RH";
++    const eff = effectifById(b.id_effectif);
++    const source = posteById(b.id_poste);
++    const target = posteById(b.id_poste_cible || b.id_poste);
++    const comp = compById(b.id_comp);
++    const person = eff?.nom_complet || "Collaborateur";
++
++    if (b.type === "transfert_charge") {
++      return `${compShort(comp)} · ${posteShort(source)} → ${posteShort(target)}`;
++    }
++    if (b.type === "recrutement_virtuel") {
++      return `Renfort · ${posteShort(target)}`;
++    }
++    if (b.type === "absence_effectif") {
++      return `${person} · ${b.duree_libelle || "durée à confirmer"}`;
++    }
++    if (b.type === "depart_effectif") {
++      return person;
++    }
++    if (b.type === "montee_competence") {
++      return `${person} · ${compShort(comp)} → ${levelLabel(b.niveau_simule)}`;
++    }
++    return `${person} → ${posteShort(target)}`;
++  }
++
+   function deltaText(v) {
+     const n = int(v);
+     if (n === 0) return "0 pt";
+@@ -498,6 +553,8 @@
+         type: t,
+         id_effectif: effId,
+         temporalite: "immediate",
++        duree_jours: t === "absence_effectif" ? absenceDuration : null,
++        duree_libelle: t === "absence_effectif" ? absenceDurationLabel : null,
+         libelle: `${t === "absence_effectif" ? "Absence longue" : "Départ"} de ${effectifById(effId)?.nom_complet || "collaborateur"}${t === "absence_effectif" ? ` · ${absenceDurationLabel}` : ""}`
+       });
+     }
+@@ -531,8 +588,8 @@
+         <div class="sim-lego-scenario-brick ${b.temporalite === "development" ? "is-dev" : ""}">
+           <div class="sim-lego-scenario-icon">${esc(meta.icon || "•")}</div>
+           <div class="sim-lego-scenario-copy">
+-            <div class="sim-lego-brick-index">Brique ${idx + 1} · ${esc(meta.title || "Action")}</div>
+-            <div class="sim-lego-brick-label">${esc(b.libelle || "Action RH")}</div>
++            <div class="sim-lego-brick-index">Brique ${idx + 1} · ${esc(brickKind(b))}</div>
++            <div class="sim-lego-brick-label">${esc(brickSummary(b))}</div>
+           </div>
+           <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-remove-brick="${idx}">Retirer</button>
+         </div>`;
+@@ -548,21 +605,16 @@
+   function renderScenarioPreview() {
+     const root = byId("simScenarioPreview");
+     if (!root) return;
+-    const immediate = _scenario.filter(x => x.temporalite !== "development").length;
+-    const dev = _scenario.filter(x => x.temporalite === "development").length;
+     if (!_scenario.length) {
+       root.innerHTML = `
+         <div class="sim-workshop-scenario-empty">
+-          <strong>${esc(posteLabel(posteById(_selectedPosteId)))}</strong>
++          <strong>${esc(posteTitle(posteById(_selectedPosteId)))}</strong>
+           <span>Ajoutez au moins une brique pour analyser l’impact.</span>
+         </div>`;
+       return;
+     }
+     root.innerHTML = `
+-      <div class="sim-lego-preview-title">${esc(posteLabel(posteById(_selectedPosteId)))}</div>
+-      <div class="sim-lego-preview-row"><strong>${esc(String(_scenario.length))}</strong><span>brique(s)</span></div>
+-      <div class="sim-lego-preview-row"><strong>${esc(String(immediate))}</strong><span>effet immédiat</span></div>
+-      <div class="sim-lego-preview-row"><strong>${esc(String(dev))}</strong><span>effet projeté</span></div>
++      <div class="sim-lego-preview-title">${esc(posteTitle(posteById(_selectedPosteId)))}</div>
+     `;
+   }
+ 
+diff --git a/static/skills_portal_theme.css b/static/skills_portal_theme.css
+index f84f35e..3a54b96 100644
+--- a/static/skills_portal_theme.css
++++ b/static/skills_portal_theme.css
+@@ -8393,31 +8393,32 @@ body{
+ .sim-lego-scenario-brick.is-dev{
+   border-left-color:var(--reading-accent);
+ }
+-.sim-lego-brick-index{
+-  font-size:12px;
+-  font-weight:800;
+-  color:var(--sb-gray-500);
+-}
+-.sim-lego-brick-label{
+-  margin-top:3px;
+-  color:var(--sb-gray-900);
+-  font-weight:700;
+-  font-size:13px;
+-  line-height:1.3;
+-}
+-.sim-lego-preview-title{
+-  font-weight:900;
+-  color:var(--sb-gray-900);
+-  margin-bottom:8px;
+-}
+-.sim-lego-preview-row{
+-  display:flex;
+-  justify-content:space-between;
+-  gap:12px;
+-  padding:7px 0;
+-  border-top:1px solid var(--sb-gray-100);
+-  font-size:13px;
+-}
++.sim-lego-brick-index{
++  font-size:12px;
++  font-weight:650;
++  color:var(--sb-gray-500);
++}
++.sim-lego-brick-label{
++  margin-top:3px;
++  color:var(--sb-gray-900);
++  font-weight:500;
++  font-size:13px;
++  line-height:1.28;
++}
++.sim-lego-preview-title{
++  font-weight:700;
++  color:var(--sb-gray-900);
++  margin-bottom:8px;
++  line-height:1.25;
++}
++.sim-lego-preview-row{
++  display:flex;
++  justify-content:space-between;
++  gap:12px;
++  padding:7px 0;
++  border-top:1px solid var(--sb-gray-100);
++  font-size:13px;
++}
+ .sim-lego-preview-row strong{ color:var(--accent); }
+ .sim-lego-kpi-grid{
+   display:grid;
