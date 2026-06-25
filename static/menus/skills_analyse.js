@@ -1058,24 +1058,26 @@
     window.location.hash = "#simulations-rh";
   }
 
-  function analyseSimulationContextBlockHtml({ id, title, subtitle, items, buttonLabel }) {
-    const rows = Array.isArray(items) ? items : [];
-    return `
-      <div class="card analyse-sim-context-card">
-        <div class="analyse-hypothesis-head">
-          <div>
-            <div class="card-title">${escapeHtml(title || "Possibilités de sécurisation")}</div>
-            <div class="card-sub">${escapeHtml(subtitle || "Le constat est posé ici. La construction du scénario se fait dans Simulation RH.")}</div>
-          </div>
-        </div>
-        <div class="analyse-sim-context-list">
-          ${rows.map(([t, b]) => `<div class="analyse-sim-context-item"><strong>${escapeHtml(t)}</strong>${escapeHtml(b)}</div>`).join("")}
-        </div>
-        <div class="sb-actions sb-actions--end" style="margin-top:10px;">
-          <button type="button" id="${escapeHtml(id || "btnAnalyseOpenSimulationContext")}" class="sb-btn sb-btn--accent">${escapeHtml(buttonLabel || "Ouvrir en simulation RH")}</button>
-        </div>
-      </div>
-    `;
+  function openBesoinsFormations() {
+    try {
+      if (_portalref && typeof _portalref.switchView === "function") {
+        _portalref.switchView("besoins-formations");
+        return;
+      }
+    } catch (_) {}
+    window.location.hash = "#besoins-formations";
+  }
+
+  function configureActionButton(id, payload, onClick) {
+    const btn = byId(id);
+    if (!btn) return;
+    btn.style.display = payload ? "" : "none";
+    btn.disabled = !payload;
+    btn.onclick = null;
+    if (!payload) return;
+    btn.onclick = function () {
+      if (typeof onClick === "function") onClick(payload);
+    };
   }
 
   function getAnalyseServiceRawValue() {
@@ -2248,21 +2250,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
   }
 
-  // Le modal poste s’arrête au constat : le scénario RH se construit dans Simulation RH.
+  // Le modal poste s’arrête au constat.
+  // L'utilisateur peut ensuite utiliser ce poste comme point de départ d'une simulation RH.
   const idPosteContext = String(p?.id_poste || p?.id || diag?.id_poste || "").trim();
   const codePosteContext = String(p?.codif_client || p?.codif_poste || "").trim();
   const posteLabelContext = [codePosteContext, p?.intitule_poste || "Poste"].filter(Boolean).join(" · ");
-  const posteSimulationBlock = analyseSimulationContextBlockHtml({
-    id: "btnAnalysePosteOpenSimulationContext",
-    title: "Possibilités de sécurisation",
-    subtitle: "Ce poste peut être travaillé dans un scénario : mobilité, remplacement, renfort, recrutement ou montée en compétence.",
-    items: [
-      ["Organisation", "Déplacer, remplacer ou doubler une personne sur le poste."],
-      ["Effet domino", "Mesurer les postes fragilisés par les mouvements."],
-      ["Développement", "Identifier les compétences à renforcer après mobilité ou renfort."],
-    ],
-    buttonLabel: "Construire un scénario RH",
-  });
 
   // Rendu
   host.innerHTML = `
@@ -2293,8 +2285,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     </div>
 
     ${causesCard}
-
-    ${posteSimulationBlock}
   `;
 
     // Accordéons (Causes racines)
@@ -2312,7 +2302,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     });
   });
 
-  // Aucun envoi de piste depuis le modal poste.
+  configureActionButton("btnAnalysePosteOpenSimulationContext", idPosteContext ? {
+    type: "poste",
+    title: `Poste à travailler · ${posteLabelContext}`,
+    poste_id: idPosteContext,
+    poste_label: posteLabelContext,
+    reason: "Analyse poste : construire un scénario d'organisation, remplacement, transfert de personne, transfert de charge ou recrutement.",
+  } : null, (payload) => {
+    openSimulationsRhContext(payload);
+    closeAnalysePosteModal();
+  });
 
 }
 
@@ -2733,6 +2732,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
 
           <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnMatchPersonUseInSimulation" style="display:none;">Tester cette mobilité en Simulation RH</button>
             <button type="button" class="btn-secondary" id="btnMatchPersonModalClose">Fermer</button>
           </div>
         </div>
@@ -2790,6 +2790,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
 
+    configureActionButton("btnMatchPersonUseInSimulation", null);
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
@@ -3216,37 +3217,24 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             </div>
           </div>
         </div>
-
-        ${analyseSimulationContextBlockHtml({
-          id: "btnMatchOpenSimulationContext",
-          title: "Possibilités de scénario",
-          subtitle: "Cette correspondance peut être testée dans une simulation d'organisation, sans valider la mobilité depuis l'analyse.",
-          items: [
-            ["Mobilité", "Déplacer cette personne vers le poste cible."],
-            ["Effet domino", "Vérifier l'impact sur son poste d'origine."],
-            ["Développement", "Identifier les compétences à renforcer pour rendre la mobilité viable."],
-          ],
-          buttonLabel: "Construire un scénario avec ce profil",
-        })}
       </div>
     `;
 
-    const btnMatchSim = byId("btnMatchOpenSimulationContext");
-    if (btnMatchSim && !btnMatchSim.dataset.bound) {
-      btnMatchSim.dataset.bound = "1";
-      btnMatchSim.addEventListener("click", () => {
-        openSimulationsRhContext({
-          type: "matching",
-          title: `Correspondance à tester · ${String(personLabel || "Profil")} / ${String(posteLabel || "Poste")}`,
-          poste_id: String(poste.id_poste || poste.id || "").trim(),
-          poste_label: posteLabel,
-          effectif_id: String(person.id_effectif || person.id_collaborateur || person.id || "").trim(),
-          effectif_label: personLabel,
-          reason: "Matching profil/poste : tester une mobilité et les écarts de compétence associés.",
-        });
-        closeMatchPersonModal();
-      });
-    }
+    const matchSimulationPayload = !isTit ? {
+      type: "matching_candidat",
+      title: `Mobilité à tester · ${String(personLabel || "Profil")} vers ${String(posteLabel || "Poste")}`,
+      poste_id: String(poste.id_poste || poste.id || "").trim(),
+      poste_label: posteLabel,
+      effectif_id: String(person.id_effectif || person.id_collaborateur || person.id || "").trim(),
+      effectif_label: personLabel,
+      reason: "Matching candidat : tester une mobilité interne, l'effet sur le poste cible et l'effet domino sur le poste d'origine.",
+      suggested_brick: "mobilite_effectif",
+    } : null;
+
+    configureActionButton("btnMatchPersonUseInSimulation", matchSimulationPayload, (payload) => {
+      openSimulationsRhContext(payload);
+      closeMatchPersonModal();
+    });
 
     host.querySelectorAll("[data-crit-toggle]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -3950,6 +3938,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     if (s) s.innerHTML = subHtml || "";
 
+    configureActionButton("btnAnalysePosteOpenSimulationContext", null);
+
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
 
@@ -4452,33 +4442,24 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
       </div>
 
-      ${analyseSimulationContextBlockHtml({
-        id: "btnAnalyseCompetenceOpenSimulationContext",
-        title: "Possibilités de sécurisation",
-        subtitle: "La compétence peut être travaillée dans un scénario : relais, transmission ou montée en compétence dans une organisation cible.",
-        items: [
-          ["Relais", "Identifier une personne à préparer sur cette compétence."],
-          ["Transmission", "Relier la compétence à un transmetteur et un receveur."],
-          ["Organisation", "Mesurer les postes concernés par cette compétence."],
-        ],
-        buttonLabel: "Ouvrir dans Simulation RH",
-      })}
+
+      <div class="card analyse-formation-need-card" style="padding:14px;margin-top:12px;">
+        <div class="card-title" style="margin-bottom:6px;">Besoin de montée en compétences</div>
+        <div class="card-sub" style="margin:0;line-height:1.45;">
+          Une compétence fragile peut générer un besoin individuel de montée en compétences.
+          L’arbitrage et l’envoi au Studio se font dans le menu Besoins & formations.
+        </div>
+        <div class="sb-actions sb-actions--end" style="margin-top:10px;">
+          <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseCompetenceOpenBesoinsFormations">Ouvrir Besoins & formations</button>
+        </div>
+      </div>
     `;
 
-    const bCompSim = byId("btnAnalyseCompetenceOpenSimulationContext");
-    if (bCompSim && !bCompSim.dataset.bound) {
-      bCompSim.dataset.bound = "1";
-      bCompSim.addEventListener("click", () => {
-        const compCode = String(comp?.code || "").trim();
-        const compLabel = String(comp?.intitule || "Compétence").trim() || "Compétence";
-        openSimulationsRhContext({
-          type: "competence",
-          title: `Compétence à sécuriser · ${compCode ? compCode + " · " : ""}${compLabel}`,
-          competence_id: String(comp?.id_comp || comp?.id || "").trim(),
-          competence_code: compCode,
-          competence_label: compLabel,
-          reason: "Analyse compétence : construire un scénario autour d'un relais, d'une transmission ou d'une montée en compétence.",
-        });
+    const bCompBesoins = byId("btnAnalyseCompetenceOpenBesoinsFormations");
+    if (bCompBesoins && !bCompBesoins.dataset.bound) {
+      bCompBesoins.dataset.bound = "1";
+      bCompBesoins.addEventListener("click", () => {
+        openBesoinsFormations();
         closeAnalyseCompetenceModal();
       });
     }
@@ -5869,7 +5850,7 @@ function renderDetail(mode) {
           </div>
           <div class="modal-body" id="analysePrevisionActionBody"></div>
           <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionOpenSimulation">Ouvrir en simulation RH</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionOpenSimulation">Préparer le scénario RH</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnAnalysePrevisionActionClose">Fermer</button>
           </div>
         </div>
@@ -5897,7 +5878,7 @@ function renderDetail(mode) {
           competence_label: comp,
           poste_id: String(r.id_poste_actuel || "").trim(),
           poste_label: r.intitule_poste || "Poste non renseigné",
-          reason: "Prévision : construire un scénario de transmission ou de montée en compétence avant l'échéance.",
+          reason: "Prévision : intégrer l'échéance dans un scénario RH de remplacement, transfert de charge, recrutement ou compensation organisationnelle.",
         });
       } else {
         openSimulationsRhContext({
@@ -5907,7 +5888,7 @@ function renderDetail(mode) {
           effectif_label: full,
           poste_id: String(r.id_poste_actuel || "").trim(),
           poste_label: r.intitule_poste || "Poste non renseigné",
-          reason: "Prévision : construire un scénario avec départ, remplacement, renfort ou mobilité de compensation.",
+          reason: "Prévision : construire un scénario avec départ, remplacement, transfert de personne, transfert de charge ou recrutement.",
         });
       }
       close();

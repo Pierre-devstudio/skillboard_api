@@ -25,9 +25,14 @@
       short: "Affecter une personne à un autre poste.",
       temporalite: "immediate",
     },
+    transfert_charge: {
+      title: "Transférer une charge",
+      short: "Déplacer une activité ou compétence attendue d’un poste vers un autre.",
+      temporalite: "immediate",
+    },
     renfort_poste: {
-      title: "Ajouter un renfort",
-      short: "Créer un profil virtuel ou un recrutement sur un poste.",
+      title: "Recruter / renforcer",
+      short: "Ajouter un recrutement ou un renfort virtuel sur un poste.",
       temporalite: "immediate",
     },
     depart_effectif: {
@@ -36,8 +41,8 @@
       temporalite: "immediate",
     },
     montee_competence: {
-      title: "Monter en compétence",
-      short: "Préparer l'étape formation / transmission après l'arbitrage.",
+      title: "Impact après compétence acquise",
+      short: "Projeter l’effet si une personne atteint un niveau cible.",
       temporalite: "development",
     },
   };
@@ -211,7 +216,7 @@
       const rec = recommendationsForPoste(_selectedPosteId).find(x => String(x.id_effectif || "") === eid) || {};
       const gap = (rec.competences_a_renforcer || [])[0] || requirementsForPoste(_selectedPosteId)[0];
       if (!gap) return setStatus("Aucune compétence à renforcer identifiée pour cette personne.", "error");
-      addBrick({ type: "montee_competence", id_effectif: eid, id_poste: _selectedPosteId, id_comp: gap.id_comp, niveau_simule: gap.niveau_requis || "C", temporalite: "development", libelle: `Former ${effectifById(eid)?.nom_complet || "un collaborateur"} sur ${gap.code || gap.intitule || "une compétence"}` });
+      addBrick({ type: "montee_competence", id_effectif: eid, id_poste: _selectedPosteId, id_comp: gap.id_comp, niveau_simule: gap.niveau_requis || "C", temporalite: "development", libelle: `Projeter ${effectifById(eid)?.nom_complet || "un collaborateur"} au niveau attendu sur ${gap.code || gap.intitule || "une compétence"}` });
     }));
   }
 
@@ -254,6 +259,27 @@
       fillSelect(byId("simBrickEffectif"), effectifs, "id_effectif", effectifLabel, "Choisir une personne…");
       return;
     }
+    if (_selectedBrick === "transfert_charge") {
+      root.innerHTML = `
+        <div class="sim-form-grid">
+          <div class="info-item"><div class="label">Poste source</div><select id="simBrickPosteSource" class="sb-select"></select></div>
+          <div class="info-item"><div class="label">Poste cible</div><select id="simBrickPoste" class="sb-select"></select></div>
+          <div class="info-item sb-span-2"><div class="label">Charge / compétence transférée</div><select id="simBrickCompetence" class="sb-select"></select></div>
+        </div>
+        <div class="card-sub sim2-muted-top">Cette brique déplace une compétence attendue : elle allège le poste source et ajoute cette exigence au poste cible.</div>
+      `;
+      fillSelect(byId("simBrickPosteSource"), posteOptions, "id_poste", posteLabel, "Choisir le poste source…");
+      fillSelect(byId("simBrickPoste"), posteOptions, "id_poste", posteLabel, "Choisir le poste cible…");
+      if (byId("simBrickPosteSource")) byId("simBrickPosteSource").value = _selectedPosteId || "";
+      const sourceSel = byId("simBrickPosteSource");
+      const fillSourceReqs = () => {
+        const src = sourceSel?.value || _selectedPosteId || "";
+        fillSelect(byId("simBrickCompetence"), requirementsForPoste(src), "id_comp", compLabel, "Choisir l’activité / compétence…");
+      };
+      sourceSel?.addEventListener("change", fillSourceReqs);
+      fillSourceReqs();
+      return;
+    }
     if (_selectedBrick === "montee_competence") {
       root.innerHTML = `
         <div class="sim-form-grid">
@@ -261,7 +287,7 @@
           <div class="info-item"><div class="label">Compétence</div><select id="simBrickCompetence" class="sb-select"></select></div>
           <div class="info-item"><div class="label">Niveau visé</div><select id="simBrickNiveau" class="sb-select"><option value="B">Intermédiaire</option><option value="C" selected>Avancé</option><option value="D">Expert</option></select></div>
         </div>
-        <div class="card-sub sim2-muted-top">Cette brique sert au résultat projeté : formation, transmission ou montée en compétence après l’arbitrage immédiat.</div>
+        <div class="card-sub sim2-muted-top">Cette brique ne crée pas une formation : elle projette l’état si la personne atteint le niveau cible. Le besoin réel sera traité dans Studio / Learn.</div>
       `;
       fillSelect(byId("simBrickEffectif"), effectifs, "id_effectif", effectifLabel, "Choisir une personne…");
       fillSelect(byId("simBrickCompetence"), reqs.length ? reqs : (_options.competences || []), "id_comp", compLabel, "Choisir une compétence…");
@@ -289,6 +315,7 @@
 
   function addBrickFromEditor() {
     const posteId = byId("simBrickPoste")?.value || _selectedPosteId || "";
+    const sourcePosteId = byId("simBrickPosteSource")?.value || _selectedPosteId || "";
     const effId = byId("simBrickEffectif")?.value || "";
     const compId = byId("simBrickCompetence")?.value || "";
     const niveau = byId("simBrickNiveau")?.value || "C";
@@ -301,9 +328,14 @@
       const t = byId("simBrickDepartType")?.value || "depart_effectif";
       return addBrick({ type: t, id_effectif: effId, temporalite: "immediate", libelle: `${t === "absence_effectif" ? "Absence" : "Départ"} de ${effectifById(effId)?.nom_complet || "collaborateur"}` });
     }
+    if (_selectedBrick === "transfert_charge") {
+      if (!sourcePosteId || !posteId || !compId) return setStatus("Choisissez le poste source, le poste cible et la charge transférée.", "error");
+      if (sourcePosteId === posteId) return setStatus("Le poste source et le poste cible doivent être différents.", "error");
+      return addBrick({ type: "transfert_charge", id_poste: sourcePosteId, id_poste_cible: posteId, id_comp: compId, temporalite: "immediate", libelle: `Transférer ${compLabel(compById(compId))} de ${posteLabel(posteById(sourcePosteId))} vers ${posteLabel(posteById(posteId))}` });
+    }
     if (_selectedBrick === "montee_competence") {
       if (!effId || !compId) return setStatus("Choisissez une personne et une compétence.", "error");
-      return addBrick({ type: "montee_competence", id_effectif: effId, id_poste: _selectedPosteId, id_comp: compId, niveau_simule: niveau, temporalite: "development", libelle: `Former ${effectifById(effId)?.nom_complet || "collaborateur"} sur ${compLabel(compById(compId))}` });
+      return addBrick({ type: "montee_competence", id_effectif: effId, id_poste: _selectedPosteId, id_comp: compId, niveau_simule: niveau, temporalite: "development", libelle: `Projeter ${effectifById(effId)?.nom_complet || "collaborateur"} au niveau ${niveau} sur ${compLabel(compById(compId))}` });
     }
     if (!effId || !posteId) return setStatus("Choisissez une personne et un poste cible.", "error");
     return addBrick({ type: "mobilite_effectif", id_effectif: effId, id_poste: posteId, id_poste_cible: posteId, temporalite: "immediate", libelle: `Déplacer ${effectifById(effId)?.nom_complet || "collaborateur"} vers ${posteLabel(posteById(posteId))}` });
@@ -313,7 +345,7 @@
     const root = byId("simScenarioBricks");
     if (!root) return;
     if (!_scenario.length) {
-      root.innerHTML = `<div class="sim-empty-state">Ajoutez une ou plusieurs briques : mobilité, renfort, retrait, formation.</div>`;
+      root.innerHTML = `<div class="sim-empty-state">Ajoutez une ou plusieurs briques : transfert de personne, transfert de charge, recrutement ou projection compétence.</div>`;
       return;
     }
     root.innerHTML = _scenario.map((b, idx) => `
@@ -342,7 +374,7 @@
       <div class="sim-lego-preview-title">${esc(posteLabel(posteById(_selectedPosteId)))}</div>
       <div class="sim-lego-preview-row"><strong>${esc(String(_scenario.length))}</strong><span>brique(s) dans le scénario</span></div>
       <div class="sim-lego-preview-row"><strong>${esc(String(immediate))}</strong><span>impact immédiat</span></div>
-      <div class="sim-lego-preview-row"><strong>${esc(String(dev))}</strong><span>développement / formation</span></div>
+      <div class="sim-lego-preview-row"><strong>${esc(String(dev))}</strong><span>impact projeté compétences</span></div>
     `;
   }
 
@@ -451,10 +483,10 @@
         </div>
       </div>
       ${renderResultBlock("Impact immédiat : mouvements, renforts, absences", immediat, current)}
-      ${renderResultBlock("Impact projeté : après formation / transmission", projete, current)}
+      ${renderResultBlock("Impact projeté : après compétences acquises", projete, current)}
       <div class="card sim-lego-result-block">
         <div class="card-title">Compétences à renforcer pour rendre le scénario viable</div>
-        <div class="card-sub sim2-muted-top">${esc(result.developpement?.lecture || "Lecture des écarts à traiter après mobilité ou remplacement.")}</div>
+        <div class="card-sub sim2-muted-top">${esc(result.developpement?.lecture || "Besoins de montée en compétences à arbitrer ensuite dans Besoins & formations / Studio.")}</div>
         <div class="sim-lego-dev-list">${renderDevelopmentNeeds(result)}</div>
       </div>
     `;

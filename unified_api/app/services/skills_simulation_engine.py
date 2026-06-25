@@ -327,6 +327,8 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
         if eid and cid:
             skills[(eid, cid)] = dict(row)
 
+    requirements = [dict(r) for r in (dataset.get("requirements") or [])]
+
     removed = set()
     virtual_index = 0
 
@@ -367,6 +369,36 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
         }
         return veid
 
+    def transfer_requirement(source_poste: str, target_poste: str, comp_id: str) -> None:
+        source_poste = str(source_poste or "").strip()
+        target_poste = str(target_poste or "").strip()
+        comp_id = str(comp_id or "").strip()
+        if not source_poste or not target_poste or not comp_id or source_poste == target_poste:
+            return
+
+        moved = [
+            dict(r) for r in requirements
+            if str(r.get("id_poste") or "").strip() == source_poste
+            and str(r.get("id_comp") or "").strip() == comp_id
+        ]
+        if not moved:
+            return
+
+        requirements[:] = [
+            r for r in requirements
+            if not (str(r.get("id_poste") or "").strip() == source_poste and str(r.get("id_comp") or "").strip() == comp_id)
+        ]
+
+        if any(str(r.get("id_poste") or "").strip() == target_poste and str(r.get("id_comp") or "").strip() == comp_id for r in requirements):
+            return
+
+        for r in moved:
+            nr = dict(r)
+            nr["id_poste"] = target_poste
+            nr["is_transferred_charge"] = True
+            nr["source_poste"] = source_poste
+            requirements.append(nr)
+
     if simulated:
         for h in hypotheses or []:
             h_type = str(h.type or "").strip()
@@ -383,6 +415,9 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
                     effectifs[eid]["intitule_poste"] = poste.get("intitule_poste") or ""
                     effectifs[eid]["codif_poste"] = poste.get("codif_poste") or ""
 
+            elif h_type == "transfert_charge":
+                transfer_requirement(h.id_poste, h.id_poste_cible, h.id_comp)
+
             elif h_type in ("montee_competence", "formation_ciblee", "transmission_interne") and eid:
                 cid = str(h.id_comp or "").strip()
                 niv = _level_label(h.niveau_simule or "C")
@@ -393,7 +428,7 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
                 target = str(h.id_poste_cible or h.id_poste or "").strip()
                 if target:
                     veid = add_virtual_profile(target)
-                    for req in dataset.get("requirements") or []:
+                    for req in requirements:
                         if str(req.get("id_poste") or "") == target:
                             add_or_update_skill(veid, str(req.get("id_comp") or ""), req.get("niveau_requis"), req)
 
@@ -416,13 +451,13 @@ def _build_state(dataset: Dict[str, Any], hypotheses: List[SimulationHypothese],
                     add_or_update_skill(veid, cid, h.niveau_simule or "C")
 
     active_effectifs = {eid: e for eid, e in effectifs.items() if eid not in removed}
-    return {"effectifs": active_effectifs, "skills": skills, "removed": removed}
+    return {"effectifs": active_effectifs, "skills": skills, "removed": removed, "requirements": requirements}
 
 
 def _compute_poste_records(dataset: Dict[str, Any], state: Dict[str, Any]) -> List[Dict[str, Any]]:
     postes = [dict(p) for p in (dataset.get("postes") or [])]
     reqs_by_poste: Dict[str, List[Dict[str, Any]]] = {}
-    for r in dataset.get("requirements") or []:
+    for r in state.get("requirements") or dataset.get("requirements") or []:
         reqs_by_poste.setdefault(str(r.get("id_poste") or ""), []).append(dict(r))
 
     effectifs = state.get("effectifs") or {}
@@ -579,7 +614,7 @@ def _compute_competence_records(dataset: Dict[str, Any], state: Dict[str, Any]) 
 
     reqs_by_comp: Dict[str, List[Dict[str, Any]]] = {}
     comp_meta: Dict[str, Dict[str, Any]] = {}
-    for req in dataset.get("requirements") or []:
+    for req in state.get("requirements") or dataset.get("requirements") or []:
         cid = str(req.get("id_comp") or "").strip()
         if not cid:
             continue
@@ -770,6 +805,9 @@ def _compute_cotation_context(req: SimulationEvalRequest, dataset: Dict[str, Any
             src_pid = str(effectifs[str(h.id_effectif)].get("id_poste_actuel") or "")
         if ht in ("mobilite_effectif", "recrutement_virtuel"):
             tgt_pid = str(h.id_poste_cible or h.id_poste or "").strip()
+        elif ht == "transfert_charge":
+            src_pid = str(h.id_poste or "").strip()
+            tgt_pid = str(h.id_poste_cible or "").strip()
         elif ht in ("depart_effectif", "absence_effectif"):
             tgt_pid = src_pid
 
@@ -852,9 +890,11 @@ def _build_conseil(req: SimulationEvalRequest, current_summary: Dict[str, Any], 
 
     alternatives = []
     if "mobilite_effectif" in types or "tester_correspondance_profil_poste" in types:
-        alternatives.append("Comparer avec une montée en compétence progressive pour éviter de fragiliser le poste d’origine.")
+        alternatives.append("Comparer avec un recrutement ou un transfert de charge pour éviter de fragiliser le poste d’origine.")
+    if "transfert_charge" in types:
+        alternatives.append("Vérifier que le poste cible peut absorber la charge transférée sans créer une nouvelle fragilité.")
     if "recrutement_virtuel" in types or "securiser_poste" in types:
-        alternatives.append("Comparer avec un relais interne ou une transmission ciblée avant recrutement.")
+        alternatives.append("Comparer avec une mobilité interne ou un transfert de charge avant recrutement.")
     if "depart_effectif" in types or "absence_effectif" in types:
         alternatives.append("Ajouter une hypothèse de transmission ou de doublure interne avant l’échéance.")
     if "montee_competence" in types or "formation_ciblee" in types or "transmission_interne" in types:
@@ -997,7 +1037,7 @@ def _build_candidate_recommendations(dataset: Dict[str, Any], limit_per_poste: i
 
 def _hypothese_is_immediate(h: SimulationHypothese) -> bool:
     ht = str(h.type or "").strip()
-    return ht in ("depart_effectif", "absence_effectif", "mobilite_effectif", "tester_correspondance_profil_poste", "recrutement_virtuel", "securiser_poste")
+    return ht in ("depart_effectif", "absence_effectif", "mobilite_effectif", "tester_correspondance_profil_poste", "transfert_charge", "recrutement_virtuel", "securiser_poste")
 
 
 def _compute_delta(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
