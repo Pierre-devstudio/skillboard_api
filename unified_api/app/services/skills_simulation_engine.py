@@ -7,6 +7,7 @@ from app.services.skills_analyse_engine import (
     _analyse_fragility_records_analyzed,
     _build_scope_cte,
     _compute_poste_fragility_record,
+    _dashboard_compute_transmission_capacity,
     _fetch_postes_fragility_records,
 )
 
@@ -29,6 +30,7 @@ class SimulationHypothese(BaseModel):
 class SimulationEvalRequest(BaseModel):
     titre: Optional[str] = None
     objectif: Optional[str] = None
+    id_poste_focus: Optional[str] = None
     hypotheses: List[SimulationHypothese] = []
 
 
@@ -1091,40 +1093,82 @@ def _build_development_needs(req: SimulationEvalRequest, dataset: Dict[str, Any]
         cid = str(row.get("id_comp") or "").strip()
         if eid and cid:
             skills_by_effectif.setdefault(eid, {})[cid] = row
+
     reqs_by_poste: Dict[str, List[Dict[str, Any]]] = {}
+    req_by_poste_comp: Dict[Tuple[str, str], Dict[str, Any]] = {}
     for r in dataset.get("requirements") or []:
         pid = str(r.get("id_poste") or "").strip()
+        cid = str(r.get("id_comp") or "").strip()
         if pid:
             reqs_by_poste.setdefault(pid, []).append(r)
+        if pid and cid:
+            req_by_poste_comp[(pid, cid)] = r
+
+    competences = {str(c.get("id_comp") or ""): c for c in dataset.get("competences") or []}
     effectifs = {str(e.get("id_effectif") or ""): e for e in dataset.get("effectifs") or []}
+    seen = set()
     out = []
+
+    def add_need(eid: str, pid: str, cid: str, target_level: Any, source: str, fallback_req: Optional[Dict[str, Any]] = None) -> None:
+        eid = str(eid or "").strip()
+        pid = str(pid or "").strip()
+        cid = str(cid or "").strip()
+        if not eid or not cid:
+            return
+
+        key = (eid, pid, cid, source)
+        if key in seen:
+            return
+        seen.add(key)
+
+        eff = effectifs.get(eid) or {}
+        req_row = fallback_req or req_by_poste_comp.get((pid, cid)) or {}
+        comp = competences.get(cid) or req_row or {}
+        level = target_level or req_row.get("niveau_requis") or "C"
+        pct, _rank, status = _skill_score_for_matching(skills_by_effectif.get(eid, {}).get(cid), level)
+
+        out.append({
+            "id_effectif": eid,
+            "nom_complet": _effectif_label(eff),
+            "id_poste": pid or eff.get("id_poste_actuel") or "",
+            "id_comp": cid,
+            "code": comp.get("code") or req_row.get("code") or "",
+            "intitule": comp.get("intitule") or req_row.get("intitule") or "Compétence",
+            "niveau_requis": _level_label(level),
+            "niveau_cible": _level_label(level),
+            "couverture_pct": pct,
+            "statut": status,
+            "source": source,
+            "priorite_score": _safe_int(req_row.get("poids_criticite"), 0) + (100 - pct),
+            "lecture": "Besoin généré par la simulation" if source == "projection" else ("À former en priorité" if pct < 60 else "À consolider"),
+        })
+
     for h in req.hypotheses or []:
         ht = str(h.type or "").strip()
+        eid = str(h.id_effectif or "").strip()
+
+        if ht in ("montee_competence", "formation_ciblee", "transmission_interne"):
+            pid = str(h.id_poste_cible or h.id_poste or "").strip()
+            if not pid and eid in effectifs:
+                pid = str(effectifs[eid].get("id_poste_actuel") or "").strip()
+            cid = str(h.id_comp or "").strip()
+            if eid and cid:
+                add_need(eid, pid, cid, h.niveau_simule or "C", "projection")
+            continue
+
         if ht not in ("mobilite_effectif", "tester_correspondance_profil_poste"):
             continue
-        eid = str(h.id_effectif or "").strip()
+
         pid = str(h.id_poste_cible or h.id_poste or "").strip()
         if not eid or not pid:
             continue
-        eff = effectifs.get(eid) or {}
         for r in reqs_by_poste.get(pid) or []:
             cid = str(r.get("id_comp") or "").strip()
-            pct, _rank, status = _skill_score_for_matching(skills_by_effectif.get(eid, {}).get(cid), r.get("niveau_requis"))
+            pct, _rank, _status = _skill_score_for_matching(skills_by_effectif.get(eid, {}).get(cid), r.get("niveau_requis"))
             if pct >= 100:
                 continue
-            out.append({
-                "id_effectif": eid,
-                "nom_complet": _effectif_label(eff),
-                "id_poste": pid,
-                "id_comp": cid,
-                "code": r.get("code") or "",
-                "intitule": r.get("intitule") or "Compétence",
-                "niveau_requis": r.get("niveau_requis") or "",
-                "couverture_pct": pct,
-                "statut": status,
-                "priorite_score": _safe_int(r.get("poids_criticite"), 0) + (100 - pct),
-                "lecture": "À former en priorité" if pct < 60 else "À consolider",
-            })
+            add_need(eid, pid, cid, r.get("niveau_requis"), "mobilite", r)
+
     out.sort(key=lambda x: (-_safe_int(x.get("priorite_score"), 0), str(x.get("nom_complet") or ""), str(x.get("intitule") or "")))
     return out[:30]
 
@@ -1197,6 +1241,57 @@ def _fetch_current_poste_records_from_analyse_engine(cur, id_ent: str, id_servic
     La simulation ne reconstruit pas le diagnostic actuel avec un moteur parallèle.
     """
     return [dict(r) for r in _fetch_postes_fragility_records(cur, id_ent, id_service, int(criticite_min))]
+
+
+def _fetch_dashboard_transmission_pct(cur, id_ent: str, id_service: Optional[str], criticite_min: int) -> int:
+    """
+    Même source que le dashboard : la simulation ne recalcule pas la capacité
+    de transmission avec sa propre logique.
+    """
+    try:
+        data = _dashboard_compute_transmission_capacity(cur, id_ent, id_service, int(criticite_min))
+        return int(round(float(data.get("pct") or 0)))
+    except Exception:
+        return 0
+
+
+def _poste_result_payload(
+    focus_id: Optional[str],
+    current_records: List[Dict[str, Any]],
+    immediate_records: List[Dict[str, Any]],
+    simulated_records: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    pid = str(focus_id or "").strip()
+    if not pid:
+        return None
+
+    cur = {str(r.get("id_poste") or ""): r for r in current_records or []}
+    imm = {str(r.get("id_poste") or ""): r for r in immediate_records or []}
+    sim = {str(r.get("id_poste") or ""): r for r in simulated_records or []}
+    base = cur.get(pid)
+    if not base:
+        return None
+
+    immediate = imm.get(pid) or base
+    projected = sim.get(pid) or immediate
+    before = _safe_int(base.get("indice_fragilite"), 0)
+    after_immediate = _safe_int(immediate.get("indice_fragilite"), before)
+    after_projected = _safe_int(projected.get("indice_fragilite"), after_immediate)
+
+    return {
+        "id_poste": pid,
+        "codif_poste": base.get("codif_poste") or "",
+        "codif_client": base.get("codif_client") or "",
+        "intitule_poste": base.get("intitule_poste") or "Poste",
+        "nom_service": base.get("nom_service") or "",
+        "fragilite_avant": before,
+        "fragilite_immediate": after_immediate,
+        "fragilite_projete": after_projected,
+        "delta_immediat": after_immediate - before,
+        "delta_projete": after_projected - before,
+        "niveau_avant": _risk_label(before),
+        "niveau_projete": _risk_label(after_projected),
+    }
 
 
 def _projected_skill_poste_ids(req: SimulationEvalRequest, dataset: Dict[str, Any]) -> set:
@@ -1295,6 +1390,8 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
     current_records = current_records_analyse
     current_comp_records = _compute_competence_records(dataset, current_state)
     current_summary = _compute_summary(current_records, current_comp_records)
+    dashboard_transmission_pct = _fetch_dashboard_transmission_pct(cur, id_ent, id_service, int(criticite_min))
+    current_summary["capacite_transmission"] = dashboard_transmission_pct
 
     projected_poste_ids = _projected_skill_poste_ids(payload, dataset)
 
@@ -1307,6 +1404,7 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
     )
     immediate_comp_records = _compute_competence_records(dataset, immediate_state)
     immediate_summary = _compute_summary(immediate_records, immediate_comp_records)
+    immediate_summary["capacite_transmission"] = dashboard_transmission_pct
     immediate_impacts = _compute_impacts(current_records, immediate_records, current_comp_records, immediate_comp_records)
     immediate_impacts["services_impactes"] = _service_impacts(current_records, immediate_records)
 
@@ -1319,8 +1417,17 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
     )
     simulated_comp_records = _compute_competence_records(dataset, simulated_state)
     simulated_summary = _compute_summary(simulated_records, simulated_comp_records)
+    simulated_summary["capacite_transmission"] = dashboard_transmission_pct
     impacts = _compute_impacts(current_records, simulated_records, current_comp_records, simulated_comp_records)
     impacts["services_impactes"] = _service_impacts(current_records, simulated_records)
+
+    focus_id = str(payload.id_poste_focus or "").strip()
+    if not focus_id:
+        for h in payload.hypotheses or []:
+            focus_id = str(h.id_poste_cible or h.id_poste or "").strip()
+            if focus_id:
+                break
+    poste_focus = _poste_result_payload(focus_id, current_records, immediate_records, simulated_records)
 
     cotation = _compute_cotation_context(payload, dataset)
     conseil = _build_conseil(payload, current_summary, simulated_summary, impacts, cotation)
@@ -1351,6 +1458,7 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
             },
         },
         "impact": impacts,
+        "poste_focus": poste_focus,
         "developpement": developpement,
         "competences": {
             "actuel": current_comp_records[:100],
@@ -1360,6 +1468,7 @@ def evaluate_simulation_payload(cur, id_ent: str, scope: Any, payload: Simulatio
         "conseil": conseil,
         "reference_calcul": {
             "etat_reel": "skills_analyse_engine._fetch_postes_fragility_records",
+            "transmission": "skills_analyse_engine._dashboard_compute_transmission_capacity",
             "criticite_min": int(criticite_min),
             "id_service": id_service,
         },

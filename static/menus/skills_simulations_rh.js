@@ -227,6 +227,33 @@
     return good ? "is-good" : "is-bad";
   }
 
+  function ensureResultVisualStyles() {
+    if (document.getElementById("simResultVisualStylesV3")) return;
+    const style = document.createElement("style");
+    style.id = "simResultVisualStylesV3";
+    style.textContent = `
+      .sim-result-overview-grid--compact{grid-template-columns:1.35fr 1fr .9fr .9fr;}
+      .sim-result-focus-ring-card{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.04);}
+      .sim-result-focus-ring-card.is-good{border-color:color-mix(in srgb,var(--sb-success) 32%,var(--sb-gray-200));}
+      .sim-result-focus-ring-card.is-bad{border-color:color-mix(in srgb,var(--sb-warning) 32%,var(--sb-gray-200));}
+      .sim-result-focus-ring-layout{display:flex;align-items:center;gap:14px;margin-top:8px;}
+      .sim-result-ring{--ring-pct:0;width:84px;height:84px;flex:0 0 84px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--ring-pct)*1%),#eef2f7 0);position:relative;}
+      .sim-result-ring::after{content:"";position:absolute;inset:9px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px rgba(15,23,42,.04);}
+      .sim-result-ring span{position:relative;z-index:1;color:var(--sb-gray-900);font-size:20px;font-weight:700;}
+      .sim-result-ring small{font-size:11px;font-weight:600;color:var(--sb-gray-500);margin-left:1px;}
+      .sim-result-focus-copy{min-width:0;}
+      .sim-result-focus-title{font-size:14px;font-weight:700;color:var(--sb-gray-900);line-height:1.35;}
+      .sim-result-focus-meta{margin-top:6px;font-size:13px;font-weight:600;color:var(--sb-gray-700);}
+      .sim-result-focus-note{margin-top:4px;font-size:12px;color:var(--sb-gray-500);}
+      .sim-result-title{font-size:16px!important;line-height:1.35!important;font-weight:700!important;}
+      .sim-result-label,.sim-result-metric-label{font-weight:700!important;}
+      .sim-result-section-title{font-size:15px!important;font-weight:700!important;}
+      @media(max-width:1180px){.sim-result-overview-grid--compact{grid-template-columns:1fr 1fr;}}
+      @media(max-width:760px){.sim-result-overview-grid--compact{grid-template-columns:1fr;}.sim-result-focus-ring-layout{align-items:flex-start;}.sim-result-ring{width:72px;height:72px;flex-basis:72px;}}
+    `;
+    document.head.appendChild(style);
+  }
+
   function fillSelect(el, list, valueKey, labelFn, placeholder) {
     if (!el) return;
     const previous = el.value;
@@ -650,6 +677,7 @@
     return {
       titre: `Scénario organisation · ${posteLabel(posteById(_selectedPosteId))}`,
       objectif: "Tester une organisation RH composée de plusieurs briques.",
+      id_poste_focus: _selectedPosteId || null,
       hypotheses: _scenario.map(b => ({
         type: b.type,
         id_effectif: b.id_effectif || null,
@@ -720,23 +748,39 @@
     return "À étudier";
   }
 
-  function overviewGauge(result, current, finalSummary, finalImpact, needs) {
-    const fragDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
-    const transmissionDelta = int(finalSummary.capacite_transmission) - int(current.capacite_transmission);
-    const improved = int(finalImpact.postes_securises || 0);
-    const degraded = int(finalImpact.postes_degrades || 0);
-    let score = 50 + Math.max(0, -fragDelta) * 3 + Math.max(0, transmissionDelta) * 0.8 + improved * 8 - degraded * 14 - needs.length * 4;
-    score = Math.max(0, Math.min(100, Math.round(score)));
-    const tone = gaugeTone(score);
+  function focusFragilityRing(result, current, finalSummary) {
+    const focus = result?.poste_focus || null;
+    const hasFocus = !!focus;
+    const before = hasFocus ? int(focus.fragilite_avant) : int(current.fragilite_moyenne);
+    const after = hasFocus ? int(focus.fragilite_projete) : int(finalSummary.fragilite_moyenne);
+    const delta = after - before;
+    const tone = trendClass(delta, true);
+    const pct = Math.max(0, Math.min(100, after));
+    const title = hasFocus ? "Poste étudié" : "Périmètre analysé";
+    const name = hasFocus ? (focus.intitule_poste || "Poste") : "Fragilité moyenne";
+    const code = hasFocus ? (focus.codif_client || focus.codif_poste || "") : "";
     return `
-      <div class="sim-result-gauge-card ${tone}">
-        <div class="sim-result-metric-label">Lecture globale</div>
-        <div class="sim-result-gauge-head">
-          <strong>${esc(gaugeLabel(score))}</strong>
-          <span>${score}/100</span>
+      <div class="sim-result-focus-ring-card ${tone}">
+        <div class="sim-result-metric-label">${esc(title)}</div>
+        <div class="sim-result-focus-ring-layout">
+          <div class="sim-result-ring" style="--ring-pct:${pct};">
+            <span>${esc(after)}<small>%</small></span>
+          </div>
+          <div class="sim-result-focus-copy">
+            <div class="sim-result-focus-title">${code ? `<span class="sb-badge sb-badge--code">${esc(code)}</span> ` : ""}${esc(name)}</div>
+            <div class="sim-result-focus-meta">Fragilité ${esc(before)} → ${esc(after)} · ${esc(deltaText(delta))}</div>
+            <div class="sim-result-focus-note">${hasFocus ? "Lecture centrée sur le poste de départ." : "Lecture moyenne du périmètre."}</div>
+          </div>
         </div>
-        <div class="sim-result-gauge-track"><div class="sim-result-gauge-fill ${tone}" style="width:${score}%"></div></div>
-        <div class="sim-result-gauge-caption">Lecture visuelle du scénario avant arbitrage final.</div>
+      </div>`;
+  }
+
+  function compactImpactCard(label, value, detail, tone) {
+    return `
+      <div class="sim-result-count-card ${tone || ""}">
+        <div class="sim-result-metric-label">${esc(label)}</div>
+        <div class="sim-result-count-main">${esc(value)}</div>
+        <div class="sim-result-count-sub">${esc(detail || "")}</div>
       </div>`;
   }
 
@@ -797,7 +841,6 @@
     const imSummary = immediat?.summary || {};
     const imDelta = int(imSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
     const finalDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
-    const transmissionDelta = int(finalSummary.capacite_transmission) - int(current.capacite_transmission);
     const improved = int(finalImpact.postes_securises || 0);
     const degraded = int(finalImpact.postes_degrades || 0);
     const topPost = (finalImpact.postes_impactes || immediat?.impact?.postes_impactes || [])[0] || null;
@@ -813,9 +856,6 @@
 
     const summaryParts = [];
     summaryParts.push(`La fragilité moyenne passe de ${int(current.fragilite_moyenne)} à ${int(finalSummary.fragilite_moyenne)} (${deltaText(finalDelta)}).`);
-    if (transmissionDelta !== 0) {
-      summaryParts.push(`La capacité de transmission évolue de ${int(current.capacite_transmission)} à ${int(finalSummary.capacite_transmission)} (${deltaText(transmissionDelta)}).`);
-    }
     if (topPost) {
       summaryParts.push(`${topPost.intitule_poste || "Le poste principal"} est ${int(topPost.delta || 0) < 0 ? "le plus amélioré" : int(topPost.delta || 0) > 0 ? "le plus fragilisé" : "le plus impacté"}.`);
     }
@@ -838,8 +878,7 @@
 
     const vigilance = [];
     if (degraded > 0) vigilance.push(`Vérifier les postes ou services fragilisés avant de retenir ce scénario.`);
-    if (needs.length) vigilance.push(`Prévoir le traitement des besoins de montée en compétence générés par le scénario.`);
-    if (!degraded && !needs.length) vigilance.push(`Confirmer la faisabilité terrain : disponibilité des personnes, charge réelle et calendrier.`);
+    if (needs.length) vigilance.push(`Prévoir le traitement des besoins de montée en compétence générés par le scénario.`);    if (!degraded && !needs.length) vigilance.push(`Confirmer la faisabilité terrain : disponibilité des personnes, charge réelle et calendrier.`);
     if (!hasProjected) vigilance.push(`Le résultat présenté porte sur l’effet organisationnel direct du scénario.`);
 
     return {
@@ -851,6 +890,7 @@
   }
 
   function renderResult(result) {
+    ensureResultVisualStyles();
     const root = byId("simResultContainer");
     if (!root) return;
     if (!result) {
@@ -866,17 +906,18 @@
     const imImpact = immediat.impact || {};
     const prImpact = projete.impact || result.impact || {};
     const needs = result?.developpement?.besoins_formation || [];
-    const hasProjected = JSON.stringify(imSummary) !== JSON.stringify(prSummary) || needs.length > 0 || _scenario.some(b => ["montee_competence", "projection_competence"].includes((b?.type || "").toString()));
+    const hasProjected = needs.length > 0 || _scenario.some(b => ["montee_competence", "projection_competence"].includes((b?.type || "").toString()));
     const finalSummary = hasProjected ? prSummary : imSummary;
     const finalImpact = hasProjected ? prImpact : imImpact;
     const finalDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
+    const focusDelta = result?.poste_focus ? int(result.poste_focus.delta_projete) : finalDelta;
     const narrative = buildResultNarrative(result, current, immediat, projete, finalSummary, finalImpact, hasProjected, needs);
     const improvedCount = int(finalImpact.postes_securises || 0);
     const degradedCount = int(finalImpact.postes_degrades || 0);
     const impactedCount = Array.isArray(finalImpact.postes_impactes) ? finalImpact.postes_impactes.length : 0;
 
     root.innerHTML = `
-      <div class="card sim-result-hero ${trendClass(finalDelta)}">
+      <div class="card sim-result-hero ${trendClass(focusDelta, true)}">
         <div class="sim-result-hero-top">
           <div>
             <div class="sim-result-label">Résultat du scénario</div>
@@ -889,24 +930,20 @@
             <button type="button" class="sb-btn sb-btn--soft" id="btnSimShowCompare">Comparer</button>
           </div>
         </div>
-        <div class="sim-result-overview-grid">
-          ${overviewGauge(result, current, finalSummary, finalImpact, needs)}
-          ${metricCard("Fragilité moyenne", current.fragilite_moyenne, finalSummary.fragilite_moyenne, true)}
-          ${metricCard("Capacité de transmission", current.capacite_transmission, finalSummary.capacite_transmission, false)}
-          <div class="sim-result-count-card ${degradedCount > 0 ? "is-watch" : "is-good"}">
-            <div class="sim-result-metric-label">Repères rapides</div>
-            <div class="sim-result-count-main">${improvedCount} amélioré${improvedCount > 1 ? "s" : ""}</div>
-            <div class="sim-result-count-sub">${degradedCount} dégradé${degradedCount > 1 ? "s" : ""} · ${needs.length} besoin${needs.length > 1 ? "s" : ""} · ${impactedCount} poste${impactedCount > 1 ? "s" : ""} impacté${impactedCount > 1 ? "s" : ""}</div>
-          </div>
+        <div class="sim-result-overview-grid sim-result-overview-grid--compact">
+          ${focusFragilityRing(result, current, finalSummary)}
+          ${metricCard("Fragilité moyenne du périmètre", current.fragilite_moyenne, finalSummary.fragilite_moyenne, true)}
+          ${compactImpactCard("Postes", `${improvedCount} amélioré${improvedCount > 1 ? "s" : ""}`, `${degradedCount} dégradé${degradedCount > 1 ? "s" : ""} · ${impactedCount} impacté${impactedCount > 1 ? "s" : ""}`, degradedCount > 0 ? "is-watch" : "is-good")}
+          ${compactImpactCard("Besoins générés", `${needs.length}`, hasProjected ? "Issus des projections ou mobilités du scénario." : "Aucun besoin projeté dans ce scénario.", needs.length ? "is-watch" : "is-good")}
         </div>
       </div>
 
       <div class="sim-result-main-grid">
         <div class="card sim-result-readable-card">
-          <div class="card-title sim-result-section-title">Synthèse IA de lecture</div>
+          <div class="card-title sim-result-section-title">Synthèse de lecture</div>
           <div class="sim-result-summary-stack">
             <div class="sim-result-summary-block">
-              <div class="sim-result-summary-label">Lecture rapide</div>
+              <div class="sim-result-summary-label">Lecture RH</div>
               <p>${esc(narrative.rh)}</p>
             </div>
             <div class="sim-result-summary-block">
@@ -919,27 +956,22 @@
         </div>
 
         <div class="card sim-result-readable-card">
-          <div class="card-title sim-result-section-title">Repères visuels</div>
-          <div class="sim-result-visual-stack">
-            ${metricCard("Fragilité moyenne", current.fragilite_moyenne, imSummary.fragilite_moyenne, true)}
-            ${metricCard("Postes en danger", current.postes_rouges, imSummary.postes_rouges, true, { suffix: "poste", deltaLabel: (delta) => `${delta > 0 ? "+" : ""}${delta} poste${Math.abs(delta) > 1 ? "s" : ""}` })}
-            ${metricCard("Capacité de transmission", current.capacite_transmission, imSummary.capacite_transmission, false)}
-            ${hasProjected ? `<div class="sim-result-projection-note">Projection après montée en compétence : fragilité ${esc(int(current.fragilite_moyenne))} → ${esc(int(prSummary.fragilite_moyenne))}, transmission ${esc(int(current.capacite_transmission))} → ${esc(int(prSummary.capacite_transmission))}.</div>` : `<div class="sim-result-projection-note">Aucune projection de montée en compétence n’est activée dans ce scénario.</div>`}
-          </div>
+          <div class="card-title sim-result-section-title">Postes impactés par le scénario</div>
+          <div class="card-sub sim2-muted-top">Lecture avant / après sur les postes dont la fragilité évolue le plus.</div>
+          <div class="sim-impact-bar-list">${impactBarRows(finalImpact.postes_impactes || imImpact.postes_impactes || [], 8, "poste")}</div>
         </div>
       </div>
 
       <div class="sim-result-main-grid" style="margin-top:12px;">
         <div class="card sim-result-readable-card">
-          <div class="card-title sim-result-section-title">Postes impactés par le scénario</div>
-          <div class="card-sub sim2-muted-top">Lecture avant / après sur les postes dont la fragilité évolue le plus.</div>
-          <div class="sim-impact-bar-list">${impactBarRows(finalImpact.postes_impactes || imImpact.postes_impactes || [], 8, "poste")}</div>
-        </div>
-
-        <div class="card sim-result-readable-card">
           <div class="card-title sim-result-section-title">Services concernés</div>
           <div class="card-sub sim2-muted-top">Lecture visuelle par service pour repérer l’effet domino.</div>
           <div class="sim-impact-bar-list">${impactBarRows(finalImpact.services_impactes || imImpact.services_impactes || [], 8, "service")}</div>
+        </div>
+
+        <div class="card sim-result-readable-card">
+          <div class="card-title sim-result-section-title">${hasProjected ? "Projection après montée en compétence" : "Lecture du périmètre"}</div>
+          <div class="sim-result-projection-note">${hasProjected ? `Le scénario contient une projection de montée en compétence. La fragilité moyenne du périmètre passe de ${esc(int(current.fragilite_moyenne))} à ${esc(int(prSummary.fragilite_moyenne))}.` : "Aucune projection de montée en compétence n’est activée dans ce scénario."}</div>
         </div>
       </div>
 
