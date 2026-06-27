@@ -1731,6 +1731,119 @@ def _call_cv_ai(cv_text: str, poste_payload: Dict[str, Any], projet_professionne
         raise RuntimeError(f"Analyse CV IA non JSON : {exc}")
 
 
+# ======================================================
+# IA comparative des scénarios enregistrés
+# ======================================================
+def _simulation_compare_system_prompt() -> str:
+    return (
+        "Tu es un analyste de données RH pour Novoskill. "
+        "Tu compares des scénarios RH déjà calculés et enregistrés. "
+        "Tu ne recalcules rien, tu interprètes les indicateurs fournis. "
+        "Tu t'adresses à un lecteur RH, manager ou dirigeant. "
+        "Tu écris en français professionnel, concret, sans jargon technique, sans survente, sans décider à la place du lecteur. "
+        "Tu dois produire uniquement un objet JSON valide."
+    )
+
+
+def _simulation_compare_user_prompt(scenarios: List[Dict[str, Any]]) -> str:
+    return json.dumps(
+        {
+            "consigne": (
+                "Compare ces scénarios RH. Mets en évidence les arbitrages : "
+                "sécurisation du poste étudié, impact global sur le périmètre, besoins générés, "
+                "simplicité de mise en œuvre et points de vigilance. Les valeurs d'impact sont exprimées en %. "
+                "Ne parle pas de points. Ne recommande pas mécaniquement un scénario unique : explique selon l'objectif recherché."
+            ),
+            "format_attendu": {
+                "titre": "string",
+                "synthese": "string",
+                "lecture": "string",
+                "scenario_a_privilegier": "string",
+                "arbitrages": [
+                    {"objectif": "string", "scenario": "string", "justification": "string"}
+                ],
+                "points_vigilance": ["string"],
+                "prochaine_etape": "string"
+            },
+            "scenarios": scenarios,
+        },
+        ensure_ascii=False,
+    )
+
+
+def _normalize_compare_ai_result(ai: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(ai, dict):
+        ai = {}
+    arbitrages_raw = ai.get("arbitrages") if isinstance(ai.get("arbitrages"), list) else []
+    arbitrages = []
+    for row in arbitrages_raw[:5]:
+        if not isinstance(row, dict):
+            continue
+        arbitrages.append({
+            "objectif": _norm_text(row.get("objectif")) or "Objectif",
+            "scenario": _norm_text(row.get("scenario")) or "Scénario à étudier",
+            "justification": _norm_text(row.get("justification")) or "À confirmer avec les contraintes terrain.",
+        })
+    points_raw = ai.get("points_vigilance") if isinstance(ai.get("points_vigilance"), list) else []
+    points = [_norm_text(x) for x in points_raw if _norm_text(x)][:6]
+    return {
+        "titre": _norm_text(ai.get("titre")) or "Analyse comparative Novoskill",
+        "synthese": _norm_text(ai.get("synthese")) or "La comparaison met en évidence des niveaux d'impact différents selon les scénarios sélectionnés.",
+        "lecture": _norm_text(ai.get("lecture")) or "Les scénarios doivent être arbitrés selon la réduction de fragilité recherchée, les besoins à traiter et la faisabilité terrain.",
+        "scenario_a_privilegier": _norm_text(ai.get("scenario_a_privilegier")) or "À déterminer selon l'objectif prioritaire.",
+        "arbitrages": arbitrages,
+        "points_vigilance": points,
+        "prochaine_etape": _norm_text(ai.get("prochaine_etape")) or "Présenter les scénarios aux décideurs concernés et confirmer les hypothèses avant arbitrage.",
+    }
+
+
+def comparer_simulation_scenarios_payload(scenarios: List[Dict[str, Any]]) -> Dict[str, Any]:
+    rows = [s for s in (scenarios or []) if isinstance(s, dict)]
+    if len(rows) < 2:
+        raise RuntimeError("Sélectionnez au moins deux scénarios pour générer une comparaison.")
+
+    api_key = (os.getenv("NOVOSKILL_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise RuntimeError("Analyse comparative IA non configurée : variable NOVOSKILL_OPENAI_API_KEY ou OPENAI_API_KEY absente.")
+
+    model = (os.getenv("NOVOSKILL_COMPARE_AI_MODEL") or os.getenv("OPENAI_MODEL") or "gpt-4o-mini").strip()
+    payload = {
+        "model": model,
+        "temperature": 0.25,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": _simulation_compare_system_prompt()},
+            {"role": "user", "content": _simulation_compare_user_prompt(rows[:4])},
+        ],
+    }
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"Analyse comparative IA impossible : {detail or exc}")
+    except Exception as exc:
+        raise RuntimeError(f"Analyse comparative IA impossible : {exc}")
+
+    data = json.loads(raw)
+    content = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+    if not content:
+        raise RuntimeError("Analyse comparative IA vide.")
+    try:
+        return _normalize_compare_ai_result(json.loads(content))
+    except Exception as exc:
+        raise RuntimeError(f"Analyse comparative IA non JSON : {exc}")
+
+
 def _normalize_cv_ai_result(ai: Dict[str, Any], poste_payload: Dict[str, Any]) -> Dict[str, Any]:
     expected = {str(c.get("id_comp") or ""): c for c in poste_payload.get("competences_attendues") or []}
     matching: List[Dict[str, Any]] = []

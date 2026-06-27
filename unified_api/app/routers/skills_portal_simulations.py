@@ -18,6 +18,7 @@ from app.services.skills_simulation_engine import (
     analyser_cv_recrutement_payload,
     build_simulation_options_payload,
     evaluate_simulation_payload,
+    comparer_simulation_scenarios_payload,
 )
 
 router = APIRouter()
@@ -29,6 +30,10 @@ class SimulationScenarioSaveRequest(BaseModel):
     id_poste_focus: Optional[str] = None
     hypotheses: List[Dict[str, Any]] = []
     resultat: Dict[str, Any] = {}
+
+
+class SimulationScenarioCompareRequest(BaseModel):
+    ids: List[str] = []
 
 
 def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
@@ -240,7 +245,18 @@ def lister_simulation_scenarios(
                     focus = result.get("poste_focus") or {}
                     developpement = result.get("developpement") or {}
                     besoins = developpement.get("besoins_formation") or []
-                    impact = (result.get("resultats") or {}).get("projete", {}).get("impact") or result.get("impact") or {}
+                    resultats = result.get("resultats") or {}
+                    final_summary = (resultats.get("projete") or {}).get("summary") or (resultats.get("immediat") or {}).get("summary") or result.get("simule") or {}
+                    current_summary = result.get("actuel") or {}
+                    impact = (resultats.get("projete") or {}).get("impact") or result.get("impact") or {}
+                    try:
+                        impact_poste_pct = int(round(float(focus.get("fragilite_projete") or 0) - float(focus.get("fragilite_avant") or 0)))
+                    except Exception:
+                        impact_poste_pct = 0
+                    try:
+                        impact_global_pct = int(round(float(final_summary.get("fragilite_moyenne") or 0) - float(current_summary.get("fragilite_moyenne") or 0)))
+                    except Exception:
+                        impact_global_pct = 0
                     items.append({
                         "id_scenario": row.get("id_scenario"),
                         "titre": row.get("titre"),
@@ -259,6 +275,8 @@ def lister_simulation_scenarios(
                             "fragilite_projete": focus.get("fragilite_projete"),
                         },
                         "resume": {
+                            "impact_poste_pct": impact_poste_pct,
+                            "impact_global_pct": impact_global_pct,
                             "besoins_count": len(besoins),
                             "postes_degrades": impact.get("postes_degrades", 0),
                             "postes_securises": impact.get("postes_securises", 0),
@@ -333,6 +351,135 @@ def lire_simulation_scenario(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"skills/simulations/scenarios detail error: {e}")
+
+
+@router.post("/skills/simulations/scenarios/{id_contact}/comparer")
+def comparer_simulation_scenarios(
+    id_contact: str,
+    payload: SimulationScenarioCompareRequest,
+    request: Request,
+):
+    try:
+        ids = []
+        for raw in payload.ids or []:
+            sid = str(raw or "").strip()
+            if sid and sid not in ids:
+                ids.append(sid)
+        ids = ids[:4]
+        if len(ids) < 2:
+            raise HTTPException(status_code=400, detail="Sélectionnez au moins deux scénarios à comparer.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                cur.execute(
+                    """
+                    SELECT
+                        id_scenario,
+                        titre,
+                        objectif,
+                        id_poste_focus,
+                        criticite_min,
+                        scenario_json,
+                        hypotheses_json,
+                        resultat_json,
+                        created_at
+                    FROM public.tbl_insights_simulation_scenario
+                    WHERE id_ent = %s
+                      AND id_scenario = ANY(%s::text[])
+                      AND COALESCE(archive, FALSE) = FALSE
+                      AND COALESCE(masque, FALSE) = FALSE
+                    """,
+                    (id_ent, ids),
+                )
+                rows = [dict(r) for r in (cur.fetchall() or [])]
+                by_id = {str(r.get("id_scenario") or ""): r for r in rows}
+                ordered = [by_id[sid] for sid in ids if sid in by_id]
+                if len(ordered) < 2:
+                    raise HTTPException(status_code=404, detail="Scénarios introuvables ou archivés.")
+
+                compact_items: List[Dict[str, Any]] = []
+                for row in ordered:
+                    result = row.get("resultat_json") or {}
+                    focus = result.get("poste_focus") or {}
+                    resultats = result.get("resultats") or {}
+                    final_summary = (resultats.get("projete") or {}).get("summary") or (resultats.get("immediat") or {}).get("summary") or result.get("simule") or {}
+                    current_summary = result.get("actuel") or {}
+                    impact = (resultats.get("projete") or {}).get("impact") or result.get("impact") or {}
+                    besoins = (result.get("developpement") or {}).get("besoins_formation") or []
+                    hypotheses = row.get("hypotheses_json") or result.get("hypotheses") or []
+                    try:
+                        impact_poste_pct = int(round(float(focus.get("fragilite_projete") or 0) - float(focus.get("fragilite_avant") or 0)))
+                    except Exception:
+                        impact_poste_pct = 0
+                    try:
+                        impact_global_pct = int(round(float(final_summary.get("fragilite_moyenne") or 0) - float(current_summary.get("fragilite_moyenne") or 0)))
+                    except Exception:
+                        impact_global_pct = 0
+                    compact_items.append({
+                        "id_scenario": row.get("id_scenario"),
+                        "titre": row.get("titre") or "Scénario RH",
+                        "poste": {
+                            "code": focus.get("codif_client") or focus.get("codif_poste") or "",
+                            "intitule": focus.get("intitule_poste") or "Poste étudié",
+                        },
+                        "perimetre": (result.get("scope") or (row.get("scenario_json") or {}).get("scope") or {}).get("nom_service") or "Tous les services",
+                        "hypotheses": [
+                            {
+                                "type": h.get("type") if isinstance(h, dict) else "",
+                                "libelle": h.get("libelle") if isinstance(h, dict) else "",
+                            }
+                            for h in hypotheses[:8]
+                        ],
+                        "resultats": {
+                            "impact_poste_pct": impact_poste_pct,
+                            "impact_global_pct": impact_global_pct,
+                            "besoins": len(besoins),
+                            "postes_ameliore": impact.get("postes_securises", 0),
+                            "postes_degrade": impact.get("postes_degrades", 0),
+                        },
+                    })
+
+                return {
+                    "items": compact_items,
+                    "analyse": comparer_simulation_scenarios_payload(compact_items),
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"skills/simulations/scenarios comparer error: {e}")
+
+
+@router.delete("/skills/simulations/scenarios/{id_contact}/{id_scenario}")
+def supprimer_simulation_scenario(
+    id_contact: str,
+    id_scenario: str,
+    request: Request,
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                cur.execute(
+                    """
+                    UPDATE public.tbl_insights_simulation_scenario
+                    SET archive = TRUE, updated_at = NOW()
+                    WHERE id_ent = %s
+                      AND id_scenario = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    RETURNING id_scenario
+                    """,
+                    (id_ent, id_scenario),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Scénario introuvable ou déjà supprimé.")
+                conn.commit()
+                return {"id_scenario": row.get("id_scenario"), "archive": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"skills/simulations/scenarios delete error: {e}")
 
 
 @router.post("/skills/simulations/evaluer/{id_contact}")

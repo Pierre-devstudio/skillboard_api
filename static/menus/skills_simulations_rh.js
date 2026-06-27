@@ -18,6 +18,8 @@
   let _historyItems = [];
   let _historyDetailCache = new Map();
   let _compareIds = [];
+  let _compareAnalysis = null;
+  let _compareAnalysisIds = "";
   let _saveIntent = "save";
   let _context = null;
 
@@ -229,8 +231,8 @@
 
   function deltaText(v) {
     const n = int(v);
-    if (n === 0) return "0 pt";
-    return `${n > 0 ? "+" : ""}${n} pt${Math.abs(n) > 1 ? "s" : ""}`;
+    if (n === 0) return "0%";
+    return `${n > 0 ? "+" : ""}${n}%`;
   }
 
   function deltaBadge(v, inverse) {
@@ -1212,10 +1214,10 @@
     const b = int(before);
     const a = int(after);
     const delta = a - b;
-    const suffix = opts?.suffix || "pts";
+    const suffix = opts?.suffix || "%";
     const deltaLabel = typeof opts?.deltaLabel === "function"
       ? opts.deltaLabel(delta)
-      : `${delta > 0 ? "+" : ""}${delta} ${suffix}`;
+      : (suffix === "%" ? `${delta > 0 ? "+" : ""}${delta}%` : `${delta > 0 ? "+" : ""}${delta} ${suffix}`);
     return `
       <div class="sim-result-metric-card ${trendClass(delta, inverse)}">
         <div class="sim-result-metric-label">${esc(label)}</div>
@@ -1520,6 +1522,14 @@
     return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 14h6M9 17h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
   }
 
+  function simEyeIconSvg() {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
+  }
+
+  function simTrashIconSvg() {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M9 7l1-3h4l1 3M6 7l1 14h10l1-14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
   async function simApiBlob(url) {
     const headers = new Headers();
     headers.set("Accept", "application/pdf");
@@ -1790,11 +1800,17 @@
       .map(x => typeof x === "string" ? x : (x?.id || x?.id_scenario || x?.result?.id_scenario || ""))
       .map(x => String(x || "").trim())
       .filter(Boolean);
-    return Array.from(new Set(ids)).slice(0, 8);
+    return Array.from(new Set(ids)).slice(0, 4);
   }
 
   function writeCompareIds(ids) {
-    _compareIds = Array.from(new Set((ids || []).map(x => String(x || "").trim()).filter(Boolean))).slice(0, 8);
+    const nextIds = Array.from(new Set((ids || []).map(x => String(x || "").trim()).filter(Boolean))).slice(0, 4);
+    const nextKey = nextIds.join("|");
+    if (nextKey !== _compareAnalysisIds) {
+      _compareAnalysis = null;
+      _compareAnalysisIds = "";
+    }
+    _compareIds = nextIds;
     writeJson(STORE_COMPARE, _compareIds);
     updateCompareCount();
     renderHistorySelectionState();
@@ -1806,14 +1822,18 @@
     const el = byId("simCompareCount");
     if (el) el.textContent = String(count);
     const btn = byId("btnSimHistoryCompare");
-    if (btn) btn.textContent = count ? `Comparer la sélection (${count})` : "Comparer la sélection";
+    if (btn) {
+      btn.textContent = "Comparer";
+      btn.disabled = count < 2;
+      btn.title = count < 2 ? "Sélectionnez au moins deux scénarios." : "Comparer les scénarios sélectionnés.";
+    }
   }
 
   function ensureIdInComparator(id) {
     const sid = String(id || "").trim();
     if (!sid) return;
     const ids = readCompareIds();
-    if (!ids.includes(sid)) ids.unshift(sid);
+    if (!ids.includes(sid)) ids.push(sid);
     writeCompareIds(ids);
   }
 
@@ -2061,11 +2081,59 @@
     return `${code ? code + " · " : ""}${p.intitule_poste || "Poste non renseigné"}`;
   }
 
+  function signedPercent(v) {
+    const n = int(v);
+    if (n === 0) return "0%";
+    return `${n > 0 ? "+" : ""}${n}%`;
+  }
+
+  function scenarioMetricsFromResult(result) {
+    const r = result || {};
+    const focus = r.poste_focus || {};
+    const resultats = r.resultats || {};
+    const finalSummary = resultats.projete?.summary || resultats.immediat?.summary || r.simule || {};
+    const current = r.actuel || {};
+    const beforePoste = int(focus.fragilite_avant ?? current.fragilite_moyenne ?? 0);
+    const afterPoste = int(focus.fragilite_projete ?? finalSummary.fragilite_moyenne ?? beforePoste);
+    const beforeGlobal = int(current.fragilite_moyenne ?? 0);
+    const afterGlobal = int(finalSummary.fragilite_moyenne ?? beforeGlobal);
+    const needs = Array.isArray(r.developpement?.besoins_formation) ? r.developpement.besoins_formation.length : 0;
+    const impact = resultats.projete?.impact || r.impact || {};
+    return {
+      impactPoste: afterPoste - beforePoste,
+      impactGlobal: afterGlobal - beforeGlobal,
+      besoins: needs,
+      postesAmeliores: int(impact.postes_securises || 0),
+      postesDegrades: int(impact.postes_degrades || 0),
+    };
+  }
+
+  function scenarioMetricsFromItem(item) {
+    const resume = item?.resume || {};
+    if (Object.prototype.hasOwnProperty.call(resume, "impact_poste_pct")) {
+      return {
+        impactPoste: int(resume.impact_poste_pct),
+        impactGlobal: int(resume.impact_global_pct),
+        besoins: int(resume.besoins_count),
+        postesAmeliores: int(resume.postes_securises),
+        postesDegrades: int(resume.postes_degrades),
+      };
+    }
+    return scenarioMetricsFromResult(item?.resultat_json || item?.result || {});
+  }
+
+  function simMetricChip(label, value, toneInverse = true) {
+    const n = int(value);
+    const tone = trendClass(n, toneInverse);
+    return `<span class="sim-history-metric ${tone}"><small>${esc(label)}</small><strong>${esc(signedPercent(n))}</strong></span>`;
+  }
+
   function renderHistorySelectionState() {
     const ids = readCompareIds();
     document.querySelectorAll("[data-sim-history-check]").forEach(input => {
       const id = input.getAttribute("data-sim-history-check") || "";
       input.checked = ids.includes(id);
+      input.closest(".sim-history-row-card")?.classList.toggle("is-selected", input.checked);
     });
     updateCompareCount();
   }
@@ -2075,23 +2143,45 @@
     const p = item.poste_focus || {};
     const code = p.codif_client || p.codif_poste || "";
     const service = item.scope?.nom_service || "Tous les services";
-    const needs = item.resume?.besoins_count ?? 0;
+    const m = scenarioMetricsFromItem(item);
     return `
-      <tr>
-        <td class="col-center"><input type="checkbox" data-sim-history-check="${esc(id)}" aria-label="Ajouter au comparateur"></td>
-        <td>
+      <div class="sim-history-row-card">
+        <label class="sim-history-check" title="Ajouter au comparateur">
+          <input type="checkbox" data-sim-history-check="${esc(id)}" aria-label="Ajouter au comparateur">
+          <span>Comparer</span>
+        </label>
+        <div class="sim-history-main">
           <div class="sim-history-title">${esc(item.titre || "Scénario RH")}</div>
           <div class="card-sub" style="margin-top:3px;">${esc(fmtDateTime(item.created_at))}</div>
-        </td>
-        <td>
-          <div class="sim-history-poste">${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<span>${esc(p.intitule_poste || "Poste non renseigné")}</span></div>
-          <div class="card-sub" style="margin-top:3px;">${esc(service)}</div>
-        </td>
-        <td class="col-center"><span class="sb-badge ${needs ? "sb-badge--violet" : ""}">${esc(needs)} besoin${needs > 1 ? "s" : ""}</span></td>
-        <td class="col-center">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-history-open="${esc(id)}">Voir le résultat</button>
-        </td>
-      </tr>`;
+        </div>
+        <div class="sim-history-poste">
+          ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
+          <div><strong>${esc(p.intitule_poste || "Poste non renseigné")}</strong><small>${esc(service)}</small></div>
+        </div>
+        <div class="sim-history-metrics">
+          ${simMetricChip("Impact poste", m.impactPoste)}
+          ${simMetricChip("Impact global", m.impactGlobal)}
+          <span class="sim-history-metric is-violet"><small>Besoins</small><strong>${esc(m.besoins)}</strong></span>
+        </div>
+        <div class="sim-history-actions">
+          <button type="button" class="sb-icon-btn" data-sim-history-open="${esc(id)}" title="Voir le résultat" aria-label="Voir le résultat">${simEyeIconSvg()}</button>
+          <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-sim-history-delete="${esc(id)}" title="Supprimer le scénario" aria-label="Supprimer le scénario">${simTrashIconSvg()}</button>
+        </div>
+      </div>`;
+  }
+
+  async function deleteScenarioFromHistory(id) {
+    const sid = String(id || "").trim();
+    if (!sid) return;
+    const item = _historyItems.find(x => String(x.id_scenario || "") === sid) || {};
+    const title = item.titre || "ce scénario";
+    if (!window.confirm(`Supprimer ${title} de l’historique ?`)) return;
+    await _portal.apiJson(apiUrl(`/skills/simulations/scenarios/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(sid)}`, {}), { method: "DELETE" });
+    removeIdFromComparator(sid);
+    _historyDetailCache.delete(sid);
+    _historyLoaded = false;
+    setStatus("Scénario supprimé de l’historique.");
+    await renderHistory(true);
   }
 
   async function renderHistory(force = false) {
@@ -2106,23 +2196,11 @@
         return;
       }
       root.innerHTML = `
-        <div class="card sim-history-card">
-          <div class="table-wrap">
-            <table class="sb-table sb-table--airy sb-table--hover sim-history-table">
-              <thead>
-                <tr>
-                  <th style="width:44px;" class="col-center"></th>
-                  <th>Scénario</th>
-                  <th>Poste / périmètre</th>
-                  <th style="width:120px;" class="col-center">Besoins</th>
-                  <th style="width:150px;" class="col-center">Résultat</th>
-                </tr>
-              </thead>
-              <tbody>${items.map(historyRowHtml).join("")}</tbody>
-            </table>
-          </div>
+        <div class="sim-history-list">
+          ${items.map(historyRowHtml).join("")}
         </div>`;
       root.querySelectorAll("[data-sim-history-open]").forEach(btn => btn.addEventListener("click", () => openScenarioFromHistory(btn.getAttribute("data-sim-history-open") || "").catch(e => setStatus(errMsg(e), "error"))));
+      root.querySelectorAll("[data-sim-history-delete]").forEach(btn => btn.addEventListener("click", () => deleteScenarioFromHistory(btn.getAttribute("data-sim-history-delete") || "").catch(e => setStatus(errMsg(e), "error"))));
       root.querySelectorAll("[data-sim-history-check]").forEach(input => input.addEventListener("change", () => {
         const id = input.getAttribute("data-sim-history-check") || "";
         if (input.checked) ensureIdInComparator(id);
@@ -2160,41 +2238,94 @@
     return details.filter(Boolean);
   }
 
-  function compareCardHtml(detail) {
-    const r = detail?.resultat_json || detail?.result || {};
-    const focus = r.poste_focus || {};
-    const before = int(focus.fragilite_avant ?? r.actuel?.fragilite_moyenne ?? 0);
-    const after = int(focus.fragilite_projete ?? r.resultats?.projete?.summary?.fragilite_moyenne ?? r.simule?.fragilite_moyenne ?? 0);
-    const delta = after - before;
-    const impact = r.resultats?.projete?.impact || r.impact || {};
-    const needs = r.developpement?.besoins_formation || [];
-    const title = detail?.titre || r.titre || "Scénario RH";
-    const poste = focus.intitule_poste || "Poste étudié";
+  function hypothesisCompactHtml(detail) {
+    const hyps = Array.isArray(detail?.hypotheses_json) ? detail.hypotheses_json : [];
+    if (!hyps.length) return `<span class="sim-compare-hyp-empty">Aucune hypothèse détaillée</span>`;
     return `
-      <div class="sim-compare-card ${trendClass(delta, true)}">
-        <div class="sim-compare-card-main">
-          <div class="sim-impact-title">${esc(title)}</div>
-          <div class="card-sub" style="margin-top:3px;">${esc(poste)} · ${esc(r.scope?.nom_service || detail?.scenario_json?.scope?.nom_service || "Tous les services")}</div>
-        </div>
-        <div class="sim-compare-metrics">
-          <span>Poste ${esc(before)} → ${esc(after)} ${deltaBadge(delta)}</span>
-          <span>${esc(impact.postes_securises || 0)} amélioré(s)</span>
-          <span>${esc(impact.postes_degrades || 0)} dégradé(s)</span>
-          <span>${esc(needs.length)} besoin(s)</span>
-        </div>
-        <div class="sb-actions">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-compare-open="${esc(detail.id_scenario)}">Voir</button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-remove-compare="${esc(detail.id_scenario)}">Retirer</button>
-        </div>
+      <div class="sim-compare-hyp-list">
+        ${hyps.slice(0, 3).map(h => `<span>${esc(brickKind(h))}</span>`).join("")}
+        ${hyps.length > 3 ? `<span>+${esc(hyps.length - 3)}</span>` : ""}
       </div>`;
   }
 
-function renderCompare() {
+  function compareCardHtml(detail) {
+    const r = detail?.resultat_json || detail?.result || {};
+    const focus = r.poste_focus || {};
+    const m = scenarioMetricsFromResult(r);
+    const title = detail?.titre || r.titre || "Scénario RH";
+    const code = focus.codif_client || focus.codif_poste || "";
+    const poste = focus.intitule_poste || "Poste étudié";
+    return `
+      <div class="sim-compare-tile ${trendClass(m.impactPoste, true)}">
+        <div class="sim-compare-tile-head">
+          <div class="sim-compare-tile-title">${esc(title)}</div>
+          <button type="button" class="sb-icon-btn" data-remove-compare="${esc(detail.id_scenario)}" title="Retirer du comparateur" aria-label="Retirer du comparateur">×</button>
+        </div>
+        <div class="sim-compare-poste-line">
+          ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
+          <span>${esc(poste)}</span>
+        </div>
+        <div class="sim-compare-section-label">Hypothèses</div>
+        ${hypothesisCompactHtml(detail)}
+        <div class="sim-compare-results-box">
+          <div><span>Impact poste</span><strong class="${trendClass(m.impactPoste, true)}">${esc(signedPercent(m.impactPoste))}</strong></div>
+          <div><span>Impact global</span><strong class="${trendClass(m.impactGlobal, true)}">${esc(signedPercent(m.impactGlobal))}</strong></div>
+          <div><span>Besoins</span><strong>${esc(m.besoins)}</strong></div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-compare-open="${esc(detail.id_scenario)}">Voir le résultat</button>
+      </div>`;
+  }
+
+  function compareAnalysisHtml() {
+    const a = _compareAnalysis;
+    if (!a) return `<div id="simCompareAnalysis" class="sim-compare-analysis-slot"></div>`;
+    const arbitrages = Array.isArray(a.arbitrages) ? a.arbitrages : [];
+    const points = Array.isArray(a.points_vigilance) ? a.points_vigilance : [];
+    return `
+      <div id="simCompareAnalysis" class="sim-compare-analysis-card">
+        <div class="sim-compare-analysis-title">${esc(a.titre || "Analyse comparative Novoskill")}</div>
+        <p class="sim-compare-analysis-lead">${esc(a.synthese || "")}</p>
+        <div class="sim-compare-analysis-block"><strong>Lecture comparative</strong><p>${esc(a.lecture || "")}</p></div>
+        <div class="sim-compare-analysis-block"><strong>Scénario à privilégier selon l’objectif</strong><p>${esc(a.scenario_a_privilegier || "")}</p></div>
+        ${arbitrages.length ? `<div class="sim-compare-analysis-grid">${arbitrages.map(row => `
+          <div><span>${esc(row.objectif || "Objectif")}</span><strong>${esc(row.scenario || "Scénario")}</strong><p>${esc(row.justification || "")}</p></div>`).join("")}</div>` : ""}
+        ${points.length ? `<div class="sim-compare-analysis-block"><strong>Points de vigilance</strong><ul>${points.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        ${a.prochaine_etape ? `<div class="sim-compare-next">${esc(a.prochaine_etape)}</div>` : ""}
+      </div>`;
+  }
+
+  async function runCompareAnalysis() {
+    const ids = readCompareIds();
+    if (ids.length < 2) return setStatus("Sélectionnez au moins deux scénarios à comparer.", "error");
+    const slot = byId("simCompareAnalysis");
+    if (slot) slot.innerHTML = `<div class="sim-empty-state">Génération de l’analyse comparative Novoskill…</div>`;
+    const btn = byId("btnSimRunCompare");
+    if (btn) btn.disabled = true;
+    try {
+      const data = await _portal.apiJson(apiUrl(`/skills/simulations/scenarios/${encodeURIComponent(_portal.contactId)}/comparer`, {}), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      _compareAnalysis = data?.analyse || null;
+      _compareAnalysisIds = ids.join("|");
+      setStatus("Analyse comparative générée.");
+      renderCompare();
+    } catch (e) {
+      if (slot) slot.innerHTML = `<div class="sim-empty-state">Impossible de générer l’analyse comparative : ${esc(errMsg(e))}</div>`;
+      setStatus(errMsg(e), "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function renderCompare() {
     const historyPanel = document.querySelector('[data-sim-panel="history"]');
     const historyVisible = !!historyPanel && historyPanel.style.display !== "none";
     const root = (historyVisible ? byId("simHistoryCompareContainer") : byId("simCompareContainer")) || byId("simHistoryCompareContainer") || byId("simCompareContainer");
     if (!root) return;
     const ids = readCompareIds();
+    const idsKey = ids.join("|");
     updateCompareCount();
     if (!ids.length) {
       root.innerHTML = "";
@@ -2206,20 +2337,26 @@ function renderCompare() {
         root.innerHTML = `<div class="card"><div class="sim-empty-state">Aucun scénario comparable. Sélectionnez des scénarios enregistrés dans l’historique.</div></div>`;
         return;
       }
+      if (_compareAnalysisIds !== idsKey) _compareAnalysis = null;
       root.innerHTML = `
         <div class="card sim-compare-readable">
-          <div class="sim2-hero-layout">
+          <div class="sim2-hero-layout sim-compare-headline">
             <div>
               <div class="card-title">Comparateur</div>
-              <div class="card-sub sim2-muted-top">Lecture comparative des scénarios enregistrés sélectionnés dans l’historique.</div>
+              <div class="card-sub sim2-muted-top">${details.length} scénario${details.length > 1 ? "s" : ""} sélectionné${details.length > 1 ? "s" : ""}. Sélectionnez 2 à 4 scénarios pour générer une synthèse comparative.</div>
             </div>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompareInline">Vider le comparateur</button>
+            <div class="sb-actions sb-actions--end">
+              <button type="button" class="sb-btn sb-btn--accent" id="btnSimRunCompare" ${details.length < 2 ? "disabled" : ""}>Comparer</button>
+              <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompareInline">Vider</button>
+            </div>
           </div>
-          <div class="sim-compare-list">${details.map(compareCardHtml).join("")}</div>
+          <div class="sim-compare-tiles">${details.map(compareCardHtml).join("")}</div>
+          ${compareAnalysisHtml()}
         </div>`;
       root.querySelectorAll("[data-remove-compare]").forEach(btn => btn.addEventListener("click", () => removeIdFromComparator(btn.getAttribute("data-remove-compare") || "")));
       root.querySelectorAll("[data-sim-compare-open]").forEach(btn => btn.addEventListener("click", () => openScenarioFromHistory(btn.getAttribute("data-sim-compare-open") || "").catch(e => setStatus(errMsg(e), "error"))));
       byId("btnSimClearCompareInline")?.addEventListener("click", () => writeCompareIds([]));
+      byId("btnSimRunCompare")?.addEventListener("click", () => runCompareAnalysis());
     }).catch(e => {
       root.innerHTML = `<div class="card"><div class="sim-empty-state">Impossible de charger le comparateur : ${esc(errMsg(e))}</div></div>`;
     });
@@ -2269,11 +2406,6 @@ function renderCompare() {
     byId("btnSimResetScenario")?.addEventListener("click", resetScenario);
     byId("btnSimReloadOptions")?.addEventListener("click", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
     byId("btnSimHistoryRefresh")?.addEventListener("click", () => { _historyLoaded = false; renderHistory(true).catch(e => setStatus(errMsg(e), "error")); });
-    byId("btnSimHistoryCompare")?.addEventListener("click", () => {
-      if (readCompareIds().length < 2) return setStatus("Sélectionnez au moins deux scénarios à comparer.", "error");
-      renderCompare();
-      setStatus("");
-    });
     byId("btnSimClearCompare")?.addEventListener("click", () => writeCompareIds([]));
     byId("simCriticiteRange")?.addEventListener("input", e => setCriticiteMin(e.target.value));
     byId("simCriticiteRange")?.addEventListener("change", () => {
