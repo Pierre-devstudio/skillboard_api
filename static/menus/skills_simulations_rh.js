@@ -250,30 +250,7 @@
   }
 
   function ensureResultVisualStyles() {
-    if (document.getElementById("simResultVisualStylesV3")) return;
-    const style = document.createElement("style");
-    style.id = "simResultVisualStylesV3";
-    style.textContent = `
-      .sim-result-overview-grid--compact{grid-template-columns:1.35fr 1fr .9fr .9fr;}
-      .sim-result-focus-ring-card{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.04);}
-      .sim-result-focus-ring-card.is-good{border-color:color-mix(in srgb,var(--sb-success) 32%,var(--sb-gray-200));}
-      .sim-result-focus-ring-card.is-bad{border-color:color-mix(in srgb,var(--sb-warning) 32%,var(--sb-gray-200));}
-      .sim-result-focus-ring-layout{display:flex;align-items:center;gap:14px;margin-top:8px;}
-      .sim-result-ring{--ring-pct:0;width:84px;height:84px;flex:0 0 84px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--ring-pct)*1%),#eef2f7 0);position:relative;}
-      .sim-result-ring::after{content:"";position:absolute;inset:9px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px rgba(15,23,42,.04);}
-      .sim-result-ring span{position:relative;z-index:1;color:var(--sb-gray-900);font-size:20px;font-weight:700;}
-      .sim-result-ring small{font-size:11px;font-weight:600;color:var(--sb-gray-500);margin-left:1px;}
-      .sim-result-focus-copy{min-width:0;}
-      .sim-result-focus-title{font-size:14px;font-weight:700;color:var(--sb-gray-900);line-height:1.35;}
-      .sim-result-focus-meta{margin-top:6px;font-size:13px;font-weight:600;color:var(--sb-gray-700);}
-      .sim-result-focus-note{margin-top:4px;font-size:12px;color:var(--sb-gray-500);}
-      .sim-result-title{font-size:16px!important;line-height:1.35!important;font-weight:700!important;}
-      .sim-result-label,.sim-result-metric-label{font-weight:700!important;}
-      .sim-result-section-title{font-size:15px!important;font-weight:700!important;}
-      @media(max-width:1180px){.sim-result-overview-grid--compact{grid-template-columns:1fr 1fr;}}
-      @media(max-width:760px){.sim-result-overview-grid--compact{grid-template-columns:1fr;}.sim-result-focus-ring-layout{align-items:flex-start;}.sim-result-ring{width:72px;height:72px;flex-basis:72px;}}
-    `;
-    document.head.appendChild(style);
+    // Styles principaux déplacés dans skills_portal_theme.css pour éviter les surcharges inline.
   }
 
   function ensureCvRenfortStyles() {
@@ -1403,6 +1380,164 @@
     };
   }
 
+  function simResultMiniIcon(icon, tone) {
+    return `<span class="sim-result-ui-icon ${tone || ""}">${esc(icon || "")}</span>`;
+  }
+
+  function simResultBarLine(label, before, after, opts = {}) {
+    const b = Math.max(0, Math.min(100, int(before)));
+    const a = Math.max(0, Math.min(100, int(after)));
+    const delta = int(after) - int(before);
+    const tone = trendClass(delta, opts.inverse !== false);
+    const right = opts.showRight === false ? "" : `<strong>${esc(a)}</strong>`;
+    return `
+      <div class="sim-result-linebar">
+        <div class="sim-result-linebar-head">
+          <span>${esc(label)}</span>
+          <b>${esc(int(before))} → ${esc(int(after))}</b>
+          ${deltaBadge(delta)}
+        </div>
+        <div class="sim-result-linebar-row">
+          <em>Avant</em>
+          <div class="sim-result-linebar-track"><div class="sim-result-linebar-fill is-before" style="width:${b}%"></div></div>
+          <strong>${esc(b)}</strong>
+        </div>
+        <div class="sim-result-linebar-row">
+          <em>Après</em>
+          <div class="sim-result-linebar-track"><div class="sim-result-linebar-fill ${tone}" style="width:${a}%"></div></div>
+          ${right}
+        </div>
+      </div>`;
+  }
+
+  function simResultGaugeCard(label, before, after) {
+    const b = Math.max(0, Math.min(100, int(before)));
+    const a = Math.max(0, Math.min(100, int(after)));
+    const delta = a - b;
+    return `
+      <div class="sim-result-decision-card sim-result-decision-card--gauge">
+        <div class="sim-result-card-head">${simResultMiniIcon("⌁", "is-blue")}<span>${esc(label)}</span></div>
+        <div class="sim-result-gauge-values">
+          <div><strong>${esc(b)}</strong><small>Avant</small></div>
+          <div class="sim-result-delta-mid ${delta < 0 ? "is-good" : delta > 0 ? "is-bad" : ""}">${esc(deltaText(delta))}</div>
+          <div><strong>${esc(a)}</strong><small>Après</small></div>
+        </div>
+        <div class="sim-result-gradient-gauge">
+          <div class="sim-result-gradient-scale"></div>
+          <span class="sim-result-gauge-dot is-before" style="left:${b}%"></span>
+          <span class="sim-result-gauge-dot is-after" style="left:${a}%"></span>
+        </div>
+        <div class="sim-result-gauge-meta"><span>0</span><span>50</span><span>100</span></div>
+      </div>`;
+  }
+
+  function simResultFocusCard(result, current, finalSummary) {
+    const focus = result?.poste_focus || null;
+    const before = focus ? int(focus.fragilite_avant) : int(current.fragilite_moyenne);
+    const after = focus ? int(focus.fragilite_projete) : int(finalSummary.fragilite_moyenne);
+    const delta = after - before;
+    const code = focus ? (focus.codif_client || focus.codif_poste || "") : "";
+    const name = focus ? (focus.intitule_poste || "Poste") : "Périmètre analysé";
+    const pct = Math.max(0, Math.min(100, after));
+    return `
+      <div class="sim-result-decision-card sim-result-decision-card--focus ${trendClass(delta, true)}">
+        <div class="sim-result-card-head"><span>Poste étudié</span></div>
+        <div class="sim-result-focus-ui">
+          <div class="sim-result-modern-ring" style="--sim-ring:${pct};"><span>${esc(after)}<small>%</small></span></div>
+          <div class="sim-result-focus-text">
+            <div>${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<strong>${esc(name)}</strong></div>
+            <p>Fragilité ${esc(before)} → ${esc(after)} ${deltaBadge(delta)}</p>
+            <small>Lecture centrée sur le poste de départ.</small>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function simResultCountCard(label, value, detail, icon, tone) {
+    return `
+      <div class="sim-result-decision-card sim-result-decision-card--count ${tone || ""}">
+        <div class="sim-result-card-head">${simResultMiniIcon(icon || "•", tone || "")}<span>${esc(label)}</span></div>
+        <div class="sim-result-count-value">${esc(value)}</div>
+        <div class="sim-result-count-detail">${esc(detail || "")}</div>
+      </div>`;
+  }
+
+  function simResultEffectPanel(title, subtitle, icon, rows) {
+    return `
+      <div class="sim-result-effect-panel">
+        <div class="sim-result-effect-title">${simResultMiniIcon(icon || "•", icon === "↗" ? "is-green" : "is-blue")}<div><strong>${esc(title)}</strong>${subtitle ? `<small>${esc(subtitle)}</small>` : ""}</div></div>
+        <div class="sim-result-effect-lines">${rows.join("")}</div>
+      </div>`;
+  }
+
+  function simResultImpactCards(items, limit, kind) {
+    const list = Array.isArray(items) ? items.slice(0, limit || 4) : [];
+    if (!list.length) return `<div class="sim-empty-state">Aucun ${kind === "service" ? "service" : "poste"} ne varie de façon significative.</div>`;
+    return list.map(item => {
+      const before = int(item.fragilite_avant);
+      const after = int(item.fragilite_apres);
+      const delta = int(item.delta || 0);
+      const tone = delta < 0 ? "is-good" : delta > 0 ? "is-bad" : "is-neutral";
+      const code = item.codif_client || item.codif_poste || "";
+      const title = kind === "service" ? (item.nom_service || "Service") : (item.intitule_poste || "Poste");
+      const sub = kind === "service" ? "Lecture moyenne du service" : (item.nom_service || "");
+      return `
+        <div class="sim-result-impact-modern ${tone}">
+          <div class="sim-result-impact-modern-head">
+            <div>
+              <div class="sim-result-impact-modern-title">${kind === "service" ? esc(title) : `${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<strong>${esc(title)}</strong>`}</div>
+              <div class="sim-result-impact-modern-sub">${esc(sub)}</div>
+            </div>
+            <div class="sim-result-impact-modern-delta"><span>${esc(before)} → ${esc(after)}</span>${deltaBadge(delta)}</div>
+          </div>
+          <div class="sim-result-linebar-row"><em>Avant</em><div class="sim-result-linebar-track"><div class="sim-result-linebar-fill is-before" style="width:${Math.max(0, Math.min(100, before))}%"></div></div><strong>${esc(before)}</strong></div>
+          <div class="sim-result-linebar-row"><em>Après</em><div class="sim-result-linebar-track"><div class="sim-result-linebar-fill ${tone}" style="width:${Math.max(0, Math.min(100, after))}%"></div></div><strong>${esc(after)}</strong></div>
+        </div>`;
+    }).join("");
+  }
+
+  function simResultImpactLegend(impact) {
+    const improved = int(impact?.postes_securises || 0);
+    const degraded = int(impact?.postes_degrades || 0);
+    const impacted = Array.isArray(impact?.postes_impactes) ? impact.postes_impactes.length : 0;
+    return `
+      <div class="sim-result-impact-legend">
+        <span class="is-good">↑ Amélioré (${esc(improved)})</span>
+        <span>– Stable (0)</span>
+        <span class="is-bad">↓ Dégradé (${esc(degraded)})</span>
+        <span class="is-blue">• Impacté (${esc(impacted)})</span>
+      </div>`;
+  }
+
+  function renderDevelopmentNeedsCompact(result) {
+    const needs = result?.developpement?.besoins_formation || [];
+    if (!needs.length) return `<div class="sim-empty-state">Aucun besoin complémentaire de montée en compétence détecté sur ce scénario.</div>`;
+    const groups = new Map();
+    needs.forEach(n => {
+      const name = n.nom_complet || "Collaborateur";
+      if (!groups.has(name)) groups.set(name, []);
+      groups.get(name).push(n);
+    });
+    const [name, rows] = groups.entries().next().value || ["Collaborateur", needs];
+    const shown = rows.slice(0, 5);
+    return `
+      <div class="sim-result-needs-layout">
+        <div class="sim-result-needs-person">
+          <strong>${esc(name)}</strong>
+          <span>${esc(rows.length)} besoin${rows.length > 1 ? "s" : ""} identifié${rows.length > 1 ? "s" : ""}</span>
+        </div>
+        <div class="sim-result-needs-list">
+          ${shown.map((n, idx) => `
+            <div class="sim-result-need-item">
+              <span>${esc(n.code || "—")}</span>
+              <p>${esc(n.intitule || "Compétence à renforcer")}</p>
+              <b class="${idx === 0 ? "is-priority" : ""}">${idx === 0 ? "Prioritaire" : "À consolider"}</b>
+            </div>`).join("")}
+          ${rows.length > shown.length ? `<div class="sim-result-need-item"><span>+${esc(rows.length - shown.length)}</span><p>autre${rows.length - shown.length > 1 ? "s" : ""} besoin${rows.length - shown.length > 1 ? "s" : ""} à traiter</p><b>À consolider</b></div>` : ""}
+        </div>
+      </div>`;
+  }
+
   function renderResult(result) {
     ensureResultVisualStyles();
     const root = byId("simResultContainer");
@@ -1424,75 +1559,94 @@
     const finalSummary = hasProjected ? prSummary : imSummary;
     const finalImpact = hasProjected ? prImpact : imImpact;
     const finalDelta = int(finalSummary.fragilite_moyenne) - int(current.fragilite_moyenne);
-    const focusDelta = result?.poste_focus ? int(result.poste_focus.delta_projete) : finalDelta;
+    const focus = result?.poste_focus || null;
+    const focusBefore = focus ? int(focus.fragilite_avant) : int(current.fragilite_moyenne);
+    const focusImmediate = focus ? int(focus.fragilite_immediate) : int(imSummary.fragilite_moyenne);
+    const focusProjected = focus ? int(focus.fragilite_projete) : int(finalSummary.fragilite_moyenne);
+    const focusDelta = focusProjected - focusBefore;
+    const focusCode = focus ? (focus.codif_client || focus.codif_poste || "") : "";
     const narrative = buildResultNarrative(result, current, immediat, projete, finalSummary, finalImpact, hasProjected, needs);
     const improvedCount = int(finalImpact.postes_securises || 0);
     const degradedCount = int(finalImpact.postes_degrades || 0);
     const impactedCount = Array.isArray(finalImpact.postes_impactes) ? finalImpact.postes_impactes.length : 0;
 
+    const immediateRows = [
+      simResultBarLine(focus ? `Poste étudié (${focusCode || "—"})` : "Poste étudié", focusBefore, focusImmediate),
+      simResultBarLine("Périmètre global", current.fragilite_moyenne, imSummary.fragilite_moyenne),
+    ];
+    const projectedRows = [
+      simResultBarLine(focus ? `Poste étudié (${focusCode || "—"})` : "Poste étudié", focusBefore, focusProjected),
+      simResultBarLine("Périmètre global", current.fragilite_moyenne, prSummary.fragilite_moyenne),
+    ];
+
     root.innerHTML = `
-      <div class="card sim-result-hero ${trendClass(focusDelta, true)}">
-        <div class="sim-result-hero-top">
-          <div>
-            <div class="sim-result-label">Résultat du scénario</div>
-            <div class="sim-result-title">${esc(narrative.title)}</div>
-            <div class="sim-result-sub">${esc(narrative.summary)}</div>
+      <div class="card sim-result-decision ${trendClass(focusDelta, true)}">
+        <div class="sim-result-decision-top">
+          <div class="sim-result-decision-titleline">
+            <span class="sim-result-star">✧</span>
+            <div>
+              <div class="sim-result-label">Résultat du scénario</div>
+              <div class="sim-result-title">${esc(narrative.title)}</div>
+              <div class="sim-result-sub">${esc(narrative.summary)}</div>
+            </div>
           </div>
-          <div class="sb-actions sb-actions--end">
+          <div class="sb-actions sb-actions--end sim-result-actions">
             <button type="button" class="sb-btn sb-btn--soft" id="btnSimBackBuild">Modifier</button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddCompare">Conserver</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnSimShowCompare">Comparer</button>
           </div>
         </div>
-        <div class="sim-result-overview-grid sim-result-overview-grid--compact">
-          ${focusFragilityRing(result, current, finalSummary)}
-          ${metricCard("Fragilité moyenne du périmètre", current.fragilite_moyenne, finalSummary.fragilite_moyenne, true)}
-          ${compactImpactCard("Postes", `${improvedCount} amélioré${improvedCount > 1 ? "s" : ""}`, `${degradedCount} dégradé${degradedCount > 1 ? "s" : ""} · ${impactedCount} impacté${impactedCount > 1 ? "s" : ""}`, degradedCount > 0 ? "is-watch" : "is-good")}
-          ${compactImpactCard("Besoins générés", `${needs.length}`, hasProjected ? "Issus des projections ou mobilités du scénario." : "Aucun besoin projeté dans ce scénario.", needs.length ? "is-watch" : "is-good")}
+        <div class="sim-result-decision-grid">
+          ${simResultFocusCard(result, current, finalSummary)}
+          ${simResultGaugeCard("Fragilité moyenne du périmètre", current.fragilite_moyenne, finalSummary.fragilite_moyenne)}
+          ${simResultCountCard("Postes impactés", `${improvedCount} amélioré${improvedCount > 1 ? "s" : ""}`, `${degradedCount} dégradé${degradedCount > 1 ? "s" : ""} · ${impactedCount} impacté${impactedCount > 1 ? "s" : ""}`, "☑", degradedCount > 0 ? "is-watch" : "is-good")}
+          ${simResultCountCard("Besoins générés", `${needs.length}`, hasProjected ? "Issus des projections ou mobilités du scénario." : "Aucun besoin projeté dans ce scénario.", "◇", needs.length ? "is-violet" : "is-good")}
         </div>
       </div>
 
-      <div class="sim-result-main-grid">
-        <div class="card sim-result-readable-card">
-          <div class="card-title sim-result-section-title">Synthèse de lecture</div>
-          <div class="sim-result-summary-stack">
-            <div class="sim-result-summary-block">
-              <div class="sim-result-summary-label">Lecture RH</div>
-              <p>${esc(narrative.rh)}</p>
-            </div>
-            <div class="sim-result-summary-block">
-              <div class="sim-result-summary-label">Points de vigilance</div>
-              <ul class="sim-result-bullet-list">
-                ${narrative.vigilance.map(item => `<li>${esc(item)}</li>`).join("")}
-              </ul>
-            </div>
+      <div class="sim-result-two-col" style="margin-top:12px;">
+        <div class="card sim-result-readable-card sim-result-rh-card">
+          <div class="card-title sim-result-section-title">Lecture RH</div>
+          <div class="sim-result-rh-callout is-positive">
+            ${simResultMiniIcon("👍", "is-green")}
+            <div><strong>Interprétation</strong><p>${esc(narrative.rh)}</p></div>
+          </div>
+          <div class="sim-result-rh-callout is-warning">
+            ${simResultMiniIcon("⚠", "is-orange")}
+            <div><strong>Points de vigilance</strong><p>${esc(narrative.vigilance.join(" "))}</p></div>
           </div>
         </div>
 
-        <div class="card sim-result-readable-card">
-          <div class="card-title sim-result-section-title">Postes impactés par le scénario</div>
-          <div class="card-sub sim2-muted-top">Lecture avant / après sur les postes dont la fragilité évolue le plus.</div>
-          <div class="sim-impact-bar-list">${impactBarRows(finalImpact.postes_impactes || imImpact.postes_impactes || [], 8, "poste")}</div>
+        <div class="card sim-result-readable-card sim-result-effects-card">
+          <div class="card-title sim-result-section-title">Effets du scénario</div>
+          <div class="sim-result-effects-grid">
+            ${simResultEffectPanel("Impact immédiat", "Après application directe des briques", "◷", immediateRows)}
+            ${simResultEffectPanel("Après traitement des besoins", hasProjected ? "Après montée en compétence ou besoins couverts" : "Aucune projection activée", "↗", projectedRows)}
+          </div>
         </div>
       </div>
 
-      <div class="sim-result-main-grid" style="margin-top:12px;">
+      <div class="sim-result-two-col sim-result-impact-row-main" style="margin-top:12px;">
+        <div class="card sim-result-readable-card">
+          <div class="card-title sim-result-section-title">Postes impactés</div>
+          <div class="sim-result-impact-modern-list">${simResultImpactCards(finalImpact.postes_impactes || imImpact.postes_impactes || [], 3, "poste")}</div>
+          ${simResultImpactLegend(finalImpact)}
+        </div>
         <div class="card sim-result-readable-card">
           <div class="card-title sim-result-section-title">Services concernés</div>
-          <div class="card-sub sim2-muted-top">Lecture visuelle par service pour repérer l’effet domino.</div>
-          <div class="sim-impact-bar-list">${impactBarRows(finalImpact.services_impactes || imImpact.services_impactes || [], 8, "service")}</div>
-        </div>
-
-        <div class="card sim-result-readable-card">
-          <div class="card-title sim-result-section-title">${hasProjected ? "Projection après montée en compétence" : "Lecture du périmètre"}</div>
-          <div class="sim-result-projection-note">${hasProjected ? `Le scénario contient une projection de montée en compétence. La fragilité moyenne du périmètre passe de ${esc(int(current.fragilite_moyenne))} à ${esc(int(prSummary.fragilite_moyenne))}.` : "Aucune projection de montée en compétence n’est activée dans ce scénario."}</div>
+          <div class="sim-result-impact-modern-list">${simResultImpactCards(finalImpact.services_impactes || imImpact.services_impactes || [], 3, "service")}</div>
         </div>
       </div>
 
-      <div class="card sim-result-readable-card" style="margin-top:12px;">
-        <div class="card-title sim-result-section-title">Besoins générés par le scénario</div>
-        <div class="card-sub sim2-muted-top">Ces besoins ne sont pas envoyés automatiquement. Ils servent à préparer l’étape Besoins & formations / Studio.</div>
-        <div class="sim-lego-dev-list">${renderDevelopmentNeeds(result)}</div>
+      <div class="card sim-result-readable-card sim-result-needs-card" style="margin-top:12px;">
+        <div class="sim-result-needs-head">
+          <div>
+            <div class="card-title sim-result-section-title">Besoins à traiter</div>
+            <div class="card-sub sim2-muted-top">Ces besoins préparent l’étape suivante : Besoins & formations / Studio.</div>
+          </div>
+          <button type="button" class="sb-btn sb-btn--soft">Voir tous les besoins</button>
+        </div>
+        ${renderDevelopmentNeedsCompact(result)}
       </div>
 
       <details class="sim2-details sim-result-technical">
