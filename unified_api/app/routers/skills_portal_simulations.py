@@ -1,7 +1,10 @@
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
-from typing import Optional
+from typing import Optional, Dict, Any, List
+import json
+import uuid
 
 from psycopg.rows import dict_row
+from pydantic import BaseModel
 
 from app.routers.skills_portal_common import get_conn, resolve_insights_id_ent_for_request
 from app.services.skills_analyse_engine import (
@@ -18,6 +21,14 @@ from app.services.skills_simulation_engine import (
 )
 
 router = APIRouter()
+
+
+class SimulationScenarioSaveRequest(BaseModel):
+    titre: str
+    objectif: Optional[str] = None
+    id_poste_focus: Optional[str] = None
+    hypotheses: List[Dict[str, Any]] = []
+    resultat: Dict[str, Any] = {}
 
 
 def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
@@ -96,6 +107,83 @@ def analyser_cv_simulation(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"skills/simulations/analyse-cv error: {e}")
+
+
+@router.post("/skills/simulations/scenarios/{id_contact}")
+def conserver_simulation_scenario(
+    id_contact: str,
+    payload: SimulationScenarioSaveRequest,
+    request: Request,
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
+):
+    try:
+        titre = (payload.titre or "").strip()
+        if not titre:
+            raise HTTPException(status_code=400, detail="Le nom du scénario est obligatoire.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                id_scenario = str(uuid.uuid4())
+                scenario_json = {
+                    "titre": titre,
+                    "objectif": payload.objectif or "",
+                    "id_poste_focus": payload.id_poste_focus or None,
+                    "criticite_min": int(criticite_min),
+                    "scope": scope.dict() if hasattr(scope, "dict") else dict(scope or {}),
+                }
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_insights_simulation_scenario (
+                        id_scenario,
+                        id_ent,
+                        id_contact,
+                        id_service,
+                        titre,
+                        objectif,
+                        id_poste_focus,
+                        criticite_min,
+                        scenario_json,
+                        hypotheses_json,
+                        resultat_json,
+                        archive,
+                        masque,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s::jsonb, %s::jsonb, %s::jsonb,
+                        FALSE, FALSE, NOW(), NOW()
+                    )
+                    """,
+                    (
+                        id_scenario,
+                        id_ent,
+                        id_contact,
+                        scope.id_service,
+                        titre,
+                        payload.objectif or "",
+                        payload.id_poste_focus or None,
+                        int(criticite_min),
+                        json.dumps(scenario_json, ensure_ascii=False),
+                        json.dumps(payload.hypotheses or [], ensure_ascii=False),
+                        json.dumps(payload.resultat or {}, ensure_ascii=False),
+                    ),
+                )
+                conn.commit()
+                return {
+                    "id_scenario": id_scenario,
+                    "titre": titre,
+                    "saved_at": "now",
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"skills/simulations/scenarios error: {e}")
 
 
 @router.post("/skills/simulations/evaluer/{id_contact}")

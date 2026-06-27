@@ -979,11 +979,11 @@ def _build_conseil(req: SimulationEvalRequest, current_summary: Dict[str, Any], 
 
     manquants = []
     if cotation.get("fiabilite") != "complète":
-        manquants.append("Certaines cotations de poste sont absentes : finaliser les cotations dans Studio affinera la lecture financière.")
+        manquants.append("Certaines cotations de poste sont absentes : finaliser la cotation conventionnelle affinera la lecture financière.")
     if not (req.hypotheses or []):
         manquants.append("Aucune hypothèse n’a été transmise au moteur de simulation.")
 
-    impact_cotation = "Cotation complète : l’impact classification peut être intégré à l’arbitrage." if cotation.get("fiabilite") == "complète" else "Cotation partielle : l’impact financier reste à confirmer après cotation Studio."
+    impact_cotation = "Cotation complète : l’impact classification peut être intégré à l’arbitrage." if cotation.get("fiabilite") == "complète" else "Cotation partielle : l’impact financier reste à confirmer après cotation conventionnelle."
 
     lecture_assistee = (
         f"Lecture RH : {verdict} "

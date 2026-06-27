@@ -9827,3 +9827,142 @@ body{
   .sim-result-impact-modern-head,.sim-result-decision-top{ flex-direction:column; }
   .sim-result-linebar-head{ grid-template-columns:1fr; }
 }
+
+/* ======================================================
+   Simulation RH - Besoins à traiter / conservation scénario
+   ====================================================== */
+.sim-result-needs-accordion-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:12px;
+}
+
+.sim-result-needs-accordion{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#ffffff;
+  overflow:hidden;
+}
+
+.sim-result-needs-accordion > summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:700;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+}
+
+.sim-result-needs-accordion > summary::-webkit-details-marker{ display:none; }
+
+.sim-result-needs-accordion > summary::after{
+  content:"⌄";
+  color:var(--sb-gray-500);
+  font-size:14px;
+  transition:transform .12s ease;
+}
+
+.sim-result-needs-accordion[open] > summary::after{
+  transform:rotate(180deg);
+}
+
+.sim-result-needs-accordion > summary b{
+  margin-left:auto;
+  min-width:24px;
+  height:22px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--sb-violet) 32%,var(--sb-gray-200));
+  background:color-mix(in srgb,var(--sb-violet) 8%,#ffffff);
+  color:var(--sb-violet);
+  font-size:12px;
+  font-weight:800;
+}
+
+.sim-result-needs-accordion-body{
+  padding:8px 12px 10px 12px;
+  border-top:1px solid var(--sb-gray-100);
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.sim-result-need-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:34px;
+  padding:6px 0;
+  border-bottom:1px solid var(--sb-gray-100);
+}
+
+.sim-result-need-line:last-child{ border-bottom:0; }
+
+.sim-result-need-line-main{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  line-height:1.35;
+}
+
+.sim-result-need-line-main > span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.sim-result-need-line-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.sim-result-priority-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:20px;
+  padding:0 8px;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--sb-warning) 40%,#ffffff);
+  background:color-mix(in srgb,var(--sb-warning) 12%,#ffffff);
+  color:#b45309;
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.sim-result-priority-badge.is-priority{
+  border-color:color-mix(in srgb,var(--accent) 40%,#ffffff);
+  background:color-mix(in srgb,var(--accent) 10%,#ffffff);
+  color:var(--accent);
+}
+
+.sim-save-modal-card{
+  max-width:520px;
+}
+
+@media(max-width:760px){
+  .sim-result-need-line{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .sim-result-need-line-actions{
+    width:100%;
+    justify-content:flex-end;
+  }
+}

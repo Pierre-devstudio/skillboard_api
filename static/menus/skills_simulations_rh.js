@@ -1353,18 +1353,18 @@
 
     const rhParts = [];
     if (improved > 0 && degraded === 0) {
-      rhParts.push(`Le scénario peut servir de base de discussion avec le manager ou le RH, car il améliore le poste étudié sans créer d’alerte visible sur les autres postes.`);
+      rhParts.push(`Vous disposez d’une option favorable : le poste étudié se renforce et le périmètre ne montre pas de dégradation visible. Le scénario mérite d’être conservé pour comparaison, sous réserve de confirmer les moyens terrain.`);
     } else if (improved > 0 && degraded > 0) {
-      rhParts.push(`Le scénario apporte un gain local, mais il doit être arbitré avec prudence car il déplace une partie de la fragilité vers d’autres postes ou services.`);
+      rhParts.push(`Vous gagnez sur une partie du périmètre, mais l’hypothèse transfère aussi du risque. L’arbitrage doit porter sur le bénéfice réel du poste sécurisé face aux postes ou services fragilisés.`);
     } else if (degraded > 0) {
-      rhParts.push(`Le scénario n’est pas recommandé en l’état : il crée davantage de tensions qu’il n’en résout.`);
+      rhParts.push(`Le scénario n’est pas suffisamment robuste en l’état : il augmente la fragilité du périmètre ou crée des tensions visibles. Il doit être ajusté avant d’être présenté comme option d’organisation.`);
     } else {
-      rhParts.push(`Le scénario a un effet modéré. Il reste utile pour comparer plusieurs options avant décision.`);
+      rhParts.push(`Le scénario produit peu d’effet mesurable. Il peut servir de point de comparaison, mais il ne constitue pas encore une réponse suffisante au diagnostic de fragilité.`);
     }
     if (hasProjected && needs.length) {
-      rhParts.push(`Une partie du résultat dépend d’une montée en compétence projetée. Les besoins détectés devront être confirmés avant arbitrage.`);
+      rhParts.push(`La projection reste conditionnée au traitement effectif des besoins détectés. Ces besoins doivent être planifiés avant d’engager la décision.`);
     } else if (hasProjected) {
-      rhParts.push(`L’effet projeté suppose que la montée en compétence simulée soit réellement atteinte.`);
+      rhParts.push(`La projection suppose que les niveaux de compétence simulés soient réellement atteints et confirmés sur le terrain.`);
     }
 
     const vigilance = [];
@@ -1509,6 +1509,73 @@
       </div>`;
   }
 
+  function simPdfIconSvg() {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 14h6M9 17h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  }
+
+  async function simApiBlob(url) {
+    const headers = new Headers();
+    headers.set("Accept", "application/pdf");
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token ? String(session.access_token) : "";
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+      }
+    } catch (_) {}
+
+    const res = await fetch(url, { method: "GET", headers });
+    if (!res.ok) {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      let detail = "";
+      if (ct.includes("application/json")) {
+        try {
+          const js = await res.json();
+          detail = js?.detail || js?.message || JSON.stringify(js);
+        } catch (_) { detail = ""; }
+      } else {
+        try { detail = await res.text(); } catch (_) { detail = ""; }
+      }
+      throw new Error(detail || `HTTP ${res.status}`);
+    }
+    return await res.blob();
+  }
+
+  function buildSimCompetenceFichePdfUrl(compKey) {
+    const key = String(compKey || "").trim();
+    if (!_portal?.contactId || !_portal?.apiBase || !key) return "";
+    const qs = new URLSearchParams();
+    qs.set("_", String(Date.now()));
+    return `${_portal.apiBase}/skills/analyse/competences/fiche_pdf/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(key)}?${qs.toString()}`;
+  }
+
+  async function openSimCompetenceFichePdf(compKey) {
+    const url = buildSimCompetenceFichePdfUrl(compKey);
+    if (!url) return setStatus("Impossible de retrouver la fiche compétence à exporter.", "error");
+    const win = window.open("about:blank", "_blank");
+    if (!win) return setStatus("Le navigateur a bloqué l’ouverture du PDF. Autorisez les fenêtres pour Novoskill puis réessayez.", "error");
+    try {
+      win.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du document…</p>");
+      const blob = await simApiBlob(url);
+      const blobUrl = URL.createObjectURL(blob);
+      win.location.href = blobUrl;
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (e) {
+      try {
+        win.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur génération document : ${esc(errMsg(e))}</pre>`;
+      } catch (_) {}
+      setStatus(errMsg(e), "error");
+    }
+  }
+
+  function needPriorityLabel(n, idx) {
+    const lecture = String(n?.lecture || "").toLowerCase();
+    const pct = Number(n?.couverture_pct || 0);
+    if (idx === 0 || pct < 50 || lecture.includes("prior")) return "Prioritaire";
+    if (pct < 75 || lecture.includes("écart") || lecture.includes("renforcer")) return "À consolider";
+    return "À vérifier";
+  }
+
   function renderDevelopmentNeedsCompact(result) {
     const needs = result?.developpement?.besoins_formation || [];
     if (!needs.length) return `<div class="sim-empty-state">Aucun besoin complémentaire de montée en compétence détecté sur ce scénario.</div>`;
@@ -1518,23 +1585,32 @@
       if (!groups.has(name)) groups.set(name, []);
       groups.get(name).push(n);
     });
-    const [name, rows] = groups.entries().next().value || ["Collaborateur", needs];
-    const shown = rows.slice(0, 5);
     return `
-      <div class="sim-result-needs-layout">
-        <div class="sim-result-needs-person">
-          <strong>${esc(name)}</strong>
-          <span>${esc(rows.length)} besoin${rows.length > 1 ? "s" : ""} identifié${rows.length > 1 ? "s" : ""}</span>
-        </div>
-        <div class="sim-result-needs-list">
-          ${shown.map((n, idx) => `
-            <div class="sim-result-need-item">
-              <span>${esc(n.code || "—")}</span>
-              <p>${esc(n.intitule || "Compétence à renforcer")}</p>
-              <b class="${idx === 0 ? "is-priority" : ""}">${idx === 0 ? "Prioritaire" : "À consolider"}</b>
-            </div>`).join("")}
-          ${rows.length > shown.length ? `<div class="sim-result-need-item"><span>+${esc(rows.length - shown.length)}</span><p>autre${rows.length - shown.length > 1 ? "s" : ""} besoin${rows.length - shown.length > 1 ? "s" : ""} à traiter</p><b>À consolider</b></div>` : ""}
-        </div>
+      <div class="sim-result-needs-accordion-list">
+        ${Array.from(groups.entries()).map(([name, rows], groupIdx) => `
+          <details class="sim-result-needs-accordion" ${groupIdx === 0 ? "open" : ""}>
+            <summary>
+              <span>${esc(name)} - ${esc(rows.length)} besoin${rows.length > 1 ? "s" : ""} identifié${rows.length > 1 ? "s" : ""}</span>
+              <b>${rows.length}</b>
+            </summary>
+            <div class="sim-result-needs-accordion-body">
+              ${rows.map((n, idx) => {
+                const compKey = n.id_comp || n.id_competence || n.code || "";
+                const priority = needPriorityLabel(n, idx);
+                return `
+                  <div class="sim-result-need-line">
+                    <div class="sim-result-need-line-main">
+                      <span class="sb-badge sb-badge-ref-comp-code">${esc(n.code || "—")}</span>
+                      <span>${esc(n.intitule || "Compétence à renforcer")}</span>
+                    </div>
+                    <div class="sim-result-need-line-actions">
+                      <span class="sim-result-priority-badge ${priority === "Prioritaire" ? "is-priority" : ""}">${esc(priority)}</span>
+                      ${compKey ? `<button type="button" class="sb-icon-btn sb-icon-btn--doc" data-sim-need-comp-pdf="${esc(compKey)}" title="Voir la fiche compétence PDF" aria-label="Voir la fiche compétence PDF">${simPdfIconSvg()}</button>` : ""}
+                    </div>
+                  </div>`;
+              }).join("")}
+            </div>
+          </details>`).join("")}
       </div>`;
   }
 
@@ -1606,10 +1682,10 @@
 
       <div class="sim-result-two-col" style="margin-top:12px;">
         <div class="card sim-result-readable-card sim-result-rh-card">
-          <div class="card-title sim-result-section-title">Lecture RH</div>
+          <div class="card-title sim-result-section-title">Commentaires Novoskill</div>
           <div class="sim-result-rh-callout is-positive">
             ${simResultMiniIcon("👍", "is-green")}
-            <div><strong>Interprétation</strong><p>${esc(narrative.rh)}</p></div>
+            <div><strong>Analyse Novoskill</strong><p>${esc(narrative.rh)}</p></div>
           </div>
           <div class="sim-result-rh-callout is-warning">
             ${simResultMiniIcon("⚠", "is-orange")}
@@ -1620,7 +1696,7 @@
         <div class="card sim-result-readable-card sim-result-effects-card">
           <div class="card-title sim-result-section-title">Effets du scénario</div>
           <div class="sim-result-effects-grid">
-            ${simResultEffectPanel("Impact immédiat", "Après application directe des briques", "◷", immediateRows)}
+            ${simResultEffectPanel("Impact immédiat", "Après application directe des hypothèses", "◷", immediateRows)}
             ${simResultEffectPanel("Après traitement des besoins", hasProjected ? "Après montée en compétence ou besoins couverts" : "Aucune projection activée", "↗", projectedRows)}
           </div>
         </div>
@@ -1642,9 +1718,8 @@
         <div class="sim-result-needs-head">
           <div>
             <div class="card-title sim-result-section-title">Besoins à traiter</div>
-            <div class="card-sub sim2-muted-top">Ces besoins préparent l’étape suivante : Besoins & formations / Studio.</div>
+            <div class="card-sub sim2-muted-top">Vous pouvez traiter ces besoins dans le menu “Besoins & formations”.</div>
           </div>
-          <button type="button" class="sb-btn sb-btn--soft">Voir tous les besoins</button>
         </div>
         ${renderDevelopmentNeedsCompact(result)}
       </div>
@@ -1652,30 +1727,137 @@
       <details class="sim2-details sim-result-technical">
         <summary>Détail technique</summary>
         <div class="sim2-detail-body">
-          <div class="sim-result-main-grid">
-            <div>
-              <div class="sim-result-detail-title">Postes impactés en immédiat</div>
-              ${impactBarRows(imImpact.postes_impactes || [], 20, "poste")}
-            </div>
-            <div>
-              <div class="sim-result-detail-title">Postes impactés en projeté</div>
-              ${impactBarRows(prImpact.postes_impactes || [], 20, "poste")}
-            </div>
-          </div>
-          <details class="sim2-details" style="margin-top:12px;">
-            <summary>Cotation et données complémentaires</summary>
-            <div class="sim2-detail-body">
-              <div class="card-sub" style="margin:0 0 8px 0;">${esc(result.conseil?.impact_cotation || "Cotation à vérifier si le scénario modifie les responsabilités ou la classification.")}</div>
-              ${(result.cotation?.postes_non_cotes || []).length ? `<div class="sim-empty-state">Postes sans cotation : ${(result.cotation.postes_non_cotes || []).map(p => esc(p.codif_poste ? p.codif_poste + " · " + p.intitule_poste : p.intitule_poste)).join(", ")}</div>` : `<div class="sim-empty-state">Aucune alerte de cotation remontée.</div>`}
-            </div>
-          </details>
+          <div class="sim-result-detail-title">Cotation et données complémentaires</div>
+          <div class="card-sub" style="margin:0 0 8px 0;">${esc((result.conseil?.impact_cotation || "Cotation conventionnelle à vérifier si le scénario modifie les responsabilités ou la classification.").replace(/Studio/g, "cotation conventionnelle"))}</div>
+          ${(result.cotation?.postes_non_cotes || []).length ? `<div class="sim-empty-state">Postes sans cotation conventionnelle : ${(result.cotation.postes_non_cotes || []).map(p => esc(p.codif_poste ? p.codif_poste + " · " + p.intitule_poste : p.intitule_poste)).join(", ")}</div>` : `<div class="sim-empty-state">Aucune alerte de cotation conventionnelle remontée.</div>`}
         </div>
       </details>
     `;
 
     byId("btnSimBackBuild")?.addEventListener("click", () => switchTab("build"));
-    byId("btnSimAddCompare")?.addEventListener("click", addLastResultToCompare);
+    byId("btnSimAddCompare")?.addEventListener("click", openSaveScenarioModal);
     byId("btnSimShowCompare")?.addEventListener("click", () => switchTab("compare"));
+    root.querySelectorAll("[data-sim-need-comp-pdf]").forEach(btn => btn.addEventListener("click", ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const compKey = btn.getAttribute("data-sim-need-comp-pdf") || "";
+      if (compKey) openSimCompetenceFichePdf(compKey);
+    }));
+  }
+
+  function suggestedScenarioTitle() {
+    const focus = _lastResult?.poste_focus || {};
+    const code = focus.codif_client || focus.codif_poste || posteCode(posteById(_selectedPosteId));
+    const title = focus.intitule_poste || posteTitle(posteById(_selectedPosteId));
+    if (code && title) return `Sécurisation ${code} - ${title}`;
+    if (title) return `Scénario RH - ${title}`;
+    return "Scénario RH à comparer";
+  }
+
+  function ensureSaveScenarioModal() {
+    let modal = byId("modalSimSaveScenario");
+    if (modal) return modal;
+    const html = `
+      <div class="modal" id="modalSimSaveScenario" aria-hidden="true">
+        <div class="modal-card sim-save-modal-card">
+          <div class="modal-header">
+            <div class="modal-title-inline">
+              <span style="font-weight:700;">Conserver le scénario</span>
+            </div>
+            <button type="button" class="modal-x" id="btnCloseSimSaveScenario" aria-label="Fermer">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="card-sub" style="margin:0 0 8px 0;">Nom du scénario</div>
+            <textarea id="simSaveScenarioTitle" class="sb-ctrl" rows="3" placeholder="Nom du scénario..."></textarea>
+            <div id="simSaveScenarioStatus" class="sb-hint" style="display:none;"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnCancelSimSaveScenario">Annuler</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnConfirmSimSaveScenario">Conserver</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML("beforeend", html);
+    modal = byId("modalSimSaveScenario");
+    const close = () => closeSaveScenarioModal();
+    byId("btnCloseSimSaveScenario")?.addEventListener("click", close);
+    byId("btnCancelSimSaveScenario")?.addEventListener("click", close);
+    byId("btnConfirmSimSaveScenario")?.addEventListener("click", confirmSaveScenario);
+    modal?.addEventListener("click", ev => { if (ev.target === modal) close(); });
+    return modal;
+  }
+
+  function closeSaveScenarioModal() {
+    const modal = byId("modalSimSaveScenario");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function setSaveScenarioStatus(message, type) {
+    const el = byId("simSaveScenarioStatus");
+    if (!el) return;
+    if (!message) {
+      el.style.display = "none";
+      el.textContent = "";
+      el.className = "sb-hint";
+      return;
+    }
+    el.style.display = "block";
+    el.className = "sb-hint" + (type === "error" ? " error" : "");
+    el.textContent = message;
+  }
+
+  function openSaveScenarioModal() {
+    if (!_lastResult) return;
+    const modal = ensureSaveScenarioModal();
+    const input = byId("simSaveScenarioTitle");
+    if (input) {
+      input.value = _lastResult.titre_nom || _lastResult.titre || suggestedScenarioTitle();
+      setTimeout(() => input.focus(), 30);
+    }
+    setSaveScenarioStatus("");
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  async function saveScenarioToDatabase(title) {
+    if (!_portal?.contactId || !_lastResult) return null;
+    return await _portal.apiJson(apiUrl(`/skills/simulations/scenarios/${encodeURIComponent(_portal.contactId)}`, {
+      id_service: getServiceId(),
+      criticite_min: getCriticiteMin(),
+    }), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        titre: title,
+        objectif: _lastResult.objectif || "Tester une organisation RH composée de plusieurs hypothèses.",
+        id_poste_focus: _lastResult.poste_focus?.id_poste || _selectedPosteId || null,
+        hypotheses: _lastResult.hypotheses || buildPayload().hypotheses,
+        resultat: _lastResult,
+      }),
+    });
+  }
+
+  async function confirmSaveScenario() {
+    if (!_lastResult) return;
+    const input = byId("simSaveScenarioTitle");
+    const title = (input?.value || "").trim() || suggestedScenarioTitle();
+    const btn = byId("btnConfirmSimSaveScenario");
+    if (btn) btn.disabled = true;
+    setSaveScenarioStatus("Enregistrement du scénario…");
+    try {
+      const saved = await saveScenarioToDatabase(title);
+      _lastResult = { ..._lastResult, titre: title, titre_nom: title, id_scenario: saved?.id_scenario || _lastResult.id_scenario || null };
+      addLastResultToCompare({ silentSwitch: true, saved });
+      closeSaveScenarioModal();
+      setStatus("Scénario conservé.");
+      switchTab("compare");
+    } catch (e) {
+      setSaveScenarioStatus(errMsg(e), "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   function readCompare() {
@@ -1694,12 +1876,12 @@
     if (el) el.textContent = String(readCompare().length);
   }
 
-  function addLastResultToCompare() {
+  function addLastResultToCompare(opts = {}) {
     if (!_lastResult) return;
     const list = readCompare();
-    list.unshift({ id: `sim_${Date.now()}`, saved_at: new Date().toISOString(), result: _lastResult });
+    list.unshift({ id: _lastResult.id_scenario || `sim_${Date.now()}`, saved_at: new Date().toISOString(), result: _lastResult });
     writeCompare(list.slice(0, 8));
-    switchTab("compare");
+    if (!opts.silentSwitch) switchTab("compare");
   }
 
   function renderCompare() {
