@@ -186,6 +186,155 @@ def conserver_simulation_scenario(
         raise HTTPException(status_code=500, detail=f"skills/simulations/scenarios error: {e}")
 
 
+
+
+@router.get("/skills/simulations/scenarios/{id_contact}")
+def lister_simulation_scenarios(
+    id_contact: str,
+    request: Request,
+    id_service: Optional[str] = Query(default=None),
+    limit: int = Query(default=80, ge=1, le=200),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                params: List[Any] = [id_ent]
+                service_sql = ""
+                if scope.id_service:
+                    service_sql = " AND id_service = %s"
+                    params.append(scope.id_service)
+                params.append(int(limit))
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        id_scenario,
+                        id_contact,
+                        id_service,
+                        titre,
+                        objectif,
+                        id_poste_focus,
+                        criticite_min,
+                        scenario_json,
+                        hypotheses_json,
+                        resultat_json,
+                        created_at,
+                        updated_at
+                    FROM public.tbl_insights_simulation_scenario
+                    WHERE id_ent = %s
+                      {service_sql}
+                      AND COALESCE(archive, FALSE) = FALSE
+                      AND COALESCE(masque, FALSE) = FALSE
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                    """,
+                    tuple(params),
+                )
+                rows = [dict(r) for r in (cur.fetchall() or [])]
+                items = []
+                for row in rows:
+                    result = row.get("resultat_json") or {}
+                    scenario = row.get("scenario_json") or {}
+                    focus = result.get("poste_focus") or {}
+                    developpement = result.get("developpement") or {}
+                    besoins = developpement.get("besoins_formation") or []
+                    impact = (result.get("resultats") or {}).get("projete", {}).get("impact") or result.get("impact") or {}
+                    items.append({
+                        "id_scenario": row.get("id_scenario"),
+                        "titre": row.get("titre"),
+                        "objectif": row.get("objectif") or "",
+                        "id_poste_focus": row.get("id_poste_focus"),
+                        "criticite_min": row.get("criticite_min"),
+                        "id_service": row.get("id_service"),
+                        "created_at": row.get("created_at"),
+                        "updated_at": row.get("updated_at"),
+                        "scope": result.get("scope") or scenario.get("scope") or {},
+                        "poste_focus": {
+                            "codif_client": focus.get("codif_client") or "",
+                            "codif_poste": focus.get("codif_poste") or "",
+                            "intitule_poste": focus.get("intitule_poste") or "",
+                            "fragilite_avant": focus.get("fragilite_avant"),
+                            "fragilite_projete": focus.get("fragilite_projete"),
+                        },
+                        "resume": {
+                            "besoins_count": len(besoins),
+                            "postes_degrades": impact.get("postes_degrades", 0),
+                            "postes_securises": impact.get("postes_securises", 0),
+                        },
+                    })
+                return {"items": items, "scope": scope.dict() if hasattr(scope, "dict") else dict(scope or {})}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"skills/simulations/scenarios list error: {e}")
+
+
+@router.get("/skills/simulations/scenarios/{id_contact}/{id_scenario}")
+def lire_simulation_scenario(
+    id_contact: str,
+    id_scenario: str,
+    request: Request,
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                cur.execute(
+                    """
+                    SELECT
+                        id_scenario,
+                        id_contact,
+                        id_service,
+                        titre,
+                        objectif,
+                        id_poste_focus,
+                        criticite_min,
+                        scenario_json,
+                        hypotheses_json,
+                        resultat_json,
+                        created_at,
+                        updated_at
+                    FROM public.tbl_insights_simulation_scenario
+                    WHERE id_ent = %s
+                      AND id_scenario = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                      AND COALESCE(masque, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (id_ent, id_scenario),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Scénario introuvable ou archivé.")
+                data = dict(row)
+                result = data.get("resultat_json") or {}
+                if isinstance(result, dict):
+                    result["id_scenario"] = data.get("id_scenario")
+                    result["titre"] = data.get("titre") or result.get("titre")
+                    result["titre_nom"] = data.get("titre") or result.get("titre_nom")
+                    result["hypotheses"] = data.get("hypotheses_json") or result.get("hypotheses") or []
+                    result["criticite_min"] = data.get("criticite_min")
+                return {
+                    "id_scenario": data.get("id_scenario"),
+                    "titre": data.get("titre"),
+                    "objectif": data.get("objectif") or "",
+                    "id_poste_focus": data.get("id_poste_focus"),
+                    "criticite_min": data.get("criticite_min"),
+                    "id_service": data.get("id_service"),
+                    "scenario_json": data.get("scenario_json") or {},
+                    "hypotheses_json": data.get("hypotheses_json") or [],
+                    "resultat_json": result,
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at"),
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"skills/simulations/scenarios detail error: {e}")
+
+
 @router.post("/skills/simulations/evaluer/{id_contact}")
 def evaluer_simulation(
     id_contact: str,

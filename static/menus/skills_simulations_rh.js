@@ -13,6 +13,12 @@
   let _scenario = [];
   let _lastResult = null;
   let _lastCvAnalysis = null;
+  let _lastSavedScenario = null;
+  let _historyLoaded = false;
+  let _historyItems = [];
+  let _historyDetailCache = new Map();
+  let _compareIds = [];
+  let _saveIntent = "save";
   let _context = null;
 
   const STORE_COMPARE = "sb_simulations_rh_compare_v3";
@@ -1196,6 +1202,7 @@
       body: JSON.stringify(payload),
     });
     _lastResult = result;
+    _lastSavedScenario = null;
     setStatus("");
     renderResult(result);
     switchTab("result");
@@ -1645,6 +1652,8 @@
     const improvedCount = int(finalImpact.postes_securises || 0);
     const degradedCount = int(finalImpact.postes_degrades || 0);
     const impactedCount = Array.isArray(finalImpact.postes_impactes) ? finalImpact.postes_impactes.length : 0;
+    const savedId = result.id_scenario || _lastSavedScenario?.id_scenario || "";
+    const saveLabel = savedId ? "Enregistré" : "Conserver";
 
     const immediateRows = [
       simResultBarLine(focus ? `Poste étudié (${focusCode || "—"})` : "Poste étudié", focusBefore, focusImmediate),
@@ -1668,8 +1677,9 @@
           </div>
           <div class="sb-actions sb-actions--end sim-result-actions">
             <button type="button" class="sb-btn sb-btn--soft" id="btnSimBackBuild">Modifier</button>
-            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddCompare">Conserver</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnSimShowCompare">Comparer</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimShowSetup">Hypothèses et réglages</button>
+            <button type="button" class="sb-btn ${savedId ? "sb-btn--soft" : "sb-btn--accent"}" id="btnSimSaveScenario">${esc(saveLabel)}</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddComparator">Ajouter au comparateur</button>
           </div>
         </div>
         <div class="sim-result-decision-grid">
@@ -1735,8 +1745,9 @@
     `;
 
     byId("btnSimBackBuild")?.addEventListener("click", () => switchTab("build"));
-    byId("btnSimAddCompare")?.addEventListener("click", openSaveScenarioModal);
-    byId("btnSimShowCompare")?.addEventListener("click", () => switchTab("compare"));
+    byId("btnSimShowSetup")?.addEventListener("click", () => openScenarioSetupModal(result));
+    byId("btnSimSaveScenario")?.addEventListener("click", () => openSaveScenarioModal("save"));
+    byId("btnSimAddComparator")?.addEventListener("click", () => addCurrentResultToComparator().catch(e => setStatus(errMsg(e), "error")));
     root.querySelectorAll("[data-sim-need-comp-pdf]").forEach(btn => btn.addEventListener("click", ev => {
       ev.preventDefault();
       ev.stopPropagation();
@@ -1754,6 +1765,63 @@
     return "Scénario RH à comparer";
   }
 
+  function fmtDateTime(v) {
+    if (!v) return "Date non renseignée";
+    try {
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return String(v).slice(0, 16);
+      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) + " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    } catch (_) {
+      return String(v).slice(0, 16);
+    }
+  }
+
+  function resultScenarioId(result) {
+    return result?.id_scenario || _lastSavedScenario?.id_scenario || "";
+  }
+
+  function compareStorageRaw() {
+    const raw = readJson(STORE_COMPARE, []);
+    return Array.isArray(raw) ? raw : [];
+  }
+
+  function readCompareIds() {
+    const ids = compareStorageRaw()
+      .map(x => typeof x === "string" ? x : (x?.id || x?.id_scenario || x?.result?.id_scenario || ""))
+      .map(x => String(x || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set(ids)).slice(0, 8);
+  }
+
+  function writeCompareIds(ids) {
+    _compareIds = Array.from(new Set((ids || []).map(x => String(x || "").trim()).filter(Boolean))).slice(0, 8);
+    writeJson(STORE_COMPARE, _compareIds);
+    updateCompareCount();
+    renderHistorySelectionState();
+    renderCompare();
+  }
+
+  function updateCompareCount() {
+    const count = readCompareIds().length;
+    const el = byId("simCompareCount");
+    if (el) el.textContent = String(count);
+    const btn = byId("btnSimHistoryCompare");
+    if (btn) btn.textContent = count ? `Comparer la sélection (${count})` : "Comparer la sélection";
+  }
+
+  function ensureIdInComparator(id) {
+    const sid = String(id || "").trim();
+    if (!sid) return;
+    const ids = readCompareIds();
+    if (!ids.includes(sid)) ids.unshift(sid);
+    writeCompareIds(ids);
+  }
+
+  function removeIdFromComparator(id) {
+    const sid = String(id || "").trim();
+    writeCompareIds(readCompareIds().filter(x => x !== sid));
+  }
+
   function ensureSaveScenarioModal() {
     let modal = byId("modalSimSaveScenario");
     if (modal) return modal;
@@ -1762,7 +1830,7 @@
         <div class="modal-card sim-save-modal-card">
           <div class="modal-header">
             <div class="modal-title-inline">
-              <span style="font-weight:700;">Conserver le scénario</span>
+              <span id="simSaveScenarioModalTitle" style="font-weight:700;">Conserver le scénario</span>
             </div>
             <button type="button" class="modal-x" id="btnCloseSimSaveScenario" aria-label="Fermer">×</button>
           </div>
@@ -1808,10 +1876,20 @@
     el.textContent = message;
   }
 
-  function openSaveScenarioModal() {
+  function openSaveScenarioModal(intent = "save") {
     if (!_lastResult) return;
+    const existing = resultScenarioId(_lastResult);
+    if (existing && intent !== "compare") {
+      setStatus("Ce scénario est déjà enregistré.");
+      return;
+    }
+    _saveIntent = intent || "save";
     const modal = ensureSaveScenarioModal();
     const input = byId("simSaveScenarioTitle");
+    const title = byId("simSaveScenarioModalTitle");
+    const confirm = byId("btnConfirmSimSaveScenario");
+    if (title) title.textContent = _saveIntent === "compare" ? "Enregistrer et ajouter au comparateur" : "Conserver le scénario";
+    if (confirm) confirm.textContent = _saveIntent === "compare" ? "Enregistrer et ajouter" : "Conserver";
     if (input) {
       input.value = _lastResult.titre_nom || _lastResult.titre || suggestedScenarioTitle();
       setTimeout(() => input.focus(), 30);
@@ -1823,6 +1901,8 @@
 
   async function saveScenarioToDatabase(title) {
     if (!_portal?.contactId || !_lastResult) return null;
+    const existing = resultScenarioId(_lastResult);
+    if (existing) return _lastSavedScenario || { id_scenario: existing, titre: title || _lastResult.titre || suggestedScenarioTitle() };
     return await _portal.apiJson(apiUrl(`/skills/simulations/scenarios/${encodeURIComponent(_portal.contactId)}`, {
       id_service: getServiceId(),
       criticite_min: getCriticiteMin(),
@@ -1845,91 +1925,317 @@
     const title = (input?.value || "").trim() || suggestedScenarioTitle();
     const btn = byId("btnConfirmSimSaveScenario");
     if (btn) btn.disabled = true;
-    setSaveScenarioStatus("Enregistrement du scénario…");
+    setSaveScenarioStatus(_saveIntent === "compare" ? "Enregistrement et ajout au comparateur…" : "Enregistrement du scénario…");
     try {
       const saved = await saveScenarioToDatabase(title);
-      _lastResult = { ..._lastResult, titre: title, titre_nom: title, id_scenario: saved?.id_scenario || _lastResult.id_scenario || null };
-      addLastResultToCompare({ silentSwitch: true, saved });
+      _lastSavedScenario = saved || null;
+      const sid = saved?.id_scenario || _lastResult.id_scenario || null;
+      _lastResult = { ..._lastResult, titre: title, titre_nom: title, id_scenario: sid };
+      if (sid) _historyDetailCache.set(sid, { id_scenario: sid, titre: title, resultat_json: _lastResult, hypotheses_json: _lastResult.hypotheses || buildPayload().hypotheses });
       closeSaveScenarioModal();
-      setStatus("Scénario conservé.");
-      switchTab("compare");
+      setStatus(_saveIntent === "compare" ? "Scénario enregistré et ajouté au comparateur." : "Scénario enregistré.");
+      _historyLoaded = false;
+      if (_saveIntent === "compare" && sid) {
+        ensureIdInComparator(sid);
+        switchTab("history");
+      } else {
+        renderResult(_lastResult);
+      }
     } catch (e) {
       setSaveScenarioStatus(errMsg(e), "error");
     } finally {
       if (btn) btn.disabled = false;
+      _saveIntent = "save";
     }
   }
 
-  function readCompare() {
-    const list = readJson(STORE_COMPARE, []);
-    return Array.isArray(list) ? list : [];
-  }
-
-  function writeCompare(list) {
-    writeJson(STORE_COMPARE, Array.isArray(list) ? list : []);
-    renderCompare();
-    updateCompareCount();
-  }
-
-  function updateCompareCount() {
-    const el = byId("simCompareCount");
-    if (el) el.textContent = String(readCompare().length);
-  }
-
-  function addLastResultToCompare(opts = {}) {
+  async function addCurrentResultToComparator() {
     if (!_lastResult) return;
-    const list = readCompare();
-    list.unshift({ id: _lastResult.id_scenario || `sim_${Date.now()}`, saved_at: new Date().toISOString(), result: _lastResult });
-    writeCompare(list.slice(0, 8));
-    if (!opts.silentSwitch) switchTab("compare");
-  }
-
-  function renderCompare() {
-    const root = byId("simCompareContainer");
-    if (!root) return;
-    const list = readCompare();
-    updateCompareCount();
-    if (!list.length) {
-      root.innerHTML = `<div class="card"><div class="sim-empty-state">Aucun scénario conservé.</div><div class="sb-actions" style="margin-top:12px;"><button type="button" class="sb-btn sb-btn--soft" id="btnSimCompareBackBuild">Retour au scénario</button></div></div>`;
-      byId("btnSimCompareBackBuild")?.addEventListener("click", () => switchTab("build"));
+    const sid = resultScenarioId(_lastResult);
+    if (sid) {
+      ensureIdInComparator(sid);
+      setStatus("Scénario ajouté au comparateur.");
+      switchTab("history");
       return;
     }
-    root.innerHTML = `
-      <div class="card sim-compare-readable">
-        ${list.map((x, idx) => {
-          const r = x.result || {};
-          const imDelta = r.resultats?.immediat?.ecart?.fragilite_moyenne || 0;
-          const prDelta = r.resultats?.projete?.ecart?.fragilite_moyenne || r.ecart?.fragilite_moyenne || 0;
-          const impact = r.resultats?.projete?.impact || r.impact || {};
-          return `
-            <div class="sim-compare-card">
-              <div>
-                <div class="sim-impact-title">${esc(r.titre || "Scénario")}</div>
-                <div class="card-sub" style="margin-top:3px;">${esc(r.scope?.nom_service || "Tous les services")}</div>
-              </div>
-              <div class="sim-compare-metrics">
-                <span>Immédiat ${deltaBadge(imDelta)}</span>
-                <span>Projeté ${deltaBadge(prDelta)}</span>
-                <span>${esc(impact.postes_degrades || 0)} poste(s) dégradé(s)</span>
-              </div>
-              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-remove-compare="${idx}">Retirer</button>
-            </div>`;
-        }).join("")}
+    openSaveScenarioModal("compare");
+  }
+
+  function setupValue(label, value) {
+    return `<div class="sim-setup-kv"><span>${esc(label)}</span><strong>${esc(value || "—")}</strong></div>`;
+  }
+
+  function scenarioHypothesesHtml(hypotheses) {
+    const rows = Array.isArray(hypotheses) ? hypotheses : [];
+    if (!rows.length) return `<div class="sim-empty-state">Aucune hypothèse conservée avec ce scénario.</div>`;
+    return `<div class="sim-setup-hyp-list">${rows.map((h, idx) => `
+      <div class="sim-setup-hyp-row">
+        <div class="sim-setup-hyp-index">${esc(idx + 1)}</div>
+        <div>
+          <div class="sim-impact-title">${esc(brickKind(h))}</div>
+          <div class="card-sub" style="margin-top:3px;">${esc(h.libelle || brickSummary(h))}</div>
+        </div>
+      </div>`).join("")}</div>`;
+  }
+
+  function ensureScenarioSetupModal() {
+    let modal = byId("modalSimScenarioSetup");
+    if (modal) return modal;
+    const html = `
+      <div class="modal" id="modalSimScenarioSetup" aria-hidden="true">
+        <div class="modal-card modal-card--medium">
+          <div class="modal-header">
+            <div class="modal-title-inline"><span style="font-weight:700;">Hypothèses et réglages</span></div>
+            <button type="button" class="modal-x" id="btnCloseSimScenarioSetup" aria-label="Fermer">×</button>
+          </div>
+          <div class="modal-body" id="simScenarioSetupBody"></div>
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimScenarioSetupClose">Fermer</button>
+          </div>
+        </div>
       </div>`;
-    root.querySelectorAll("[data-remove-compare]").forEach(btn => btn.addEventListener("click", () => {
-      const idx = Number(btn.getAttribute("data-remove-compare") || -1);
-      const next = readCompare();
-      if (idx >= 0) next.splice(idx, 1);
-      writeCompare(next);
+    document.body.insertAdjacentHTML("beforeend", html);
+    modal = byId("modalSimScenarioSetup");
+    const close = () => closeScenarioSetupModal();
+    byId("btnCloseSimScenarioSetup")?.addEventListener("click", close);
+    byId("btnSimScenarioSetupClose")?.addEventListener("click", close);
+    modal?.addEventListener("click", ev => { if (ev.target === modal) close(); });
+    return modal;
+  }
+
+  function closeScenarioSetupModal() {
+    const modal = byId("modalSimScenarioSetup");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function openScenarioSetupModal(result) {
+    const modal = ensureScenarioSetupModal();
+    const body = byId("simScenarioSetupBody");
+    const r = result || _lastResult || {};
+    const focus = r.poste_focus || posteById(_selectedPosteId) || {};
+    const code = focus.codif_client || focus.codif_poste || posteCode(focus);
+    const scope = r.scope || {};
+    const crit = r.reference_calcul?.criticite_min ?? r.criticite_min ?? getCriticiteMin();
+    const hypotheses = r.hypotheses || _scenario || [];
+    if (body) {
+      body.innerHTML = `
+        <div class="sim-setup-grid">
+          ${setupValue("Poste étudié", `${code ? code + " · " : ""}${focus.intitule_poste || posteTitle(focus)}`)}
+          ${setupValue("Périmètre", scope.nom_service || "Tous les services")}
+          ${setupValue("Criticité minimale", `${crit}%`)}
+          ${setupValue("Hypothèses", `${hypotheses.length}`)}
+        </div>
+        <div class="sim-setup-section-title">Hypothèses utilisées</div>
+        ${scenarioHypothesesHtml(hypotheses)}
+      `;
+    }
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  async function fetchHistoryScenarios(force = false) {
+    if (_historyLoaded && !force) return _historyItems;
+    if (!_portal?.contactId) return [];
+    const data = await _portal.apiJson(apiUrl(`/skills/simulations/scenarios/${encodeURIComponent(_portal.contactId)}`, {
+      id_service: getServiceId(),
     }));
+    _historyItems = Array.isArray(data?.items) ? data.items : [];
+    _historyLoaded = true;
+    return _historyItems;
+  }
+
+  async function fetchScenarioDetail(id) {
+    const sid = String(id || "").trim();
+    if (!sid) return null;
+    if (_historyDetailCache.has(sid)) return _historyDetailCache.get(sid);
+    const data = await _portal.apiJson(apiUrl(`/skills/simulations/scenarios/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(sid)}`, {}));
+    _historyDetailCache.set(sid, data);
+    return data;
+  }
+
+  function scenarioPosteLabelFromItem(item) {
+    const p = item?.poste_focus || {};
+    const code = p.codif_client || p.codif_poste || "";
+    return `${code ? code + " · " : ""}${p.intitule_poste || "Poste non renseigné"}`;
+  }
+
+  function renderHistorySelectionState() {
+    const ids = readCompareIds();
+    document.querySelectorAll("[data-sim-history-check]").forEach(input => {
+      const id = input.getAttribute("data-sim-history-check") || "";
+      input.checked = ids.includes(id);
+    });
+    updateCompareCount();
+  }
+
+  function historyRowHtml(item) {
+    const id = item.id_scenario || "";
+    const p = item.poste_focus || {};
+    const code = p.codif_client || p.codif_poste || "";
+    const service = item.scope?.nom_service || "Tous les services";
+    const needs = item.resume?.besoins_count ?? 0;
+    return `
+      <tr>
+        <td class="col-center"><input type="checkbox" data-sim-history-check="${esc(id)}" aria-label="Ajouter au comparateur"></td>
+        <td>
+          <div class="sim-history-title">${esc(item.titre || "Scénario RH")}</div>
+          <div class="card-sub" style="margin-top:3px;">${esc(fmtDateTime(item.created_at))}</div>
+        </td>
+        <td>
+          <div class="sim-history-poste">${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<span>${esc(p.intitule_poste || "Poste non renseigné")}</span></div>
+          <div class="card-sub" style="margin-top:3px;">${esc(service)}</div>
+        </td>
+        <td class="col-center"><span class="sb-badge ${needs ? "sb-badge--violet" : ""}">${esc(needs)} besoin${needs > 1 ? "s" : ""}</span></td>
+        <td class="col-center">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-history-open="${esc(id)}">Voir le résultat</button>
+        </td>
+      </tr>`;
+  }
+
+  async function renderHistory(force = false) {
+    const root = byId("simHistoryContainer");
+    if (!root) return;
+    root.innerHTML = `<div class="card"><div class="sim-empty-state">Chargement de l’historique…</div></div>`;
+    try {
+      const items = await fetchHistoryScenarios(force);
+      if (!items.length) {
+        root.innerHTML = `<div class="card"><div class="sim-empty-state">Aucun scénario enregistré pour le moment.</div></div>`;
+        renderCompare();
+        return;
+      }
+      root.innerHTML = `
+        <div class="card sim-history-card">
+          <div class="table-wrap">
+            <table class="sb-table sb-table--airy sb-table--hover sim-history-table">
+              <thead>
+                <tr>
+                  <th style="width:44px;" class="col-center"></th>
+                  <th>Scénario</th>
+                  <th>Poste / périmètre</th>
+                  <th style="width:120px;" class="col-center">Besoins</th>
+                  <th style="width:150px;" class="col-center">Résultat</th>
+                </tr>
+              </thead>
+              <tbody>${items.map(historyRowHtml).join("")}</tbody>
+            </table>
+          </div>
+        </div>`;
+      root.querySelectorAll("[data-sim-history-open]").forEach(btn => btn.addEventListener("click", () => openScenarioFromHistory(btn.getAttribute("data-sim-history-open") || "").catch(e => setStatus(errMsg(e), "error"))));
+      root.querySelectorAll("[data-sim-history-check]").forEach(input => input.addEventListener("change", () => {
+        const id = input.getAttribute("data-sim-history-check") || "";
+        if (input.checked) ensureIdInComparator(id);
+        else removeIdFromComparator(id);
+      }));
+      renderHistorySelectionState();
+      renderCompare();
+    } catch (e) {
+      root.innerHTML = `<div class="card"><div class="sim-empty-state">Impossible de charger l’historique : ${esc(errMsg(e))}</div></div>`;
+    }
+  }
+
+  async function openScenarioFromHistory(id) {
+    const data = await fetchScenarioDetail(id);
+    if (!data) return;
+    const result = data.resultat_json || {};
+    _lastResult = {
+      ...result,
+      id_scenario: data.id_scenario,
+      titre: data.titre || result.titre,
+      titre_nom: data.titre || result.titre_nom,
+      hypotheses: data.hypotheses_json || result.hypotheses || [],
+      criticite_min: data.criticite_min,
+    };
+    _lastSavedScenario = { id_scenario: data.id_scenario, titre: data.titre || result.titre || "Scénario RH" };
+    _scenario = Array.isArray(data.hypotheses_json) ? data.hypotheses_json : (_lastResult.hypotheses || []);
+    _selectedPosteId = data.id_poste_focus || result.poste_focus?.id_poste || _selectedPosteId;
+    renderResult(_lastResult);
+    switchTab("result");
+  }
+
+  async function selectedComparatorDetails() {
+    const ids = readCompareIds();
+    const details = await Promise.all(ids.map(id => fetchScenarioDetail(id).catch(() => null)));
+    return details.filter(Boolean);
+  }
+
+  function compareCardHtml(detail) {
+    const r = detail?.resultat_json || detail?.result || {};
+    const focus = r.poste_focus || {};
+    const before = int(focus.fragilite_avant ?? r.actuel?.fragilite_moyenne ?? 0);
+    const after = int(focus.fragilite_projete ?? r.resultats?.projete?.summary?.fragilite_moyenne ?? r.simule?.fragilite_moyenne ?? 0);
+    const delta = after - before;
+    const impact = r.resultats?.projete?.impact || r.impact || {};
+    const needs = r.developpement?.besoins_formation || [];
+    const title = detail?.titre || r.titre || "Scénario RH";
+    const poste = focus.intitule_poste || "Poste étudié";
+    return `
+      <div class="sim-compare-card ${trendClass(delta, true)}">
+        <div class="sim-compare-card-main">
+          <div class="sim-impact-title">${esc(title)}</div>
+          <div class="card-sub" style="margin-top:3px;">${esc(poste)} · ${esc(r.scope?.nom_service || detail?.scenario_json?.scope?.nom_service || "Tous les services")}</div>
+        </div>
+        <div class="sim-compare-metrics">
+          <span>Poste ${esc(before)} → ${esc(after)} ${deltaBadge(delta)}</span>
+          <span>${esc(impact.postes_securises || 0)} amélioré(s)</span>
+          <span>${esc(impact.postes_degrades || 0)} dégradé(s)</span>
+          <span>${esc(needs.length)} besoin(s)</span>
+        </div>
+        <div class="sb-actions">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-compare-open="${esc(detail.id_scenario)}">Voir</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-remove-compare="${esc(detail.id_scenario)}">Retirer</button>
+        </div>
+      </div>`;
+  }
+
+function renderCompare() {
+    const historyPanel = document.querySelector('[data-sim-panel="history"]');
+    const historyVisible = !!historyPanel && historyPanel.style.display !== "none";
+    const root = (historyVisible ? byId("simHistoryCompareContainer") : byId("simCompareContainer")) || byId("simHistoryCompareContainer") || byId("simCompareContainer");
+    if (!root) return;
+    const ids = readCompareIds();
+    updateCompareCount();
+    if (!ids.length) {
+      root.innerHTML = "";
+      return;
+    }
+    root.innerHTML = `<div class="card"><div class="sim-empty-state">Chargement du comparateur…</div></div>`;
+    selectedComparatorDetails().then(details => {
+      if (!details.length) {
+        root.innerHTML = `<div class="card"><div class="sim-empty-state">Aucun scénario comparable. Sélectionnez des scénarios enregistrés dans l’historique.</div></div>`;
+        return;
+      }
+      root.innerHTML = `
+        <div class="card sim-compare-readable">
+          <div class="sim2-hero-layout">
+            <div>
+              <div class="card-title">Comparateur</div>
+              <div class="card-sub sim2-muted-top">Lecture comparative des scénarios enregistrés sélectionnés dans l’historique.</div>
+            </div>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompareInline">Vider le comparateur</button>
+          </div>
+          <div class="sim-compare-list">${details.map(compareCardHtml).join("")}</div>
+        </div>`;
+      root.querySelectorAll("[data-remove-compare]").forEach(btn => btn.addEventListener("click", () => removeIdFromComparator(btn.getAttribute("data-remove-compare") || "")));
+      root.querySelectorAll("[data-sim-compare-open]").forEach(btn => btn.addEventListener("click", () => openScenarioFromHistory(btn.getAttribute("data-sim-compare-open") || "").catch(e => setStatus(errMsg(e), "error"))));
+      byId("btnSimClearCompareInline")?.addEventListener("click", () => writeCompareIds([]));
+    }).catch(e => {
+      root.innerHTML = `<div class="card"><div class="sim-empty-state">Impossible de charger le comparateur : ${esc(errMsg(e))}</div></div>`;
+    });
   }
 
   function switchTab(tab) {
     const wanted = tab || "build";
-    document.querySelectorAll(".sim-tab-btn").forEach(btn => btn.classList.toggle("is-active", btn.getAttribute("data-sim-tab") === wanted));
+    document.querySelectorAll(".sim-tab-btn").forEach(btn => {
+      const key = btn.getAttribute("data-sim-tab") || "build";
+      const active = key === wanted || (wanted === "result" && key === "build") || (wanted === "compare" && key === "history");
+      btn.classList.toggle("is-active", active);
+    });
     document.querySelectorAll(".sim-panel").forEach(panel => {
       panel.style.display = panel.getAttribute("data-sim-panel") === wanted ? "block" : "none";
     });
+    if (wanted === "history") renderHistory(false).catch(e => setStatus(errMsg(e), "error"));
     if (wanted === "compare") renderCompare();
   }
 
@@ -1946,6 +2252,7 @@
   function resetScenario() {
     _scenario = [];
     _lastResult = null;
+    _lastSavedScenario = null;
     renderAll();
     renderResult(null);
     switchTab("build");
@@ -1961,13 +2268,24 @@
     byId("btnSimEvaluate")?.addEventListener("click", () => evaluateScenario().catch(e => setStatus(errMsg(e), "error")));
     byId("btnSimResetScenario")?.addEventListener("click", resetScenario);
     byId("btnSimReloadOptions")?.addEventListener("click", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
-    byId("btnSimClearCompare")?.addEventListener("click", () => writeCompare([]));
+    byId("btnSimHistoryRefresh")?.addEventListener("click", () => { _historyLoaded = false; renderHistory(true).catch(e => setStatus(errMsg(e), "error")); });
+    byId("btnSimHistoryCompare")?.addEventListener("click", () => {
+      if (readCompareIds().length < 2) return setStatus("Sélectionnez au moins deux scénarios à comparer.", "error");
+      renderCompare();
+      setStatus("");
+    });
+    byId("btnSimClearCompare")?.addEventListener("click", () => writeCompareIds([]));
     byId("simCriticiteRange")?.addEventListener("input", e => setCriticiteMin(e.target.value));
     byId("simCriticiteRange")?.addEventListener("change", () => {
       _optionsLoaded = false;
       loadOptions(true, { silent: true }).catch(e => setStatus(errMsg(e), "error"));
     });
-    byId("simServiceSelect")?.addEventListener("change", () => { _optionsLoaded = false; loadOptions(true).catch(e => setStatus(errMsg(e), "error")); });
+    byId("simServiceSelect")?.addEventListener("change", () => {
+      _optionsLoaded = false;
+      _historyLoaded = false;
+      loadOptions(true).catch(e => setStatus(errMsg(e), "error"));
+      if (document.querySelector('[data-sim-panel="history"]')?.style.display !== "none") renderHistory(true).catch(e => setStatus(errMsg(e), "error"));
+    });
   }
 
   async function onShow(portal) {

@@ -17,6 +17,11 @@
 
   <div id="simStatus" class="sb-hint" style="display:none;"></div>
 
+  <div class="sim-page-tabs" aria-label="Navigation simulation RH">
+    <button type="button" class="sim-tab-btn is-active" data-sim-tab="build">Simulateur</button>
+    <button type="button" class="sim-tab-btn" data-sim-tab="history">Historique</button>
+  </div>
+
   <div class="sim-panel" data-sim-panel="build">
     <div class="sim-workshop-grid">
       <div class="sim-workshop-main">
@@ -114,14 +119,31 @@
     </div>
   </div>
 
+  <div class="sim-panel" data-sim-panel="history" style="display:none;">
+    <div class="card sim-history-head-card">
+      <div class="sim2-hero-layout">
+        <div>
+          <div class="card-title">Historique des scénarios</div>
+          <div class="card-sub sim2-muted-top">Retrouvez les scénarios enregistrés, ouvrez le résultat complet ou cochez plusieurs scénarios pour les comparer.</div>
+        </div>
+        <div class="sb-actions sb-actions--end">
+          <button type="button" class="sb-btn sb-btn--soft" id="btnSimHistoryRefresh">Actualiser</button>
+          <button type="button" class="sb-btn sb-btn--accent" id="btnSimHistoryCompare">Comparer la sélection</button>
+        </div>
+      </div>
+    </div>
+    <div id="simHistoryContainer" style="margin-top:12px;"></div>
+    <div id="simHistoryCompareContainer" style="margin-top:12px;"></div>
+  </div>
+
   <div class="sim-panel" data-sim-panel="compare" style="display:none;">
     <div class="card">
       <div class="sim2-hero-layout">
         <div>
-          <div class="card-title">Comparatif des scénarios</div>
-          <div class="card-sub sim2-muted-top">Comparez les options conservées : impact immédiat, impact projeté et effets domino.</div>
+          <div class="card-title">Comparateur de scénarios</div>
+          <div class="card-sub sim2-muted-top">Comparez les scénarios enregistrés ajoutés au comparateur depuis un résultat ou l’historique.</div>
         </div>
-        <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompare">Vider le comparatif</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompare">Vider le comparateur</button>
       </div>
     </div>
     <div id="simCompareContainer" style="margin-top:12px;"></div>
