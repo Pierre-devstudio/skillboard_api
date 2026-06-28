@@ -2,8 +2,32 @@
   const portal = PortalCommon.createPortal({
     apiBase: "https://skillboard-services.onrender.com",
     queryIdParam: "id",
-    topbarInfoText: "Portail Skills — JMB CONSULTANT",
   });
+
+  const byId = (id) => document.getElementById(id);
+
+  function roleLabelFromCode(code) {
+    const c = String(code || "").trim().toLowerCase();
+    if (c === "admin") return "Administrateur";
+    if (c === "supervisor" || c === "superviseur") return "Superviseur";
+    return "Utilisateur";
+  }
+
+  function fillInsightsTopbar(ctx, displayName) {
+    const entreprise = String(ctx?.nom_entreprise || "").trim() || "Entreprise";
+    const roleLabel = String(ctx?.role_label || "").trim() || roleLabelFromCode(ctx?.role_code);
+    const isActive = ctx?.contrat_skills !== false;
+
+    const scopeName = byId("topbarName");
+    const scopeLine = byId("topbarScopeLine");
+    const userName = byId("topbarUserName");
+    const userRole = byId("topbarUserRole");
+
+    if (scopeName) scopeName.textContent = entreprise;
+    if (scopeLine) scopeLine.textContent = `Console Insights · ${isActive ? "Abonnement actif" : "Abonnement inactif"}`;
+    if (userName) userName.textContent = displayName || "Utilisateur";
+    if (userRole) userRole.textContent = roleLabel || "Utilisateur";
+  }
 
     // URL propre: on supprime le #... dès qu'on quitte le planning
   const _origSwitchView = (typeof portal.switchView === "function") ? portal.switchView.bind(portal) : null;
@@ -40,7 +64,7 @@
       const nom = (ctx.nom || "").trim();
       const display = [prenom, nom].filter(Boolean).join(" ").trim();
 
-      portal.setTopbar(display || "Contact", portal.topbarInfoText || "Portail Skills — JMB CONSULTANT");
+      fillInsightsTopbar(ctx, display || "Utilisateur");
       return ctx;
     })();
 

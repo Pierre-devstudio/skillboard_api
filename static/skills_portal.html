@@ -59,10 +59,16 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="menu-toggle" id="btnMenuToggle" aria-label="Ouvrir le menu">&#9776;</button>
-        <span id="topbarName">Contact</span>
+        <div class="insights-topbar-scope">
+          <div id="topbarName" class="insights-topbar-scope-name">Entreprise</div>
+          <div id="topbarScopeLine" class="insights-topbar-scope-line">Console Insights · Chargement…</div>
+        </div>
       </div>
       <div class="topbar-right topbar-actions">
-        <span id="topbarInfo">Chargement…</span>
+        <div id="topbarInfo" class="insights-topbar-user">
+          <div id="topbarUserName" class="insights-topbar-user-name">Chargement…</div>
+          <div id="topbarUserRole" class="insights-topbar-user-role"></div>
+        </div>
 
         <select id="selSuperEnt" class="sb-topbar-select" style="display:none;">
           <option value="">Entreprise…</option>

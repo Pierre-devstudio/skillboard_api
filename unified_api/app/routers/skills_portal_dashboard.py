@@ -42,7 +42,10 @@ class SkillsContext(BaseModel):
     civilite: Optional[str] = None
     prenom: Optional[str] = None
     nom: str
+    nom_entreprise: Optional[str] = None
+    contrat_skills: Optional[bool] = None
     role_code: Optional[str] = None
+    role_label: Optional[str] = None
     id_service: Optional[str] = None
 
 
@@ -170,6 +173,15 @@ def _normalize_role_code(v: Any) -> str:
     if s in ("supervisor", "superviseur", "manager"):
         return "supervisor"
     return "user"
+
+
+def _role_label(role_code: Any) -> str:
+    role = _normalize_role_code(role_code)
+    if role == "admin":
+        return "Administrateur"
+    if role == "supervisor":
+        return "Superviseur"
+    return "Utilisateur"
 
 
 def _role_rank(role_code: str) -> int:
@@ -425,7 +437,7 @@ def get_skills_context(id_contact: str, request: Request):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, _ = fetch_contact_with_entreprise(cur, eff_id)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
                 role = _fetch_role_for_request(cur, eff_id, request)
 
         return SkillsContext(
@@ -433,7 +445,10 @@ def get_skills_context(id_contact: str, request: Request):
             civilite=row_contact.get("civ_ca"),
             prenom=row_contact.get("prenom_ca"),
             nom=row_contact["nom_ca"],
+            nom_entreprise=row_ent.get("nom_ent"),
+            contrat_skills=bool(row_ent.get("contrat_skills")),
             role_code=role,
+            role_label=_role_label(role),
             id_service=row_contact.get("id_service"),
         )
     except HTTPException:
