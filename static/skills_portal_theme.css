@@ -21707,3 +21707,32 @@ button[id$="ModalClose"]::before{
     grid-template-columns:1fr;
   }
 }
+
+/* ======================================================
+   Vos informations – messages d'enregistrement inline
+   ====================================================== */
+#view-vos-informations .info-save-feedback{
+  display:none;
+  align-items:center;
+  min-height:32px;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.2;
+  max-width:360px;
+  white-space:normal;
+}
+
+#view-vos-informations .info-save-feedback.show{
+  display:inline-flex;
+}
+
+#view-vos-informations .info-save-feedback.success{
+  color:#15803d;
+}
+
+#view-vos-informations .info-save-feedback.warning{
+  color:#b45309;
+}
+
+#view-vos-informations .info-save-feedback.error{
+  color:#b91c1c;

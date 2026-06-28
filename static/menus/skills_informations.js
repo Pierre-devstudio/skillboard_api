@@ -5,6 +5,7 @@
   let _initialEntreprise = null;
   let _initialContact = null;
   let _refOpco = null;
+  const _feedbackTimers = { entreprise: null, contact: null };
 
   function setValueOrEmpty(id, value) {
     const el = document.getElementById(id);
@@ -40,6 +41,38 @@
     el.classList.toggle("error", !!isError);
   }
 
+
+  function feedbackEl(scope) {
+    return document.getElementById(scope === "contact" ? "feedbackContact" : "feedbackEntreprise");
+  }
+
+  function clearSaveFeedback(scope) {
+    const key = scope === "contact" ? "contact" : "entreprise";
+    if (_feedbackTimers[key]) {
+      window.clearTimeout(_feedbackTimers[key]);
+      _feedbackTimers[key] = null;
+    }
+    const el = feedbackEl(key);
+    if (!el) return;
+    el.textContent = "";
+    el.classList.remove("success", "warning", "error", "show");
+  }
+
+  function showSaveFeedback(scope, type, message, autoHideMs) {
+    const key = scope === "contact" ? "contact" : "entreprise";
+    clearSaveFeedback(key);
+    const el = feedbackEl(key);
+    if (!el) return;
+
+    const safeType = ["success", "warning", "error"].includes(type) ? type : "warning";
+    el.textContent = message || "";
+    el.classList.add("show", safeType);
+
+    if (safeType === "success") {
+      _feedbackTimers[key] = window.setTimeout(() => clearSaveFeedback(key), autoHideMs || 5000);
+    }
+  }
+
   function normalizeValue(v) {
     const s = (v ?? "").toString().trim();
     return s.length === 0 ? null : s;
@@ -62,6 +95,7 @@
     document.getElementById("btnEditEntreprise").style.display = isEdit ? "none" : "inline-flex";
     document.getElementById("btnSaveEntreprise").style.display = isEdit ? "inline-flex" : "none";
     document.getElementById("btnCancelEntreprise").style.display = isEdit ? "inline-flex" : "none";
+    if (isEdit) clearSaveFeedback("entreprise");
   }
 
   function setContactEditMode(isEdit) {
@@ -69,6 +103,7 @@
     document.getElementById("btnEditContact").style.display = isEdit ? "none" : "inline-flex";
     document.getElementById("btnSaveContact").style.display = isEdit ? "inline-flex" : "none";
     document.getElementById("btnCancelContact").style.display = isEdit ? "inline-flex" : "none";
+    if (isEdit) clearSaveFeedback("contact");
   }
 
   async function loadRefOpco(portal) {
@@ -233,7 +268,7 @@
     const patch = buildPatchFromInitial(_initialEntreprise, current, allowed);
 
     if (Object.keys(patch).length === 0) {
-      portal.showAlert("success", "Aucune modification à enregistrer.");
+      showSaveFeedback("entreprise", "warning", "Aucune modification à enregistrer.");
       setEntrepriseEditMode(false);
       return;
     }
@@ -250,7 +285,7 @@
     renderOpcoSelect(opco, data.entreprise.id_opco || "");
     renderEntreprise(data.entreprise);
 
-    portal.showAlert("success", "Informations entreprise enregistrées.");
+    showSaveFeedback("entreprise", "success", "Informations entreprise enregistrées.");
     setEntrepriseEditMode(false);
   }
 
@@ -260,12 +295,12 @@
     const patch = buildPatchFromInitial(_initialContact, current, allowed);
 
     if (patch.nom_ca != null && patch.nom_ca.trim().length === 0) {
-      portal.showAlert("error", "Le nom du contact est obligatoire.");
+      showSaveFeedback("contact", "error", "Le nom du contact est obligatoire.");
       return;
     }
 
     if (Object.keys(patch).length === 0) {
-      portal.showAlert("success", "Aucune modification à enregistrer.");
+      showSaveFeedback("contact", "warning", "Aucune modification à enregistrer.");
       setContactEditMode(false);
       return;
     }
@@ -280,7 +315,7 @@
 
     renderContact(data.contact);
 
-    portal.showAlert("success", "Informations du contact enregistrées.");
+    showSaveFeedback("contact", "success", "Informations du contact enregistrées.");
     setContactEditMode(false);
   }
 
@@ -290,12 +325,14 @@
       renderEntreprise(_initialEntreprise);
     }
     setEntrepriseEditMode(false);
+    clearSaveFeedback("entreprise");
     portal.showAlert("", "");
   }
 
   function cancelContactEdits(portal) {
     if (_initialContact) renderContact(_initialContact);
     setContactEditMode(false);
+    clearSaveFeedback("contact");
     portal.showAlert("", "");
   }
 
@@ -310,14 +347,14 @@
         portal.showAlert("", "");
         setEntrepriseEditMode(true);
       } catch (e) {
-        portal.showAlert("error", e.message);
+        showSaveFeedback("entreprise", "error", e.message);
       }
     });
 
     document.getElementById("btnCancelEntreprise").addEventListener("click", () => cancelEntrepriseEdits(portal));
     document.getElementById("btnSaveEntreprise").addEventListener("click", async () => {
       try { await saveEntreprise(portal); }
-      catch (e) { portal.showAlert("error", "Erreur enregistrement entreprise : " + e.message); }
+      catch (e) { showSaveFeedback("entreprise", "error", "Erreur enregistrement entreprise : " + e.message); }
     });
 
     // Contact buttons
@@ -327,14 +364,14 @@
         portal.showAlert("", "");
         setContactEditMode(true);
       } catch (e) {
-        portal.showAlert("error", e.message);
+        showSaveFeedback("contact", "error", e.message);
       }
     });
 
     document.getElementById("btnCancelContact").addEventListener("click", () => cancelContactEdits(portal));
     document.getElementById("btnSaveContact").addEventListener("click", async () => {
       try { await saveContact(portal); }
-      catch (e) { portal.showAlert("error", "Erreur enregistrement contact : " + e.message); }
+      catch (e) { showSaveFeedback("contact", "error", "Erreur enregistrement contact : " + e.message); }
     });
 
     // APE format + lookup
