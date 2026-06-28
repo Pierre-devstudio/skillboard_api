@@ -22434,3 +22434,66 @@ button[id$="ModalClose"]::before{
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Votre organisation — Ajustements fins modal poste */
+#modalOrgPoste .org-poste-def-section{
+  margin-top: 10px;
+}
+
+#modalOrgPoste .org-poste-def-section + .org-poste-def-section{
+  padding-top: 10px;
+}
+
+#modalOrgPoste .org-poste-def-section__head{
+  margin-bottom: 6px;
+}
+
+#modalOrgPoste .org-poste-def-section__head .label{
+  font-size: 13px;
+  font-weight: 650;
+  color: #1f2937;
+}
+
+#modalOrgPoste .org-poste-def-section__icon{
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+
+#modalOrgPoste .org-poste-def-section__icon svg{
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.8;
+}
+
+#modalOrgPoste .org-poste-def-mission{
+  padding-left: 30px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+#modalOrgPoste .org-poste-def-resp{
+  margin-top: 6px;
+  max-height: 245px;
+  padding: 8px 12px;
+  line-height: 1.42;
+}
+
+#modalOrgPoste .org-poste-def-resp ol > li{
+  margin-bottom: 6px;
+  padding-left: 36px;
+}
+
+#modalOrgPoste .org-poste-def-resp ol > li::before{
+  top: 2px;
+}
+
+#modalOrgPoste .org-poste-def-resp ol > li > ul{
+  margin-top: 4px;
+  row-gap: 2px;
+}
+
+#modalOrgPoste .org-poste-def-resp ol > li > ul > li{
+  margin: 1px 0;
+}
