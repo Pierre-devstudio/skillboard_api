@@ -123,6 +123,7 @@
     fillPosteCompetencesTab({ competences: [] });
     fillPosteCertificationsTab({ certifications: [] });
     fillPosteParamRhTab({});
+    fillPosteCotationTab({ __force_empty: true });
 
 
     // Détail (fetch)
@@ -318,6 +319,103 @@
     _setValue("orgRhDateMaj", (v?.param_rh_date_maj ?? "").toString());
   }
 
+  function _rhSelectedText(selectId){
+    const el = byId(selectId);
+    if (!el) return "";
+    const opt = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex] : null;
+    return (opt?.textContent || "").trim();
+  }
+
+  function _rhSyncViewFromCurrentForm(){
+    _setText("orgRhViewStatut", _rhSelectedText("orgRhStatut"));
+    _setText("orgRhViewCriticite", _rhSelectedText("orgRhCriticite"));
+    _setText("orgRhViewStrategie", _rhSelectedText("orgRhStrategie"));
+    _setText("orgRhViewNbTitulaires", byId("orgRhNbTitulaires")?.value || "");
+    _setText("orgRhViewDateDebut", formatDateOnly(byId("orgRhDateDebut")?.value || ""));
+    _setText("orgRhViewSource", byId("orgRhSource")?.value || "");
+    _setText("orgRhViewDateMaj", byId("orgRhDateMaj")?.value || "");
+    _setText("orgRhViewCommentaire", byId("orgRhCommentaire")?.value || "");
+
+    const finRow = byId("orgRhViewDateFinRow");
+    const finVal = formatDateOnly(byId("orgRhDateFin")?.value || "");
+    _setText("orgRhViewDateFin", finVal);
+    if (finRow) finRow.style.display = finVal ? "" : "none";
+  }
+
+  function _pickFirstString(obj, keys){
+    for (const key of keys){
+      const v = obj?.[key];
+      if (v !== null && v !== undefined){
+        const s = String(v).trim();
+        if (s) return s;
+      }
+    }
+    return "";
+  }
+
+  function fillPosteCotationTab(detail){
+    if (detail?.__force_empty){
+      _setText("orgRhCotationCategorie", "");
+      _setText("orgRhCotationCoefficient", "");
+      return;
+    }
+
+    const categorieKeys = [
+      "rh_cotation_categorie_retendue",
+      "rh_categorie_retendue",
+      "categorie_retendue",
+      "categorie_retenue",
+      "categorie_conventionnelle",
+      "categorie_conventionnelle_retendue",
+      "categorie_professionnelle"
+    ];
+
+    const coefficientKeys = [
+      "rh_cotation_coefficient_palier_retenu",
+      "rh_coefficient_palier_retenu",
+      "coefficient_palier_retenu",
+      "coefficient_palier",
+      "coefficient_palier_affichage"
+    ];
+
+    const coeffOnlyKeys = [
+      "rh_cotation_coefficient_retenu",
+      "rh_coefficient_retenu",
+      "coefficient_retenu",
+      "coefficient"
+    ];
+
+    const palierKeys = [
+      "rh_cotation_palier_retenu",
+      "rh_palier_retenu",
+      "palier_retenu",
+      "palier"
+    ];
+
+    const hasRawCotation = [...categorieKeys, ...coefficientKeys, ...coeffOnlyKeys, ...palierKeys]
+      .some(key => {
+        const v = detail?.[key];
+        return v !== null && v !== undefined && String(v).trim() !== "";
+      });
+
+    if (!hasRawCotation) return;
+
+    const categorie = _pickFirstString(detail, categorieKeys);
+
+    let coefficient = _pickFirstString(detail, coefficientKeys);
+
+    if (!coefficient){
+      const coeff = _pickFirstString(detail, coeffOnlyKeys);
+      const palierRaw = _pickFirstString(detail, palierKeys);
+      let palier = palierRaw;
+      if (palier && !/^palier\b/i.test(palier)) palier = `Palier ${palier}`;
+      coefficient = [coeff, palier].filter(Boolean).join(" / ");
+    }
+
+    _setText("orgRhCotationCategorie", categorie);
+    _setText("orgRhCotationCoefficient", coefficient);
+  }
+
   function _setRhEditMode(editing){
     _rhEdit.editing = !!editing;
 
@@ -333,9 +431,16 @@
     if (minus) minus.disabled = !editing;
     if (plus) plus.disabled = !editing;
 
+    const bloc = byId("orgPosteBlocRh");
+    const view = byId("orgRhView");
+    const edit = byId("orgRhEdit");
+    if (bloc) bloc.classList.toggle("is-editing", !!editing);
+    if (view) view.style.display = editing ? "none" : "";
+    if (edit) edit.style.display = editing ? "" : "none";
+
     _rhSetButtons(editing);
     _rhApplyFinValiditeVisibility();
-
+    _rhSyncViewFromCurrentForm();
   }
 
   function _rhEnterEditMode(){
@@ -403,11 +508,13 @@
         body: JSON.stringify(payload)
       });
 
+      const merged = Object.assign({}, _posteDetailCache.get(id_poste) || {}, updated || {});
+
       // cache détail
-      _posteDetailCache.set(id_poste, updated);
+      _posteDetailCache.set(id_poste, merged);
 
       // refresh UI (retour lecture)
-      fillPosteParamRhTab(updated);
+      fillPosteParamRhTab(merged);
       
     } catch (e) {
       portal.showAlert("error", "Erreur enregistrement RH : " + e.message);
@@ -802,12 +909,27 @@
     const el = byId(id);
     if (!el) return;
     el.value = (v ?? "");
+    if (el.tagName === "SELECT") _refreshSelectTitleEl(el);
+  }
+
+  function _setText(id, v){
+    const el = byId(id);
+    if (!el) return;
+    const s = (v ?? "").toString().trim();
+    el.textContent = s || "—";
   }
 
   function _setChecked(id, v){
     const el = byId(id);
     if (!el) return;
     el.checked = !!v;
+  }
+
+  function _refreshSelectTitleEl(el){
+    if (!el) return;
+    const opt = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex] : null;
+    const txt = (opt?.textContent || "").trim();
+    el.title = txt && txt !== "—" ? txt : "";
   }
 
   function _fillSelect(el, options){
@@ -817,8 +939,16 @@
       const opt = document.createElement("option");
       opt.value = o.value;
       opt.textContent = o.text;
+      opt.title = o.text;
       el.appendChild(opt);
     });
+
+    if (!el._sbSelectTitleBound){
+      el._sbSelectTitleBound = true;
+      el.addEventListener("change", () => _refreshSelectTitleEl(el));
+    }
+
+    _refreshSelectTitleEl(el);
   }
 
   function _selectByStoredValue(selectId, stored){
@@ -828,6 +958,7 @@
     const v = (stored ?? "").toString().trim();
     if (!v){
       el.value = "";
+      _refreshSelectTitleEl(el);
       return;
     }
 
@@ -835,6 +966,7 @@
     for (const opt of el.options){
       if (opt.value === v){
         el.value = v;
+        _refreshSelectTitleEl(el);
         return;
       }
     }
@@ -844,11 +976,13 @@
     for (const opt of el.options){
       if (_norm(opt.value) === nv){
         el.value = opt.value;
+        _refreshSelectTitleEl(el);
         return;
       }
     }
 
     el.value = "";
+    _refreshSelectTitleEl(el);
   }
 
   let _contraintesSelectsInit = false;
@@ -957,8 +1091,10 @@
       const opt = document.createElement("option");
       opt.value = code || "";
       opt.textContent = code ? (titre ? `${titre} (${code})` : code) : "—";
+      opt.title = opt.textContent;
       nsfSel.appendChild(opt);
       nsfSel.value = code || "";
+      _refreshSelectTitleEl(nsfSel);
     }
 
     _setChecked("orgCtrNsfOblig", detail?.nsf_groupe_obligatoire);
@@ -1015,18 +1151,13 @@
       const code = (it?.code || "").toString().trim();
       const title = (it?.intitule || "").toString().trim();
       const desc = (it?.description || "").toString().trim();
-      const etat = (it?.etat || "").toString().trim().toLowerCase();
       const niv = (it?.niveau_requis || "").toString().trim().toUpperCase();
 
       const crit = it?.poids_criticite;
-      const critTxt = (crit === null || crit === undefined || crit === "") ? "-" : escapeHtml(String(crit));
+      const critTxt = (crit === null || crit === undefined || crit === "") ? "" : String(crit).trim();
 
       const nivLbl = _nivLabel(niv);
-      const nivCell = (!nivLbl) ? "-" : `<span class="sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
-
-      const ind = (etat === "à valider" || etat === "a valider")
-        ? `<span class="sb-dot-avalider" title="Compétence à valider"></span>`
-        : "";
+      const nivCell = (!nivLbl) ? "—" : `<span class="sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
 
       const tr = document.createElement("tr");
       const critVal = Number(critTxt);
@@ -1046,7 +1177,6 @@
         <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
         <td>${nivCell}</td>
         <td class="col-center">${critHtml}</td>
-        <td class="col-center">${ind}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -1070,17 +1200,11 @@
       const nom = (it?.nom_certification || "").toString().trim();
       const desc = (it?.description || "").toString().trim();
       const cat = (it?.categorie || "").toString().trim();
-      const niv = (it?.niveau_exigence || "").toString().trim().toLowerCase();
-
-      const ind = (niv === "requis")
-        ? `<span class="sb-dot-cert-requis" title="Certification requise"></span>`
-        : "";
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td title="${escapeHtml(desc)}">${escapeHtml(nom || "—")}</td>
         <td>${escapeHtml(cat || "-")}</td>
-        <td class="col-center">${ind}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -1103,9 +1227,11 @@
 
     _fillSelect(byId("orgRhCriticite"), [
       { value:"", text:"—" },
-      { value:"1", text:"1 - Secondaire" },
+      { value:"0", text:"0 - Non critique" },
+      { value:"1", text:"1 - Faible" },
       { value:"2", text:"2 - Important" },
-      { value:"3", text:"3 - Essentiel" }
+      { value:"3", text:"3 - Élevé" },
+      { value:"4", text:"4 - Critique" }
     ]);
 
     _fillSelect(byId("orgRhStrategie"), [
@@ -1133,7 +1259,6 @@
     initRhSelects();
     _rhBindStatutChangeOnce();
 
-    const lock = !!detail?.rh_param_rh_verrouille;
     const src = (detail?.rh_param_rh_source ?? "").toString().trim();
     const maj = _formatMajForRh(detail?.rh_param_rh_date_maj);
 
@@ -1150,11 +1275,6 @@
     _setValue("orgRhDateMaj", maj || "—");
 
     _setValue("orgRhCommentaire", detail?.rh_param_rh_commentaire ?? "");
-
-    // UI lock (info interne)
-    const badge = byId("orgRhLockBadge");    
-    if (badge) badge.style.display = lock ? "" : "none";
-    
 
     // Stepper boutons (bind une fois)
     const minus = byId("orgRhNbMinus");
@@ -1182,6 +1302,8 @@
     _rhEdit.snapshot = null;
     _setRhEditMode(false);
     _rhApplyFinValiditeVisibility();
+    _rhSyncViewFromCurrentForm();
+    fillPosteCotationTab(detail);
 
   }
 

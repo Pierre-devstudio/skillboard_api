@@ -231,7 +231,6 @@
                     <th>Compétence</th>
                     <th style="width:90px;">Niveau requis</th>
                     <th style="width:80px; text-align:center;">Criticité</th>
-                    <th style="width:40px;" class="col-center">Ind.</th>
                   </tr>
                 </thead>
                 <tbody id="orgPosteCompTbody"></tbody>
@@ -253,7 +252,6 @@
                   <tr>
                     <th>Certification</th>
                     <th style="width:160px;">Catégorie</th>
-                    <th style="width:40px;" class="col-center">Ind.</th>
                   </tr>
                 </thead>
                 <tbody id="orgPosteCertTbody"></tbody>
@@ -271,67 +269,135 @@
         <div class="sb-tab-panel" data-panel="rh">
           <div class="card org-bloc" id="orgPosteBlocRh">
             <div class="org-poste-rh-head">
-              <div class="card-title" style="margin:0;">Paramétrage RH</div>
+              <div class="org-section-titleline">
+                <span class="org-section-titleline__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
+                </span>
+                <div class="card-title" style="margin:0;">Paramétrage RH</div>
+              </div>
 
               <div class="sb-actions org-poste-rh-actions">
-                <span id="orgRhLockBadge" class="sb-badge sb-badge-rh-lock" style="display:none;">Modifié par le client</span>
-
                 <div class="sb-actions org-rh-btns">
-                  <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnEdit">Modifier</button>
-                  <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnSave" style="display:none;">Enregistrer</button>
-                  <button type="button" class="sb-btn sb-btn--soft" id="orgRhBtnCancel" style="display:none;">Annuler</button>
+                  <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnEdit">
+                    <span class="sb-btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                    </span>
+                    <span>Modifier</span>
+                  </button>
+                  <button type="button" class="sb-btn sb-btn--soft" id="orgRhBtnCancel" style="display:none;">
+                    <span class="sb-btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+                    </span>
+                    <span>Annuler</span>
+                  </button>
+                  <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnSave" style="display:none;">
+                    <span class="sb-btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                    </span>
+                    <span>Enregistrer</span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div class="sb-form-grid org-rh-grid">
-              <div class="sb-field">
-                <div class="label">Statut du poste</div>
-                <select id="orgRhStatut" disabled></select>
-              </div>
+            <div class="org-rh-view" id="orgRhView">
+              <div class="org-rh-view-grid">
+                <div class="org-rh-sheet">
+                  <table class="org-rh-view-table">
+                    <tbody>
+                      <tr><th>Statut du poste</th><td id="orgRhViewStatut">—</td></tr>
+                      <tr><th>Stratégie de pourvoi</th><td id="orgRhViewStrategie">—</td></tr>
+                      <tr><th>Début de validité</th><td id="orgRhViewDateDebut">—</td></tr>
+                      <tr id="orgRhViewDateFinRow" style="display:none;"><th>Fin de validité</th><td id="orgRhViewDateFin">—</td></tr>
+                      <tr><th>Dernière mise à jour</th><td id="orgRhViewDateMaj">—</td></tr>
+                    </tbody>
+                  </table>
+                </div>
 
-              <div class="sb-field">
-                <div class="label">Criticité du poste</div>
-                <select id="orgRhCriticite" disabled></select>
-              </div>
-
-              <div class="sb-field">
-                <div class="label">Stratégie de pourvoi</div>
-                <select id="orgRhStrategie" disabled></select>
-              </div>
-
-              <div class="sb-field">
-                <div class="label">Nb titulaires cible</div>
-                <div class="sb-stepper" aria-label="Nb titulaires cible">
-                  <button type="button" class="sb-stepper-btn" id="orgRhNbMinus" disabled>-</button>
-                  <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
-                  <button type="button" class="sb-stepper-btn" id="orgRhNbPlus" disabled>+</button>
+                <div class="org-rh-sheet">
+                  <table class="org-rh-view-table">
+                    <tbody>
+                      <tr><th>Criticité du poste</th><td id="orgRhViewCriticite">—</td></tr>
+                      <tr><th>Nb titulaires cible</th><td id="orgRhViewNbTitulaires">—</td></tr>
+                      <tr><th>Source</th><td id="orgRhViewSource">—</td></tr>
+                      <tr class="org-rh-view-table__comment-row"><th>Commentaire</th><td id="orgRhViewCommentaire" class="org-rh-view-comment">—</td></tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
+            </div>
 
-              <div class="sb-field">
-                <div class="label">Début de validité</div>
-                <input id="orgRhDateDebut" type="date" class="sb-date" disabled />
+            <div class="org-rh-edit" id="orgRhEdit" style="display:none;">
+              <div class="sb-form-grid org-rh-grid">
+                <div class="sb-field">
+                  <div class="label">Statut du poste</div>
+                  <select id="orgRhStatut" disabled></select>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Criticité du poste</div>
+                  <select id="orgRhCriticite" disabled></select>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Stratégie de pourvoi</div>
+                  <select id="orgRhStrategie" disabled></select>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Nb titulaires cible</div>
+                  <div class="sb-stepper" aria-label="Nb titulaires cible">
+                    <button type="button" class="sb-stepper-btn" id="orgRhNbMinus" disabled>-</button>
+                    <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
+                    <button type="button" class="sb-stepper-btn" id="orgRhNbPlus" disabled>+</button>
+                  </div>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Début de validité</div>
+                  <input id="orgRhDateDebut" type="date" class="sb-date" disabled />
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Fin de validité</div>
+                  <input id="orgRhDateFin" type="date" class="sb-date" disabled />
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Source</div>
+                  <input id="orgRhSource" type="text" disabled />
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Dernière mise à jour</div>
+                  <input id="orgRhDateMaj" type="text" disabled />
+                </div>
+
+                <div class="sb-field sb-span-2">
+                  <div class="label">Commentaire</div>
+                  <textarea id="orgRhCommentaire" rows="3" disabled></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card org-bloc" id="orgPosteBlocCotation">
+            <div class="org-section-titleline">
+              <span class="org-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 7h13a4 4 0 0 1 0 8H8"/><path d="M5 7 3 12l-2-5"/><path d="M19 17l2-5 2 5"/><path d="M17 17h4"/><path d="M1 12h4"/></svg>
+              </span>
+              <div class="card-title" style="margin:0;">Cotation conventionnelle</div>
+            </div>
+
+            <div class="org-rh-cotation-grid">
+              <div class="org-rh-cotation-box">
+                <div class="org-rh-cotation-box__label">Catégorie retenue</div>
+                <div id="orgRhCotationCategorie" class="org-rh-cotation-box__value">—</div>
               </div>
 
-              <div class="sb-field">
-                <div class="label">Fin de validité</div>
-                <input id="orgRhDateFin" type="date" class="sb-date" disabled />
-              </div>
-
-              <div class="sb-field">
-                <div class="label">Source</div>
-                <input id="orgRhSource" type="text" disabled />
-              </div>
-
-              <div class="sb-field">
-                <div class="label">Dernière mise à jour</div>
-                <input id="orgRhDateMaj" type="text" disabled />
-              </div>
-
-              <div class="sb-field sb-span-2">
-                <div class="label">Commentaire</div>
-                <textarea id="orgRhCommentaire" rows="3" disabled></textarea>
+              <div class="org-rh-cotation-box">
+                <div class="org-rh-cotation-box__label">Coefficient / palier retenu</div>
+                <div id="orgRhCotationCoefficient" class="org-rh-cotation-box__value">—</div>
               </div>
             </div>
           </div>
@@ -339,7 +405,7 @@
       </div> 
       
       <div class="modal-footer">
-        <button type="button" class="sb-btn sb-btn--soft" id="orgPosteModalClose">Fermer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="orgPosteModalClose"><span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></span><span>Fermer</span></button>
       </div>
 
     </div>
