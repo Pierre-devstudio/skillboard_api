@@ -922,7 +922,11 @@
   function _setChecked(id, v){
     const el = byId(id);
     if (!el) return;
-    el.checked = !!v;
+    if (el.type === "hidden") {
+      el.value = v ? "oui" : "non";
+    } else {
+      el.checked = !!v;
+    }
   }
 
   function _refreshSelectTitleEl(el){
@@ -1098,6 +1102,7 @@
     }
 
     _setChecked("orgCtrNsfOblig", detail?.nsf_groupe_obligatoire);
+    _selectByStoredValue("orgCtrNsfObligView", detail?.nsf_groupe_obligatoire ? "oui" : "non");
 
     _selectByStoredValue("orgCtrMobilite", detail?.mobilite);
 

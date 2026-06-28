@@ -142,18 +142,33 @@
         <div class="sb-tab-panel is-active" data-panel="def">
           <div class="card org-poste-def-card sb-card-compact">
             <div class="org-poste-def-head">
-              <div class="card-title" style="margin:0;">Définition du poste</div>
+              <div class="org-section-titleline">
+                <span class="org-section-titleline__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
+                </span>
+                <div class="card-title" style="margin:0;">Définition du poste</div>
+              </div>
               <span id="orgPosteDefRespBadge" class="sb-badge sb-badge-resp" style="display:none;">Responsable</span>
             </div>
 
-            <div id="orgPosteDefMissionWrap" class="sb-field" style="margin-top:10px; display:none;">
-              <div class="label">Mission principale</div>
-              <div id="orgPosteDefMission" class="value"></div>
+            <div id="orgPosteDefMissionWrap" class="org-poste-def-section" style="display:none;">
+              <div class="org-poste-def-section__head">
+                <span class="org-poste-def-section__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg>
+                </span>
+                <div class="label">Mission principale</div>
+              </div>
+              <div id="orgPosteDefMission" class="value org-poste-def-mission"></div>
             </div>
 
-            <div id="orgPosteDefRespWrap" class="sb-field text-block" style="margin-top:10px; display:none;">
-              <div class="label">Responsabilités</div>
-              <div id="orgPosteDefResp" class="value sb-richtext sb-richtext-readonly"></div>
+            <div id="orgPosteDefRespWrap" class="org-poste-def-section text-block" style="display:none;">
+              <div class="org-poste-def-section__head">
+                <span class="org-poste-def-section__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
+                </span>
+                <div class="label">Responsabilités</div>
+              </div>
+              <div id="orgPosteDefResp" class="value sb-richtext sb-richtext-readonly org-poste-def-resp"></div>
             </div>
 
             <div id="orgPosteDefEmpty" class="card-sub" style="margin-top:10px; display:none;">
@@ -168,7 +183,12 @@
         <!-- Exigences -->
         <div class="sb-tab-panel" data-panel="exi">
           <div class="card org-bloc" id="orgPosteBlocContraintes">
-            <div class="card-title">Contraintes</div>
+            <div class="org-section-titleline">
+              <span class="org-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
+              </span>
+              <div class="card-title" style="margin:0;">Contraintes</div>
+            </div>
 
             <div class="sb-form-grid">
               <div class="sb-field">
@@ -181,11 +201,13 @@
                 <select id="orgCtrNsfGroupe" disabled></select>
               </div>
 
-              <div class="sb-field org-span-2">
-                <label class="sb-check">
-                  <input type="checkbox" id="orgCtrNsfOblig" disabled />
-                  <span>Correspondance du diplôme impérative</span>
-                </label>
+              <div class="sb-field">
+                <div class="label">Correspondance du diplôme impérative</div>
+                <input type="hidden" id="orgCtrNsfOblig" />
+                <select id="orgCtrNsfObligView" disabled>
+                  <option value="non">Non</option>
+                  <option value="oui">Oui</option>
+                </select>
               </div>
 
               <div class="sb-field">
@@ -221,7 +243,12 @@
 
 
           <div class="card sb-card-compact">
-            <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+            <div class="org-section-titleline">
+              <span class="org-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+              </span>
+              <div class="card-title" style="margin:0;">Compétences requises</div>
+            </div>
 
             <div class="table-wrap" style="margin-top:10px;">
               <table class="sb-table" id="orgPosteCompTable">
@@ -244,7 +271,12 @@
 
 
           <div class="card sb-card-compact">
-            <div class="card-title" style="margin-bottom:6px;">Certifications requises</div>
+            <div class="org-section-titleline">
+              <span class="org-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+              </span>
+              <div class="card-title" style="margin:0;">Certifications requises</div>
+            </div>
 
             <div class="table-wrap" style="margin-top:10px;">
               <table class="sb-table" id="orgPosteCertTable">

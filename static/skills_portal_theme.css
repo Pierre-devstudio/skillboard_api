@@ -22243,3 +22243,194 @@ button[id$="ModalClose"]::before{
     justify-content: flex-end;
   }
 }
+
+/* ======================================================
+   Votre organisation — Modal poste : Définition / Exigences
+   ====================================================== */
+#modalOrgPoste .org-poste-def-card{
+  padding: 18px;
+}
+
+#modalOrgPoste .org-poste-def-head{
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+#modalOrgPoste .org-poste-def-section{
+  margin-top: 14px;
+}
+
+#modalOrgPoste .org-poste-def-section + .org-poste-def-section{
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+#modalOrgPoste .org-poste-def-section__head{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+#modalOrgPoste .org-poste-def-section__head .label{
+  margin: 0;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+#modalOrgPoste .org-poste-def-section__icon{
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex: 0 0 24px;
+}
+
+#modalOrgPoste .org-poste-def-section__icon svg{
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#modalOrgPoste .org-poste-def-mission{
+  padding-left: 34px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+#modalOrgPoste .org-poste-def-resp{
+  max-height: 285px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  line-height: 1.55;
+}
+
+#modalOrgPoste .org-poste-def-resp ol{
+  counter-reset: orgResp;
+  list-style: none;
+  margin-left: 0;
+}
+
+#modalOrgPoste .org-poste-def-resp ol > li{
+  counter-increment: orgResp;
+  position: relative;
+  padding: 0 0 10px 36px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+#modalOrgPoste .org-poste-def-resp ol > li:last-child{
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+#modalOrgPoste .org-poste-def-resp ol > li::before{
+  content: counter(orgResp);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#modalOrgPoste .org-poste-def-resp ul{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 32px;
+  margin-top: 8px;
+}
+
+#modalOrgPoste .org-poste-def-resp ul > li{
+  margin: 0;
+}
+
+#modalOrgPoste #orgPosteBlocContraintes .sb-form-grid{
+  gap: 10px 24px;
+  margin-top: 12px;
+}
+
+#modalOrgPoste #orgPosteBlocContraintes .sb-field .label{
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+#modalOrgPoste #orgPosteBlocContraintes select,
+#modalOrgPoste #orgPosteBlocContraintes textarea{
+  min-height: 34px;
+  font-size: 13px;
+}
+
+#modalOrgPoste #orgPosteBlocContraintes textarea{
+  min-height: 54px;
+  resize: vertical;
+}
+
+#modalOrgPoste #orgPosteBlocContraintes .sb-help{
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+
+#modalOrgPoste #orgPosteCompTable,
+#modalOrgPoste #orgPosteCertTable{
+  margin-top: 8px;
+}
+
+#modalOrgPoste #orgPosteCompTable th,
+#modalOrgPoste #orgPosteCompTable td,
+#modalOrgPoste #orgPosteCertTable th,
+#modalOrgPoste #orgPosteCertTable td{
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 12.5px;
+}
+
+#modalOrgPoste #orgPosteCompTable th:nth-child(1),
+#modalOrgPoste #orgPosteCompTable td:nth-child(1){
+  width: 112px;
+}
+
+#modalOrgPoste #orgPosteCompTable th:nth-child(3),
+#modalOrgPoste #orgPosteCompTable td:nth-child(3){
+  width: 150px;
+}
+
+#modalOrgPoste #orgPosteCompTable th:nth-child(4),
+#modalOrgPoste #orgPosteCompTable td:nth-child(4){
+  width: 120px;
+}
+
+#modalOrgPoste #orgPosteCertTable th:nth-child(2),
+#modalOrgPoste #orgPosteCertTable td:nth-child(2){
+  width: 220px;
+}
+
+#modalOrgPoste #orgPosteCompEmpty,
+#modalOrgPoste #orgPosteCertEmpty{
+  padding: 18px 0 6px;
+  text-align: center;
+}
+
+@media (max-width: 980px){
+  #modalOrgPoste .org-poste-def-resp ul{
+    grid-template-columns: 1fr;
+  }
+}
