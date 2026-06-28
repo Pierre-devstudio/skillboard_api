@@ -1,5 +1,315 @@
 <section id="view-votre-organisation" style="display:none;">
-  <div class="card org-page-hero">
+  
+
+  <style id="org-visual-v5-style">
+    #view-votre-organisation .org-page-hero {
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding:18px 20px;
+      border-radius:18px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+    }
+
+    #view-votre-organisation .org-page-hero__icon,
+    #view-votre-organisation .org-card-head__icon {
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#fff1f2;
+      color:#d81d30;
+      flex:0 0 auto;
+    }
+
+    #view-votre-organisation .org-page-hero__icon svg,
+    #view-votre-organisation .org-card-head__icon svg,
+    #view-votre-organisation .org-stat-box__icon svg {
+      width:20px;
+      height:20px;
+      display:block;
+      fill:none;
+      stroke:currentColor;
+      stroke-width:1.9;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+
+    #view-votre-organisation .org-card-head {
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    #view-votre-organisation .org-layout-split {
+      align-items:flex-start;
+      gap:14px;
+    }
+
+    #view-votre-organisation .org-layout-split__services {
+      flex:0 0 320px;
+    }
+
+    #view-votre-organisation .org-layout-split__content {
+      min-width:0;
+    }
+
+    #view-votre-organisation .org-services-card,
+    #view-votre-organisation .org-summary-card,
+    #view-votre-organisation .org-postes-card {
+      border-radius:18px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+    }
+
+    #view-votre-organisation .org-tree {
+      display:flex;
+      flex-direction:column;
+      gap:0 !important;
+      margin-top:8px;
+      border:1px solid #edf0f4;
+      border-radius:14px;
+      overflow:hidden;
+      background:#fff;
+    }
+
+    #view-votre-organisation .org-tree .sb-tree-item {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      min-height:43px;
+      margin:0 !important;
+      padding:0 12px !important;
+      border:0 !important;
+      border-bottom:1px solid #edf0f4 !important;
+      border-radius:0 !important;
+      background:#fff;
+      box-shadow:none !important;
+      cursor:pointer;
+    }
+
+    #view-votre-organisation .org-tree .sb-tree-item:last-child {
+      border-bottom:0 !important;
+    }
+
+    #view-votre-organisation .org-tree .sb-tree-item:hover {
+      background:#fafbfc;
+    }
+
+    #view-votre-organisation .org-tree .sb-tree-item.active {
+      background:linear-gradient(90deg, rgba(216,29,48,.10), rgba(216,29,48,.04));
+      color:#111827;
+    }
+
+    #view-votre-organisation .org-tree .sb-tree-name {
+      font-weight:700;
+      color:#111827;
+      min-width:0;
+    }
+
+    #view-votre-organisation .org-tree-arrow {
+      font-size:18px;
+      line-height:1;
+      color:#98a2b3;
+      flex:0 0 auto;
+    }
+
+    #view-votre-organisation .org-summary-card {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:18px;
+      flex-wrap:wrap;
+    }
+
+    #view-votre-organisation .org-summary-card__main {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:260px;
+    }
+
+    #view-votre-organisation .org-summary-card__stats {
+      display:grid;
+      grid-template-columns:repeat(3, minmax(118px, 1fr));
+      gap:10px;
+      width:min(100%, 470px);
+    }
+
+    #view-votre-organisation .org-stat-box {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:11px 13px;
+      border:1px solid #edf0f4;
+      border-radius:14px;
+      background:#fbfcfd;
+      min-width:0;
+    }
+
+    #view-votre-organisation .org-stat-box__icon {
+      width:32px;
+      height:32px;
+      border-radius:11px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 32px;
+    }
+
+    #view-votre-organisation .org-stat-box__icon--postes {
+      color:#d81d30;
+      background:#fff1f2;
+    }
+
+    #view-votre-organisation .org-stat-box__icon--collabs {
+      color:#6d28d9;
+      background:#f3efff;
+    }
+
+    #view-votre-organisation .org-stat-box__icon--services {
+      color:#16803a;
+      background:#ecfdf3;
+    }
+
+    #view-votre-organisation .org-stat-box__value {
+      font-size:20px;
+      font-weight:800;
+      color:#111827;
+      line-height:1.05;
+    }
+
+    #view-votre-organisation .org-stat-box__label {
+      margin-top:2px;
+      font-size:12px;
+      color:#667085;
+      white-space:nowrap;
+    }
+
+    #view-votre-organisation .org-postes-card__head {
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      padding-bottom:10px;
+      border-bottom:1px solid #edf0f4;
+    }
+
+    #view-votre-organisation .org-postes-card__search {
+      min-width:260px;
+      flex:1 1 320px;
+      max-width:420px;
+    }
+
+    #view-votre-organisation .org-postes-list {
+      display:flex;
+      flex-direction:column;
+      gap:6px !important;
+      margin-top:12px !important;
+    }
+
+    #view-votre-organisation .org-poste-row {
+      width:100%;
+      box-sizing:border-box;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      min-height:48px;
+      margin:0 !important;
+      padding:8px 10px 8px 12px !important;
+      border:1px solid #edf0f4 !important;
+      border-radius:12px !important;
+      background:#fff;
+      box-shadow:none !important;
+      cursor:pointer;
+    }
+
+    #view-votre-organisation .org-poste-row:hover {
+      background:#fafbfc;
+      border-color:#d7dbe3 !important;
+    }
+
+    #view-votre-organisation .org-poste-row__main,
+    #view-votre-organisation .org-poste-row .sb-acc-left {
+      min-width:0;
+      flex:1 1 auto;
+    }
+
+    #view-votre-organisation .org-poste-head {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+
+    #view-votre-organisation .org-poste-row .sb-acc-title {
+      margin:0;
+      min-width:0;
+      font-weight:700;
+      color:#111827;
+      line-height:1.2;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    #view-votre-organisation .org-poste-row__actions,
+    #view-votre-organisation .org-poste-row .sb-acc-right {
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      margin-left:auto;
+      flex:0 0 auto;
+      min-width:190px;
+    }
+
+    #view-votre-organisation .org-poste-row__count,
+    #view-votre-organisation .org-poste-row .sb-acc-right .sb-badge:not(.sb-badge-manager) {
+      border-color:#ec4899;
+      color:#db2777;
+      background:#fff;
+      font-weight:800;
+      min-width:70px;
+      justify-content:center;
+    }
+
+    #view-votre-organisation .org-poste-row__icon-actions,
+    #view-votre-organisation .org-poste-row .sb-icon-actions {
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:6px;
+    }
+
+    #view-votre-organisation .org-poste-row .sb-icon-btn {
+      width:30px;
+      height:30px;
+      border-radius:9px;
+      border:1px solid #d8dee8;
+      background:#fff;
+      color:#334155;
+    }
+
+    #view-votre-organisation .org-poste-row .sb-icon-btn:hover {
+      background:#f8fafc;
+      border-color:#aeb8c7;
+      color:#111827;
+    }
+
+    @media (max-width: 980px) {
+      #view-votre-organisation .org-layout-split__services { flex:1 1 100%; }
+      #view-votre-organisation .org-summary-card__stats { width:100%; }
+    }
+  </style>
+<div class="card org-page-hero">
     <div class="org-page-hero__icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></svg>
     </div>
