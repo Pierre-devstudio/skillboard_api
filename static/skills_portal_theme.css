@@ -22497,3 +22497,40 @@ button[id$="ModalClose"]::before{
 #modalOrgPoste .org-poste-def-resp ol > li > ul > li{
   margin: 1px 0;
 }
+
+/* Votre organisation — Finitions responsabilités + bouton Fermer standard */
+#modalOrgPoste #orgPosteDefRespWrap{
+  margin-top: 6px !important;
+  padding-top: 6px !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-section__head{
+  margin-bottom: 4px !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp{
+  margin-top: 0 !important;
+  padding: 6px 10px !important;
+  max-height: 232px;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp ol > li{
+  margin-bottom: 4px !important;
+  padding-bottom: 6px !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp ol > li > ul{
+  margin-top: 2px !important;
+  gap: 1px 28px !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp ol > li > ul > li{
+  margin: 0 !important;
+}
+
+.modal .modal-footer .sb-modal-close-btn::before,
+.modal .modal-footer button[id$="ModalClose"]::before,
+.modal .modal-footer button[id$="Close2"]::before{
+  content: none !important;
+  display: none !important;
+}
