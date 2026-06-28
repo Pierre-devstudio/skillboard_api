@@ -22534,3 +22534,41 @@ button[id$="ModalClose"]::before{
   content: none !important;
   display: none !important;
 }
+
+/* Votre organisation — resserrage définitif du bloc Responsabilités */
+#modalOrgPoste #orgPosteDefMissionWrap{
+  margin-bottom: 0 !important;
+  padding-bottom: 6px !important;
+}
+
+#modalOrgPoste #orgPosteDefMissionWrap + #orgPosteDefRespWrap,
+#modalOrgPoste #orgPosteDefRespWrap{
+  margin-top: 4px !important;
+  padding-top: 6px !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-section__head{
+  margin: 0 0 6px 0 !important;
+  padding: 0 !important;
+  line-height: 1.2 !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-section__icon{
+  align-self: center !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-section__head .label{
+  line-height: 1.2 !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp{
+  margin: 0 !important;
+  padding-top: 6px !important;
+}
+
+/* Standard modal : les boutons Fermer de footer n'ont pas d'icône */
+.modal .modal-footer .sb-modal-close-btn .sb-btn-icon,
+.modal .modal-footer button[id$="ModalClose"] .sb-btn-icon,
+.modal .modal-footer button[id$="Close2"] .sb-btn-icon{
+  display: none !important;
+}
