@@ -16,6 +16,64 @@ router = APIRouter()
 RE_APE = re.compile(r"^\d{2}\.\d{2}$")
 
 
+
+def _normalize_role_code(v: Optional[str]) -> str:
+    s = str(v or "").strip().lower()
+    if s in ("admin", "administrator", "administrateur"):
+        return "admin"
+    if s in ("supervisor", "superviseur", "manager"):
+        return "supervisor"
+    return "user"
+
+
+def _role_label(role_code: Optional[str]) -> str:
+    code = _normalize_role_code(role_code)
+    if code == "admin":
+        return "Administrateur"
+    if code == "supervisor":
+        return "Superviseur"
+    return "Utilisateur"
+
+
+def _fetch_role_label_for_request(cur, request: Request) -> str:
+    email = ""
+    try:
+        auth = request.headers.get("Authorization", "")
+        from app.routers.skills_portal_common import skills_require_user
+        u = skills_require_user(auth)
+        email = (u.get("email") or "").strip().lower()
+    except Exception:
+        email = ""
+
+    if not email:
+        return _role_label("user")
+
+    cur.execute(
+        """
+        SELECT role_code
+        FROM public.tbl_novoskill_user_access
+        WHERE lower(email) = lower(%s)
+          AND console_code = 'insights'
+          AND lower(COALESCE(user_ref_type, '')) IN ('effectif_client', 'utilisateur')
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+        ORDER BY
+          CASE lower(COALESCE(role_code, ''))
+            WHEN 'admin' THEN 0
+            WHEN 'supervisor' THEN 1
+            WHEN 'superviseur' THEN 1
+            WHEN 'user' THEN 2
+            ELSE 9
+          END,
+          id_access DESC
+        LIMIT 1
+        """,
+        (email,),
+    )
+    row = cur.fetchone() or {}
+    return _role_label(row.get("role_code"))
+
+
 # ======================================================
 # Models
 # ======================================================
@@ -89,7 +147,6 @@ class UpdateContactPayload(BaseModel):
     civ_ca: Optional[str] = None
     nom_ca: Optional[str] = None
     prenom_ca: Optional[str] = None
-    role_ca: Optional[str] = None
     tel_ca: Optional[str] = None
     tel2_ca: Optional[str] = None
     mail_ca: Optional[str] = None
@@ -160,17 +217,10 @@ def _civilite_ui_to_db(v: Optional[str]) -> Optional[str]:
     if s == "":
         return None
 
-    # UI: M / F (car HTML value="M" ou "F")
-    if s == "M":
+    if s in ("M", "M."):
         return "M"
-    if s == "F":
+    if s in ("F", "Mme", "Mme."):
         return "F"
-
-    # Tolérance si jamais un vieux front envoie encore "Mme"
-    if s in ("Mme", "Mme."):
-        return "F"
-    if s in ("M.",):
-        return "M"
 
     return s
 
@@ -270,8 +320,9 @@ def _validate_opco_exists(cur, id_opco: Optional[str]):
         raise HTTPException(status_code=400, detail="OPCO inconnu ou masqué (référentiel).")
 
 
-def _get_informations(cur, id_contact: str) -> InformationsResponse:
+def _get_informations(cur, id_contact: str, request: Request) -> InformationsResponse:
     row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+    role_label = _fetch_role_label_for_request(cur, request)
 
     idcc_lib = _lookup_idcc(cur, row_ent.get("idcc"))
     ape_lib = _lookup_ape(cur, row_ent.get("code_ape_ent"))
@@ -301,10 +352,10 @@ def _get_informations(cur, id_contact: str) -> InformationsResponse:
     contact = ContactInfo(
         id_contact=row_contact["id_contact"],
         id_ent=row_contact["id_ent"],
-        civ_ca=row_contact.get("civ_ca"),
+        civ_ca=_civilite_db_to_ui(row_contact.get("civ_ca")),
         nom_ca=row_contact["nom_ca"],
         prenom_ca=row_contact.get("prenom_ca"),
-        role_ca=row_contact.get("role_ca"),
+        role_ca=role_label,
         tel_ca=row_contact.get("tel_ca"),
         tel2_ca=row_contact.get("tel2_ca"),
         mail_ca=row_contact.get("mail_ca"),
@@ -331,7 +382,7 @@ def get_informations(id_contact: str, request: Request):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                return _get_informations(cur, eff_id)
+                return _get_informations(cur, eff_id, request)
 
     except HTTPException:
         raise
@@ -386,7 +437,7 @@ def update_entreprise_infos(id_contact: str, payload: UpdateEntreprisePayload, r
                     )
                     conn.commit()
 
-                return _get_informations(cur, eff_id)
+                return _get_informations(cur, eff_id, request)
 
     except HTTPException:
         raise
@@ -457,7 +508,7 @@ def update_contact_infos(id_contact: str, payload: UpdateContactPayload, request
                             eff_cols.append(f"{target} = %s")
                             eff_vals.append(v)
 
-                    # Si tu ne modifies que des champs non mappés (role_ca / tel2_ca), on ne fait rien
+                    # Si tu ne modifies que des champs non mappés (tel2_ca), on ne fait rien
                     if eff_cols:
                         eff_vals.append(row_contact["id_contact"])  # id_contact = id_effectif (compat)
                         cur.execute(
@@ -473,7 +524,7 @@ def update_contact_infos(id_contact: str, payload: UpdateContactPayload, request
 
                   
 
-                return _get_informations(cur, eff_id)
+                return _get_informations(cur, eff_id, request)
 
     except HTTPException:
         raise

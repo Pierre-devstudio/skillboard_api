@@ -156,7 +156,8 @@
   }
 
   function renderContact(ct) {
-    document.getElementById("ct_civ_ca").value = (ct.civ_ca || "").trim();
+    const civ = (ct.civ_ca || "").trim();
+    document.getElementById("ct_civ_ca").value = civ === "M" ? "M." : (civ === "F" ? "Mme" : civ);
     setValueOrEmpty("ct_prenom_ca", ct.prenom_ca);
     setValueOrEmpty("ct_nom_ca", ct.nom_ca);
     setValueOrEmpty("ct_role_ca", ct.role_ca);
@@ -215,7 +216,6 @@
       civ_ca: normalizeValue(document.getElementById("ct_civ_ca")?.value),
       prenom_ca: normalizeValue(document.getElementById("ct_prenom_ca")?.value),
       nom_ca: normalizeValue(document.getElementById("ct_nom_ca")?.value),
-      role_ca: normalizeValue(document.getElementById("ct_role_ca")?.value),
       tel_ca: normalizeValue(document.getElementById("ct_tel_ca")?.value),
       tel2_ca: normalizeValue(document.getElementById("ct_tel2_ca")?.value),
       mail_ca: normalizeValue(document.getElementById("ct_mail_ca")?.value),
@@ -256,7 +256,7 @@
 
   async function saveContact(portal) {
     const current = collectContactFromUI();
-    const allowed = ["civ_ca","prenom_ca","nom_ca","role_ca","tel_ca","tel2_ca","mail_ca","obs_ca"];
+    const allowed = ["civ_ca","prenom_ca","nom_ca","tel_ca","tel2_ca","mail_ca","obs_ca"];
     const patch = buildPatchFromInitial(_initialContact, current, allowed);
 
     if (patch.nom_ca != null && patch.nom_ca.trim().length === 0) {

@@ -47,6 +47,8 @@ class SkillsContext(BaseModel):
     role_code: Optional[str] = None
     role_label: Optional[str] = None
     id_service: Optional[str] = None
+    nom_ent: Optional[str] = None
+    abonnement_actif: bool = True
 
 
 class DashboardServiceOption(BaseModel):
@@ -450,6 +452,8 @@ def get_skills_context(id_contact: str, request: Request):
             role_code=role,
             role_label=_role_label(role),
             id_service=row_contact.get("id_service"),
+            nom_ent=row_ent.get("nom_ent"),
+            abonnement_actif=bool(row_ent.get("contrat_skills", True)),
         )
     except HTTPException:
         raise

@@ -2,6 +2,7 @@
   const portal = PortalCommon.createPortal({
     apiBase: "https://skillboard-services.onrender.com",
     queryIdParam: "id",
+<<<<<<< ours
   });
 
   const byId = (id) => document.getElementById(id);
@@ -29,6 +30,18 @@
     if (userRole) userRole.textContent = roleLabel || "Utilisateur";
   }
 
+=======
+    topbarInfoText: "Console Insights · Abonnement actif",
+  });
+
+  function roleLabel(roleCode) {
+    const code = String(roleCode || "").trim().toLowerCase();
+    if (code === "admin" || code === "administrator" || code === "administrateur") return "Administrateur";
+    if (code === "supervisor" || code === "superviseur" || code === "manager") return "Superviseur";
+    return "Utilisateur";
+  }
+
+>>>>>>> theirs
     // URL propre: on supprime le #... dès qu'on quitte le planning
   const _origSwitchView = (typeof portal.switchView === "function") ? portal.switchView.bind(portal) : null;
   if (_origSwitchView) {
@@ -59,12 +72,27 @@
       );
       portal.context = ctx;
 
-      const civ = (ctx.civilite || "").trim();
       const prenom = (ctx.prenom || "").trim();
       const nom = (ctx.nom || "").trim();
       const display = [prenom, nom].filter(Boolean).join(" ").trim();
+      const entreprise = (ctx.nom_ent || "").trim() || "Entreprise";
+      const abonnementActif = ctx.abonnement_actif !== false;
+      const abonnementTexte = abonnementActif ? "Console Insights · Abonnement actif" : "Console Insights · Abonnement inactif";
 
+      const topbarName = document.getElementById("topbarName");
+      const topbarSubtitle = document.getElementById("topbarSubtitle");
+      const topbarUserName = document.getElementById("topbarUserName");
+      const topbarUserRole = document.getElementById("topbarUserRole");
+
+      if (topbarName) topbarName.textContent = entreprise;
+      if (topbarSubtitle) topbarSubtitle.textContent = abonnementTexte;
+      if (topbarUserName) topbarUserName.textContent = display || "Contact";
+      if (topbarUserRole) topbarUserRole.textContent = roleLabel(ctx.role_code);
+
+<<<<<<< ours
       fillInsightsTopbar(ctx, display || "Utilisateur");
+=======
+>>>>>>> theirs
       return ctx;
     })();
 
