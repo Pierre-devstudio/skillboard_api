@@ -573,6 +573,8 @@
       const item = document.createElement("div");
       item.className = "sb-tree-item";
       item.setAttribute("data-id", node.id_service);
+      item.setAttribute("data-depth", String(depth));
+      if (depth > 0) item.classList.add("org-tree-item-child");
       item.style.paddingLeft = `${10 + depth * 16}px`;
 
       item.innerHTML = `
@@ -604,6 +606,8 @@
         const item = document.createElement("div");
         item.className = "sb-tree-item";
         item.setAttribute("data-id", n.id_service);
+        item.setAttribute("data-depth", String(depth));
+        if (depth > 0) item.classList.add("org-tree-item-child");
         item.style.paddingLeft = `${10 + depth * 16}px`;
 
         item.innerHTML = `
