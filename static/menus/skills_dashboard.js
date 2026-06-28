@@ -42,6 +42,25 @@
     }
   };
 
+  const HEALTH_COMPONENT_HELP = {
+    postes: {
+      title: "Robustesse des postes",
+      body: "Mesure la solidité des postes du périmètre. Plus le score est élevé, moins les postes analysés cumulent de fragilités : titulaires insuffisants, compétences critiques fragiles, absence de relève ou couverture trop faible."
+    },
+    competences: {
+      title: "Robustesse des compétences",
+      body: "Mesure la solidité des compétences sensibles du périmètre. Un score élevé signifie que les compétences utiles aux postes restent maîtrisées par suffisamment de collaborateurs, avec moins de zones critiques à traiter."
+    },
+    fiabilite: {
+      title: "Fiabilité des données",
+      body: "Mesure la fraîcheur des données utilisées pour calculer le diagnostic. Plus le score est élevé, plus les évaluations et informations exploitées sont récentes, donc plus la lecture du risque est fiable."
+    },
+    transmission: {
+      title: "Capacité de transmission",
+      body: "Mesure la part des compétences disposant déjà d’un relais interne validé ou à confirmer. Un bon score indique que les savoir-faire peuvent être transmis sans dépendre d’une seule personne."
+    }
+  };
+
   function byId(id) { return document.getElementById(id); }
 
   function clamp(n, min, max) {
@@ -520,6 +539,16 @@
     openModal("dashboardInfoModal");
   }
 
+  function openHealthComponentInfo(key) {
+    const cfg = HEALTH_COMPONENT_HELP[(key || "").toString().trim()];
+    if (!cfg) return;
+    const title = byId("dashboardInfoTitle");
+    const body = byId("dashboardInfoBody");
+    if (title) title.textContent = cfg.title;
+    if (body) body.textContent = cfg.body;
+    openModal("dashboardInfoModal");
+  }
+
   function healthDetailInterpretation(pct) {
     const p = clamp(pct, 0, 100);
     if (p >= 92) return "La situation globale est robuste : les postes, compétences, données et capacités de transmission sont globalement sécurisés.";
@@ -529,25 +558,162 @@
     return "Le périmètre est fragile : les risques actuels pèsent fortement sur la continuité ou la transmission des savoir-faire.";
   }
 
-  function healthComponentRowsHtml(components) {
-    const rows = Array.isArray(components) ? components : [];
-    if (!rows.length) {
-      return `<tr><td colspan="4" class="sb-muted">Aucun détail de calcul disponible.</td></tr>`;
-    }
+  function healthTone(pct) {
+    const p = clamp(pct, 0, 100);
+    if (p >= 92) return "robust";
+    if (p >= 80) return "solid";
+    if (p >= 65) return "ok";
+    if (p >= 50) return "watch";
+    return "danger";
+  }
 
-    return rows.map(c => {
-      const label = (c?.label || "Composante").toString();
-      const pct = Number(c?.pct);
-      const weight = Number(c?.weight);
-      const weighted = Number(c?.weighted_score);
-      const source = (c?.source || "Calcul issu du moteur analyse.").toString();
+  function healthToneIcon(tone) {
+    if (tone === "robust" || tone === "solid") {
       return `
-        <tr>
-          <td><strong>${esc(label)}</strong><div class="card-sub" style="margin:3px 0 0 0;">${esc(source)}</div></td>
-          <td class="col-center">${Number.isFinite(pct) ? pctTxt(pct, 0) : "—"}</td>
-          <td class="col-center">${Number.isFinite(weight) ? `${Math.round(weight)}%` : "—"}</td>
-          <td class="col-center"><strong>${Number.isFinite(weighted) ? numTxt(weighted, 1) : "—"}</strong></td>
-        </tr>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"></path>
+        </svg>
+      `;
+    }
+    if (tone === "danger") {
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 9v4"></path>
+          <path d="M12 17h.01"></path>
+          <path d="M10.3 4.2 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"></path>
+        </svg>
+      `;
+    }
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 8v5"></path>
+        <path d="M12 16h.01"></path>
+      </svg>
+    `;
+  }
+
+  function healthComponentIcon(key) {
+    const k = (key || "").toString();
+    if (k === "competences") {
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10 12 5 2 10l10 5 10-5Z"></path>
+          <path d="M6 12.5V17c0 1.2 2.7 2.5 6 2.5s6-1.3 6-2.5v-4.5"></path>
+        </svg>
+      `;
+    }
+    if (k === "fiabilite") {
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="7" ry="3"></ellipse>
+          <path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5"></path>
+          <path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path>
+        </svg>
+      `;
+    }
+    if (k === "transmission") {
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 2 11 13"></path>
+          <path d="M22 2 15 22l-4-9-9-4 20-7Z"></path>
+        </svg>
+      `;
+    }
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="3"></rect>
+        <path d="M8 9h8"></path>
+        <path d="M8 13h8"></path>
+        <path d="M8 17h5"></path>
+      </svg>
+    `;
+  }
+
+  function healthMetaIcon(kind) {
+    const icons = {
+      scope: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9"></path><path d="M16 3.1a4 4 0 0 1 0 7.8"></path></svg>`,
+      criticite: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg>`,
+      postes: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 13h18"></path></svg>`,
+      score: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 5-7"></path></svg>`
+    };
+    return icons[kind] || icons.score;
+  }
+
+  function healthComponentDefaults() {
+    return [
+      {
+        key: "postes",
+        label: "Robustesse des postes",
+        weight: 40,
+        source: "Inverse de la fragilité moyenne des postes issue du moteur analyse."
+      },
+      {
+        key: "competences",
+        label: "Robustesse des compétences",
+        weight: 25,
+        source: "Inverse de la fragilité moyenne des compétences fragiles du périmètre."
+      },
+      {
+        key: "fiabilite",
+        label: "Fiabilité des données",
+        weight: 15,
+        source: "Part des évaluations récentes sur les éléments analysés."
+      },
+      {
+        key: "transmission",
+        label: "Capacité de transmission",
+        weight: 20,
+        source: "Part des compétences disposant d'une transmission validée ou à confirmer."
+      }
+    ];
+  }
+
+  function normalizeHealthComponents(components) {
+    const rows = Array.isArray(components) ? components : [];
+    const byKey = new Map();
+    rows.forEach(c => {
+      const key = (c?.key || "").toString().trim();
+      if (key) byKey.set(key, c);
+    });
+
+    return healthComponentDefaults().map(def => {
+      const row = byKey.get(def.key) || {};
+      const pct = Number(row?.pct);
+      const weight = Number(row?.weight);
+      return {
+        ...def,
+        ...row,
+        key: def.key,
+        label: row?.label || def.label,
+        source: row?.source || def.source,
+        pct: Number.isFinite(pct) ? clamp(pct, 0, 100) : 0,
+        weight: Number.isFinite(weight) ? Math.round(clamp(weight, 0, 100)) : def.weight
+      };
+    });
+  }
+
+  function healthComponentCardsHtml(components) {
+    const rows = normalizeHealthComponents(components);
+    return rows.map(c => {
+      const pct = clamp(c?.pct ?? 0, 0, 100);
+      const tone = healthTone(pct);
+      const weight = Number.isFinite(Number(c?.weight)) ? Math.round(Number(c.weight)) : 0;
+      const label = (c?.label || "Composante").toString();
+      const key = (c?.key || "").toString();
+      return `
+        <div class="sb-dashboard-component-card sb-dashboard-tone--${esc(tone)}">
+          <div class="sb-dashboard-component-head">
+            <span class="sb-dashboard-component-icon">${healthComponentIcon(key)}</span>
+            <div class="sb-dashboard-component-title">${esc(label)}</div>
+            <button type="button" class="sb-dashboard-help-dot" data-health-component-help="${esc(key)}" aria-label="Comprendre ${esc(label)}">?</button>
+          </div>
+          <div class="sb-dashboard-component-value">${pctTxt(pct, 0)}</div>
+          <div class="sb-dashboard-progress" aria-hidden="true">
+            <span style="width:${pct.toFixed(1)}%;"></span>
+          </div>
+          <div class="sb-dashboard-component-sub">Part dans la jauge : <strong>${weight}%</strong></div>
+        </div>
       `;
     }).join("");
   }
@@ -560,6 +726,7 @@
     const filters = _lastData?.filters || {};
     const pct = clamp(health?.pct ?? 0, 0, 100);
     const st = healthStatus(pct);
+    const tone = healthTone(pct);
     const score = Number(health?.score);
     const maxScore = Number(health?.max_score);
     const nbItems = Number(health?.nb_items);
@@ -572,62 +739,56 @@
     const criticiteLabel = Number.isFinite(criticite) ? `≥ ${Math.round(criticite)}` : "—";
 
     body.innerHTML = `
-      <div class="sb-stack">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="sb-block-title" style="margin-bottom:8px;">Lecture immédiate</div>
-          <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
-            <div style="font-size:28px; font-weight:800; color:#111827; line-height:1;">${pctTxt(pct, 0)}</div>
-            <span class="sb-health-status ${esc(st.cls)}" style="margin:0;">${esc(st.label)}</span>
+      <div class="sb-stack sb-dashboard-health-detail">
+        <div class="sb-dashboard-health-hero sb-dashboard-tone--${esc(tone)}">
+          <div class="sb-dashboard-health-hero-icon">${healthToneIcon(tone)}</div>
+          <div class="sb-dashboard-health-hero-main">
+            <div class="sb-dashboard-health-hero-line">
+              <div class="sb-dashboard-health-hero-score">${pctTxt(pct, 0)}</div>
+              <span class="sb-health-status ${esc(st.cls)}">${esc(st.label)}</span>
+            </div>
+            <div class="sb-dashboard-health-hero-text">${esc(healthDetailInterpretation(pct))}</div>
           </div>
-          <div class="card-sub" style="margin:8px 0 0 0;">${esc(healthDetailInterpretation(pct))}</div>
         </div>
 
-        <div class="sb-dashboard-table-wrap">
-          <table class="sb-table sb-table--airy sb-table--zebra sb-dashboard-detail-table">
-            <tbody>
-              <tr>
-                <th style="width:38%;">Périmètre</th>
-                <td>${esc(scopeLabel)}</td>
-              </tr>
-              <tr>
-                <th>Criticité prise en compte</th>
-                <td>${esc(criticiteLabel)}</td>
-              </tr>
-              <tr>
-                <th>Postes analysés</th>
-                <td>${esc(nbLabel)}</td>
-              </tr>
-              <tr>
-                <th>Score pondéré</th>
-                <td>${esc(scoreLabel)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="sb-dashboard-meta-grid">
+          <div class="sb-dashboard-meta-card">
+            <span>${healthMetaIcon("scope")}</span>
+            <div><div>Périmètre</div><strong>${esc(scopeLabel)}</strong></div>
+          </div>
+          <div class="sb-dashboard-meta-card">
+            <span>${healthMetaIcon("criticite")}</span>
+            <div><div>Criticité</div><strong>${esc(criticiteLabel)}</strong></div>
+          </div>
+          <div class="sb-dashboard-meta-card">
+            <span>${healthMetaIcon("postes")}</span>
+            <div><div>Postes analysés</div><strong>${esc(nbLabel)}</strong></div>
+          </div>
+          <div class="sb-dashboard-meta-card">
+            <span>${healthMetaIcon("score")}</span>
+            <div><div>Score pondéré</div><strong>${esc(scoreLabel)}</strong></div>
+          </div>
         </div>
 
-        <div class="sb-dashboard-table-wrap">
-          <table class="sb-table sb-table--airy sb-table--zebra sb-dashboard-detail-table">
-            <thead>
-              <tr>
-                <th>Composante</th>
-                <th class="col-center">Résultat</th>
-                <th class="col-center">Poids</th>
-                <th class="col-center">Points</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${healthComponentRowsHtml(health?.components)}
-            </tbody>
-          </table>
+        <div class="sb-dashboard-health-components">
+          ${healthComponentCardsHtml(health?.components)}
         </div>
 
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="sb-block-title" style="margin-bottom:8px;">Comment lire la jauge</div>
-          <div class="card-sub" style="margin:0; line-height:1.45;">
-            La jauge n’est plus le simple inverse de la fragilité des postes. Elle combine quatre résultats :
-            robustesse des postes (40%), robustesse des compétences (25%), fiabilité des données (15%)
-            et capacité de transmission (20%). La transmission mesure la part des compétences disposant d’une transmission validée ou à confirmer.
-            Le statut traduit ce score global en lecture RH : fragile, sous vigilance, correct, solide ou robuste.
+        <div class="sb-dashboard-read-block">
+          <div class="sb-dashboard-read-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15Z"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="sb-dashboard-read-title">Comment lire la jauge</div>
+            <div class="sb-dashboard-read-text">
+              Cette jauge agrège quatre résultats pondérés : <strong>robustesse des postes (40%)</strong>,
+              <strong>robustesse des compétences (25%)</strong>, <strong>fiabilité des données (15%)</strong>
+              et <strong>capacité de transmission (20%)</strong>. Plus le score est élevé, plus le périmètre est sécurisé.
+              Le statut traduit ce score en lecture opérationnelle : fragile, sous vigilance, correct, solide ou robuste.
+            </div>
           </div>
         </div>
       </div>
@@ -648,55 +809,84 @@
     return `<span class="sb-dashboard-status ${transmissionStatusClass(key)}">${esc(label || "À qualifier")}</span>`;
   }
 
-  function transmissionTransmittersHtml(item) {
+  function transmissionRelayHtml(item) {
     const rows = Array.isArray(item?.transmetteurs) ? item.transmetteurs : [];
-    if (!rows.length) return `<span class="sb-muted">Aucun transmetteur identifié</span>`;
+    if (!rows.length) return `<span class="sb-muted">—</span>`;
 
-    const visible = rows.slice(0, 3).map(t => {
-      const full = (t?.full || "Collaborateur").toString();
-      const niveau = (t?.niveau_label || "À qualifier").toString();
-      const score = Number(t?.score_pct);
-      const scoreTxt = Number.isFinite(score) ? ` · ${numTxt(score, 0)}%` : "";
-      const dateTxt = (t?.date_derniere_eval || "Date à confirmer").toString();
-      const poste = (t?.codif_poste || t?.intitule_poste || "").toString().trim();
-      const meta = poste ? `${niveau}${scoreTxt} · ${dateTxt} · ${poste}` : `${niveau}${scoreTxt} · ${dateTxt}`;
-      return `
-        <div class="sb-dashboard-person-line">
-          <strong>${esc(full)}</strong>
-          <span>${esc(meta)}</span>
-        </div>
-      `;
-    }).join("");
+    const t = rows[0] || {};
+    const full = (t?.full || "Collaborateur").toString();
+    const niveau = (t?.niveau_label || "À qualifier").toString();
+    const score = Number(t?.score_pct);
+    const scoreTxt = Number.isFinite(score) ? ` · ${numTxt(score, 0)}%` : "";
+    const dateTxt = (t?.date_derniere_eval || "Date à confirmer").toString();
+    const poste = (t?.codif_poste || t?.intitule_poste || "").toString().trim();
+    const meta = poste ? `${niveau}${scoreTxt} · ${dateTxt} · ${poste}` : `${niveau}${scoreTxt} · ${dateTxt}`;
+    const more = rows.length > 1 ? `<span class="sb-dashboard-person-more-inline">+ ${rows.length - 1}</span>` : "";
 
-    const more = rows.length > 3
-      ? `<div class="sb-dashboard-person-more">+ ${rows.length - 3} autre(s) transmetteur(s)</div>`
-      : "";
-    return `<div class="sb-dashboard-person-list">${visible}${more}</div>`;
+    return `
+      <div class="sb-dashboard-person-line sb-dashboard-person-line--inline">
+        <strong>${esc(full)}</strong>
+        <span>${esc(meta)}</span>
+        ${more}
+      </div>
+    `;
   }
 
-  function transmissionRowsHtml(items) {
+  function transmissionGroupRowsHtml(items) {
     const rows = Array.isArray(items) ? items : [];
     if (!rows.length) {
-      return `<tr><td colspan="2" class="sb-muted">Aucune compétence analysable sur ce périmètre.</td></tr>`;
+      return `<tr><td colspan="3" class="sb-muted">Aucune compétence analysable sur ce périmètre.</td></tr>`;
     }
 
-    return rows.map(item => {
-      const code = (item?.code || "").toString().trim();
-      const title = (item?.intitule || "Compétence").toString().trim();
-      const statusKey = (item?.status_key || "none").toString();
-      const statusLabel = (item?.status_label || "Aucun transmetteur").toString();
-      return `
-        <tr>
-          <td>
-            <div class="sb-dashboard-comp-cell">
-              ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
-              <span>${esc(title)}</span>
-            </div>
-          </td>
-          <td class="col-center">${transmissionStatusBadge(statusKey, statusLabel)}</td>
+    const groups = [
+      { key: "none", label: "Priorité élevée", cls: "sb-dashboard-priority--high", keys: ["none"] },
+      { key: "review", label: "À vérifier", cls: "sb-dashboard-priority--review", keys: ["review"] },
+      { key: "confirm", label: "À confirmer", cls: "sb-dashboard-priority--medium", keys: ["confirm"] },
+      { key: "validated", label: "Sécurisées", cls: "sb-dashboard-priority--low", keys: ["validated"] }
+    ];
+
+    return groups.map(group => {
+      const groupRows = rows.filter(item => group.keys.includes((item?.status_key || "none").toString()));
+      if (!groupRows.length) return "";
+      const header = `
+        <tr class="sb-dashboard-priority-row ${group.cls}">
+          <td colspan="3"><span></span><strong>${esc(group.label)}</strong><em>${numTxt(groupRows.length, 0)} compétence(s)</em></td>
         </tr>
       `;
+      const detail = groupRows.map(item => {
+        const code = (item?.code || "").toString().trim();
+        const title = (item?.intitule || "Compétence").toString().trim();
+        const statusKey = (item?.status_key || "none").toString();
+        const statusLabel = (item?.status_label || "Aucun transmetteur").toString();
+        return `
+          <tr>
+            <td>
+              <div class="sb-dashboard-comp-cell">
+                ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
+                <span>${esc(title)}</span>
+              </div>
+            </td>
+            <td class="col-center">${transmissionStatusBadge(statusKey, statusLabel)}</td>
+            <td>${transmissionRelayHtml(item)}</td>
+          </tr>
+        `;
+      }).join("");
+      return header + detail;
     }).join("");
+  }
+
+  function dashboardRatio(count, total) {
+    const c = Number(count);
+    const t = Number(total);
+    if (!Number.isFinite(c) || !Number.isFinite(t) || t <= 0) return 0;
+    return clamp((c / t) * 100, 0, 100);
+  }
+
+  function transmissionSegmentStyle(count, total, fallbackMin) {
+    const pct = dashboardRatio(count, total);
+    if (pct <= 0) return "width:0; min-width:0; padding:0; overflow:hidden;";
+    const min = Number.isFinite(Number(fallbackMin)) ? Number(fallbackMin) : 38;
+    return `width:${pct.toFixed(2)}%; min-width:${min}px;`;
   }
 
   function renderTransmissionDetailModal() {
@@ -716,61 +906,97 @@
     const months = Number(transmission?.seuil_mois || 6);
     const criticite = Number(filters?.criticite_min);
     const criticiteLabel = Number.isFinite(criticite) ? `≥ ${Math.round(criticite)}` : "—";
+    const validPct = dashboardRatio(valid, total);
+    const confirmPct = dashboardRatio(confirm, total);
+    const reviewPct = dashboardRatio(review, total);
+    const nonePct = dashboardRatio(none, total);
+    const transmissionTone = healthTone(pct);
 
     body.innerHTML = `
       <div class="sb-stack sb-dashboard-transmission-detail">
-        <div class="card sb-dashboard-detail-section">
-          <div class="sb-dashboard-section-title">Lecture immédiate</div>
-          <div class="sb-dashboard-kpi-grid sb-dashboard-kpi-grid--compact">
-            <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--main">
-              <div class="label">Capacité</div>
-              <div class="value">${pctTxt(pct, 0)}</div>
-              <div class="card-sub">${numTxt(secured, 0)} / ${numTxt(total, 0)} compétences</div>
+        <div class="sb-dashboard-transmission-hero sb-dashboard-tone--${esc(transmissionTone)}">
+          <div>
+            <div class="sb-dashboard-transmission-title"><strong>${pctTxt(pct, 0)}</strong> de capacité de transmission</div>
+            <div class="sb-dashboard-transmission-sub">
+              ${numTxt(secured, 0)} / ${numTxt(total, 0)} compétences disposent d’un relais validé ou à confirmer.
+              ${numTxt(none, 0)} compétence(s) restent sans relais identifié.
             </div>
-            <div class="sb-dashboard-kpi-card">
-              <div class="label">Sécurisées</div>
-              <div class="value">${numTxt(valid, 0)}</div>
-            </div>
-            <div class="sb-dashboard-kpi-card">
-              <div class="label">À confirmer</div>
-              <div class="value">${numTxt(confirm, 0)}</div>
-            </div>
-            <div class="sb-dashboard-kpi-card">
-              <div class="label">À vérifier</div>
-              <div class="value">${numTxt(review, 0)}</div>
-            </div>
-            <div class="sb-dashboard-kpi-card">
-              <div class="label">Sans relais</div>
-              <div class="value">${numTxt(none, 0)}</div>
-            </div>
+          </div>
+          <div class="sb-dashboard-transmission-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 7h11"></path>
+              <path d="m14 3 4 4-4 4"></path>
+              <path d="M17 17H6"></path>
+              <path d="m10 13-4 4 4 4"></path>
+            </svg>
           </div>
         </div>
 
-        <div class="card sb-dashboard-detail-section">
-          <div class="sb-dashboard-section-title">Règle utilisée</div>
-          <div class="card-sub sb-dashboard-rule-text">
-            Une compétence est considérée transmissible lorsqu’au moins une personne disponible est au niveau <strong>Expert</strong>
-            ou atteint le niveau <strong>Avancé haut</strong> avec un score normalisé d’au moins <strong>${numTxt(threshold, 0)}%</strong>.
-            Le taux affiché additionne les transmissions <strong>validées</strong> et celles <strong>à confirmer</strong>, puis les rapporte au nombre de compétences analysées.
-            Les évaluations de plus de <strong>${numTxt(months, 0)} mois</strong> sont isolées en entretien recommandé.
+        <div class="sb-dashboard-segment-wrap" aria-label="Répartition des statuts de transmission">
+          <div class="sb-dashboard-segment-bar">
+            <span class="sb-dashboard-segment sb-dashboard-segment--validated" style="${transmissionSegmentStyle(valid, total)}">${pctTxt(validPct, 0)}</span>
+            <span class="sb-dashboard-segment sb-dashboard-segment--confirm" style="${transmissionSegmentStyle(confirm, total)}">${pctTxt(confirmPct, 0)}</span>
+            <span class="sb-dashboard-segment sb-dashboard-segment--review" style="${transmissionSegmentStyle(review, total)}">${pctTxt(reviewPct, 0)}</span>
+            <span class="sb-dashboard-segment sb-dashboard-segment--none" style="${transmissionSegmentStyle(none, total)}">${pctTxt(nonePct, 0)}</span>
           </div>
-          <div class="sb-dashboard-mini-meta">
-            <span>Criticité prise en compte : ${esc(criticiteLabel)}</span>
+          <div class="sb-dashboard-segment-legend">
+            <span><i class="sb-dashboard-dot sb-dashboard-dot--validated"></i>Sécurisées</span>
+            <span><i class="sb-dashboard-dot sb-dashboard-dot--confirm"></i>À confirmer</span>
+            <span><i class="sb-dashboard-dot sb-dashboard-dot--review"></i>À vérifier</span>
+            <span><i class="sb-dashboard-dot sb-dashboard-dot--none"></i>Sans relais</span>
           </div>
         </div>
 
-        <div class="sb-dashboard-table-wrap">
+        <div class="sb-dashboard-kpi-grid sb-dashboard-kpi-grid--transmission">
+          <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--validated">
+            <div class="label">Sécurisées</div>
+            <div class="value">${numTxt(valid, 0)}</div>
+            <div class="card-sub">${pctTxt(validPct, 0)}</div>
+          </div>
+          <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--confirm">
+            <div class="label">À confirmer</div>
+            <div class="value">${numTxt(confirm, 0)}</div>
+            <div class="card-sub">${pctTxt(confirmPct, 0)}</div>
+          </div>
+          <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--review">
+            <div class="label">À vérifier</div>
+            <div class="value">${numTxt(review, 0)}</div>
+            <div class="card-sub">${pctTxt(reviewPct, 0)}</div>
+          </div>
+          <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--none">
+            <div class="label">Sans relais</div>
+            <div class="value">${numTxt(none, 0)}</div>
+            <div class="card-sub">${pctTxt(nonePct, 0)}</div>
+          </div>
+        </div>
+
+        <div class="sb-dashboard-table-wrap sb-dashboard-table-wrap--clean">
+          <div class="sb-dashboard-section-title">Détail des compétences par priorité</div>
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-dashboard-detail-table sb-dashboard-transmission-table">
             <thead>
               <tr>
                 <th>Compétence</th>
                 <th class="col-center">Statut</th>
+                <th>Relais identifié</th>
               </tr>
             </thead>
             <tbody>
-              ${transmissionRowsHtml(transmission?.items)}
+              ${transmissionGroupRowsHtml(transmission?.items)}
             </tbody>
           </table>
+        </div>
+
+        <div class="sb-dashboard-read-block sb-dashboard-read-block--compact">
+          <div class="sb-dashboard-read-icon" aria-hidden="true">i</div>
+          <div>
+            <div class="sb-dashboard-read-title">Règle utilisée</div>
+            <div class="sb-dashboard-read-text">
+              Une compétence est transmissible lorsqu’au moins une personne disponible est <strong>Expert</strong>
+              ou <strong>Avancé haut</strong> avec un score ≥ <strong>${numTxt(threshold, 0)}%</strong>.
+              Les évaluations de plus de <strong>${numTxt(months, 0)} mois</strong> sont isolées.
+              <span class="sb-dashboard-rule-chip">Criticité prise en compte : ${esc(criticiteLabel)}</span>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -847,6 +1073,12 @@
     root._sbDashboardActionsBound = true;
 
     root.addEventListener("click", async (e) => {
+      const componentHelpBtn = e.target.closest("[data-health-component-help]");
+      if (componentHelpBtn) {
+        openHealthComponentInfo(componentHelpBtn.getAttribute("data-health-component-help"));
+        return;
+      }
+
       const helpBtn = e.target.closest("[data-dash-help]");
       if (helpBtn) {
         openInfo(helpBtn.getAttribute("data-dash-help"));
