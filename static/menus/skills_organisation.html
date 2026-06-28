@@ -1,45 +1,64 @@
 <section id="view-votre-organisation" style="display:none;">
-  <div class="card">
-    <div class="card-title">Votre organisation</div>
-    <div class="card-sub">
-      Sélectionnez un service pour afficher la cartographie des postes et la fiche de poste associée.
+  <div class="card org-page-hero">
+    <div class="org-page-hero__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></svg>
+    </div>
+    <div>
+      <div class="card-title">Votre organisation</div>
+      <div class="card-sub">Parcourez les services de votre organisation et consultez les fiches de poste associées.</div>
     </div>
   </div>
 
-  <div class="sb-split">
-    <!-- Arbre services -->
-    <div class="sb-col">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Services</div>
-        <div class="card-sub" style="margin:0;">Cliquez sur un service.</div>
+  <div class="sb-split org-layout-split">
+    <div class="sb-col org-layout-split__services">
+      <div class="card org-services-card">
+        <div class="org-card-head">
+          <div class="org-card-head__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 7l8 4 8-4-8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></svg>
+          </div>
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Services</div>
+            <div class="card-sub" style="margin:0;">Sélectionnez un service pour afficher les postes et les fiches associées.</div>
+          </div>
+        </div>
 
-        <div class="sb-tree" id="orgTree">
+        <div class="sb-tree org-tree" id="orgTree">
           <div class="card-sub" style="margin-top:10px;">Chargement…</div>
         </div>
       </div>
     </div>
 
-    <!-- Détails + postes -->
-    <div class="sb-col">
-      <div class="card">
-        <div class="card-title" id="orgServiceTitle">Service non sélectionné</div>
-        <div class="card-sub" id="orgServiceMeta" style="margin:0;">—</div>
+    <div class="sb-col org-layout-split__content">
+      <div class="card org-summary-card">
+        <div class="org-summary-main">
+          <div class="org-card-head__icon org-card-head__icon--soft" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
+          </div>
+          <div>
+            <div class="card-title" id="orgServiceTitle">Service non sélectionné</div>
+            <div class="card-sub" id="orgServiceMeta" style="margin:4px 0 0 0;">—</div>
+          </div>
+        </div>
+        <div class="org-summary-stats">
+          <div class="org-stat-box"><div class="org-stat-value" id="orgStatPostes">0</div><div class="org-stat-label">Postes</div></div>
+          <div class="org-stat-box"><div class="org-stat-value" id="orgStatCollabs">0</div><div class="org-stat-label">Collaborateurs</div></div>
+          <div class="org-stat-box"><div class="org-stat-value" id="orgStatServices">0</div><div class="org-stat-label">Services concernés</div></div>
+        </div>
       </div>
 
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+      <div class="card org-postes-card">
+        <div class="org-postes-head">
           <div>
             <div class="card-title" style="margin-bottom:4px;">Postes</div>
             <div class="card-sub" style="margin:0;">Fiches de poste rattachées au service sélectionné.</div>
           </div>
-
-          <div style="min-width:220px; flex:1;">
+          <div class="org-postes-search">
             <div class="label">Rechercher un poste</div>
             <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
           </div>
         </div>
 
-        <div id="postesContainer" style="margin-top:12px;">
+        <div id="postesContainer" class="org-postes-list" style="margin-top:12px;">
           <div class="card-sub">Sélectionnez un service pour afficher les postes.</div>
         </div>
 
@@ -49,7 +68,6 @@
       </div>
     </div>
   </div>
-
 
   <!-- ======================================================
       Modal Poste (Votre organisation) — Squelette 3 onglets

@@ -1,6 +1,6 @@
 (function () {
   const NON_LIE_ID = "__NON_LIE__";
-  const TOUS_SERVICES_ID = "__TOUS__";
+  const TOUS_SERVICES_ID = "__ALL__";
 
 
   let _bound = false;
@@ -20,6 +20,49 @@
       .replaceAll("'", "&#039;");
   }
 
+
+  function ensureOrganisationStyles(){
+    if (document.getElementById("skills-organisation-refresh-style")) return;
+    const style = document.createElement("style");
+    style.id = "skills-organisation-refresh-style";
+    style.textContent = `
+#view-votre-organisation .org-page-hero{display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:18px}
+#view-votre-organisation .org-page-hero__icon,#view-votre-organisation .org-card-head__icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#fdf0f1;color:var(--brand);flex:0 0 auto}
+#view-votre-organisation .org-page-hero__icon svg,#view-votre-organisation .org-card-head__icon svg{width:20px;height:20px;display:block}
+#view-votre-organisation .org-layout-split{align-items:stretch}
+#view-votre-organisation .org-layout-split__services{flex:0 0 320px}
+#view-votre-organisation .org-layout-split__content{min-width:0}
+#view-votre-organisation .org-services-card,#view-votre-organisation .org-summary-card,#view-votre-organisation .org-postes-card{border-radius:18px}
+#view-votre-organisation .org-card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+#view-votre-organisation .org-card-head__icon--soft{background:#f7f7fb;color:#667085}
+#view-votre-organisation .org-tree{display:flex;flex-direction:column;gap:8px}
+#view-votre-organisation .sb-tree-item{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:0 12px!important;border:1px solid #eceff3;border-radius:12px;background:#fff;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}
+#view-votre-organisation .sb-tree-item:hover{border-color:#d7dbe3;background:#fafbfc}
+#view-votre-organisation .sb-tree-item.active{border-color:rgba(216,29,48,.18);background:#fff5f6;box-shadow:inset 0 0 0 1px rgba(216,29,48,.05)}
+#view-votre-organisation .sb-tree-name{font-weight:600;color:#111827}
+#view-votre-organisation .org-tree-arrow{color:#98a2b3;font-size:18px;line-height:1}
+#view-votre-organisation .org-summary-card{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
+#view-votre-organisation .org-summary-main{display:flex;align-items:flex-start;gap:12px;min-width:260px}
+#view-votre-organisation .org-summary-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px;width:min(100%,440px)}
+#view-votre-organisation .org-stat-box{padding:12px 14px;border:1px solid #eceff3;border-radius:14px;background:#fbfcfd}
+#view-votre-organisation .org-stat-value{font-size:22px;font-weight:800;color:#111827;line-height:1.1}
+#view-votre-organisation .org-stat-label{margin-top:4px;font-size:12px;color:#667085}
+#view-votre-organisation .org-postes-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#view-votre-organisation .org-postes-search{min-width:260px;flex:1 1 320px;max-width:420px}
+#view-votre-organisation .org-postes-list{display:flex;flex-direction:column;gap:10px}
+#view-votre-organisation .org-poste-row{width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}
+#view-votre-organisation .org-poste-row:hover{background:#fafbfc;border-color:#d7dbe3;box-shadow:0 4px 14px rgba(15,23,42,.04)}
+#view-votre-organisation .org-poste-row__main{min-width:0;flex:1 1 auto}
+#view-votre-organisation .org-poste-head{display:flex;align-items:center;gap:10px;min-width:0}
+#view-votre-organisation .org-poste-head .sb-acc-title,#view-votre-organisation .org-poste-row .sb-acc-title{margin:0;min-width:0;font-weight:700;color:#111827;line-height:1.2}
+#view-votre-organisation .org-poste-row__actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;flex:0 0 auto;flex-wrap:wrap}
+#view-votre-organisation .org-poste-row__count{border-color:var(--sb-poste);color:var(--sb-poste);font-weight:700}
+#view-votre-organisation .org-poste-row__icon-actions{gap:6px}
+@media (max-width:980px){#view-votre-organisation .org-layout-split__services{flex:1 1 100%}#view-votre-organisation .org-summary-stats{width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:720px){#view-votre-organisation .org-page-hero{align-items:flex-start}#view-votre-organisation .org-summary-stats{grid-template-columns:1fr}#view-votre-organisation .org-poste-row{align-items:flex-start;flex-direction:column}#view-votre-organisation .org-poste-row__actions{width:100%;justify-content:flex-end}}
+`;
+    document.head.appendChild(style);
+  }
 
   function repairAiTextEncodingGlitches(value) {
     let s = String(value ?? "");
@@ -417,6 +460,31 @@
   }
 
 
+  function _countServicesForSelection(id_service) {
+    if (id_service === TOUS_SERVICES_ID) {
+      let count = 0;
+      _serviceIndex.forEach((node, key) => {
+        if (key !== TOUS_SERVICES_ID && key !== NON_LIE_ID) count += 1;
+      });
+      return count;
+    }
+    if (id_service === NON_LIE_ID) return 0;
+    return id_service ? 1 : 0;
+  }
+
+  function updateServiceStats(node, postes) {
+    const statPostes = document.getElementById("orgStatPostes");
+    const statCollabs = document.getElementById("orgStatCollabs");
+    const statServices = document.getElementById("orgStatServices");
+    const list = Array.isArray(postes) ? postes : [];
+    const nbPostes = list.length;
+    const nbEff = list.reduce((sum, item) => sum + Number(item?.nb_effectifs || 0), 0);
+    const nbServices = _countServicesForSelection(node?.id_service || "");
+    if (statPostes) statPostes.textContent = String(nbPostes);
+    if (statCollabs) statCollabs.textContent = String(nbEff);
+    if (statServices) statServices.textContent = String(nbServices);
+  }
+
   function setServiceHeader(node) {
     const title = document.getElementById("orgServiceTitle");
     const meta = document.getElementById("orgServiceMeta");
@@ -424,6 +492,7 @@
     if (!node) {
       if (title) title.textContent = "Service non sélectionné";
       if (meta) meta.textContent = "—";
+      updateServiceStats(null, []);
       return;
     }
 
@@ -539,7 +608,7 @@
 
         item.innerHTML = `
           <div class="sb-tree-name">${escapeHtml(n.nom_service || "Sans nom")}</div>
-          <div class="sb-tree-meta">${escapeHtml(`${n.nb_postes ?? 0} · ${n.nb_effectifs ?? 0}`)}</div>
+          <div class="org-tree-arrow" aria-hidden="true">›</div>
         `;
 
         item.addEventListener("click", () => selectService(n.id_service));
@@ -558,6 +627,87 @@
 
   }
 
+  async function resolveInsightsAccessToken() {
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        if (session && session.access_token) return String(session.access_token);
+      }
+    } catch (_) {}
+    return "";
+  }
+
+  function getFilenameFromContentDisposition(value){
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const star = raw.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+    if (star && star[1]){
+      try { return decodeURIComponent(star[1]).replace(/^["']|["']$/g, "").trim(); }
+      catch(_) { return String(star[1]).replace(/^["']|["']$/g, "").trim(); }
+    }
+    const quoted = raw.match(/filename\s*=\s*"([^"]+)"/i);
+    if (quoted && quoted[1]) return String(quoted[1]).trim();
+    const plain = raw.match(/filename\s*=\s*([^;]+)/i);
+    if (plain && plain[1]) return String(plain[1]).replace(/^["']|["']$/g, "").trim();
+    return "";
+  }
+
+  async function fetchOrganisationPdfBlob(url) {
+    const headers = {};
+    const token = await resolveInsightsAccessToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const resp = await fetch(url, { method: "GET", headers, credentials: "same-origin" });
+    if (!resp.ok) {
+      let msg = `Erreur PDF (${resp.status})`;
+      try { const err = await resp.json(); if (err && err.detail) msg = String(err.detail); } catch (_) {}
+      throw new Error(msg);
+    }
+    return {
+      blob: await resp.blob(),
+      filename: getFilenameFromContentDisposition(resp.headers.get("Content-Disposition")) || "Fiche de poste.pdf",
+    };
+  }
+
+  function openPdfViewerWindow(title) {
+    const safeTitle = escapeHtml(title || "Document PDF");
+    const win = window.open("", "_blank");
+    if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
+    win.document.open();
+    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bar__status{display:flex;align-items:center;gap:10px;color:#667085}.bar__spinner{width:18px;height:18px;border-radius:999px;border:3px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}@keyframes pdfSpin{to{transform:rotate(360deg)}} </style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><div class="bar__status"><div class="bar__spinner"></div><span>Génération du PDF…</span></div></div><div class="viewer"></div></body></html>`);
+    win.document.close();
+    return win;
+  }
+
+  function renderPdfBlobInViewer(win, blob, title) {
+    const blobUrl = URL.createObjectURL(blob);
+    const safeTitle = escapeHtml(title || "Document PDF");
+    if (!win || win.closed) {
+      window.open(blobUrl, "_blank");
+      setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, 60000);
+      return;
+    }
+    win.document.open();
+    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bar__btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#334155;text-decoration:none;font-weight:600}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}</style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><a class="bar__btn" href="${blobUrl}" download="${safeTitle}">Télécharger</a></div><div class="viewer"><iframe src="${blobUrl}" title="${safeTitle}"></iframe></div></body></html>`);
+    win.document.close();
+    try { win.addEventListener("beforeunload", () => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, { once:true }); } catch(_) {}
+    setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, 5 * 60 * 1000);
+  }
+
+  async function openPosteFichePdf(portal, idPoste) {
+    const pid = String(idPoste || "").trim();
+    if (!portal?.contactId) throw new Error("Contact introuvable.");
+    if (!pid) throw new Error("Poste manquant.");
+    const viewer = openPdfViewerWindow("Fiche de poste");
+    try {
+      const url = `${portal.apiBase}/skills/organisation/postes/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(pid)}/fiche_pdf`;
+      const { blob, filename } = await fetchOrganisationPdfBlob(url);
+      renderPdfBlobInViewer(viewer, blob, filename || "Fiche de poste.pdf");
+    } catch (err) {
+      if (viewer && !viewer.closed) viewer.close();
+      throw err;
+    }
+  }
+
   function renderPostes(list) {
     const container = document.getElementById("postesContainer");
     const empty = document.getElementById("postesEmpty");
@@ -571,42 +721,94 @@
       return;
     }
 
+    const iconEye = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const iconPdf = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
+
     list.forEach(p => {
       const row = document.createElement("div");
       row.className = "org-poste-row";
 
-      const badgeEff = `<span class="sb-badge">${escapeHtml((p.nb_effectifs ?? 0).toString())} collab.</span>`;
-      const badgeResp = p.isresponsable ? `<span class="sb-badge sb-badge-manager">Responsable</span>` : "";
+      const left = document.createElement("div");
+      left.className = "sb-acc-left org-poste-row__main";
+
+      const head = document.createElement("div");
+      head.className = "org-poste-head";
 
       const code = (p.codif_poste || "").trim();
       const title = (p.intitule_poste || "").trim();
       const clientCode = (p.codif_client || "").trim();
       const codeBadge = clientCode || code;
 
-      row.innerHTML = `
-        <div class="sb-acc-left">
-          <div class="org-poste-head">
-            ${codeBadge ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeBadge)}</span>` : ``}
-            <div class="sb-acc-title">${escapeHtml(title || "Poste")}</div>
-          </div>
-        </div>
-        <div class="sb-acc-right">
-          ${badgeResp}
-          ${badgeEff}
-        </div>
-      `;
+      if (codeBadge) {
+        const badge = document.createElement("span");
+        badge.className = "sb-badge sb-badge-ref-poste-code";
+        badge.textContent = codeBadge;
+        head.appendChild(badge);
+      }
 
+      const titleNode = document.createElement("div");
+      titleNode.className = "sb-acc-title";
+      titleNode.textContent = title || "Poste";
+      head.appendChild(titleNode);
+      left.appendChild(head);
 
-      // IMPORTANT: pas d'accordéon, pas de contenu déroulant.
-      // Le détail viendra dans le modal (prochaine étape).
-      row.addEventListener("click", () => {
+      const right = document.createElement("div");
+      right.className = "sb-acc-right org-poste-row__actions";
+
+      if (p.isresponsable) {
+        const badgeResp = document.createElement("span");
+        badgeResp.className = "sb-badge sb-badge-manager";
+        badgeResp.textContent = "Responsable";
+        right.appendChild(badgeResp);
+      }
+
+      const badgeEff = document.createElement("span");
+      badgeEff.className = "sb-badge org-poste-row__count";
+      badgeEff.textContent = `${(p.nb_effectifs ?? 0).toString()} collab.`;
+      right.appendChild(badgeEff);
+
+      const actions = document.createElement("div");
+      actions.className = "sb-icon-actions org-poste-row__icon-actions";
+
+      const eyeBtn = document.createElement("button");
+      eyeBtn.type = "button";
+      eyeBtn.className = "sb-icon-btn";
+      eyeBtn.title = "Voir la fiche";
+      eyeBtn.setAttribute("aria-label", "Voir la fiche");
+      eyeBtn.innerHTML = iconEye;
+      eyeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         openOrgPosteModal(p);
       });
+      actions.appendChild(eyeBtn);
 
+      const pdfBtn = document.createElement("button");
+      pdfBtn.type = "button";
+      pdfBtn.className = "sb-icon-btn";
+      pdfBtn.title = "Voir le PDF";
+      pdfBtn.setAttribute("aria-label", "Voir le PDF");
+      pdfBtn.innerHTML = iconPdf;
+      pdfBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const portal = window.__skillsPortalInstance;
+        if (!portal) return;
+        try {
+          await openPosteFichePdf(portal, p.id_poste);
+        } catch (err) {
+          portal.showAlert("error", err?.message || String(err));
+        }
+      });
+      actions.appendChild(pdfBtn);
 
+      right.appendChild(actions);
+      row.appendChild(left);
+      row.appendChild(right);
+
+      row.addEventListener("click", () => openOrgPosteModal(p));
       container.appendChild(row);
     });
-
   }
 
   function formatDateOnly(v) {
@@ -1128,6 +1330,7 @@
   async function loadPostesForService(portal, id_service) {
     if (_postesCache.has(id_service)) {
       _currentPostes = _postesCache.get(id_service) || [];
+      updateServiceStats(_serviceIndex.get(id_service) || { id_service }, _currentPostes);
       applyPosteFilter();
       return;
     }
@@ -1139,6 +1342,7 @@
     const postes = Array.isArray(resp.postes) ? resp.postes : [];
     _postesCache.set(id_service, postes);
     _currentPostes = postes;
+    updateServiceStats(_serviceIndex.get(id_service) || { id_service }, postes);
     applyPosteFilter();
   }
 
@@ -1156,6 +1360,7 @@
       portal.showAlert("", "");
       document.getElementById("postesContainer").innerHTML = `<div class="card-sub">Chargement…</div>`;
       document.getElementById("postesEmpty").style.display = "none";
+      updateServiceStats(node || { id_service }, []);
 
       await loadPostesForService(portal, id_service);
     } catch (e) {
@@ -1184,6 +1389,7 @@
       bindOrgPosteModalOnce();
 
       try {
+        ensureOrganisationStyles();
         bindOnce(portal);        
         if (!_servicesLoaded) await loadServices(portal);
       } catch (e) {

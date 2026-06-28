@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 
@@ -12,6 +12,17 @@ from app.routers.skills_portal_common import (
 import html as _html
 import re
 from html.parser import HTMLParser
+
+from app.routers.skills_portal_pdf_common import build_pdf_document
+from app.routers.studio_portal_organisation import (
+    _build_poste_pdf_story,
+    _fetch_ccn_referential,
+    _fetch_logo_bytes_for_ent,
+    _fetch_poste_ccn_dossier,
+    _pdf_first_non_empty,
+    _pdf_format_footer_date,
+    _pdf_latin1_safe,
+)
 
 
 router = APIRouter()
@@ -107,6 +118,159 @@ def _build_tree(flat_services: List[Dict], counts_by_service: Dict[str, Dict[str
 
     sort_rec(roots)
     return roots
+def _fetch_poste_pdf_payload_for_ent(cur, id_ent: str, pid: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          p.id_poste,
+          p.id_owner,
+          p.id_ent,
+          p.id_service,
+          p.codif_poste,
+          p.codif_client,
+          COALESCE(NULLIF(BTRIM(p.codif_client), ''), NULLIF(BTRIM(p.codif_poste), ''), '—') AS code_poste,
+          COALESCE(p.intitule_poste, '') AS intitule_poste,
+          COALESCE(p.mission_principale, '') AS mission_principale,
+          COALESCE(p.responsabilites, '') AS responsabilites,
+          COALESCE(p.isresponsable, FALSE) AS isresponsable,
+          p.date_maj AS poste_date_maj,
+          COALESCE(p.niveau_contrainte, '') AS niveau_contrainte,
+          COALESCE(p.mobilite, '') AS mobilite,
+          COALESCE(p.perspectives_evolution, '') AS perspectives_evolution,
+          COALESCE(p.risque_physique, '') AS risque_physique,
+          COALESCE(p.detail_contrainte, '') AS detail_contrainte,
+          COALESCE(p.niveau_education_minimum, '') AS niveau_education_minimum,
+          COALESCE(p.nsf_groupe_code, '') AS nsf_groupe_code,
+          COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
+          COALESCE(ng.titre, '') AS nsf_groupe_titre,
+          COALESCE(s.nom_service, '') AS nom_service,
+          COALESCE(ent.nom_ent, '') AS nom_ent,
+          COALESCE(ent.idcc, '') AS ent_idcc
+        FROM public.tbl_fiche_poste p
+        LEFT JOIN public.tbl_entreprise_organigramme s
+          ON s.id_service = p.id_service
+         AND s.id_ent = p.id_ent
+         AND COALESCE(s.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise ent
+          ON ent.id_ent = p.id_ent
+         AND COALESCE(ent.masque, FALSE) = FALSE
+        LEFT JOIN public.tbl_nsf_groupe ng
+          ON ng.code = p.nsf_groupe_code
+         AND COALESCE(ng.masque, FALSE) = FALSE
+        WHERE p.id_ent = %s
+          AND COALESCE(p.actif, TRUE) = TRUE
+          AND p.id_poste = %s
+        LIMIT 1
+        """,
+        (id_ent, pid),
+    )
+    poste = cur.fetchone() or None
+    if not poste:
+        raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+    cur.execute(
+        """
+        SELECT
+          c.id_comp AS id_competence,
+          c.code,
+          c.intitule,
+          COALESCE(pc.niveau_requis, '') AS niveau_requis,
+          COALESCE(pc.poids_criticite, 0) AS poids_criticite,
+          COALESCE(pc.freq_usage, 0) AS freq_usage,
+          COALESCE(pc.impact_resultat, 0) AS impact_resultat,
+          COALESCE(pc.dependance, 0) AS dependance
+        FROM public.tbl_fiche_poste_competence pc
+        JOIN public.tbl_competence c
+          ON c.id_comp = pc.id_competence
+        WHERE pc.id_poste = %s
+          AND COALESCE(pc.masque, FALSE) = FALSE
+          AND COALESCE(c.masque, FALSE) = FALSE
+        ORDER BY
+            COALESCE(pc.poids_criticite, 0) DESC,
+            lower(COALESCE(c.intitule, '')),
+            lower(COALESCE(c.code, ''))
+        """,
+        (pid,),
+    )
+    comps = cur.fetchall() or []
+
+    cur.execute(
+        """
+        SELECT
+          cert.id_certification,
+          COALESCE(cert.nom_certification, '') AS nom_certification,
+          COALESCE(cert.description, '') AS description,
+          COALESCE(cert.categorie, '') AS categorie,
+          cert.duree_validite,
+          cert.delai_renouvellement,
+          COALESCE(pc.niveau_exigence, '') AS niveau_exigence,
+          pc.validite_override,
+          COALESCE(pc.commentaire, '') AS commentaire
+        FROM public.tbl_fiche_poste_certification pc
+        JOIN public.tbl_certification cert
+          ON cert.id_certification = pc.id_certification
+        WHERE pc.id_poste = %s
+        ORDER BY lower(COALESCE(cert.nom_certification, ''))
+        """,
+        (pid,),
+    )
+    certs = cur.fetchall() or []
+
+    return {
+        "id_poste": poste.get("id_poste"),
+        "id_owner": poste.get("id_owner"),
+        "id_ent": poste.get("id_ent"),
+        "id_service": poste.get("id_service"),
+        "nom_service": poste.get("nom_service"),
+        "codif_poste": poste.get("codif_poste"),
+        "codif_client": poste.get("codif_client"),
+        "code_poste": poste.get("code_poste"),
+        "intitule_poste": poste.get("intitule_poste"),
+        "mission_principale": poste.get("mission_principale"),
+        "responsabilites": poste.get("responsabilites"),
+        "isresponsable": bool(poste.get("isresponsable")),
+        "poste_date_maj": poste.get("poste_date_maj"),
+        "niveau_contrainte": poste.get("niveau_contrainte"),
+        "mobilite": poste.get("mobilite"),
+        "perspectives_evolution": poste.get("perspectives_evolution"),
+        "risque_physique": poste.get("risque_physique"),
+        "detail_contrainte": poste.get("detail_contrainte"),
+        "niveau_education_minimum": poste.get("niveau_education_minimum"),
+        "nsf_groupe_code": poste.get("nsf_groupe_code"),
+        "nsf_groupe_titre": poste.get("nsf_groupe_titre"),
+        "nsf_groupe_obligatoire": bool(poste.get("nsf_groupe_obligatoire")),
+        "nom_ent": poste.get("nom_ent"),
+        "ent_idcc": poste.get("ent_idcc"),
+        "competences": [
+            {
+                "id_competence": c.get("id_competence"),
+                "code": c.get("code"),
+                "intitule": c.get("intitule"),
+                "niveau_requis": c.get("niveau_requis"),
+                "poids_criticite": int(c.get("poids_criticite") or 0),
+                "freq_usage": int(c.get("freq_usage") or 0),
+                "impact_resultat": int(c.get("impact_resultat") or 0),
+                "dependance": int(c.get("dependance") or 0),
+            }
+            for c in comps
+        ],
+        "certifications": [
+            {
+                "id_certification": c.get("id_certification"),
+                "nom_certification": c.get("nom_certification"),
+                "description": c.get("description"),
+                "categorie": c.get("categorie"),
+                "duree_validite": c.get("duree_validite"),
+                "delai_renouvellement": c.get("delai_renouvellement"),
+                "niveau_exigence": c.get("niveau_exigence"),
+                "validite_override": c.get("validite_override"),
+                "commentaire": c.get("commentaire"),
+            }
+            for c in certs
+        ],
+    }
+
+
 # ======================================================
 # RTF -> HTML (minimal, safe)
 # - Objectif: conserver le gras (\b) et les listes à puces (RichEdit \pntext)
@@ -990,6 +1154,66 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get("/skills/organisation/postes/{id_contact}/{id_poste}/fiche_pdf")
+def get_poste_fiche_pdf(id_contact: str, id_poste: str, request: Request):
+    pid = (id_poste or "").strip()
+    if not pid:
+        raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                poste = _fetch_poste_pdf_payload_for_ent(cur, id_ent, pid)
+                dossier = _fetch_poste_ccn_dossier(cur, pid)
+                logo_bytes = _fetch_logo_bytes_for_ent(cur, id_ent)
+                idcc = (poste.get("ent_idcc") or "").strip()
+                referential = _fetch_ccn_referential(cur, idcc) if idcc else None
+                header_right = (poste.get("nom_ent") or "Entreprise").strip()
+
+        ref_poste = _pdf_first_non_empty(
+            poste.get("code_poste"),
+            poste.get("codif_client"),
+            poste.get("codif_poste"),
+            pid,
+        ) or "Poste"
+        intitule_poste = _pdf_first_non_empty(poste.get("intitule_poste"), "Poste") or "Poste"
+
+        maj_label = _pdf_format_footer_date(poste.get("poste_date_maj")) if poste.get("poste_date_maj") else ""
+        footer_parts = []
+        if maj_label:
+            footer_parts.append(f"Dernière mise à jour du poste : {maj_label}")
+        footer_parts.append("Novoskill Insights")
+        footer_parts.append("Fiche de poste complète")
+
+        filename = _pdf_latin1_safe(f"Fiche de poste {ref_poste} - {intitule_poste}.pdf")
+        pdf_bytes = build_pdf_document(
+            _build_poste_pdf_story({}, poste, dossier, referential),
+            meta={
+                "title": _pdf_latin1_safe(f"Fiche de poste - {intitule_poste}"),
+                "doc_label": _pdf_latin1_safe("Fiche de poste complète"),
+                "footer_left": _pdf_latin1_safe(" • ".join(footer_parts) if footer_parts else "Novoskill Insights"),
+                "header_right": _pdf_latin1_safe(header_right),
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+                "logo_bytes": logo_bytes,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur génération PDF poste : {e}")
+
 
 @router.post(
     "/skills/organisation/poste_param_rh_update/{id_contact}/{id_poste}",
