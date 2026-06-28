@@ -2700,7 +2700,7 @@ body{
   min-width:0;
   display:flex;
   flex-direction:column;
-  gap:16px;
+  gap:12px;
 }
 
 #view-votre-organisation .org-card-head{
@@ -2721,12 +2721,12 @@ body{
 }
 
 #view-votre-organisation #orgTree .sb-tree-item{
-  min-height:48px;
+  min-height:40px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:12px;
-  padding:0 16px;
+  gap:10px;
+  padding:0 14px;
   border:0;
   border-bottom:1px solid var(--org-border-soft);
   border-radius:0;
@@ -2894,14 +2894,15 @@ body{
 
 #view-votre-organisation .org-postes-search input{
   width:100%;
-  height:42px;
+  height:38px;
   box-sizing:border-box;
-  padding:0 14px 0 44px;
+  padding:0 12px 0 40px;
   border:1px solid var(--org-border);
   border-radius:12px;
   background:#ffffff;
   color:var(--org-text);
-  font:inherit;
+  font-family:inherit;
+  font-size:12.5px;
   outline:none;
 }
 
@@ -2916,7 +2917,7 @@ body{
 
 #view-votre-organisation .org-search-icon{
   position:absolute;
-  left:14px;
+  left:13px;
   top:50%;
   transform:translateY(-50%);
   color:#64748b;
@@ -2931,8 +2932,8 @@ body{
 #view-votre-organisation .org-postes-list{
   display:flex;
   flex-direction:column;
-  gap:8px;
-  margin-top:14px;
+  gap:6px;
+  margin-top:10px;
 }
 
 #view-votre-organisation #postesEmpty{
@@ -2946,13 +2947,13 @@ body{
 
 #view-votre-organisation .org-poste-row{
   width:100%;
-  min-height:54px;
+  min-height:44px;
   box-sizing:border-box;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:14px;
-  padding:10px 14px;
+  gap:12px;
+  padding:6px 10px;
   border:1px solid var(--org-border-soft);
   border-radius:12px;
   background:#ffffff;
@@ -2975,7 +2976,7 @@ body{
 #view-votre-organisation .org-poste-head{
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:10px;
   min-width:0;
 }
 
@@ -2983,24 +2984,12 @@ body{
   min-width:0;
   margin:0;
   color:var(--org-text);
-  font-size:13px;
-  font-weight:700;
+  font-size:12.5px;
+  font-weight:650;
   line-height:1.25;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-}
-
-#view-votre-organisation .org-poste-row .sb-badge-ref-poste-code{
-  height:28px;
-  min-width:58px;
-  padding:0 10px;
-  border-radius:7px;
-  background:linear-gradient(135deg, #d133bc, #f006a8);
-  border-color:transparent;
-  color:#ffffff;
-  font-size:11px;
-  font-weight:800;
 }
 
 #view-votre-organisation .org-poste-row__actions,
@@ -3008,15 +2997,15 @@ body{
   display:flex;
   align-items:center;
   justify-content:flex-end;
-  gap:10px;
+  gap:8px;
   margin-left:auto;
   flex:0 0 auto;
 }
 
 #view-votre-organisation .org-poste-row__count{
-  height:26px;
-  min-width:76px;
-  padding:0 10px;
+  height:22px;
+  min-width:70px;
+  padding:0 9px;
   border-color:#ff8bd5;
   background:#ffffff;
   color:#e22cb7;
@@ -3028,12 +3017,12 @@ body{
   display:flex;
   align-items:center;
   justify-content:flex-end;
-  gap:8px;
+  gap:6px;
 }
 
 #view-votre-organisation .org-poste-row .sb-icon-btn{
-  width:38px;
-  height:38px;
+  width:30px;
+  height:30px;
   border:1px solid #d8dee8;
   border-radius:9px;
   background:#ffffff;
@@ -3047,8 +3036,8 @@ body{
 }
 
 #view-votre-organisation .org-poste-row .sb-icon-btn svg{
-  width:16px;
-  height:16px;
+  width:14px;
+  height:14px;
 }
 
 /* Votre organisation — Modal Poste */
