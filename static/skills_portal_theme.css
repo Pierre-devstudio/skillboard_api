@@ -22194,9 +22194,9 @@ body{
 }
 
 #modalOrgPoste .org-poste-def-head{
-  padding-bottom:14px;
+  padding-bottom:12px;
   border-bottom:1px solid #e5e7eb;
-  margin-bottom:14px;
+  margin-bottom:12px;
 }
 
 #modalOrgPoste .org-poste-def-section{
@@ -22204,12 +22204,12 @@ body{
 }
 
 #modalOrgPoste #orgPosteDefMissionWrap{
-  padding-bottom:10px;
+  padding-bottom:6px;
   border-bottom:1px solid #e5e7eb;
 }
 
 #modalOrgPoste #orgPosteDefRespWrap{
-  margin-top:8px;
+  margin-top:0;
   padding:0;
 }
 
@@ -22217,11 +22217,11 @@ body{
   display:flex;
   align-items:center;
   gap:8px;
-  margin:0 0 6px 0;
+  margin:0 0 4px 0;
 }
 
 #modalOrgPoste #orgPosteDefRespWrap .org-poste-def-section__head{
-  margin-bottom:8px;
+  margin-bottom:6px;
 }
 
 #modalOrgPoste .org-poste-def-section__head .label{
@@ -22285,7 +22285,7 @@ body{
   counter-increment:orgResp;
   position:relative;
   margin:0;
-  padding:0 0 8px 36px;
+  padding:0 0 7px 36px;
   border-bottom:1px solid #e5e7eb;
   font-weight:700;
 }
@@ -22316,7 +22316,7 @@ body{
   display:grid;
   grid-template-columns:repeat(2, minmax(0, 1fr));
   gap:3px 32px;
-  margin:4px 0 0 0;
+  margin:7px 0 0 0;
   padding:0;
   font-weight:400;
 }

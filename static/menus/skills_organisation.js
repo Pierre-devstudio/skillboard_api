@@ -836,6 +836,32 @@
     return data;
   }
 
+  function _isEmptyRichNode(node){
+    if (!node) return true;
+    if (node.nodeType === Node.TEXT_NODE) return !(node.textContent || "").trim();
+    if (node.nodeType !== Node.ELEMENT_NODE) return false;
+
+    const tag = node.tagName.toLowerCase();
+    if (tag === "br") return true;
+    if (!["p", "div", "span"].includes(tag)) return false;
+
+    const txt = (node.textContent || "").replace(/\u00a0/g, " ").trim();
+    const hasMedia = !!node.querySelector("img,svg,table,ol,ul");
+    return !txt && !hasMedia;
+  }
+
+  function _cleanResponsibilitiesHtml(container){
+    if (!container) return;
+
+    while (container.firstChild && _isEmptyRichNode(container.firstChild)){
+      container.removeChild(container.firstChild);
+    }
+
+    while (container.lastChild && _isEmptyRichNode(container.lastChild)){
+      container.removeChild(container.lastChild);
+    }
+  }
+
   function fillPosteDefinitionTab(detail) {
     const missionWrap = document.getElementById("orgPosteDefMissionWrap");
     const mission = document.getElementById("orgPosteDefMission");
@@ -868,6 +894,7 @@
     if (respWrap && resp) {
       if (rh) {
         resp.innerHTML = rh;
+        _cleanResponsibilitiesHtml(resp);
         // On garde le RTF brut en mémoire pour le round-trip futur
         resp.dataset.rtf = repairAiTextEncodingGlitches(detail?.responsabilites || "");
         respWrap.style.display = "";
