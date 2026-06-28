@@ -1402,3 +1402,161 @@
     }
   };
 })();
+
+// === NS_FIX_ORG_VISUAL_V7 ===
+(function(){
+  const ORG_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v4"/><path d="M6 12h12"/><path d="M12 8v4"/><rect x="9" y="2.5" width="6" height="4.5" rx="1"/><rect x="3" y="14" width="6" height="5" rx="1"/><rect x="15" y="14" width="6" height="5" rx="1"/><rect x="9" y="14" width="6" height="5" rx="1"/></svg>';
+  const POSTE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 11h16"/></svg>';
+  const COLLAB_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>';
+  const SERVICE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 10h.01"/><path d="M9 14h.01"/><path d="M15 10h.01"/><path d="M15 14h.01"/></svg>';
+
+  function norm(s){
+    return String(s || "").trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function setIconBox(el, html, extraClass){
+    if (!el) return;
+    el.classList.add("ns-org-icon-box");
+    if (extraClass) el.classList.add(extraClass);
+    el.innerHTML = html;
+  }
+
+  function ensureKpiIcon(id, html, cls){
+    const value = document.getElementById(id);
+    if (!value) return;
+    const box = value.closest(".org-stat-box") || value.parentElement;
+    if (!box || box.querySelector(".org-stat-box__icon")) return;
+
+    const icon = document.createElement("span");
+    icon.className = "org-stat-box__icon " + cls;
+    icon.innerHTML = html;
+    box.insertBefore(icon, box.firstChild);
+  }
+
+  function ensurePostesTitleIcon(view){
+    const container = view.querySelector("#postesContainer");
+    const card = container ? container.closest(".card") : null;
+    if (!card) return;
+
+    card.classList.add("org-postes-card");
+    card.querySelectorAll(":scope > svg").forEach(svg => svg.remove());
+
+    const title = Array.from(card.querySelectorAll(".card-title"))
+      .find(el => norm(el.textContent) === "postes");
+    if (!title) return;
+
+    title.classList.add("ns-org-title-with-icon");
+    if (!title.querySelector(".ns-org-title-icon")){
+      const icon = document.createElement("span");
+      icon.className = "ns-org-title-icon";
+      icon.innerHTML = POSTE_ICON;
+      title.insertBefore(icon, title.firstChild);
+    }
+  }
+
+  function fixServiceSummaryIcon(){
+    const title = document.getElementById("orgServiceTitle");
+    if (!title) return;
+    const card = title.closest(".card");
+    if (!card) return;
+
+    let iconBox =
+      card.querySelector(".org-card-head__icon") ||
+      card.querySelector(".ns-org-icon-box") ||
+      card.querySelector("[class*='icon']");
+
+    if (!iconBox){
+      const main = title.closest(".org-summary-card__main") || title.parentElement;
+      iconBox = document.createElement("span");
+      iconBox.className = "org-card-head__icon";
+      if (main) main.insertBefore(iconBox, main.firstChild);
+    }
+
+    setIconBox(iconBox, ORG_ICON);
+  }
+
+  function fixHeroIcon(view){
+    const heroTitle = Array.from(view.querySelectorAll(".card-title"))
+      .find(el => norm(el.textContent) === "votre organisation");
+    const hero = heroTitle ? heroTitle.closest(".card") : null;
+    if (!hero) return;
+
+    let iconBox =
+      hero.querySelector(".org-page-hero__icon") ||
+      hero.querySelector(".info-hero-icon") ||
+      hero.querySelector(".ns-org-icon-box");
+
+    if (!iconBox){
+      iconBox = document.createElement("span");
+      iconBox.className = "org-page-hero__icon";
+      hero.insertBefore(iconBox, hero.firstChild);
+    }
+
+    setIconBox(iconBox, ORG_ICON);
+  }
+
+  function markServiceDepth(view){
+    const tree = view.querySelector("#orgTree");
+    if (!tree) return;
+
+    const childLabels = new Set(["adv", "planning", "pose", "sav"]);
+    Array.from(tree.querySelectorAll(".sb-tree-item")).forEach(row => {
+      const label = norm(row.querySelector(".sb-tree-name")?.textContent || row.textContent);
+      const inline = parseInt(String(row.style.paddingLeft || "0").replace("px",""), 10) || 0;
+
+      if (inline >= 58) row.setAttribute("data-ns-depth", "3");
+      else if (inline >= 42) row.setAttribute("data-ns-depth", "2");
+      else if (inline >= 26) row.setAttribute("data-ns-depth", "1");
+      else row.setAttribute("data-ns-depth", "0");
+
+      if (childLabels.has(label)) row.setAttribute("data-ns-child", "1");
+    });
+  }
+
+  function fixOrgVisual(){
+    const view = document.getElementById("view-votre-organisation");
+    if (!view) return;
+
+    fixHeroIcon(view);
+    fixServiceSummaryIcon();
+    ensureKpiIcon("orgStatPostes", POSTE_ICON, "org-stat-box__icon--postes");
+    ensureKpiIcon("orgStatCollabs", COLLAB_ICON, "org-stat-box__icon--collabs");
+    ensureKpiIcon("orgStatServices", SERVICE_ICON, "org-stat-box__icon--services");
+    ensurePostesTitleIcon(view);
+    markServiceDepth(view);
+  }
+
+  function scheduleFix(){
+    fixOrgVisual();
+    setTimeout(fixOrgVisual, 50);
+    setTimeout(fixOrgVisual, 250);
+    setTimeout(fixOrgVisual, 750);
+  }
+
+  const previous = window.SkillsOrganisation && window.SkillsOrganisation.onShow;
+  if (window.SkillsOrganisation && typeof previous === "function" && !previous.__nsOrgVisualV7){
+    const wrapped = async function(portal){
+      const result = await previous.call(this, portal);
+      scheduleFix();
+      return result;
+    };
+    wrapped.__nsOrgVisualV7 = true;
+    window.SkillsOrganisation.onShow = wrapped;
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", scheduleFix);
+  } else {
+    scheduleFix();
+  }
+
+  const obs = new MutationObserver(() => {
+    clearTimeout(window.__nsOrgVisualV7Timer);
+    window.__nsOrgVisualV7Timer = setTimeout(fixOrgVisual, 80);
+  });
+
+  try {
+    obs.observe(document.body, { childList:true, subtree:true });
+  } catch (_) {}
+})();
