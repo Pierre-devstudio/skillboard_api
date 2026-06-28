@@ -19,51 +19,6 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
   }
-
-
-  function ensureOrganisationStyles(){
-    if (document.getElementById("skills-organisation-refresh-style")) return;
-    const style = document.createElement("style");
-    style.id = "skills-organisation-refresh-style";
-    style.textContent = `
-#view-votre-organisation .org-page-hero{display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:18px}
-#view-votre-organisation .org-page-hero__icon,#view-votre-organisation .org-card-head__icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#fdf0f1;color:var(--brand);flex:0 0 auto}
-#view-votre-organisation .org-page-hero__icon svg,#view-votre-organisation .org-card-head__icon svg{width:20px;height:20px;display:block}
-#view-votre-organisation .org-layout-split{align-items:stretch}
-#view-votre-organisation .org-layout-split__services{flex:0 0 320px}
-#view-votre-organisation .org-layout-split__content{min-width:0}
-#view-votre-organisation .org-services-card,#view-votre-organisation .org-summary-card,#view-votre-organisation .org-postes-card{border-radius:18px}
-#view-votre-organisation .org-card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
-#view-votre-organisation .org-card-head__icon--soft{background:#f7f7fb;color:#667085}
-#view-votre-organisation .org-tree{display:flex;flex-direction:column;gap:8px}
-#view-votre-organisation .sb-tree-item{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:0 12px!important;border:1px solid #eceff3;border-radius:12px;background:#fff;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}
-#view-votre-organisation .sb-tree-item:hover{border-color:#d7dbe3;background:#fafbfc}
-#view-votre-organisation .sb-tree-item.active{border-color:rgba(216,29,48,.18);background:#fff5f6;box-shadow:inset 0 0 0 1px rgba(216,29,48,.05)}
-#view-votre-organisation .sb-tree-name{font-weight:600;color:#111827}
-#view-votre-organisation .org-tree-arrow{color:#98a2b3;font-size:18px;line-height:1}
-#view-votre-organisation .org-summary-card{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
-#view-votre-organisation .org-summary-main{display:flex;align-items:flex-start;gap:12px;min-width:260px}
-#view-votre-organisation .org-summary-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px;width:min(100%,440px)}
-#view-votre-organisation .org-stat-box{padding:12px 14px;border:1px solid #eceff3;border-radius:14px;background:#fbfcfd}
-#view-votre-organisation .org-stat-value{font-size:22px;font-weight:800;color:#111827;line-height:1.1}
-#view-votre-organisation .org-stat-label{margin-top:4px;font-size:12px;color:#667085}
-#view-votre-organisation .org-postes-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-#view-votre-organisation .org-postes-search{min-width:260px;flex:1 1 320px;max-width:420px}
-#view-votre-organisation .org-postes-list{display:flex;flex-direction:column;gap:10px}
-#view-votre-organisation .org-poste-row{width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}
-#view-votre-organisation .org-poste-row:hover{background:#fafbfc;border-color:#d7dbe3;box-shadow:0 4px 14px rgba(15,23,42,.04)}
-#view-votre-organisation .org-poste-row__main{min-width:0;flex:1 1 auto}
-#view-votre-organisation .org-poste-head{display:flex;align-items:center;gap:10px;min-width:0}
-#view-votre-organisation .org-poste-head .sb-acc-title,#view-votre-organisation .org-poste-row .sb-acc-title{margin:0;min-width:0;font-weight:700;color:#111827;line-height:1.2}
-#view-votre-organisation .org-poste-row__actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;flex:0 0 auto;flex-wrap:wrap}
-#view-votre-organisation .org-poste-row__count{border-color:var(--sb-poste);color:var(--sb-poste);font-weight:700}
-#view-votre-organisation .org-poste-row__icon-actions{gap:6px}
-@media (max-width:980px){#view-votre-organisation .org-layout-split__services{flex:1 1 100%}#view-votre-organisation .org-summary-stats{width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:720px){#view-votre-organisation .org-page-hero{align-items:flex-start}#view-votre-organisation .org-summary-stats{grid-template-columns:1fr}#view-votre-organisation .org-poste-row{align-items:flex-start;flex-direction:column}#view-votre-organisation .org-poste-row__actions{width:100%;justify-content:flex-end}}
-`;
-    document.head.appendChild(style);
-  }
-
   function repairAiTextEncodingGlitches(value) {
     let s = String(value ?? "");
     if (!s) return "";
@@ -526,89 +481,13 @@
     _serviceIndex.clear();
     indexNodes(nodes);
 
-    function renderNode(node, depth) {
-      const hasChildren = node.children && node.children.length > 0;
-
-      const label = document.createElement("div");
-      label.className = "sb-tree-item";
-      label.setAttribute("data-id", node.id_service);
-      label.style.paddingLeft = `${10 + depth * 16}px`;
-
-      const name = document.createElement("div");
-      name.className = "sb-tree-name";
-      name.textContent = node.nom_service || "Sans nom";
-
-      const meta = document.createElement("div");
-      meta.className = "sb-tree-meta";
-      meta.textContent = `${node.nb_postes ?? 0} · ${node.nb_effectifs ?? 0}`;
-
-      label.appendChild(name);
-      label.appendChild(meta);
-
-      label.addEventListener("click", () => {
-        selectService(node.id_service);
-        if (hasChildren) {
-          // toggle "collapsed" on children wrapper
-          const wrap = tree.querySelector(`.sb-tree-children[data-parent='${CSS.escape(node.id_service)}']`);
-          if (wrap) wrap.classList.toggle("collapsed");
-        }
-      });
-
-      tree.appendChild(label);
-
-      if (hasChildren) {
-        const childrenWrap = document.createElement("div");
-        childrenWrap.className = "sb-tree-children";
-        childrenWrap.setAttribute("data-parent", node.id_service);
-        // par défaut: déplié
-        node.children.forEach(ch => {
-          renderNode(ch, depth + 1);
-        });
-      }
-    }
-
-    function renderNodeRec(node, depth) {
-      const hasChildren = node.children && node.children.length > 0;
-
-      const item = document.createElement("div");
-      item.className = "sb-tree-item";
-      item.setAttribute("data-id", node.id_service);
-      item.setAttribute("data-depth", String(depth));
-      if (depth > 0) item.classList.add("org-tree-item-child");
-      item.style.paddingLeft = `${10 + depth * 16}px`;
-
-      item.innerHTML = `
-        <div class="sb-tree-name">${escapeHtml(node.nom_service || "Sans nom")}</div>
-        <div class="sb-tree-meta">${escapeHtml(`${node.nb_postes ?? 0} · ${node.nb_effectifs ?? 0}`)}</div>
-      `;
-
-      item.addEventListener("click", () => {
-        selectService(node.id_service);
-      });
-
-      tree.appendChild(item);
-
-      if (hasChildren) {
-        const childrenWrap = document.createElement("div");
-        childrenWrap.className = "sb-tree-children";
-        childrenWrap.setAttribute("data-parent", node.id_service);
-
-        node.children.forEach(ch => renderNodeRec(ch, depth + 1));
-        tree.appendChild(childrenWrap); // (wrap vide visuellement, mais sert pour CSS/structure)
-      }
-    }
-
-    // rendu simple + récursif (sans wrap intermédiaire compliqué)
     function rec(list, depth) {
       (list || []).forEach(n => {
-        const hasChildren = n.children && n.children.length > 0;
-
         const item = document.createElement("div");
         item.className = "sb-tree-item";
         item.setAttribute("data-id", n.id_service);
         item.setAttribute("data-depth", String(depth));
         if (depth > 0) item.classList.add("org-tree-item-child");
-        item.style.paddingLeft = `${10 + depth * 16}px`;
 
         item.innerHTML = `
           <div class="sb-tree-name">${escapeHtml(n.nom_service || "Sans nom")}</div>
@@ -618,17 +497,16 @@
         item.addEventListener("click", () => selectService(n.id_service));
         tree.appendChild(item);
 
-        if (hasChildren) rec(n.children, depth + 1);
+        if (n.children && n.children.length) rec(n.children, depth + 1);
       });
     }
 
     rec(nodes, 0);
 
     // sélection par défaut: Tous les services si présent, sinon premier service
-    const tous = nodes.find(x => x.id_service === TOUS_SERVICES_ID);
+    const tous = (nodes || []).find(x => x.id_service === TOUS_SERVICES_ID);
     if (tous) selectService(TOUS_SERVICES_ID);
-    else if (nodes.length > 0) selectService(nodes[0].id_service);
-
+    else if ((nodes || []).length > 0) selectService(nodes[0].id_service);
   }
 
   async function resolveInsightsAccessToken() {
@@ -1393,7 +1271,6 @@
       bindOrgPosteModalOnce();
 
       try {
-        ensureOrganisationStyles();
         bindOnce(portal);        
         if (!_servicesLoaded) await loadServices(portal);
       } catch (e) {
@@ -1401,162 +1278,4 @@
       }
     }
   };
-})();
-
-// === NS_FIX_ORG_VISUAL_V7 ===
-(function(){
-  const ORG_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v4"/><path d="M6 12h12"/><path d="M12 8v4"/><rect x="9" y="2.5" width="6" height="4.5" rx="1"/><rect x="3" y="14" width="6" height="5" rx="1"/><rect x="15" y="14" width="6" height="5" rx="1"/><rect x="9" y="14" width="6" height="5" rx="1"/></svg>';
-  const POSTE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 11h16"/></svg>';
-  const COLLAB_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>';
-  const SERVICE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 10h.01"/><path d="M9 14h.01"/><path d="M15 10h.01"/><path d="M15 14h.01"/></svg>';
-
-  function norm(s){
-    return String(s || "").trim().toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  }
-
-  function setIconBox(el, html, extraClass){
-    if (!el) return;
-    el.classList.add("ns-org-icon-box");
-    if (extraClass) el.classList.add(extraClass);
-    el.innerHTML = html;
-  }
-
-  function ensureKpiIcon(id, html, cls){
-    const value = document.getElementById(id);
-    if (!value) return;
-    const box = value.closest(".org-stat-box") || value.parentElement;
-    if (!box || box.querySelector(".org-stat-box__icon")) return;
-
-    const icon = document.createElement("span");
-    icon.className = "org-stat-box__icon " + cls;
-    icon.innerHTML = html;
-    box.insertBefore(icon, box.firstChild);
-  }
-
-  function ensurePostesTitleIcon(view){
-    const container = view.querySelector("#postesContainer");
-    const card = container ? container.closest(".card") : null;
-    if (!card) return;
-
-    card.classList.add("org-postes-card");
-    card.querySelectorAll(":scope > svg").forEach(svg => svg.remove());
-
-    const title = Array.from(card.querySelectorAll(".card-title"))
-      .find(el => norm(el.textContent) === "postes");
-    if (!title) return;
-
-    title.classList.add("ns-org-title-with-icon");
-    if (!title.querySelector(".ns-org-title-icon")){
-      const icon = document.createElement("span");
-      icon.className = "ns-org-title-icon";
-      icon.innerHTML = POSTE_ICON;
-      title.insertBefore(icon, title.firstChild);
-    }
-  }
-
-  function fixServiceSummaryIcon(){
-    const title = document.getElementById("orgServiceTitle");
-    if (!title) return;
-    const card = title.closest(".card");
-    if (!card) return;
-
-    let iconBox =
-      card.querySelector(".org-card-head__icon") ||
-      card.querySelector(".ns-org-icon-box") ||
-      card.querySelector("[class*='icon']");
-
-    if (!iconBox){
-      const main = title.closest(".org-summary-card__main") || title.parentElement;
-      iconBox = document.createElement("span");
-      iconBox.className = "org-card-head__icon";
-      if (main) main.insertBefore(iconBox, main.firstChild);
-    }
-
-    setIconBox(iconBox, ORG_ICON);
-  }
-
-  function fixHeroIcon(view){
-    const heroTitle = Array.from(view.querySelectorAll(".card-title"))
-      .find(el => norm(el.textContent) === "votre organisation");
-    const hero = heroTitle ? heroTitle.closest(".card") : null;
-    if (!hero) return;
-
-    let iconBox =
-      hero.querySelector(".org-page-hero__icon") ||
-      hero.querySelector(".info-hero-icon") ||
-      hero.querySelector(".ns-org-icon-box");
-
-    if (!iconBox){
-      iconBox = document.createElement("span");
-      iconBox.className = "org-page-hero__icon";
-      hero.insertBefore(iconBox, hero.firstChild);
-    }
-
-    setIconBox(iconBox, ORG_ICON);
-  }
-
-  function markServiceDepth(view){
-    const tree = view.querySelector("#orgTree");
-    if (!tree) return;
-
-    const childLabels = new Set(["adv", "planning", "pose", "sav"]);
-    Array.from(tree.querySelectorAll(".sb-tree-item")).forEach(row => {
-      const label = norm(row.querySelector(".sb-tree-name")?.textContent || row.textContent);
-      const inline = parseInt(String(row.style.paddingLeft || "0").replace("px",""), 10) || 0;
-
-      if (inline >= 58) row.setAttribute("data-ns-depth", "3");
-      else if (inline >= 42) row.setAttribute("data-ns-depth", "2");
-      else if (inline >= 26) row.setAttribute("data-ns-depth", "1");
-      else row.setAttribute("data-ns-depth", "0");
-
-      if (childLabels.has(label)) row.setAttribute("data-ns-child", "1");
-    });
-  }
-
-  function fixOrgVisual(){
-    const view = document.getElementById("view-votre-organisation");
-    if (!view) return;
-
-    fixHeroIcon(view);
-    fixServiceSummaryIcon();
-    ensureKpiIcon("orgStatPostes", POSTE_ICON, "org-stat-box__icon--postes");
-    ensureKpiIcon("orgStatCollabs", COLLAB_ICON, "org-stat-box__icon--collabs");
-    ensureKpiIcon("orgStatServices", SERVICE_ICON, "org-stat-box__icon--services");
-    ensurePostesTitleIcon(view);
-    markServiceDepth(view);
-  }
-
-  function scheduleFix(){
-    fixOrgVisual();
-    setTimeout(fixOrgVisual, 50);
-    setTimeout(fixOrgVisual, 250);
-    setTimeout(fixOrgVisual, 750);
-  }
-
-  const previous = window.SkillsOrganisation && window.SkillsOrganisation.onShow;
-  if (window.SkillsOrganisation && typeof previous === "function" && !previous.__nsOrgVisualV7){
-    const wrapped = async function(portal){
-      const result = await previous.call(this, portal);
-      scheduleFix();
-      return result;
-    };
-    wrapped.__nsOrgVisualV7 = true;
-    window.SkillsOrganisation.onShow = wrapped;
-  }
-
-  if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", scheduleFix);
-  } else {
-    scheduleFix();
-  }
-
-  const obs = new MutationObserver(() => {
-    clearTimeout(window.__nsOrgVisualV7Timer);
-    window.__nsOrgVisualV7Timer = setTimeout(fixOrgVisual, 80);
-  });
-
-  try {
-    obs.observe(document.body, { childList:true, subtree:true });
-  } catch (_) {}
 })();
