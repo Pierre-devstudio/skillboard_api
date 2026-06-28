@@ -889,6 +889,88 @@
     return `width:${pct.toFixed(2)}%; min-width:${min}px;`;
   }
 
+  function transmissionAttentionItemsHtml(items, statusKeys, limit) {
+    const keys = Array.isArray(statusKeys) ? statusKeys : [statusKeys];
+    const rows = (Array.isArray(items) ? items : []).filter(item => keys.includes((item?.status_key || "none").toString()));
+    if (!rows.length) return `<div class="sb-muted">Aucun élément prioritaire sur ce statut.</div>`;
+
+    const max = Number.isFinite(Number(limit)) ? Number(limit) : 5;
+    const visible = rows.slice(0, max).map(item => {
+      const code = (item?.code || "").toString().trim();
+      const title = (item?.intitule || "Compétence").toString().trim();
+      return `
+        <li>
+          ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
+          <span>${esc(title)}</span>
+        </li>
+      `;
+    }).join("");
+
+    const more = rows.length > max
+      ? `<li class="sb-dashboard-attention-more">+ ${numTxt(rows.length - max, 0)} autre(s) compétence(s)</li>`
+      : "";
+
+    return `<ul class="sb-dashboard-attention-list">${visible}${more}</ul>`;
+  }
+
+  function transmissionAttentionPanelHtml(items, cfg) {
+    const rows = (Array.isArray(items) ? items : []).filter(item => (cfg.keys || []).includes((item?.status_key || "none").toString()));
+    if (!rows.length && cfg.hideWhenEmpty) return "";
+
+    return `
+      <div class="sb-dashboard-attention-card ${esc(cfg.cls || "")}">
+        <div class="sb-dashboard-attention-card-head">
+          <span></span>
+          <div>
+            <strong>${esc(cfg.title || "Points d’attention")}</strong>
+            <small>${numTxt(rows.length, 0)} compétence(s)</small>
+          </div>
+        </div>
+        ${transmissionAttentionItemsHtml(items, cfg.keys || [], cfg.limit || 5)}
+      </div>
+    `;
+  }
+
+  function transmissionAttentionHtml(items) {
+    const rows = Array.isArray(items) ? items : [];
+    if (!rows.length) {
+      return `<div class="sb-dashboard-attention-empty">Aucune compétence analysable sur ce périmètre.</div>`;
+    }
+
+    const panels = [
+      {
+        title: "Compétences sans relais identifié",
+        keys: ["none"],
+        cls: "sb-dashboard-attention-card--high",
+        limit: 5,
+        hideWhenEmpty: true
+      },
+      {
+        title: "Transmissions à vérifier",
+        keys: ["review"],
+        cls: "sb-dashboard-attention-card--review",
+        limit: 5,
+        hideWhenEmpty: true
+      },
+      {
+        title: "Transmissions à confirmer",
+        keys: ["confirm"],
+        cls: "sb-dashboard-attention-card--medium",
+        limit: 5,
+        hideWhenEmpty: true
+      }
+    ].map(cfg => transmissionAttentionPanelHtml(rows, cfg)).filter(Boolean).join("");
+
+    return panels || `<div class="sb-dashboard-attention-empty">Aucun point d’attention prioritaire : les compétences analysées disposent d’un relais sécurisé.</div>`;
+  }
+
+  async function openTransmissionCartography() {
+    closeModal("dashboardTransmissionDetailModal");
+    if (typeof _portal?.switchView === "function") {
+      await _portal.switchView("cartographie-competences");
+    }
+  }
+
   function renderTransmissionDetailModal() {
     const body = byId("dashboardTransmissionDetailBody");
     if (!body) return;
@@ -970,20 +1052,17 @@
           </div>
         </div>
 
-        <div class="sb-dashboard-table-wrap sb-dashboard-table-wrap--clean">
-          <div class="sb-dashboard-section-title">Détail des compétences par priorité</div>
-          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-dashboard-detail-table sb-dashboard-transmission-table">
-            <thead>
-              <tr>
-                <th>Compétence</th>
-                <th class="col-center">Statut</th>
-                <th>Relais identifié</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${transmissionGroupRowsHtml(transmission?.items)}
-            </tbody>
-          </table>
+        <div class="sb-dashboard-attention-wrap">
+          <div class="sb-dashboard-attention-head">
+            <div>
+              <div class="sb-dashboard-section-title">Points d’attention</div>
+              <div class="sb-dashboard-attention-sub">Liste limitée aux compétences à traiter en priorité. Le détail complet se lit dans la cartographie.</div>
+            </div>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-dashboard-open-cartography>Voir le détail dans la cartographie</button>
+          </div>
+          <div class="sb-dashboard-attention-grid">
+            ${transmissionAttentionHtml(transmission?.items)}
+          </div>
         </div>
 
         <div class="sb-dashboard-read-block sb-dashboard-read-block--compact">
@@ -1073,6 +1152,16 @@
     root._sbDashboardActionsBound = true;
 
     root.addEventListener("click", async (e) => {
+      const cartographyBtn = e.target.closest("[data-dashboard-open-cartography]");
+      if (cartographyBtn) {
+        try {
+          await openTransmissionCartography();
+        } catch (err) {
+          _portal?.showAlert?.("error", "Erreur ouverture de la cartographie : " + (err?.message || err));
+        }
+        return;
+      }
+
       const componentHelpBtn = e.target.closest("[data-health-component-help]");
       if (componentHelpBtn) {
         openHealthComponentInfo(componentHelpBtn.getAttribute("data-health-component-help"));
