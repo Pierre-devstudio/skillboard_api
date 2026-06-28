@@ -22572,3 +22572,45 @@ button[id$="ModalClose"]::before{
 .modal .modal-footer button[id$="Close2"] .sb-btn-icon{
   display: none !important;
 }
+
+/* Votre organisation — Responsabilités sans double ascenseur */
+#modalOrgPoste #orgPosteDefMissionWrap{
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#modalOrgPoste #orgPosteDefMissionWrap + #orgPosteDefRespWrap,
+#modalOrgPoste #orgPosteDefRespWrap{
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-section__head{
+  margin: 0 0 6px 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp,
+#modalOrgPoste #orgPosteDefRespWrap .sb-richtext-readonly{
+  max-height: none !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp ol{
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap .org-poste-def-resp ol > li{
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 8px !important;
+}
