@@ -389,6 +389,17 @@
     // OPCO hint
     document.getElementById("ent_id_opco").addEventListener("change", () => setOpcoHintFromCurrent());
 
+    document.addEventListener("click", (event) => {
+      const hasMessage = !!document.querySelector("#view-vos-informations .info-save-feedback.show");
+      if (!hasMessage) return;
+
+      const target = event.target;
+      if (target && target.closest && target.closest("#view-vos-informations .sb-actions")) return;
+
+      clearSaveFeedback("entreprise");
+      clearSaveFeedback("contact");
+    });
+
     setEntrepriseEditMode(false);
     setContactEditMode(false);
 
