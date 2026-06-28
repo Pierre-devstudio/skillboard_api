@@ -2,35 +2,6 @@
   const portal = PortalCommon.createPortal({
     apiBase: "https://skillboard-services.onrender.com",
     queryIdParam: "id",
-<<<<<<< ours
-  });
-
-  const byId = (id) => document.getElementById(id);
-
-  function roleLabelFromCode(code) {
-    const c = String(code || "").trim().toLowerCase();
-    if (c === "admin") return "Administrateur";
-    if (c === "supervisor" || c === "superviseur") return "Superviseur";
-    return "Utilisateur";
-  }
-
-  function fillInsightsTopbar(ctx, displayName) {
-    const entreprise = String(ctx?.nom_entreprise || "").trim() || "Entreprise";
-    const roleLabel = String(ctx?.role_label || "").trim() || roleLabelFromCode(ctx?.role_code);
-    const isActive = ctx?.contrat_skills !== false;
-
-    const scopeName = byId("topbarName");
-    const scopeLine = byId("topbarScopeLine");
-    const userName = byId("topbarUserName");
-    const userRole = byId("topbarUserRole");
-
-    if (scopeName) scopeName.textContent = entreprise;
-    if (scopeLine) scopeLine.textContent = `Console Insights · ${isActive ? "Abonnement actif" : "Abonnement inactif"}`;
-    if (userName) userName.textContent = displayName || "Utilisateur";
-    if (userRole) userRole.textContent = roleLabel || "Utilisateur";
-  }
-
-=======
     topbarInfoText: "Console Insights · Abonnement actif",
   });
 
@@ -41,7 +12,6 @@
     return "Utilisateur";
   }
 
->>>>>>> theirs
     // URL propre: on supprime le #... dès qu'on quitte le planning
   const _origSwitchView = (typeof portal.switchView === "function") ? portal.switchView.bind(portal) : null;
   if (_origSwitchView) {
@@ -89,10 +59,6 @@
       if (topbarUserName) topbarUserName.textContent = display || "Contact";
       if (topbarUserRole) topbarUserRole.textContent = roleLabel(ctx.role_code);
 
-<<<<<<< ours
-      fillInsightsTopbar(ctx, display || "Utilisateur");
-=======
->>>>>>> theirs
       return ctx;
     })();
 
