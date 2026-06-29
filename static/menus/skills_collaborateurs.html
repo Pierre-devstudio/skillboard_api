@@ -90,12 +90,18 @@
             <div class="card-title" style="margin-bottom:4px;">Filtres</div>
             <div class="card-sub" style="margin:0;">Le filtre service impacte la liste et les KPI.</div>
           </div>
-          <div class="collab-card-head__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
-          </div>
+          <button type="button"
+                  class="collab-card-head__icon collab-filter-toggle"
+                  id="btnCollabFiltersToggle"
+                  aria-expanded="true"
+                  aria-controls="collabFilterBody"
+                  title="Replier les filtres"
+                  aria-label="Replier les filtres">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </button>
         </div>
 
-        <div class="collab-filter-stack">
+        <div class="collab-filter-stack" id="collabFilterBody">
           <div class="info-item">
             <label class="sb-label" for="collabServiceSelect">Service</label>
             <select id="collabServiceSelect" class="sb-select">

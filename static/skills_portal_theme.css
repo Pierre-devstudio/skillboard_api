@@ -1599,6 +1599,35 @@ textarea.sb-ctrl{
   height:16px;
 }
 
+#view-vos-collaborateurs .collab-filter-toggle{
+  border:0;
+  padding:0;
+  cursor:pointer;
+  transition:background-color .15s ease, color .15s ease, transform .12s ease;
+}
+
+#view-vos-collaborateurs .collab-filter-toggle:hover{
+  background:var(--collab-red-soft);
+  color:var(--collab-red);
+}
+
+#view-vos-collaborateurs .collab-filter-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-vos-collaborateurs .collab-filter-toggle[aria-expanded="false"] svg{
+  transform:rotate(90deg);
+}
+
+#view-vos-collaborateurs .collab-filter-card.is-collapsed .collab-card-head{
+  margin-bottom:0;
+}
+
+#view-vos-collaborateurs .collab-filter-card.is-collapsed .collab-filter-stack{
+  display:none;
+}
+
 #view-vos-collaborateurs .collab-filter-stack{
   display:flex;
   flex-direction:column;

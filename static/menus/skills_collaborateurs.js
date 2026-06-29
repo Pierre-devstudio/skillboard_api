@@ -1887,6 +1887,7 @@
 
       const btnReset = byId("btnCollabReset");
       const btnApply = byId("btnCollabApply");
+      const btnFiltersToggle = byId("btnCollabFiltersToggle");
       const btnRefresh = byId("btnCollabRefresh");
       const btnOpenPlanning = byId("btnOpenIndispoPlanning");
       const btnPreviewOpen = byId("btnCollabPreviewOpen");
@@ -1921,6 +1922,16 @@
         btnApply.addEventListener("click", () => {
           _breakFocus = null;
           refreshAll(id_contact);
+        });
+      }
+
+      if (btnFiltersToggle) {
+        btnFiltersToggle.addEventListener("click", () => {
+          const card = btnFiltersToggle.closest(".collab-filter-card");
+          const isCollapsed = card ? card.classList.toggle("is-collapsed") : false;
+          btnFiltersToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+          btnFiltersToggle.title = isCollapsed ? "Déplier les filtres" : "Replier les filtres";
+          btnFiltersToggle.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
         });
       }
 
