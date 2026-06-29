@@ -60,10 +60,9 @@
 
     modal.querySelectorAll("#orgPosteTabbar [data-tab]").forEach(btn => {
       const isOn = (btn.getAttribute("data-tab") === tab);
-      btn.classList.toggle("sb-btn--accent", isOn);
-      btn.classList.toggle("sb-btn--soft", !isOn);
+      btn.classList.toggle("is-active", isOn);
+      btn.setAttribute("aria-selected", isOn ? "true" : "false");
     });
-
 
     modal.querySelectorAll(".sb-tab-panel").forEach(p => {
       const isOn = (p.getAttribute("data-panel") === tab);

@@ -3041,6 +3041,87 @@ textarea.sb-ctrl{
 }
 
 /* ======================================================
+   Modal Organisation: navigation fiche poste
+   ====================================================== */
+
+#modalOrgPoste .modal-header--top{
+  padding-bottom:0;
+}
+
+#modalOrgPoste .sb-modal-headstack{
+  gap:10px;
+  width:100%;
+  min-width:0;
+}
+
+#modalOrgPoste .org-poste-modal-nav{
+  display:flex;
+  align-items:center;
+  gap:28px;
+  min-height:48px;
+  border-bottom:1px solid #e5e7eb;
+  margin:0 0 0 -2px;
+  padding:0;
+}
+
+#modalOrgPoste .org-poste-nav-btn{
+  position:relative;
+  min-height:48px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:0;
+  background:transparent;
+  color:#0f2742;
+  padding:0 0 2px;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:750;
+  cursor:pointer;
+}
+
+#modalOrgPoste .org-poste-nav-btn svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalOrgPoste .org-poste-nav-btn::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:2px;
+  border-radius:999px;
+  background:transparent;
+}
+
+#modalOrgPoste .org-poste-nav-btn:hover,
+#modalOrgPoste .org-poste-nav-btn.is-active{
+  color:var(--accent);
+}
+
+#modalOrgPoste .org-poste-nav-btn.is-active::after{
+  background:var(--accent);
+}
+
+#modalOrgPoste .org-poste-nav-btn:focus{
+  outline:none;
+  color:var(--accent);
+}
+
+#modalOrgPoste .org-poste-nav-btn:focus::after{
+  background:var(--accent);
+}
+
+
+/* ======================================================
    Modal Collaborateur: onglet Identification
    ====================================================== */
 
@@ -3252,7 +3333,7 @@ textarea.sb-ctrl{
 
 /* Ajustements modal collaborateur : édition / selects / projection */
 #modalCollaborateur .sb-collab-ident-actions .sb-collab-inline-msg{
-  margin:0 2px 0 0;
+  margin:0 4px 0 auto;
   flex:0 0 auto;
 }
 
@@ -3274,8 +3355,12 @@ textarea.sb-ctrl{
 }
 
 #modalCollaborateur .sb-collab-projection-grid{
-  grid-template-columns:minmax(280px, 1.45fr) minmax(280px, 1.45fr) minmax(150px, .75fr);
+  grid-template-columns:repeat(2, minmax(0, 1fr));
   align-items:end;
+}
+
+#modalCollaborateur .sb-collab-projection-grid > input[type="hidden"]{
+  display:none;
 }
 
 #modalCollaborateur .sb-collab-projection-grid select.sb-select{
@@ -3283,22 +3368,17 @@ textarea.sb-ctrl{
 }
 
 #modalCollaborateur .sb-collab-projection-field--education,
-#modalCollaborateur .sb-collab-projection-field--domain{
-  min-width:280px;
-}
-
-#modalCollaborateur .sb-collab-projection-field--retirement{
-  min-width:140px;
+#modalCollaborateur .sb-collab-projection-field--domain,
+#modalCollaborateur .sb-collab-projection-field--retirement,
+#modalCollaborateur .sb-collab-projection-field--exit-date,
+#modalCollaborateur .sb-collab-projection-field--exit-reason{
+  min-width:0;
 }
 
 #modalCollaborateur .sb-collab-projection-field--exit-check{
   align-self:end;
   margin-top:0;
-}
-
-#modalCollaborateur .sb-collab-projection-field--exit-date,
-#modalCollaborateur .sb-collab-projection-field--exit-reason{
-  min-width:0;
+  min-height:37px;
 }
 
 @media (max-width:980px){

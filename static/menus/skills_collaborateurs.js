@@ -15,6 +15,7 @@
 
   let _handlersBound = false;
   let _searchTimer = null;
+  let _collabInlineMsgTimer = null;
 
   // Indisponibilités (KPI + filtre table)
   let _lastListItems = [];
@@ -471,11 +472,25 @@
     const msg = host?.querySelector?.(".sb-collab-inline-msg");
     if (!msg) return;
 
+    if (_collabInlineMsgTimer) {
+      clearTimeout(_collabInlineMsgTimer);
+      _collabInlineMsgTimer = null;
+    }
+
     msg.textContent = text || "";
     msg.classList.remove("is-visible", "is-success", "is-error", "is-info");
 
     if (!text) return;
+
     msg.classList.add("is-visible", type === "error" ? "is-error" : (type === "success" ? "is-success" : "is-info"));
+
+    _collabInlineMsgTimer = setTimeout(() => {
+      setInlineMsg(host, "info", "");
+    }, 5000);
+  }
+
+  function clearInlineMsg(host) {
+    setInlineMsg(host, "info", "");
   }
 
   function refreshSelectSelectedSoftState(root) {
@@ -1155,11 +1170,11 @@
                     <span aria-hidden="true">${collabIcon("edit")}</span>
                     Modifier
                   </button>
+                  <span class="sb-collab-inline-msg" aria-live="polite"></span>
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="collabBtnCancel" style="display:none;">
                     <span aria-hidden="true">${collabIcon("cancel")}</span>
                     Annuler
                   </button>
-                  <span class="sb-collab-inline-msg" aria-live="polite"></span>
                   <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">
                     <span aria-hidden="true">${collabIcon("save")}</span>
                     Enregistrer
@@ -1455,8 +1470,29 @@
                 if (ev.target && ev.target.matches && ev.target.matches("select.sb-select")) {
                   refreshSelectSelectedSoftState(identHost);
                 }
+                if (ev.target && ev.target.closest && ev.target.closest(".sb-collab-ident-panel")) {
+                  clearInlineMsg(identHost);
+                }
               });
-              
+
+              identHost.addEventListener("input", (ev) => {
+                if (ev.target && ev.target.closest && ev.target.closest(".sb-collab-ident-panel")) {
+                  clearInlineMsg(identHost);
+                }
+              });
+
+              const collabModal = byId("modalCollaborateur");
+              if (collabModal && !collabModal._sbClearInlineMsgBound) {
+                collabModal._sbClearInlineMsgBound = true;
+                collabModal.addEventListener("click", (ev) => {
+                  const target = ev.target;
+                  if (!target || !target.closest) return;
+                  if (target.closest(".sb-collab-ident-actions")) return;
+                  if (target.closest("input, select, textarea, button")) return;
+                  clearInlineMsg(collabModal);
+                });
+              }
+
               // Etat global édition (pour éviter les closures foireuses)
               var _collabIsEdit = false;
 
