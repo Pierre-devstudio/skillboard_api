@@ -425,6 +425,51 @@
       .join("");
   }
 
+  function collabIcon(name) {
+    const icons = {
+      user: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+      skills: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4"/><path d="M12 17v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>`,
+      certs: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+      history: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/><path d="M12 7v5l3 2"/></svg>`,
+      building: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h7v18"/><path d="M14 9h5v12"/><path d="M8 7h2"/><path d="M8 11h2"/><path d="M8 15h2"/></svg>`,
+      briefcase: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>`,
+      contract: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>`,
+      calendar: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>`,
+      phone: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.63 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.2a2 2 0 0 1 2.11-.45c.84.3 1.71.51 2.61.63A2 2 0 0 1 22 16.92Z"/></svg>`,
+      graduation: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>`,
+      comment: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>`,
+      school: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>`,
+      org: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"/><path d="M4 10h16"/><path d="M6 10v11"/><path d="M18 10v11"/><path d="M8 6l4-3 4 3"/><path d="M12 10v11"/></svg>`,
+      audit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"/><path d="M9 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M15 5h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M9 3h6v4H9z"/></svg>`,
+      medal: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
+      trend: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg>`
+    };
+    return icons[name] || "";
+  }
+
+  function renderModalSummaryItem(icon, label, value) {
+    return `
+      <div class="sb-collab-summary-item">
+        <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon(icon)}</span>
+        <span>
+          <span class="sb-collab-summary-label">${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value || "–")}</strong>
+        </span>
+      </div>
+    `;
+  }
+
+  function setInlineMsg(host, type, text) {
+    const msg = host?.querySelector?.(".sb-collab-inline-msg");
+    if (!msg) return;
+
+    msg.textContent = text || "";
+    msg.classList.remove("is-visible", "is-success", "is-error", "is-info");
+
+    if (!text) return;
+    msg.classList.add("is-visible", type === "error" ? "is-error" : (type === "success" ? "is-success" : "is-info"));
+  }
+
   function renderCollaborateurPreview(it) {
     const empty = byId("collabPreviewEmpty");
     const content = byId("collabPreviewContent");
@@ -593,9 +638,11 @@
     const sub = byId("collabModalSub");
     const body = byId("collabModalBody");
     const hb = byId("collabModalBadges");
+    const avatar = byId("collabModalAvatar");
     if (hb) hb.innerHTML = "";
 
     if (title) title.textContent = `${it.prenom_effectif || ""} ${it.nom_effectif || ""}`.trim() || "Collaborateur";
+    if (avatar) avatar.textContent = getCollaborateurInitials(it);
     if (sub) {
       sub.textContent = "";
       sub.style.display = "none";
@@ -604,24 +651,27 @@
 
     if (body) {
       body.innerHTML = `
-        <div class="sb-tabbar" role="tablist" aria-label="Onglets collaborateur">
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="ident" role="tab" aria-selected="true">
-            Identification
+        <div class="sb-collab-modal-nav" role="tablist" aria-label="Onglets collaborateur">
+          <button type="button" class="sb-collab-nav-btn" data-tab="ident" role="tab" aria-selected="true">
+            ${collabIcon("user")}
+            <span>Identification</span>
           </button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="skills" role="tab" aria-selected="false">
-            Compétences
+          <button type="button" class="sb-collab-nav-btn" data-tab="skills" role="tab" aria-selected="false">
+            ${collabIcon("skills")}
+            <span>Compétences</span>
           </button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="certs" role="tab" aria-selected="false">
-            Certifications
+          <button type="button" class="sb-collab-nav-btn" data-tab="certs" role="tab" aria-selected="false">
+            ${collabIcon("certs")}
+            <span>Certifications</span>
           </button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="history" role="tab" aria-selected="false">
-            Historique
+          <button type="button" class="sb-collab-nav-btn" data-tab="history" role="tab" aria-selected="false">
+            ${collabIcon("history")}
+            <span>Historique</span>
           </button>
         </div>
 
-
         <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
-          <div id="collabIdentPanel" class="row" style="flex-direction:column; gap:10px;">
+          <div id="collabIdentPanel" class="sb-collab-ident-panel">
             <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
         </div>
@@ -640,8 +690,6 @@
 
         <div class="sb-tab-panel" data-panel="history" role="tabpanel" style="display:none;">
           <div id="collabHistoryPanel">
-
-            <!-- Filtres -->
             <div class="sb-history-filters">
               <div class="sb-field">
                 <label class="sb-label" for="histPeriodSelect">Période</label>
@@ -658,66 +706,80 @@
               </label>
             </div>
 
-            <!-- Accordéons -->
-            <div class="sb-accordion" id="histAccJmb">
-              <button type="button" class="sb-acc-head" data-acc="jmb" aria-expanded="false">
-                <span>Formations effectuées avec JMBCONSULTANT</span>
-                <span class="sb-acc-chevron">▾</span>
-              </button>
-              <div class="sb-acc-body" data-acc-body="jmb" style="display:none;">
-                <div class="card-sub" style="margin:0;">Aucun élément.</div>
+            <div class="sb-history-accordion-list">
+              <div class="sb-accordion sb-history-accordion is-open" id="histAccJmb">
+                <button type="button" class="sb-acc-head is-open" data-acc="jmb" aria-expanded="true">
+                  <span class="sb-history-acc-title">
+                    <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("school")}</span>
+                    <span>Formations effectuées avec JMBCONSULTANT</span>
+                  </span>
+                  <span class="sb-acc-chevron">▾</span>
+                </button>
+                <div class="sb-acc-body" data-acc-body="jmb">
+                  <div class="card-sub" style="margin:0;">Chargement…</div>
+                </div>
+              </div>
+
+              <div class="sb-accordion sb-history-accordion" id="histAccOther">
+                <button type="button" class="sb-acc-head" data-acc="other" aria-expanded="false">
+                  <span class="sb-history-acc-title">
+                    <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("org")}</span>
+                    <span>Formations effectuées via autre organisme</span>
+                  </span>
+                  <span class="sb-acc-chevron">▾</span>
+                </button>
+                <div class="sb-acc-body" data-acc-body="other" style="display:none;">
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                </div>
+              </div>
+
+              <div class="sb-accordion sb-history-accordion" id="histAccAudits">
+                <button type="button" class="sb-acc-head" data-acc="audits" aria-expanded="false">
+                  <span class="sb-history-acc-title">
+                    <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("audit")}</span>
+                    <span>Audits des compétences</span>
+                  </span>
+                  <span class="sb-acc-chevron">▾</span>
+                </button>
+                <div class="sb-acc-body" data-acc-body="audits" style="display:none;">
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                </div>
+              </div>
+
+              <div class="sb-accordion sb-history-accordion" id="histAccCerts">
+                <button type="button" class="sb-acc-head" data-acc="certs_hist" aria-expanded="false">
+                  <span class="sb-history-acc-title">
+                    <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("medal")}</span>
+                    <span>Certifications</span>
+                  </span>
+                  <span class="sb-acc-chevron">▾</span>
+                </button>
+                <div class="sb-acc-body" data-acc-body="certs_hist" style="display:none;">
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                </div>
+              </div>
+
+              <div class="sb-accordion sb-history-accordion" id="histAccMoves">
+                <button type="button" class="sb-acc-head" data-acc="moves" aria-expanded="false">
+                  <span class="sb-history-acc-title">
+                    <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("trend")}</span>
+                    <span>Évolutions structurantes</span>
+                  </span>
+                  <span class="sb-acc-chevron">▾</span>
+                </button>
+                <div class="sb-acc-body" data-acc-body="moves" style="display:none;">
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                </div>
               </div>
             </div>
-
-            <div class="sb-accordion" id="histAccOther">
-              <button type="button" class="sb-acc-head" data-acc="other" aria-expanded="false">
-                <span>Formations effectuées via autre organisme</span>
-                <span class="sb-acc-chevron">▾</span>
-              </button>
-              <div class="sb-acc-body" data-acc-body="other" style="display:none;">
-                <div class="card-sub" style="margin:0;">Aucun élément.</div>
-              </div>
-            </div>
-
-            <div class="sb-accordion" id="histAccAudits">
-              <button type="button" class="sb-acc-head" data-acc="audits" aria-expanded="false">
-                <span>Audits des compétences</span>
-                <span class="sb-acc-chevron">▾</span>
-              </button>
-              <div class="sb-acc-body" data-acc-body="audits" style="display:none;">
-                <div class="card-sub" style="margin:0;">Aucun élément.</div>
-              </div>
-            </div>
-
-            <div class="sb-accordion" id="histAccCerts">
-              <button type="button" class="sb-acc-head" data-acc="certs_hist" aria-expanded="false">
-                <span>Certifications</span>
-                <span class="sb-acc-chevron">▾</span>
-              </button>
-              <div class="sb-acc-body" data-acc-body="certs_hist" style="display:none;">
-                <div class="card-sub" style="margin:0;">Aucun élément.</div>
-              </div>
-            </div>
-
-            <div class="sb-accordion" id="histAccMoves">
-              <button type="button" class="sb-acc-head" data-acc="moves" aria-expanded="false">
-                <span>Évolutions structurantes</span>
-                <span class="sb-acc-chevron">▾</span>
-              </button>
-              <div class="sb-acc-body" data-acc-body="moves" style="display:none;">
-                <div class="card-sub" style="margin:0;">Aucun élément.</div>
-              </div>
-            </div>
-
           </div>
         </div>
-
       `;
     }
 
         // Onglets modal (Identification / Compétences / Certifications)
     if (body) {
-      const tabs = Array.from(body.querySelectorAll(".sb-tabbar [data-tab]"));
+      const tabs = Array.from(body.querySelectorAll(".sb-collab-modal-nav [data-tab]"));
       const panels = Array.from(body.querySelectorAll(".sb-tab-panel[data-panel]"));
 
       const setActiveTab = (key) => {
@@ -725,9 +787,6 @@
           const active = b.getAttribute("data-tab") === key;
           b.classList.toggle("is-active", active);
           b.setAttribute("aria-selected", active ? "true" : "false");
-            // état visuel (IMPORTANT)
-          b.classList.toggle("sb-btn--accent", active);
-          b.classList.toggle("sb-btn--soft", !active);
         });
         panels.forEach(p => {
           const active = p.getAttribute("data-panel") === key;
@@ -845,15 +904,20 @@
 
         const items = Array.isArray(data?.items) ? data.items : [];
         if (items.length === 0) {
-          host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune formation trouvée.</div>`;
+          host.innerHTML = `<div class="sb-history-empty">${collabIcon("contract")}<span>Aucune formation trouvée.</span></div>`;
           return;
         }
-
-        const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt)}</span>`;
 
         const fmtEtat = (s) => {
           const v = (s ?? "").toString().trim();
           return v ? v : "–";
+        };
+
+        const fmtEtatClass = (s) => {
+          const v = (s ?? "").toString().trim().toLowerCase();
+          if (v.includes("termin")) return "sb-collab-history-status--done";
+          if (v.includes("démarr") || v.includes("demarr") || v.includes("cours")) return "sb-collab-history-status--blue";
+          return "sb-collab-history-status--neutral";
         };
 
         const fmtFin = (x) => {
@@ -862,22 +926,23 @@
 
         const fmtFormation = (x) => {
           const titre = x?.titre_formation ? escapeHtml(x.titre_formation) : "–";
-          const code = x?.code_formation ? ` (${escapeHtml(x.code_formation)})` : "";
-          return `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${titre}${code}</div>`;
+          const code = x?.code_formation ? ` <span class="sb-collab-history-code">(${escapeHtml(x.code_formation)})</span>` : "";
+          return `<div class="sb-collab-history-formation">${titre}${code}</div>`;
         };
-
 
         const rows = items.map((x) => {
           const codeAction = x?.code_action_formation ? escapeHtml(x.code_action_formation) : "–";
-          const etat = badge(fmtEtat(x?.etat_action));
+          const etat = fmtEtat(x?.etat_action);
 
           return `
             <tr>
-              <td style="white-space:nowrap; font-weight:700;">${codeAction}</td>
-              <td style="overflow:hidden; max-width:0;">${fmtFormation(x)}</td>
-              <td style="text-align:center; white-space:nowrap;">${escapeHtml(fmtFin(x))}</td>
-              <td style="text-align:center; white-space:nowrap;">${etat}</td>
-              <td style="text-align:center;">
+              <td><span class="sb-collab-history-action-code">${codeAction}</span></td>
+              <td>${fmtFormation(x)}</td>
+              <td class="col-center">${escapeHtml(fmtFin(x))}</td>
+              <td class="col-center">
+                <span class="sb-badge sb-collab-history-status ${fmtEtatClass(etat)}">${escapeHtml(etat)}</span>
+              </td>
+              <td class="col-center">
                 <button type="button"
                         class="sb-btn sb-btn--soft sb-btn--xs"
                         data-jmb-detail="${escapeHtml(x.id_action_formation_effectif || "")}">
@@ -890,21 +955,14 @@
 
         host.innerHTML = `
           <div class="sb-table-wrap">
-            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="width:100%; table-layout:fixed;">
-              <colgroup>
-                <col style="width:50px;">
-                <col>
-                <col style="width:40px;">
-                <col style="width:40px;">
-                <col style="width:30px;">
-              </colgroup>
+            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
               <thead>
                 <tr>
-                  <th>Code</th>
+                  <th style="width:120px;">Code</th>
                   <th>Formation</th>
-                  <th style="text-align:center;">Fin</th>
-                  <th style="text-align:center;">État</th>
-                  <th style="text-align:center;">&nbsp;</th>
+                  <th class="col-center" style="width:120px;">Fin</th>
+                  <th class="col-center" style="width:130px;">État</th>
+                  <th class="col-center" style="width:80px;">&nbsp;</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
@@ -912,7 +970,6 @@
           </div>
         `;
 
-        // Bind boutons détail
         const btns = Array.from(host.querySelectorAll("[data-jmb-detail]"));
         btns.forEach(btn => {
           btn.addEventListener("click", () => {
@@ -971,6 +1028,14 @@
           if (jmbHead?.getAttribute("aria-expanded") === "true") loadHistJmb(true);
         });
       }
+
+      tabs.forEach(btn => {
+        if (btn.getAttribute("data-tab") === "history") {
+          btn.addEventListener("click", () => {
+            if (jmbHead?.getAttribute("aria-expanded") === "true") loadHistJmb(false);
+          });
+        }
+      });
 
 
 
@@ -1070,16 +1135,29 @@
 
               // Rendu HTML
               identHost.innerHTML = `
-
-                <!-- Bloc 1 : Coordonnées -->
-                <div class="sb-actions sb-actions--end">
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnEdit">Modifier</button>
+                <div class="sb-collab-ident-actions">
+                  <span class="sb-collab-inline-msg" aria-live="polite"></span>
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnEdit">
+                    <span aria-hidden="true">✎</span>
+                    Modifier
+                  </button>
                   <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">Enregistrer</button>
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="collabBtnCancel" style="display:none;">Annuler</button>
                 </div>
-                <div class="sb-collab-block">
+
+                <div class="sb-collab-summary-strip">
+                  ${renderModalSummaryItem("building", "Service", d.nom_service || "Non lié")}
+                  ${renderModalSummaryItem("briefcase", "Poste actuel", d.intitule_poste || "–")}
+                  ${renderModalSummaryItem("contract", "Type de contrat", d.type_contrat || "–")}
+                  ${renderModalSummaryItem("calendar", "Date d’entrée", formatDateFR(d.date_entree_entreprise_effectif))}
+                </div>
+
+                <div class="sb-collab-block sb-collab-block--personal">
+                  <div class="sb-collab-block-title">
+                    <span aria-hidden="true">${collabIcon("user")}</span>
+                    Informations personnelles
+                  </div>
                   <div class="sb-collab-grid">
-                    <!-- civilité | nom | prenom -->
                     <div class="sb-field">
                       <div class="sb-label">Civilité</div>
                       <select class="sb-select" id="collabCiv" disabled>
@@ -1099,13 +1177,17 @@
                       <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
                     </div>
 
-                    <!-- adresse -->
-                    <div class="sb-field" style="grid-column: 1 / -1;">
+                    <div class="sb-field sb-span-3">
                       <div class="sb-label">Adresse</div>
                       <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
                     </div>
+                  </div>
 
-                    <!-- cp | ville | pays -->
+                  <div class="sb-collab-block-subtitle">
+                    <span aria-hidden="true">${collabIcon("phone")}</span>
+                    Coordonnées
+                  </div>
+                  <div class="sb-collab-grid">
                     <div class="sb-field">
                       <div class="sb-label">CP</div>
                       <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
@@ -1121,7 +1203,6 @@
                       <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />
                     </div>
 
-                    <!-- telephone | email | date de naissance -->
                     <div class="sb-field">
                       <div class="sb-label">Téléphone</div>
                       <input class="sb-ctrl" id="collabTel" type="text" value="${escapeHtml(v(d.telephone_effectif))}" disabled />
@@ -1139,10 +1220,12 @@
                   </div>
                 </div>
 
-                <!-- Bloc 2 : Contrat & Affectation -->
                 <div class="sb-collab-block">
+                  <div class="sb-collab-block-title">
+                    <span aria-hidden="true">${collabIcon("briefcase")}</span>
+                    Situation dans l'entreprise
+                  </div>
                   <div class="sb-collab-grid">
-                    <!-- matricule | service | poste actuel -->
                     <div class="sb-field">
                       <div class="sb-label">Matricule</div>
                       <input class="sb-ctrl" id="collabMatricule" type="text" value="${escapeHtml(v(d.matricule))}" disabled />
@@ -1162,7 +1245,6 @@
                       </select>
                     </div>
 
-                    <!-- date entree | type contrat | date debut poste -->
                     <div class="sb-field">
                       <div class="sb-label">Date entrée entreprise</div>
                       <input class="sb-ctrl" id="collabEntree" type="date" value="${escapeHtml(dateEntree)}" disabled />
@@ -1186,14 +1268,17 @@
                   </div>
                 </div>
 
-                <!-- Bloc 3 : Pilotage RH -->
-                <div class="sb-collab-block">
-                  <div class="sb-collab-grid">
-                    <!-- Dernier diplôme obtenu | Domaine d'éducation -->
-                    <div class="sb-field">
-                      <div class="sb-label">Dernier diplôme obtenu</div>
+                <div class="sb-collab-ident-bottom">
+                  <div class="sb-collab-block">
+                    <div class="sb-collab-block-title">
+                      <span aria-hidden="true">${collabIcon("graduation")}</span>
+                      Parcours / projection
+                    </div>
+                    <div class="sb-collab-grid sb-collab-grid--two">
+                      <div class="sb-field">
+                        <div class="sb-label">Dernier diplôme obtenu</div>
                         <select class="sb-select" id="collabEduNiv" disabled>
-                          <option value=""></option>                          
+                          <option value=""></option>
                           <option value="3"${eduCode === "3" ? " selected" : ""}>Niveau 3 : CAP / BEP</option>
                           <option value="4"${eduCode === "4" ? " selected" : ""}>Niveau 4 : Bac</option>
                           <option value="5"${eduCode === "5" ? " selected" : ""}>Niveau 5 : Bac+2 (BTS, DUT)</option>
@@ -1202,55 +1287,54 @@
                           <option value="8"${eduCode === "8" ? " selected" : ""}>Niveau 8 : Doctorat</option>
                           <option value="0"${eduCode === "0" ? " selected" : ""}>Aucun diplôme</option>
                         </select>
-                    </div>
+                      </div>
 
+                      <div class="sb-field">
+                        <div class="sb-label">Domaine d'éducation</div>
+                        <select class="sb-select" id="collabEduDom" disabled>
+                          <option value="">Chargement…</option>
+                        </select>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Distance entreprise/domicile (km)</div>
+                        <input class="sb-ctrl" id="collabDist" type="text" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Retraite estimée</div>
+                        <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
+                      </div>
+
+                      <label class="sb-check sb-collab-sortie-check">
+                        <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
+                        <span>Sortie prévue</span>
+                      </label>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Date de sortie prévue</div>
+                        <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Motif de sortie</div>
+                        <select class="sb-select" id="collabMotifSortie" disabled>
+                          <option value=""></option>
+                          ${motifOptions.map(x => {
+                            const sel = (String(d.motif_sortie || "").trim() === x) ? " selected" : "";
+                            return `<option value="${escapeHtml(x)}"${sel}>${escapeHtml(x)}</option>`;
+                          }).join("")}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="sb-collab-block sb-collab-comment-card">
+                    <div class="sb-collab-block-title">
+                      <span aria-hidden="true">${collabIcon("comment")}</span>
+                      Commentaires
+                    </div>
                     <div class="sb-field">
-                      <div class="sb-label">Domaine d'éducation</div>
-                      <select class="sb-select" id="collabEduDom" disabled>
-                        <option value="">Chargement…</option>
-                      </select>
-                    </div>
-
-                    <div></div>
-
-                    <!-- distance | retraite -->
-                    <div class="sb-field">
-                      <div class="sb-label">Distance entreprise/domicile (km)</div>
-                      <input class="sb-ctrl" id="collabDist" type="text" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Retraite estimée</div>
-                      <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
-                    </div>
-
-                    <div></div>
-
-                    <!-- sortie prévue | date sortie | motif -->
-                    <div class="sb-field">
-                      <div class="sb-label">Sortie prévue</div>
-                      <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Date de sortie prévue</div>
-                      <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Motif de sortie</div>
-                      <select class="sb-select" id="collabMotifSortie" disabled>
-                        <option value=""></option>
-                        ${motifOptions.map(x => {
-                          const sel = (String(d.motif_sortie || "").trim() === x) ? " selected" : "";
-                          return `<option value="${escapeHtml(x)}"${sel}>${escapeHtml(x)}</option>`;
-                        }).join("")}
-                      </select>
-                    </div>
-
-                    <!-- commentaires -->
-                    <div class="sb-field" style="grid-column: 1 / -1;">
-                      <div class="sb-label">Commentaires</div>
                       <textarea class="sb-ctrl" id="collabComment" disabled>${escapeHtml(v(d.note_commentaire))}</textarea>
                     </div>
                   </div>
@@ -1322,6 +1406,8 @@
 
               let setEditMode = (isEdit) => {
                 _collabIsEdit = !!isEdit;
+                identHost.classList.toggle("is-editing", !!isEdit);
+                if (isEdit) setInlineMsg(identHost, "info", "");
 
                 // Toggle enabled/disabled sur tous les champs
                 getEditableNodes().forEach(el => {
@@ -1395,6 +1481,7 @@
                 cancelBtn.addEventListener("click", () => {
                   restoreValues(_collabEditSnap);
                   setEditMode(false);
+                  setInlineMsg(identHost, "info", "");
                 });
               }
 
@@ -1490,14 +1577,17 @@
                     // Succès: on met à jour le snapshot et on repasse en lecture seule
                     _collabEditSnap = snapshotValues();
                     setEditMode(false);
+                    setInlineMsg(identHost, "success", "Enregistré");
 
-                    // (Optionnel) feedback léger
-                    // window.portal.toast && window.portal.toast("Enregistré", "success");
+                    // Le titre modal suit les éventuelles corrections nom/prénom.
+                    if (title) {
+                      title.textContent = `${payload.prenom_effectif || ""} ${(payload.nom_effectif || "").toUpperCase()}`.trim() || "Collaborateur";
+                    }
 
                   } catch (e) {
                     console.error(e);
                     const msg = (e && e.message) ? e.message : (typeof e === "string" ? e : JSON.stringify(e));
-                    alert(`Erreur enregistrement: ${msg}`);
+                    setInlineMsg(identHost, "error", `Erreur enregistrement : ${msg}`);
                   }
                 });
               }
@@ -1609,16 +1699,26 @@
                 const otherItems = items.filter(x => !x?.is_required);
 
                 if (items.length === 0) {
-                  host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`;
+                  host.innerHTML = `<div class="sb-collab-empty-card">Aucune compétence trouvée.</div>`;
                   return;
                 }
 
                 const levelLabel = (v) => window.NovoskillLevels ? window.NovoskillLevels.label(v) : ((v || "–").toString());
-
                 const levelClass = (v) => window.NovoskillLevels ? window.NovoskillLevels.cssClass(v) : "";
 
+                const countValidated = requiredItems.filter(x => {
+                  const cur = (x?.niveau_actuel || "").toString().trim();
+                  const req = (x?.niveau_requis || "").toString().trim();
+                  if (!cur || !req) return false;
+                  const order = { A: 1, B: 2, C: 3, D: 4 };
+                  const key = (v) => (window.NovoskillLevels && typeof window.NovoskillLevels.key === "function")
+                    ? window.NovoskillLevels.key(v)
+                    : String(v || "").trim().toUpperCase().slice(0, 1);
+                  return (order[key(cur)] || 0) >= (order[key(req)] || 0);
+                }).length;
+
                 const renderDomainBadge = (x) => {
-                  const domTitleRaw = (x?.domaine_titre || "").toString().trim();
+                  const domTitleRaw = (x?.domaine_titre || x?.domaine || "").toString().trim();
                   const domTitle = domTitleRaw || "Domaine";
                   const domColorRaw = (x?.domaine_couleur || "").toString().trim();
                   const domStyle = domColorRaw ? ` style="--dom-color:${escapeHtml(domColorRaw)}"` : "";
@@ -1627,15 +1727,16 @@
 
                 const renderRows = (rows) => {
                   if (!rows.length) {
-                    return `<tr><td colspan="4" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
+                    return `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
                   }
 
                   return rows.map(x => {
                     const cur = levelLabel(x.niveau_actuel);
+                    const req = levelLabel(x.niveau_requis || x.niveau_actuel);
                     const d = formatDateFR(x.date_derniere_eval);
                     const code = (x.code || "").toString().trim();
                     const title = (x.intitule || "").toString().trim();
-                    const levelCls = levelClass(x.niveau_actuel);
+                    const levelCls = levelClass(x.niveau_requis || x.niveau_actuel);
 
                     return `
                       <tr>
@@ -1644,10 +1745,10 @@
                             ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
                             <span class="sb-collab-skill-title">${escapeHtml(title || "Compétence")}</span>
                           </div>
-                          <div class="sb-collab-skill-domain">${renderDomainBadge(x)}</div>
                         </td>
+                        <td>${renderDomainBadge(x)}</td>
                         <td class="col-center">
-                          <span class="sb-badge sb-badge-niv ${escapeHtml(levelCls)}">${escapeHtml(cur)}</span>
+                          <span class="sb-badge sb-badge-niv ${escapeHtml(levelCls)}">${escapeHtml(req || cur || "–")}</span>
                         </td>
                         <td class="col-center">${escapeHtml(d)}</td>
                         <td class="col-center">
@@ -1671,7 +1772,8 @@
                         <thead>
                           <tr>
                             <th>Compétence</th>
-                            <th class="col-center" style="width:110px;">Niveau</th>
+                            <th style="width:210px;">Domaine</th>
+                            <th class="col-center" style="width:120px;">Niveau requis</th>
                             <th class="col-center" style="width:130px;">Dernière éval.</th>
                             <th class="col-center" style="width:62px;">PDF</th>
                           </tr>
@@ -1683,9 +1785,28 @@
                 `;
 
                 host.innerHTML = `
-                  <div class="card-sub sb-collab-skill-poste">
+                  <div class="card-sub sb-collab-tab-context">
                     Poste actuel : <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
                   </div>
+
+                  <div class="sb-collab-metrics">
+                    <div class="sb-collab-metric sb-collab-metric--red">
+                      <span aria-hidden="true">${collabIcon("contract")}</span>
+                      <strong>${requiredItems.length}</strong>
+                      <em>Compétences requises<br>par le poste</em>
+                    </div>
+                    <div class="sb-collab-metric sb-collab-metric--blue">
+                      <span aria-hidden="true">${collabIcon("contract")}</span>
+                      <strong>${countValidated}</strong>
+                      <em>Compétences validées<br>au niveau requis ou supérieur</em>
+                    </div>
+                    <div class="sb-collab-metric sb-collab-metric--green">
+                      <span aria-hidden="true">${collabIcon("certs")}</span>
+                      <strong>${otherItems.length}</strong>
+                      <em>Autres compétences<br>détenues</em>
+                    </div>
+                  </div>
+
                   ${renderTable("Compétences requises par le poste", requiredItems, "sb-collab-skill-section--required")}
                   ${renderTable("Autres compétences détenues", otherItems, "sb-collab-skill-section--other")}
                 `;
@@ -1755,13 +1876,6 @@
 
                 const items = Array.isArray(data?.items) ? data.items : [];
 
-                if (items.length === 0) {
-                  host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune certification trouvée.</div>`;
-                  return;
-                }
-
-                const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt)}</span>`;
-
                 const fmtValidite = (n) => {
                   if (n == null) return "–";
                   const v = Number(n);
@@ -1772,80 +1886,114 @@
 
                 const fmtDelai = (n) => (n == null ? "–" : `${n} j`);
                 const fmtObt = (x) => (x?.is_acquired ? formatDateFR(x.date_obtention) : "–");
-
                 const getExpIso = (x) => x?.date_expiration || x?.date_expiration_calculee || null;
                 const fmtExp = (x) => (x?.is_acquired ? formatDateFR(getExpIso(x)) : "–");
 
-                const statutLabel = (x) => {
-                  if (!x?.is_acquired) return "Non acquis";
+                const statutInfo = (x) => {
+                  if (!x?.is_acquired) return { label: "Non acquis", cls: "sb-collab-cert-status--neutral" };
                   const s = (x?.statut_validite || "").toString().toLowerCase();
-                  if (s === "valide") return "Valide";
-                  if (s === "a_renouveler") return "À renouveler";
-                  if (s === "expiree") return "Expirée";
-                  return "–";
+                  if (s === "valide") return { label: "Valide", cls: "sb-collab-cert-status--ok" };
+                  if (s === "a_renouveler") return { label: "À renouveler", cls: "sb-collab-cert-status--warn" };
+                  if (s === "expiree") return { label: "Expirée", cls: "sb-collab-cert-status--danger" };
+                  return { label: "–", cls: "sb-collab-cert-status--neutral" };
+                };
+
+                const requiredCount = items.filter(x => !!x?.is_required).length;
+                const acquiredCount = items.filter(x => !!x?.is_acquired).length;
+                const renewCount = items.filter(x => ["a_renouveler", "expiree"].includes((x?.statut_validite || "").toString().toLowerCase())).length;
+
+                if (items.length === 0) {
+                  host.innerHTML = `
+                    <div class="card-sub sb-collab-tab-context">
+                      Poste actuel : <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                    </div>
+                    <div class="sb-collab-empty-card">Aucune certification trouvée.</div>
+                  `;
+                  return;
+                }
+
+                const renderRequirementBadge = (x) => {
+                  if (!x?.is_required) return `<span class="sb-badge sb-collab-cert-badge">Hors poste</span>`;
+                  const ne = (x.niveau_exigence || "requis").toString().toLowerCase();
+                  const label = ne.includes("souhait") ? "Souhaité" : "Requis";
+                  return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--required">${escapeHtml(label)}</span>`;
                 };
 
                 const rows = items.map(x => {
-                  const badges = [];
-
-                  if (x.categorie) badges.push(badge(x.categorie));
-
-                  if (x.is_required) {
-                    const ne = (x.niveau_exigence || "requis").toString().toLowerCase();
-                    badges.push(badge(ne.includes("souhait") ? "Souhaité" : "Requis"));
-                  } else {
-                    badges.push(badge("Hors poste"));
-                  }
-
-                  const statut = statutLabel(x);
+                  const statut = statutInfo(x);
                   const jr = x?.jours_restants != null ? `${x.jours_restants} j` : "–";
+                  const categorie = (x.categorie || "").toString().trim();
 
                   return `
                     <tr>
                       <td>
-                        <div class="sb-comp-title">${escapeHtml(x.nom_certification || "")}</div>
-                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px;">
-                          ${badges.join("")}
+                        <div class="sb-collab-cert-title">${escapeHtml(x.nom_certification || "Certification")}</div>
+                        <div class="sb-collab-cert-badges">
+                          ${categorie ? `<span class="sb-badge sb-collab-cert-badge">${escapeHtml(categorie)}</span>` : ""}
+                          ${renderRequirementBadge(x)}
                         </div>
                       </td>
 
-                      <td style="text-align:center;">
-                        <div>${escapeHtml(fmtValidite(x.validite_attendue))}</div>
-                        <div class="card-sub" style="margin:6px 0 0 0;">Renouv.: ${escapeHtml(fmtDelai(x.delai_renouvellement))}</div>
+                      <td class="col-center">
+                        <strong>${escapeHtml(fmtValidite(x.validite_attendue))}</strong>
+                        <span class="sb-collab-cert-sub">Renouv. : ${escapeHtml(fmtDelai(x.delai_renouvellement))}</span>
                       </td>
 
-                      <td style="text-align:center;">
-                        ${badge(statut)}
-                        <div class="card-sub" style="margin:6px 0 0 0;">${escapeHtml(jr)}</div>
+                      <td class="col-center">
+                        <span class="sb-badge sb-collab-cert-status ${escapeHtml(statut.cls)}">${escapeHtml(statut.label)}</span>
+                        <span class="sb-collab-cert-sub">${escapeHtml(jr)}</span>
                       </td>
 
-                      <td style="text-align:center;">
-                        <div>${escapeHtml(fmtObt(x))}</div>
-                        <div class="card-sub" style="margin:6px 0 0 0;">${escapeHtml(fmtExp(x))}</div>
+                      <td class="col-center">
+                        <strong>${escapeHtml(fmtObt(x))}</strong>
+                        <span class="sb-collab-cert-sub">${escapeHtml(fmtExp(x))}</span>
                       </td>
                     </tr>
                   `;
                 }).join("");
 
                 host.innerHTML = `
-                  <div class="card-sub" style="margin:10px 0 10px 0;">
-                    Poste actuel: <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                  <div class="card-sub sb-collab-tab-context">
+                    Poste actuel : <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
                   </div>
 
-                  <div class="sb-table-wrap">
-                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-                      <thead>
-                        <tr>
-                          <th>Certification</th>
-                          <th style="width:160px; text-align:center;">Validité</th>
-                          <th style="width:160px; text-align:center;">État</th>
-                          <th style="width:180px; text-align:center;">Dates</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${rows}
-                      </tbody>
-                    </table>
+                  <div class="sb-collab-metrics">
+                    <div class="sb-collab-metric sb-collab-metric--red">
+                      <span aria-hidden="true">${collabIcon("medal")}</span>
+                      <strong>${requiredCount}</strong>
+                      <em>Certifications<br>requises / souhaitées</em>
+                    </div>
+                    <div class="sb-collab-metric sb-collab-metric--green">
+                      <span aria-hidden="true">${collabIcon("certs")}</span>
+                      <strong>${acquiredCount}</strong>
+                      <em>Certifications<br>acquises</em>
+                    </div>
+                    <div class="sb-collab-metric sb-collab-metric--blue">
+                      <span aria-hidden="true">${collabIcon("calendar")}</span>
+                      <strong>${renewCount}</strong>
+                      <em>À surveiller<br>ou renouveler</em>
+                    </div>
+                  </div>
+
+                  <div class="sb-collab-cert-section">
+                    <div class="sb-collab-skill-section-head">
+                      <div class="sb-collab-skill-section-title">Certifications du collaborateur</div>
+                      <span class="sb-badge">${items.length}</span>
+                    </div>
+
+                    <div class="sb-table-wrap">
+                      <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-certs-table">
+                        <thead>
+                          <tr>
+                            <th>Certification</th>
+                            <th class="col-center" style="width:160px;">Validité</th>
+                            <th class="col-center" style="width:160px;">État</th>
+                            <th class="col-center" style="width:180px;">Dates</th>
+                          </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                      </table>
+                    </div>
                   </div>
                 `;
               };

@@ -2879,47 +2879,720 @@ textarea.sb-ctrl{
 
 
 /* ======================================================
-   Modal Collaborateur: onglet Identification (blocs + contrôles prêts édition)
+   Modal Collaborateur: navigation + onglets profil
    ====================================================== */
 
-#modalCollaborateur .sb-collab-block{
-  padding:12px;
+#modalCollaborateur .modal-card--xl{
+  width:min(1320px, 97vw);
+}
+
+#modalCollaborateur .sb-collab-profile-header{
+  padding:18px 28px 14px;
+  align-items:flex-start;
+}
+
+#modalCollaborateur .sb-collab-profile-head{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+}
+
+#modalCollaborateur .sb-collab-profile-avatar{
+  width:64px;
+  height:64px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 64px;
+  background:#fff1f3;
+  color:#0f2742;
+  font-size:20px;
+  font-weight:800;
+}
+
+#modalCollaborateur .sb-collab-profile-titlewrap{
+  min-width:0;
+}
+
+#modalCollaborateur #collabModalTitle{
+  margin:0 0 6px 0;
+  font-size:22px;
+  font-weight:800;
+  color:#0f1f3d;
+  letter-spacing:-.02em;
+}
+
+#modalCollaborateur .sb-collab-modal-badges{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+#modalCollaborateur .modal-x{
+  margin-top:4px;
+}
+
+#modalCollaborateur .modal-body{
+  padding:0 28px 18px;
+}
+
+#modalCollaborateur .sb-modal-content{
+  margin-top:0;
+}
+
+#modalCollaborateur .sb-collab-modal-nav{
+  display:flex;
+  align-items:center;
+  gap:28px;
+  min-height:58px;
+  border-bottom:1px solid #e5e7eb;
+  margin:0 -28px 18px;
+  padding:0 28px;
+}
+
+#modalCollaborateur .sb-collab-nav-btn{
+  position:relative;
+  min-height:58px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:0;
+  background:transparent;
+  color:#0f2742;
+  padding:0 0 2px;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:750;
+  cursor:pointer;
+}
+
+#modalCollaborateur .sb-collab-nav-btn svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalCollaborateur .sb-collab-nav-btn::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:2px;
+  border-radius:999px;
+  background:transparent;
+}
+
+#modalCollaborateur .sb-collab-nav-btn:hover,
+#modalCollaborateur .sb-collab-nav-btn.is-active{
+  color:var(--accent);
+}
+
+#modalCollaborateur .sb-collab-nav-btn.is-active::after{
+  background:var(--accent);
+}
+
+#modalCollaborateur .sb-collab-nav-btn:focus{
+  outline:none;
+  color:var(--accent);
+}
+
+#modalCollaborateur .sb-collab-nav-btn:focus::after{
+  background:var(--accent);
+}
+
+#modalCollaborateur .sb-collab-tab-context{
+  margin:0 0 14px 0;
+  color:#667085;
+  font-size:13px;
+}
+
+/* ======================================================
+   Modal Collaborateur: onglet Identification
+   ====================================================== */
+
+#modalCollaborateur .sb-collab-ident-panel{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+#modalCollaborateur .sb-collab-ident-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  min-height:34px;
+}
+
+#modalCollaborateur .sb-collab-inline-msg{
+  margin-right:auto;
+  color:#667085;
+  font-size:12px;
+  font-weight:700;
+  opacity:0;
+  transform:translateY(1px);
+  transition:opacity .12s ease;
+}
+
+#modalCollaborateur .sb-collab-inline-msg.is-visible{
+  opacity:1;
+}
+
+#modalCollaborateur .sb-collab-inline-msg.is-success{
+  color:#16803a;
+}
+
+#modalCollaborateur .sb-collab-inline-msg.is-error{
+  color:#b91c1c;
+}
+
+#modalCollaborateur .sb-collab-summary-strip{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:12px;
+  padding:16px 18px;
   border:1px solid #e5e7eb;
-  border-radius:12px;
+  border-radius:16px;
+  background:#ffffff;
+}
+
+#modalCollaborateur .sb-collab-summary-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+
+#modalCollaborateur .sb-collab-summary-icon{
+  width:40px;
+  height:40px;
+  border-radius:13px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 40px;
+  border:1px solid #e5e7eb;
+  background:#f8fafc;
+  color:#0f2742;
+}
+
+#modalCollaborateur .sb-collab-summary-icon svg,
+#modalCollaborateur .sb-collab-block-title svg,
+#modalCollaborateur .sb-collab-block-subtitle svg,
+#modalCollaborateur .sb-history-acc-icon svg,
+#modalCollaborateur .sb-history-empty svg,
+#modalCollaborateur .sb-collab-metric svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalCollaborateur .sb-collab-summary-item span:not(.sb-collab-summary-icon){
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+#modalCollaborateur .sb-collab-summary-label{
+  color:#667085;
+  font-size:11.5px;
+  font-weight:700;
+}
+
+#modalCollaborateur .sb-collab-summary-item strong{
+  color:#0f2742;
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalCollaborateur .sb-collab-block{
+  padding:16px;
+  border:1px solid #e5e7eb;
+  border-radius:16px;
   background:#ffffff;
 }
 
 #modalCollaborateur .sb-collab-block + .sb-collab-block{
-  margin-top:12px;
+  margin-top:0;
 }
 
-#modalCollaborateur .sb-collab-block-title{
-  margin:0 0 10px 0;
+#modalCollaborateur .sb-collab-block-title,
+#modalCollaborateur .sb-collab-block-subtitle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:0 0 12px 0;
   font-weight:800;
-  font-size:13px;
-  color:#111827;
+  font-size:14px;
+  color:#0f2742;
+}
+
+#modalCollaborateur .sb-collab-block-title span,
+#modalCollaborateur .sb-collab-block-subtitle span{
+  color:#0f2742;
+}
+
+#modalCollaborateur .sb-collab-block-subtitle{
+  margin-top:14px;
 }
 
 #modalCollaborateur .sb-collab-grid{
   display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap:10px 14px;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px 16px;
 }
 
-/* évite les débordements dans les grilles */
-#modalCollaborateur .sb-collab-grid > *{
+#modalCollaborateur .sb-collab-grid--two{
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+#modalCollaborateur .sb-span-3{
+  grid-column:1 / -1;
+}
+
+#modalCollaborateur .sb-collab-grid > *,
+#modalCollaborateur .sb-collab-ident-bottom > *{
   min-width:0;
-}
-
-@media (max-width: 780px){
-  #modalCollaborateur .sb-collab-grid{
-    grid-template-columns: 1fr;
-  }
 }
 
 #modalCollaborateur .sb-collab-grid .sb-field{
   margin:0;
 }
+
+#modalCollaborateur .sb-collab-ident-bottom{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  align-items:stretch;
+}
+
+#modalCollaborateur .sb-collab-comment-card{
+  display:flex;
+  flex-direction:column;
+}
+
+#modalCollaborateur .sb-collab-comment-card .sb-field{
+  flex:1;
+}
+
+#modalCollaborateur .sb-collab-comment-card textarea{
+  min-height:140px;
+  height:100%;
+  resize:vertical;
+}
+
+#modalCollaborateur .sb-collab-sortie-check{
+  align-self:end;
+  min-height:37px;
+}
+
+#modalCollaborateur .sb-collab-ident-panel .sb-ctrl,
+#modalCollaborateur .sb-collab-ident-panel .sb-select{
+  background:#f8fafc;
+  border-color:#d8dee8;
+  color:#334155;
+}
+
+#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-ctrl:not(:disabled),
+#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-select:not(:disabled){
+  background:#ffffff;
+  color:#111827;
+}
+
+/* ======================================================
+   Modal Collaborateur: onglets Compétences / Certifications
+   ====================================================== */
+
+#modalCollaborateur .sb-collab-metrics{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:14px;
+  margin:0 0 20px 0;
+}
+
+#modalCollaborateur .sb-collab-metric{
+  display:grid;
+  grid-template-columns:48px auto 1fr;
+  align-items:center;
+  gap:14px;
+  min-height:70px;
+  padding:16px 18px;
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  background:#ffffff;
+}
+
+#modalCollaborateur .sb-collab-metric span{
+  width:48px;
+  height:48px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--accent);
+  background:#fff1f3;
+}
+
+#modalCollaborateur .sb-collab-metric--blue span{
+  color:#2563eb;
+  background:#eff6ff;
+}
+
+#modalCollaborateur .sb-collab-metric--green span{
+  color:#16a34a;
+  background:#ecfdf3;
+}
+
+#modalCollaborateur .sb-collab-metric strong{
+  color:#0f2742;
+  font-size:22px;
+  font-weight:850;
+  line-height:1;
+}
+
+#modalCollaborateur .sb-collab-metric em{
+  color:#334155;
+  font-size:12.5px;
+  font-style:normal;
+  font-weight:650;
+  line-height:1.25;
+}
+
+#modalCollaborateur .sb-collab-skill-section,
+#modalCollaborateur .sb-collab-cert-section{
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  background:#ffffff;
+  overflow:hidden;
+  margin-top:14px;
+}
+
+#modalCollaborateur .sb-collab-skill-section:first-of-type{
+  margin-top:0;
+}
+
+#modalCollaborateur .sb-collab-skill-section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:13px 16px;
+  border-bottom:1px solid #e5e7eb;
+  background:#fbfcfe;
+}
+
+#modalCollaborateur .sb-collab-skill-section-title{
+  font-size:14px;
+  font-weight:800;
+  color:#0f2742;
+  line-height:1.2;
+}
+
+#modalCollaborateur .sb-collab-skills-table,
+#modalCollaborateur .sb-collab-certs-table,
+#modalCollaborateur .sb-collab-history-table{
+  table-layout:fixed;
+}
+
+#modalCollaborateur .sb-collab-skills-table thead th,
+#modalCollaborateur .sb-collab-certs-table thead th,
+#modalCollaborateur .sb-collab-history-table thead th{
+  font-weight:700;
+  font-size:12px;
+  background:#ffffff;
+}
+
+#modalCollaborateur .sb-collab-skills-table tbody td,
+#modalCollaborateur .sb-collab-certs-table tbody td,
+#modalCollaborateur .sb-collab-history-table tbody td{
+  font-size:13px;
+  vertical-align:middle;
+}
+
+#modalCollaborateur .sb-collab-skill-titleline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+#modalCollaborateur .sb-collab-skill-title{
+  min-width:0;
+  color:#0f172a;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#modalCollaborateur .sb-collab-skill-empty{
+  padding:18px 16px !important;
+  color:#667085;
+  font-size:12px;
+  text-align:center;
+}
+
+#modalCollaborateur .sb-collab-empty-card{
+  padding:28px 18px;
+  border:1px dashed #d8dee8;
+  border-radius:16px;
+  background:#fafafa;
+  color:#667085;
+  font-size:13px;
+  text-align:center;
+}
+
+#modalCollaborateur .sb-collab-cert-title{
+  color:#0f172a;
+  font-weight:700;
+  line-height:1.25;
+}
+
+#modalCollaborateur .sb-collab-cert-badges{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:7px;
+}
+
+#modalCollaborateur .sb-collab-cert-badge{
+  background:#ffffff;
+  border-color:#d8dee8;
+  color:#334155;
+}
+
+#modalCollaborateur .sb-collab-cert-badge--required{
+  border-color:color-mix(in srgb, var(--accent) 45%, #d8dee8);
+  background:color-mix(in srgb, var(--accent) 7%, #ffffff);
+  color:var(--accent);
+}
+
+#modalCollaborateur .sb-collab-cert-sub{
+  display:block;
+  margin-top:6px;
+  color:#667085;
+  font-size:12px;
+  font-weight:500;
+}
+
+#modalCollaborateur .sb-collab-cert-status--ok{
+  border-color:#16a34a;
+  color:#16a34a;
+  background:#ecfdf3;
+}
+
+#modalCollaborateur .sb-collab-cert-status--warn{
+  border-color:#f59e0b;
+  color:#b45309;
+  background:#fffbeb;
+}
+
+#modalCollaborateur .sb-collab-cert-status--danger{
+  border-color:#dc2626;
+  color:#b91c1c;
+  background:#fef2f2;
+}
+
+#modalCollaborateur .sb-collab-cert-status--neutral{
+  border-color:#d8dee8;
+  color:#475569;
+  background:#ffffff;
+}
+
+/* ======================================================
+   Modal Collaborateur: onglet Historique
+   ====================================================== */
+
+#modalCollaborateur .sb-history-filters{
+  display:flex;
+  gap:20px;
+  align-items:end;
+  flex-wrap:wrap;
+  margin:0 0 18px 0;
+  padding:16px;
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  background:#ffffff;
+}
+
+#modalCollaborateur .sb-history-filters .sb-field{
+  min-width:280px;
+}
+
+#modalCollaborateur .sb-history-filters .sb-check{
+  margin-bottom:7px;
+}
+
+#modalCollaborateur .sb-history-accordion-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#modalCollaborateur .sb-history-accordion{
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  overflow:hidden;
+  background:#ffffff;
+  margin:0;
+}
+
+#modalCollaborateur .sb-history-accordion .sb-acc-head{
+  min-height:64px;
+  border:0;
+  background:#ffffff;
+  padding:14px 16px;
+  font-family:inherit;
+  cursor:pointer;
+}
+
+#modalCollaborateur .sb-history-acc-title{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  color:#0f2742;
+  font-size:14px;
+  font-weight:800;
+}
+
+#modalCollaborateur .sb-history-acc-icon{
+  width:40px;
+  height:40px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 40px;
+  background:#fff1f3;
+  color:var(--accent);
+}
+
+#modalCollaborateur .sb-history-accordion .sb-acc-body{
+  padding:0 14px 14px;
+  border-top:0;
+}
+
+#modalCollaborateur .sb-history-empty{
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  color:#667085;
+  font-size:13px;
+}
+
+#modalCollaborateur .sb-history-empty svg{
+  width:16px;
+  height:16px;
+  color:#667085;
+}
+
+#modalCollaborateur .sb-collab-history-action-code{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:26px;
+  padding:0 10px;
+  border-radius:7px;
+  background:#f1f5f9;
+  color:#0f2742;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+#modalCollaborateur .sb-collab-history-formation{
+  color:#0f172a;
+  font-weight:600;
+  line-height:1.35;
+}
+
+#modalCollaborateur .sb-collab-history-code{
+  color:#667085;
+  font-weight:500;
+}
+
+#modalCollaborateur .sb-collab-history-status--blue{
+  border-color:#3b82f6;
+  background:#eff6ff;
+  color:#2563eb;
+}
+
+#modalCollaborateur .sb-collab-history-status--done{
+  border-color:#16a34a;
+  background:#ecfdf3;
+  color:#16a34a;
+}
+
+#modalCollaborateur .sb-collab-history-status--neutral{
+  border-color:#d8dee8;
+  background:#ffffff;
+  color:#475569;
+}
+
+@media (max-width:900px){
+  #modalCollaborateur .sb-collab-summary-strip,
+  #modalCollaborateur .sb-collab-metrics{
+    grid-template-columns:1fr 1fr;
+  }
+
+  #modalCollaborateur .sb-collab-ident-bottom{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width:780px){
+  #modalCollaborateur .sb-collab-grid,
+  #modalCollaborateur .sb-collab-grid--two{
+    grid-template-columns:1fr;
+  }
+
+  #modalCollaborateur .sb-span-3{
+    grid-column:auto;
+  }
+
+  #modalCollaborateur .sb-collab-summary-strip,
+  #modalCollaborateur .sb-collab-metrics{
+    grid-template-columns:1fr;
+  }
+
+  #modalCollaborateur .sb-collab-modal-nav{
+    gap:16px;
+    overflow:auto;
+  }
+
+  #modalCollaborateur .sb-collab-skills-table,
+  #modalCollaborateur .sb-collab-certs-table,
+  #modalCollaborateur .sb-collab-history-table{
+    min-width:760px;
+  }
+}
+
+
+
 
 /* Matching (liste Postes) : focus + sélection = couleur lecture (teal) */
 #view-analyse-competences button.btn-secondary.sb-choice.is-selected{
@@ -3817,183 +4490,6 @@ body{
     justify-content:flex-end;
   }
 }
-
-/* ======================================================
-   Modal Collaborateur - Onglet Compétences
-   ====================================================== */
-
-/* Titre compétence: moins gras, plus lisible */
-#modalCollaborateur .sb-comp-title{
-  font-weight: 600;
-  font-size: 13px;
-  line-height: 1.25;
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Modal Collaborateur - Onglet Compétences : tables style Studio */
-#modalCollaborateur .sb-collab-skill-poste{
-  margin:0 0 12px 0;
-  font-size:12px;
-  color:var(--sb-gray-500);
-}
-
-#modalCollaborateur .sb-collab-skill-section{
-  border:1px solid var(--sb-gray-200);
-  border-radius:14px;
-  background:#ffffff;
-  overflow:hidden;
-  margin-top:12px;
-}
-
-#modalCollaborateur .sb-collab-skill-section:first-of-type{
-  margin-top:0;
-}
-
-#modalCollaborateur .sb-collab-skill-section-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:10px 12px;
-  border-bottom:1px solid var(--sb-gray-200);
-  background:var(--sb-gray-50);
-}
-
-#modalCollaborateur .sb-collab-skill-section-title{
-  font-size:13px;
-  font-weight:650;
-  color:var(--sb-gray-900);
-  line-height:1.2;
-}
-
-#modalCollaborateur .sb-collab-skills-table thead th{
-  font-weight:600;
-  font-size:12px;
-}
-
-#modalCollaborateur .sb-collab-skills-table tbody td{
-  font-size:13px;
-  vertical-align:middle;
-}
-
-#modalCollaborateur .sb-collab-skill-titleline{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  min-width:0;
-}
-
-#modalCollaborateur .sb-collab-skill-title{
-  min-width:0;
-  color:var(--sb-gray-900);
-  font-size:13px;
-  font-weight:600;
-  line-height:1.25;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-#modalCollaborateur .sb-collab-skill-domain{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  margin-top:6px;
-}
-
-#modalCollaborateur .sb-badge-domaine--soft{
-  border-color:var(--dom-color, var(--sb-gray-300));
-  background:color-mix(in srgb, var(--dom-color, #9ca3af) 10%, #ffffff);
-  color:var(--sb-gray-900);
-  font-weight:600;
-}
-
-#modalCollaborateur .sb-badge-domaine--soft::before{
-  background:var(--dom-color, #9ca3af);
-}
-
-#modalCollaborateur .sb-collab-skill-empty{
-  padding:14px 16px !important;
-  color:var(--sb-gray-500);
-  font-size:12px;
-  text-align:center;
-}
-
-@media (max-width: 760px){
-  #modalCollaborateur .sb-collab-skills-table{
-    min-width:720px;
-  }
-}
-
-
-/* ======================================================
-   Modal Collaborateur - Onglet Historique
-   ====================================================== */
-
-#modalCollaborateur .sb-history-filters{
-  display:flex;
-  gap:12px;
-  align-items:flex-end;
-  flex-wrap:wrap;
-  margin:0 0 12px 0;
-  padding:10px 12px;
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  background:#fafafa;
-}
-
-#modalCollaborateur .sb-history-filters .sb-field{
-  min-width: 220px;
-}
-
-#modalCollaborateur .sb-history-filters .sb-label{
-  display:block;
-  font-size:12px;
-  font-weight:700;
-  color:#374151;
-  margin-bottom:4px;
-}
-
-#modalCollaborateur .sb-history-filters .sb-select{
-  width:100%;
-  padding:8px 10px;
-  border-radius:10px;
-  border:1px solid #d1d5db;
-  background:#ffffff;
-  color:#111827;
-  font-size:13px;
-}
-
-#modalCollaborateur .sb-history-filters .sb-select:focus{
-  outline:none;
-  box-shadow: 0 0 0 3px var(--reading-accent-ring);
-  border-color: var(--reading-accent);
-}
-
-#modalCollaborateur .sb-history-filters .sb-check{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:13px;
-  color:#374151;
-  user-select:none;
-  padding:6px 8px;
-  border-radius:10px;
-}
-
-#modalCollaborateur .sb-history-filters .sb-check:hover{
-  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
-}
-
-#modalCollaborateur .sb-history-filters .sb-check input{
-  transform: translateY(1px);
-}
-
-
-
 
 /* ======================================================
    Entretien de performance - Slider criticité
