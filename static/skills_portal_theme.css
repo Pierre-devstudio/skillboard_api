@@ -10936,114 +10936,6 @@ body{
   }
 }
 
-  /* Accent RGB (pour rings / rgba cohérents) */
-  --sb-accent-rgb: 193,39,45;
-
-  /* Neutres */
-  --sb-gray-900:#111827;
-  --sb-gray-700:#374151;
-  --sb-gray-500:#6b7280;
-  --sb-gray-300:#d1d5db;
-  --sb-gray-200:#e5e7eb;
-  --sb-gray-100:#f3f4f6;
-  --sb-gray-50:#fafafa;
-
-  /* Sémantiques */
-  --sb-success: rgb(62,190,73);
-  --sb-danger: rgb(220,38,38);
-  --sb-warning: rgb(245,158,11);
-  --sb-info: #0284c7;
-  --sb-violet: #7c3aed;
-
-  /* Typo */
-  --sb-fs-12: 12px;
-  --sb-fs-13: 13px;
-  --sb-fs-14: 14px;
-
-  /* Rayons */
-  --sb-r-8: 8px;
-  --sb-r-10: 10px;
-  --sb-r-12: 12px;
-  --sb-r-pill: 999px;
-
-  /* Soft (boutons secondaires/reset) */
-  --sb-soft-border: color-mix(in srgb, var(--accent) 35%, var(--sb-gray-300));
-  --sb-soft-bg: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  --sb-soft-bg-hover: color-mix(in srgb, var(--accent) 12%, #ffffff);
-
-  /* Focus ring */
-  --sb-ring-accent: 0 0 0 3px rgba(var(--sb-accent-rgb), 0.18);
-
-  /*Special */
-  --sb-comp: rgb(55, 99, 167);
-  --sb-critere: rgb(121, 72, 37);
-  --sb-poste: rgb(209, 51, 188);
-  --sb-manager: rgb(202, 174, 16);
-  --sb-niv-soft: rgb(226, 114, 9);
-  --sb-titulaire: rgb(9, 67, 226);
-  --sb-candidat: rgb(226, 9, 117);
- 
-
-/* Default (fallback) */
-  --sb-badge-default-bg: #9ca3af;
-  --sb-badge-default-border: #9ca3af;
-  --sb-badge-default-fg: #ffffff;
-
-  /* Statuts */
-  --sb-badge-actif-bg: rgb(62,190,73);
-  --sb-badge-actif-border: rgb(62,190,73);
-  --sb-badge-actif-fg: #ffffff;
-
-  --sb-badge-inactif-bg: #6b7280;
-  --sb-badge-inactif-border: #6b7280;
-  --sb-badge-inactif-fg: #ffffff;
-
-  --sb-badge-archive-bg: #111827;
-  --sb-badge-archive-border: #111827;
-  --sb-badge-archive-fg: #ffffff;
-
-  --sb-badge-temp-bg: #0284c7;
-  --sb-badge-temp-border: #0284c7;
-  --sb-badge-temp-fg: #ffffff;
-
-  --sb-badge-formateur-bg: #f82fcd79;
-  --sb-badge-formateur-border: #f82fcc;
-  --sb-badge-formateur-fg: #f82fcc;
-
-  --sb-badge-indispo-bg: #f50b0b00;
-  --sb-badge-indispo-border: #ff0000;
-  --sb-badge-indispo-fg: #ff0707;
-
-  /* Modal titles (standard global) */
-  --sb-modal-title-size: 15px;
-  --sb-modal-title-weight: 700;
-  --sb-modal-title-color: var(--sb-gray-900);
-  --sb-modal-title-letterspacing: 0.1px;
-
-  /* Reading accent (teal) */
-  --reading-accent: #0d9488;
-  --reading-accent-hover: #0f766e;
-  --reading-accent-press: #115e59;
-  --reading-accent-ring: rgba(13,148,136,0.30);
-
-  /* UI accent (par défaut = marque) */
-  --ui-accent: var(--accent);
-
-  /* Badges d'écarts (matching) */
-  --gap-missing: #ef4444;
-  --gap-under: #f59e0b;
-  --gap-zero-bg: #e5e7eb;
-  --gap-zero-fg: #6b7280;
-  --gap-zero-border: #d1d5db;
-
-  /* Bouton Fermer (uniforme) */
-  --modal-close-bg: #ffffff;
-  --modal-close-border: #cbd5e1;
-  --modal-close-text: #0f172a;
-  --modal-close-hover-bg: #f8fafc;
-
-}
-
 
 /* ======================================================
    CORE (Standards UI)
@@ -22315,14 +22207,15 @@ body{
 #modalOrgPoste .org-poste-def-resp ul{
   display:grid;
   grid-template-columns:repeat(2, minmax(0, 1fr));
-  gap:3px 32px;
-  margin:7px 0 0 0;
+  gap:5px 32px;
+  margin:8px 0 0 0;
   padding:0;
   font-weight:400;
 }
 
 #modalOrgPoste .org-poste-def-resp ul > li{
   margin:0;
+  line-height:1.42;
 }
 
 #modalOrgPoste #orgPosteBlocContraintes .sb-form-grid{
