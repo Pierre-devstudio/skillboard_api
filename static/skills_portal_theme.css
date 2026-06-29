@@ -2291,15 +2291,15 @@ textarea.sb-ctrl{
 }
 
 #view-planning-indispo #btnPlanBack{
-  background:#ffffff !important;
-  border-color:color-mix(in srgb, var(--accent) 62%, var(--plan-border)) !important;
-  color:var(--accent) !important;
+  background:#ffffff;
+  border-color:color-mix(in srgb, var(--accent) 62%, var(--plan-border));
+  color:var(--accent);
 }
 
 #view-planning-indispo #btnPlanAdd{
-  background:var(--accent) !important;
-  border-color:var(--accent) !important;
-  color:#ffffff !important;
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#ffffff;
 }
 
 #view-planning-indispo .plan-workspace{
@@ -2332,25 +2332,22 @@ textarea.sb-ctrl{
 #view-planning-indispo .plan-card-head__icon{
   width:28px;
   height:28px;
+  border:0;
   border-radius:10px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   flex:0 0 28px;
+  padding:0;
   background:#f8fafc;
   color:#64748b;
+  cursor:pointer;
 }
 
 #view-planning-indispo .plan-card-head__icon svg{
   width:16px;
   height:16px;
-}
-
-#view-planning-indispo .plan-filter-toggle{
-  border:0;
-  padding:0;
-  cursor:pointer;
-  transition:background-color .15s ease, color .15s ease, transform .12s ease;
+  transition:transform .12s ease;
 }
 
 #view-planning-indispo .plan-filter-toggle:hover{
@@ -2452,8 +2449,8 @@ textarea.sb-ctrl{
   height:14px;
   margin:0;
   justify-self:center;
-  flex:0 0 14px;
   accent-color:var(--accent);
+  box-sizing:border-box;
 }
 
 #view-planning-indispo .sb-dot{
@@ -2506,10 +2503,10 @@ textarea.sb-ctrl{
   height:32px;
   min-width:36px;
   border-radius:10px;
-  background:#ffffff !important;
-  border-color:#d8dee8 !important;
-  color:#0f2742 !important;
-  box-shadow:none !important;
+  background:#ffffff;
+  border-color:#d8dee8;
+  color:#0f2742;
+  box-shadow:none;
 }
 
 #view-planning-indispo .plan-calendar-actions #btnPlanToday{
@@ -2518,8 +2515,8 @@ textarea.sb-ctrl{
 }
 
 #view-planning-indispo .plan-calendar-actions .sb-btn:hover{
-  background:#f8fafc !important;
-  border-color:#cbd5e1 !important;
+  background:#f8fafc;
+  border-color:#cbd5e1;
   filter:none;
 }
 

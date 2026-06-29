@@ -18,6 +18,7 @@
     search: "",                   // filtre texte collaborateurs
     collabs: [],                  // liste collaborateurs
     collabMap: {},                // id_effectif => collab
+    collabColors: {},             // id_effectif => couleur stable dans la liste courante
     selectedIds: new Set(),       // multi-sélection; vide => tous
     pending_service_raw: "",       // valeur du select avant application du filtre
     breaks: [],                   // indispos chargées
@@ -157,6 +158,7 @@
     _state.collabs.forEach(c => {
       if (c?.id_effectif) _state.collabMap[String(c.id_effectif)] = c;
     });
+    assignCollaborateurColors();
 
     renderCollabPick();
     fillEffectifSelect();
@@ -193,7 +195,6 @@
     host.innerHTML = list.map(c => {
       const id = String(c.id_effectif || "");
       const name = collabLabel(c);
-      const svc = (c.nom_service || "").trim();
       const checked = _state.selectedIds.has(id) ? "checked" : "";
       const col = colorForId(id);
 
@@ -202,7 +203,6 @@
           <input type="checkbox" class="sb-collab-pick-chk" value="${escapeHtml(id)}" ${checked} />
           <span class="sb-dot" style="background:${escapeHtml(col)};"></span>
           <span class="sb-collab-pick-name">${escapeHtml(name)}</span>
-          <span class="sb-collab-pick-svc">${escapeHtml(svc || "—")}</span>
         </label>
       `;
     }).join("");
@@ -340,7 +340,7 @@
                data-eff-id="${escapeHtml(id_eff)}"
                title="${escapeHtml(name)} (${ds} → ${de})"
                style="background:${escapeHtml(col)};">
-            ${escapeHtml((c?.prenom_effectif || name).split(" ")[0] || name)}
+            ${escapeHtml(((c?.prenom_effectif || name || "Collaborateur").toString().split(" ")[0]) || "Collaborateur")}
           </div>
         `;
       }).join("");
@@ -610,8 +610,20 @@
     }
   }
 
+  function dedupePlanningViewRoot() {
+    const roots = Array.from(document.querySelectorAll("#view-planning-indispo"));
+    if (roots.length <= 1) return;
+
+    const keep = roots.find(el => el.style.display !== "none") || roots[0];
+    roots.forEach(el => {
+      if (el !== keep && el.parentNode) el.parentNode.removeChild(el);
+    });
+  }
+
   function bindHandlersOnce(id_contact) {
-    if (_bound) return;
+    const viewRoot = byId("view-planning-indispo");
+    if (viewRoot?.dataset?.planHandlersBound === "1") return;
+    if (viewRoot?.dataset) viewRoot.dataset.planHandlersBound = "1";
     _bound = true;
 
     const btnBack = byId("btnPlanBack");
@@ -909,6 +921,8 @@
   }
 
   async function initMenu(portalCtx) {
+    dedupePlanningViewRoot();
+
     const id_contact = portalCtx?.contactId || window.portal.contactId;
     if (!id_contact) return;
 
