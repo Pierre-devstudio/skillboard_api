@@ -3183,11 +3183,14 @@ textarea.sb-ctrl{
   background:var(--accent);
 }
 
-/* Actions d'édition fiche poste : même logique que le modal collaborateur */
+/* Actions d'édition fiche poste : pack commun Modifier / Annuler / Enregistrer */
 #modalOrgPoste .org-ctr-btns,
 #modalOrgPoste .org-rh-btns{
-  width:100%;
+  width:auto;
+  flex:0 0 auto;
+  margin-left:auto;
   justify-content:flex-end;
+  gap:8px;
 }
 
 #modalOrgPoste .org-poste-rh-actions{
@@ -23333,26 +23336,6 @@ body{
   margin-bottom: 14px;
 }
 
-#modalOrgPoste .org-rh-btns{
-  gap: 12px;
-}
-
-#modalOrgPoste .org-rh-btns .sb-btn{
-  height: 40px;
-  padding: 0 18px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-#modalOrgPoste .org-rh-btns .sb-btn--accent{
-  box-shadow: 0 10px 24px rgba(193,39,45,.16);
-}
-
-#modalOrgPoste .org-rh-btns .sb-btn--soft{
-  background: #fff;
-}
-
 #modalOrgPoste .org-rh-view-grid,
 #modalOrgPoste .org-rh-cotation-grid{
   display: grid;
@@ -23665,24 +23648,6 @@ body{
   justify-content:space-between;
   gap:12px;
   margin-bottom:8px;
-}
-
-#modalOrgPoste .org-ctr-btns{
-  gap:10px;
-  flex:0 0 auto;
-}
-
-#modalOrgPoste .org-ctr-btns .org-ctr-msg.is-visible{
-  margin-top:0;
-  margin-right:4px;
-}
-
-#modalOrgPoste .org-ctr-btns .sb-btn{
-  height:36px;
-  padding:0 14px;
-  border-radius:12px;
-  font-size:13px;
-  font-weight:700;
 }
 
 #modalOrgPoste .org-exi-constraints-grid{
@@ -24199,8 +24164,10 @@ body{
     flex-direction:column;
   }
 
-  #modalOrgPoste .org-ctr-btns{
+  #modalOrgPoste .org-ctr-btns,
+  #modalOrgPoste .org-rh-btns{
     width:100%;
+    margin-left:0;
     justify-content:flex-end;
   }
 }
