@@ -25011,3 +25011,44 @@ body{
   border-color:var(--accent) !important;
   color:#ffffff !important;
 }
+
+/* Planning indisponibilités — confort lecture chevauchement modal ajout */
+#modalBreakBatch .plan-break-table thead th{
+  padding-left:22px;
+  padding-right:22px;
+  font-weight:650;
+}
+
+#modalBreakBatch .plan-break-table thead th:nth-child(1),
+#modalBreakBatch .plan-break-table thead th:nth-child(2){
+  width:28%;
+}
+
+#modalBreakBatch .plan-break-table thead th:nth-child(3){
+  width:30%;
+}
+
+#modalBreakBatch .plan-break-table thead th:nth-child(4){
+  width:76px;
+}
+
+#modalBreakBatch .plan-break-table tbody td{
+  padding-left:22px;
+  padding-right:22px;
+}
+
+#modalBreakBatch .sb-batch-status{
+  max-width:100%;
+  gap:5px;
+  padding-left:8px;
+  padding-right:8px;
+  font-size:11.5px;
+  font-weight:700;
+  box-sizing:border-box;
+}
+
+#modalBreakBatch .sb-batch-status-icon,
+#modalBreakBatch .sb-batch-status-icon svg{
+  width:13px;
+  height:13px;
+}
