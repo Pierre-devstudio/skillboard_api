@@ -605,16 +605,16 @@ textarea.sb-ctrl{
 }
 
 .sb-icon-btn--doc{
-  background:#eef4ff;
-  border-color:#9db3e8;
-  color:#28407a;
-  box-shadow: inset 0 0 0 1px rgba(53,92,170,.08);
+  background:#fff;
+  border-color:#d1d5db;
+  color:#334155;
+  box-shadow:none;
 }
 
 .sb-icon-btn--doc:hover{
-  background:#e0ebff;
-  border-color:#6f8fd0;
-  color:#1e3570;
+  background:#f8fafc;
+  border-color:#94a3b8;
+  color:#111827;
 }
 
 /* -------- Analyse: filtre criticité (slider dédié) -------- */
@@ -11489,16 +11489,16 @@ textarea.sb-ctrl{
 }
 
 .sb-icon-btn--doc{
-  background:#eef4ff;
-  border-color:#9db3e8;
-  color:#28407a;
-  box-shadow: inset 0 0 0 1px rgba(53,92,170,.08);
+  background:#fff;
+  border-color:#d1d5db;
+  color:#334155;
+  box-shadow:none;
 }
 
 .sb-icon-btn--doc:hover{
-  background:#e0ebff;
-  border-color:#6f8fd0;
-  color:#1e3570;
+  background:#f8fafc;
+  border-color:#94a3b8;
+  color:#111827;
 }
 
 /* -------- Analyse: filtre criticité (slider dédié) -------- */
