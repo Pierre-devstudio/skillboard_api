@@ -120,6 +120,7 @@
       date_maj: ""
     });
 
+    fillPosteContraintesTab({});
     fillPosteCompetencesTab({ competences: [] });
     fillPosteCertificationsTab({ certifications: [] });
     fillPosteParamRhTab({});
@@ -198,6 +199,45 @@
       btnSave.addEventListener("click", (e) => {
         e.preventDefault();
         _rhSaveEdit();
+      });
+    }
+
+    // Contraintes buttons (bind once)
+    const btnCtrEdit = byId("orgCtrBtnEdit");
+    const btnCtrSave = byId("orgCtrBtnSave");
+    const btnCtrCancel = byId("orgCtrBtnCancel");
+    const btnCompMore = byId("orgPosteCompMore");
+
+    if (btnCtrEdit && !btnCtrEdit._sbBound){
+      btnCtrEdit._sbBound = true;
+      btnCtrEdit.addEventListener("click", (e) => {
+        e.preventDefault();
+        _ctrEnterEditMode();
+      });
+    }
+
+    if (btnCtrCancel && !btnCtrCancel._sbBound){
+      btnCtrCancel._sbBound = true;
+      btnCtrCancel.addEventListener("click", (e) => {
+        e.preventDefault();
+        _ctrCancelEdit();
+      });
+    }
+
+    if (btnCtrSave && !btnCtrSave._sbBound){
+      btnCtrSave._sbBound = true;
+      btnCtrSave.addEventListener("click", (e) => {
+        e.preventDefault();
+        _ctrSaveEdit();
+      });
+    }
+
+    if (btnCompMore && !btnCompMore._sbBound){
+      btnCompMore._sbBound = true;
+      btnCompMore.addEventListener("click", (e) => {
+        e.preventDefault();
+        _orgCompState.expanded = !_orgCompState.expanded;
+        _renderPosteCompetencesRows();
       });
     }
 
@@ -1017,6 +1057,144 @@
   }
 
   let _contraintesSelectsInit = false;
+  let _ctrEdit = { editing:false, snapshot:null };
+  let _orgCompState = { list:[], expanded:false };
+
+  function _ctrGetEditableIds(){
+    return [
+      "orgCtrEduMin",
+      "orgCtrNsfGroupe",
+      "orgCtrNsfObligView",
+      "orgCtrMobilite",
+      "orgCtrRisquePhys",
+      "orgCtrPerspEvol",
+      "orgCtrNivContrainte",
+      "orgCtrDetailContrainte"
+    ];
+  }
+
+  function _ctrSetDisabled(disabled){
+    _ctrGetEditableIds().forEach(id => {
+      const el = byId(id);
+      if (el) el.disabled = !!disabled;
+    });
+  }
+
+  function _ctrSetButtons(editing){
+    const btnEdit = byId("orgCtrBtnEdit");
+    const btnSave = byId("orgCtrBtnSave");
+    const btnCancel = byId("orgCtrBtnCancel");
+    if (btnEdit) btnEdit.style.display = editing ? "none" : "";
+    if (btnSave) btnSave.style.display = editing ? "" : "none";
+    if (btnCancel) btnCancel.style.display = editing ? "" : "none";
+  }
+
+  function _setCtrEditMode(editing){
+    _ctrEdit.editing = !!editing;
+    _ctrSetDisabled(!editing);
+    _ctrSetButtons(editing);
+    const bloc = byId("orgPosteBlocContraintes");
+    if (bloc) bloc.classList.toggle("is-editing", !!editing);
+  }
+
+  function _ctrReadForm(){
+    const nsfOblig = (byId("orgCtrNsfObligView")?.value || "non") === "oui";
+    return {
+      niveau_education_minimum: byId("orgCtrEduMin")?.value || "",
+      nsf_groupe_code: byId("orgCtrNsfGroupe")?.value || "",
+      nsf_groupe_titre: byId("orgCtrNsfGroupe")?.selectedOptions?.[0]?.textContent?.replace(/\s*\([^)]*\)\s*$/, "") || "",
+      nsf_groupe_obligatoire: nsfOblig,
+      mobilite: byId("orgCtrMobilite")?.value || "",
+      risque_physique: byId("orgCtrRisquePhys")?.value || "",
+      perspectives_evolution: byId("orgCtrPerspEvol")?.value || "",
+      niveau_contrainte: byId("orgCtrNivContrainte")?.value || "",
+      detail_contrainte: byId("orgCtrDetailContrainte")?.value || ""
+    };
+  }
+
+  function _ctrWriteForm(v){
+    _selectByStoredValue("orgCtrEduMin", v?.niveau_education_minimum);
+
+    const nsfSel = byId("orgCtrNsfGroupe");
+    if (nsfSel){
+      nsfSel.innerHTML = "";
+      const code = (v?.nsf_groupe_code ?? "").toString().trim();
+      const titre = (v?.nsf_groupe_titre ?? "").toString().trim();
+      const opt = document.createElement("option");
+      opt.value = code || "";
+      opt.textContent = code ? (titre ? `${titre} (${code})` : code) : "—";
+      opt.title = opt.textContent;
+      nsfSel.appendChild(opt);
+      nsfSel.value = code || "";
+      _refreshSelectTitleEl(nsfSel);
+    }
+
+    _setChecked("orgCtrNsfOblig", v?.nsf_groupe_obligatoire);
+    _selectByStoredValue("orgCtrNsfObligView", v?.nsf_groupe_obligatoire ? "oui" : "non");
+    _selectByStoredValue("orgCtrMobilite", v?.mobilite);
+    _selectByStoredValue("orgCtrRisquePhys", v?.risque_physique);
+    _selectByStoredValue("orgCtrPerspEvol", v?.perspectives_evolution);
+    _selectByStoredValue("orgCtrNivContrainte", v?.niveau_contrainte);
+    _setValue("orgCtrDetailContrainte", v?.detail_contrainte || "");
+
+    const rSel = byId("orgCtrRisquePhys");
+    if (rSel && typeof rSel._sbRefreshHelp === "function") rSel._sbRefreshHelp();
+    const nSel = byId("orgCtrNivContrainte");
+    if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
+  }
+
+  function _ctrEnterEditMode(){
+    if (_ctrEdit.editing) return;
+    _ctrEdit.snapshot = _ctrReadForm();
+    _setCtrEditMode(true);
+  }
+
+  function _ctrCancelEdit(){
+    if (!_ctrEdit.editing) return;
+    if (_ctrEdit.snapshot) _ctrWriteForm(_ctrEdit.snapshot);
+    _ctrEdit.snapshot = null;
+    _setCtrEditMode(false);
+  }
+
+  async function _ctrSaveEdit(){
+    const portal = window.__skillsPortalInstance;
+    if (!portal) return;
+
+    const modal = byId("modalOrgPoste");
+    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    if (!id_poste){
+      portal.showAlert("error", "Impossible d’enregistrer : id_poste manquant.");
+      return;
+    }
+
+    const v = _ctrReadForm();
+    const payload = {
+      niveau_education_minimum: v.niveau_education_minimum || null,
+      nsf_groupe_code: v.nsf_groupe_code || null,
+      nsf_groupe_obligatoire: !!v.nsf_groupe_obligatoire,
+      mobilite: v.mobilite || null,
+      risque_physique: v.risque_physique || null,
+      perspectives_evolution: v.perspectives_evolution || null,
+      niveau_contrainte: v.niveau_contrainte || null,
+      detail_contrainte: (v.detail_contrainte || "").trim() || null
+    };
+
+    try {
+      const url = `${portal.apiBase}/skills/organisation/poste_contraintes_update/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(id_poste)}`;
+      const updated = await portal.apiJson(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const merged = Object.assign({}, _posteDetailCache.get(id_poste) || {}, updated || {}, v);
+      _posteDetailCache.set(id_poste, merged);
+      fillPosteContraintesTab(merged);
+      portal.showAlert("success", "Contraintes enregistrées.");
+    } catch (e) {
+      portal.showAlert("error", "Erreur enregistrement contraintes : " + e.message);
+    }
+  }
 
   function initContraintesSelects(){
     if (_contraintesSelectsInit) return;
@@ -1109,42 +1287,9 @@
 
   function fillPosteContraintesTab(detail){
     initContraintesSelects();
-
-    _selectByStoredValue("orgCtrEduMin", detail?.niveau_education_minimum);
-
-    // NSF : on charge l’option “courante” (contrôle prêt pour édition future)
-    const nsfSel = byId("orgCtrNsfGroupe");
-    if (nsfSel){
-      nsfSel.innerHTML = "";
-      const code = (detail?.nsf_groupe_code ?? "").toString().trim();
-      const titre = (detail?.nsf_groupe_titre ?? "").toString().trim();
-
-      const opt = document.createElement("option");
-      opt.value = code || "";
-      opt.textContent = code ? (titre ? `${titre} (${code})` : code) : "—";
-      opt.title = opt.textContent;
-      nsfSel.appendChild(opt);
-      nsfSel.value = code || "";
-      _refreshSelectTitleEl(nsfSel);
-    }
-
-    _setChecked("orgCtrNsfOblig", detail?.nsf_groupe_obligatoire);
-    _selectByStoredValue("orgCtrNsfObligView", detail?.nsf_groupe_obligatoire ? "oui" : "non");
-
-    _selectByStoredValue("orgCtrMobilite", detail?.mobilite);
-
-    _selectByStoredValue("orgCtrRisquePhys", detail?.risque_physique);
-    const rSel = byId("orgCtrRisquePhys");
-    if (rSel && typeof rSel._sbRefreshHelp === "function") rSel._sbRefreshHelp();
-
-    _selectByStoredValue("orgCtrPerspEvol", detail?.perspectives_evolution);
-
-    _selectByStoredValue("orgCtrNivContrainte", detail?.niveau_contrainte);
-    const nSel = byId("orgCtrNivContrainte");
-    if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
-
-    _setValue("orgCtrDetailContrainte", detail?.detail_contrainte);
-
+    _ctrWriteForm(detail || {});
+    _ctrEdit.snapshot = null;
+    _setCtrEditMode(false);
   }
 
     function _nivLabel(niv){
@@ -1166,20 +1311,31 @@
   }
 
   function fillPosteCompetencesTab(detail){
+    _orgCompState.list = Array.isArray(detail?.competences) ? detail.competences : [];
+    _orgCompState.expanded = false;
+    _renderPosteCompetencesRows();
+  }
+
+  function _renderPosteCompetencesRows(){
     const tbody = byId("orgPosteCompTbody");
     const empty = byId("orgPosteCompEmpty");
+    const btnMore = byId("orgPosteCompMore");
+    const btnText = byId("orgPosteCompMoreText");
     if (!tbody || !empty) return;
 
-    const list = Array.isArray(detail?.competences) ? detail.competences : [];
+    const list = Array.isArray(_orgCompState.list) ? _orgCompState.list : [];
+    const limit = 5;
+    const visible = _orgCompState.expanded ? list : list.slice(0, limit);
 
     tbody.innerHTML = "";
     if (!list.length){
       empty.style.display = "";
+      if (btnMore) btnMore.style.display = "none";
       return;
     }
     empty.style.display = "none";
 
-    list.forEach(it => {
+    visible.forEach(it => {
       const code = (it?.code || "").toString().trim();
       const title = (it?.intitule || "").toString().trim();
       const desc = (it?.description || "").toString().trim();
@@ -1212,6 +1368,15 @@
       `;
       tbody.appendChild(tr);
     });
+
+    if (btnMore){
+      const hidden = Math.max(0, list.length - limit);
+      btnMore.style.display = hidden > 0 ? "flex" : "none";
+      btnMore.classList.toggle("is-expanded", !!_orgCompState.expanded);
+      if (btnText) btnText.textContent = _orgCompState.expanded
+        ? "Voir moins de compétences"
+        : `Voir plus de compétences (${hidden})`;
+    }
   }
 
   function fillPosteCertificationsTab(detail){

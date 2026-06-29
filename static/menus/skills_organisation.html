@@ -182,67 +182,92 @@
 
         <!-- Exigences -->
         <div class="sb-tab-panel" data-panel="exi">
-          <div class="card org-bloc" id="orgPosteBlocContraintes">
-            <div class="org-section-titleline">
-              <span class="org-section-titleline__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
-              </span>
-              <div class="card-title" style="margin:0;">Contraintes</div>
+          <div class="card org-bloc org-exi-card" id="orgPosteBlocContraintes">
+            <div class="org-exi-card-head">
+              <div class="org-section-titleline">
+                <span class="org-section-titleline__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
+                </span>
+                <div class="card-title" style="margin:0;">Contraintes</div>
+              </div>
+
+              <div class="sb-actions org-ctr-btns">
+                <button type="button" class="sb-btn sb-btn--accent" id="orgCtrBtnEdit">
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                  </span>
+                  <span>Modifier</span>
+                </button>
+                <button type="button" class="sb-btn sb-btn--soft" id="orgCtrBtnCancel" style="display:none;">
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+                  </span>
+                  <span>Annuler</span>
+                </button>
+                <button type="button" class="sb-btn sb-btn--accent" id="orgCtrBtnSave" style="display:none;">
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                  </span>
+                  <span>Enregistrer</span>
+                </button>
+              </div>
             </div>
 
-            <div class="sb-form-grid">
-              <div class="sb-field">
-                <div class="label">Niveau d’étude minimum requis</div>
-                <select id="orgCtrEduMin" disabled></select>
+            <div class="org-exi-constraints-grid">
+              <div class="org-exi-col">
+                <div class="sb-field">
+                  <div class="label">Niveau d’étude minimum requis</div>
+                  <select id="orgCtrEduMin" disabled></select>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Correspondance du diplôme impérative</div>
+                  <input type="hidden" id="orgCtrNsfOblig" />
+                  <select id="orgCtrNsfObligView" disabled>
+                    <option value="non">Non</option>
+                    <option value="oui">Oui</option>
+                  </select>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Risques physiques</div>
+                  <select id="orgCtrRisquePhys" disabled></select>
+                  <div class="sb-help" id="orgCtrRisquePhysHelp" style="display:none;"></div>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Niveau de contraintes</div>
+                  <select id="orgCtrNivContrainte" disabled></select>
+                  <div class="sb-help" id="orgCtrNivContrainteHelp" style="display:none;"></div>
+                </div>
               </div>
 
-              <div class="sb-field">
-                <div class="label">Domaine du diplôme (NSF)</div>
-                <select id="orgCtrNsfGroupe" disabled></select>
-              </div>
+              <div class="org-exi-col">
+                <div class="sb-field">
+                  <div class="label">Domaine du diplôme (NSF)</div>
+                  <select id="orgCtrNsfGroupe" disabled></select>
+                </div>
 
-              <div class="sb-field">
-                <div class="label">Correspondance du diplôme impérative</div>
-                <input type="hidden" id="orgCtrNsfOblig" />
-                <select id="orgCtrNsfObligView" disabled>
-                  <option value="non">Non</option>
-                  <option value="oui">Oui</option>
-                </select>
-              </div>
+                <div class="sb-field">
+                  <div class="label">Mobilité</div>
+                  <select id="orgCtrMobilite" disabled></select>
+                </div>
 
-              <div class="sb-field">
-                <div class="label">Mobilité</div>
-                <select id="orgCtrMobilite" disabled></select>
-              </div>
+                <div class="sb-field">
+                  <div class="label">Perspectives d’évolution</div>
+                  <select id="orgCtrPerspEvol" disabled></select>
+                </div>
 
-              <div class="sb-field">
-                <div class="label">Risques physiques</div>
-                <select id="orgCtrRisquePhys" disabled></select>
-                <div class="sb-help" id="orgCtrRisquePhysHelp" style="display:none;"></div>
-              </div>
-
-
-              <div class="sb-field org-span-2">
-                <div class="label">Perspectives d’évolution</div>
-                <select id="orgCtrPerspEvol" disabled></select>
-              </div>
-
-              <div class="sb-field">
-                <div class="label">Niveau de contraintes</div>
-                <select id="orgCtrNivContrainte" disabled></select>
-                <div class="sb-help" id="orgCtrNivContrainteHelp" style="display:none;"></div>
-              </div>
-
-
-              <div class="sb-field sb-span-2">
-                <div class="label">Détails des contraintes</div>
-                <textarea id="orgCtrDetailContrainte" class="sb-ctrl" rows="4" disabled></textarea>
+                <div class="sb-field">
+                  <div class="label">Détails des contraintes</div>
+                  <textarea id="orgCtrDetailContrainte" class="sb-ctrl" rows="3" disabled></textarea>
+                </div>
               </div>
             </div>
           </div>
 
 
-          <div class="card sb-card-compact">
+          <div class="card sb-card-compact org-exi-card org-exi-table-card">
             <div class="org-section-titleline">
               <span class="org-section-titleline__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
@@ -250,7 +275,7 @@
               <div class="card-title" style="margin:0;">Compétences requises</div>
             </div>
 
-            <div class="table-wrap" style="margin-top:10px;">
+            <div class="table-wrap org-exi-table-wrap">
               <table class="sb-table" id="orgPosteCompTable">
                 <thead>
                   <tr>
@@ -264,13 +289,21 @@
               </table>
             </div>
 
-            <div class="card-sub" id="orgPosteCompEmpty" style="display:none; margin-top:10px;">
-              Aucune compétence requise pour ce poste.
+            <button type="button" class="org-exi-more" id="orgPosteCompMore" style="display:none;">
+              <span id="orgPosteCompMoreText">Voir plus de compétences</span>
+              <span class="org-exi-more__chev" aria-hidden="true">⌄</span>
+            </button>
+
+            <div class="org-exi-empty" id="orgPosteCompEmpty" style="display:none;">
+              <span class="org-exi-empty__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+              </span>
+              <span>Aucune compétence requise pour ce poste.</span>
             </div>
           </div>
 
 
-          <div class="card sb-card-compact">
+          <div class="card sb-card-compact org-exi-card org-exi-table-card">
             <div class="org-section-titleline">
               <span class="org-section-titleline__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
@@ -278,7 +311,7 @@
               <div class="card-title" style="margin:0;">Certifications requises</div>
             </div>
 
-            <div class="table-wrap" style="margin-top:10px;">
+            <div class="table-wrap org-exi-table-wrap">
               <table class="sb-table" id="orgPosteCertTable">
                 <thead>
                   <tr>
@@ -290,8 +323,11 @@
               </table>
             </div>
 
-            <div class="card-sub" id="orgPosteCertEmpty" style="display:none; margin-top:10px;">
-              Aucune certification requise pour ce poste.
+            <div class="org-exi-empty" id="orgPosteCertEmpty" style="display:none;">
+              <span class="org-exi-empty__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+              </span>
+              <span>Aucune certification requise pour ce poste.</span>
             </div>
           </div>
 
