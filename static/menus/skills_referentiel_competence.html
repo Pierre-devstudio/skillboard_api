@@ -70,7 +70,7 @@
 
   <div class="ref-workspace">
     <aside class="ref-left-col">
-      <div class="card ref-filter-card">
+      <div class="card ref-filter-card is-collapsed">
         <div class="ref-card-head">
           <div>
             <div class="card-title" style="margin-bottom:4px;">Filtres</div>
@@ -79,10 +79,10 @@
           <button type="button"
                   class="ref-card-head__icon ref-filter-toggle"
                   id="btnRefFiltersToggle"
-                  aria-expanded="true"
+                  aria-expanded="false"
                   aria-controls="refFilterBody"
-                  title="Replier les filtres"
-                  aria-label="Replier les filtres">
+                  title="Déplier les filtres"
+                  aria-label="Déplier les filtres">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
           </button>
         </div>
@@ -133,8 +133,8 @@
     <main class="card ref-list-card">
       <div class="ref-list-head">
         <div>
-          <div class="card-title" style="margin-bottom:4px;">Référentiel du service</div>
-          <div class="card-sub" id="refScopeLabel" style="margin:0;">Service : <b>Tous les services</b></div>
+          <div class="card-title" id="refScopeTitle" style="margin-bottom:4px;">Référentiel de l’entreprise</div>
+          <div class="card-sub" id="refScopeLabel" style="display:none; margin:0;"></div>
         </div>
 
         <div class="ref-toggle-bar">
@@ -158,9 +158,8 @@
           <table class="sb-table sb-table--airy sb-table--hover" id="tblRefCompetences">
             <thead>
               <tr>
-                <th class="col-dom" title="Domaine">Dom.</th>
-                <th class="col-code">Code</th>
                 <th class="col-title">Compétence</th>
+                <th class="col-domain">Domaine</th>
                 <th class="col-center col-postes">Postes</th>
                 <th class="col-center ref-action-head" aria-label="Voir"></th>
                 <th class="col-center ref-action-head" aria-label="Document"></th>
@@ -193,8 +192,8 @@
       <div class="ref-table-footer" id="refTableFooter">
         <div class="ref-page-size-wrap">
           <select id="refPageSizeSelect" class="sb-select ref-page-size-select" aria-label="Nombre d'éléments par page">
-            <option value="10">10 par page</option>
-            <option value="25" selected>25 par page</option>
+            <option value="10" selected>10 par page</option>
+            <option value="25">25 par page</option>
             <option value="50">50 par page</option>
             <option value="100">100 par page</option>
           </select>

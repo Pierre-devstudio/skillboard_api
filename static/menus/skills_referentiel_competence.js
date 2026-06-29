@@ -6,7 +6,7 @@
   let _servicesLoaded = false;
   let _activeTab = "competences"; // competences | certifs
   let _searchTimer = null;
-  let _pageSize = 25;
+  let _pageSize = 10;
   let _currentPageComp = 1;
   let _currentPageCert = 1;
   let _currentCompList = [];
@@ -171,9 +171,8 @@
   function domaineCell(item) {
     const label = (item.domaine_titre_court || item.domaine_titre || item.id_domaine_competence || "Domaine").toString();
     const c = normalizeColor(item.domaine_couleur);
-    const color = c ? c : "#e5e7eb";
-    const safeLabel = escapeHtml(label);
-    return `<span class="domain-dot" title="${safeLabel}" style="background:${escapeHtml(color)};"></span>`;
+    const style = c ? ` style="--dom-color:${escapeHtml(c)}"` : "";
+    return `<span class="sb-badge-domaine sb-badge-domaine--soft"${style}>${escapeHtml(label)}</span>`;
   }
 
   function levelLabelOnly(value) {
@@ -199,10 +198,17 @@
       const tr = document.createElement("tr");
       tr.setAttribute("data-id_comp", it.id_comp);
 
+      const code = (it.code || "").toString().trim();
+      const title = (it.intitule || "").toString().trim();
+
       tr.innerHTML = `
-        <td class="col-dom">${domaineCell(it)}</td>
-        <td class="col-code">${escapeHtml(it.code)}</td>
-        <td class="col-title">${escapeHtml(it.intitule)}</td>
+        <td class="col-title">
+          <div class="ref-comp-titleline">
+            ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
+            <span class="ref-comp-title">${escapeHtml(title || "Compétence")}</span>
+          </div>
+        </td>
+        <td class="col-domain">${domaineCell(it)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-detail">
           <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
@@ -359,10 +365,21 @@
     return { id_service, id_domaine, q, etat };
   }
 
-  function setScopeLabel(serviceName) {
-    const el = byId("refScopeLabel");
-    if (!el) return;
-    el.innerHTML = `Service : <b>${escapeHtml(serviceName || "—")}</b>`;
+  function setScopeLabel(serviceName, id_service) {
+    const title = byId("refScopeTitle");
+    const sub = byId("refScopeLabel");
+    const raw = (id_service || "").trim();
+    const name = (serviceName || "").toString().trim();
+
+    if (title) {
+      if (!raw || raw === ALL_SERVICES_ID) title.textContent = "Référentiel de l’entreprise";
+      else title.textContent = `Référentiel du service : ${name || "—"}`;
+    }
+
+    if (sub) {
+      sub.textContent = "";
+      sub.style.display = "none";
+    }
   }
 
   function setCountsForTab(count, tab) {
@@ -413,30 +430,41 @@
     el.textContent = `${start + 1}–${end} sur ${total}`;
   }
 
+  function buildPaginationTokens(totalPages, page) {
+    if (totalPages <= 5) {
+      const all = [];
+      for (let i = 1; i <= totalPages; i += 1) all.push(i);
+      return all;
+    }
+
+    const tokens = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+
+    if (start > 2) tokens.push("ellipsis-left");
+    for (let i = start; i <= end; i += 1) tokens.push(i);
+    if (end < totalPages - 1) tokens.push("ellipsis-right");
+    tokens.push(totalPages);
+
+    return tokens;
+  }
+
   function renderPagination(total, totalPages, page) {
     const host = byId("refPagination");
     if (!host) return;
 
     const prevDisabled = page <= 1 ? ' disabled' : '';
     const nextDisabled = page >= totalPages ? ' disabled' : '';
-
-    let pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i += 1) pages.push(i);
-    } else {
-      const start = Math.max(1, page - 1);
-      const end = Math.min(totalPages, start + 2);
-      for (let i = start; i <= end; i += 1) pages.push(i);
-      if (pages[0] > 1) pages.unshift(1);
-      if (pages[pages.length - 1] < totalPages) pages.push(totalPages);
-      pages = [...new Set(pages)];
-    }
+    const tokens = buildPaginationTokens(totalPages, page);
 
     host.innerHTML = `
       <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
       </button>
-      ${pages.map(p => `<button type="button" class="ref-page-btn${p === page ? ' is-active' : ''}" data-page="${p}" aria-label="Page ${p}" aria-current="${p === page ? 'page' : 'false'}">${p}</button>`).join("")}
+      ${tokens.map(t => {
+        if (typeof t === "string") return `<span class="ref-page-ellipsis" aria-hidden="true">…</span>`;
+        return `<button type="button" class="ref-page-btn${t === page ? ' is-active' : ''}" data-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? 'page' : 'false'}">${t}</button>`;
+      }).join("")}
       <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
       </button>
@@ -509,7 +537,7 @@
       // Compétences
       if (comp.status === "fulfilled" && comp.value) {
         const data = comp.value;
-        setScopeLabel(data?.service?.nom_service || "");
+        setScopeLabel(data?.service?.nom_service || "", f.id_service);
         fillDomaineSelect(data?.domaines || []);
 
         setText("kpiRefPostes", data?.kpis?.nb_postes ?? "–");
@@ -969,6 +997,8 @@
     const btnClose = byId("btnRefModalClose");
     const modal = byId("modalRefDetail");
 
+    if (pageSizeSelect) pageSizeSelect.value = String(_pageSize);
+
     if (selService) {
       selService.addEventListener("change", () => {
         _cacheComp.clear();
@@ -1053,7 +1083,7 @@
 
     if (pageSizeSelect) {
       pageSizeSelect.addEventListener("change", () => {
-        const next = Number(pageSizeSelect.value) || 25;
+        const next = Number(pageSizeSelect.value) || 10;
         _pageSize = next;
         setCurrentPage(1);
         renderActiveList();
