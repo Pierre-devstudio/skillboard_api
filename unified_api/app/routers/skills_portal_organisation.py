@@ -11,6 +11,7 @@ from app.routers.skills_portal_common import (
 
 import html as _html
 import re
+from urllib.parse import quote
 from html.parser import HTMLParser
 
 from app.routers.skills_portal_pdf_common import build_pdf_document, build_competence_pdf_story
@@ -324,6 +325,14 @@ def _pdf_safe_filename_part(v: Any, max_len: int = 120) -> str:
     if len(s) > max_len:
         s = s[:max_len].rsplit(" ", 1)[0].strip()
     return s or "Competence"
+
+def _pdf_inline_content_disposition(filename: str) -> str:
+    clean = str(filename or "").strip() or "document.pdf"
+    clean = re.sub(r'[\r\n]+', " ", clean).strip()
+    fallback = _pdf_latin1_safe(clean).replace("\\", " ").replace('"', "'").strip() or "document.pdf"
+    encoded = quote(clean, safe="")
+    return f"inline; filename=\"{fallback}\"; filename*=UTF-8''{encoded}"
+
 
 
 def _rtf_to_html_basic(rtf: str) -> str:
@@ -1351,8 +1360,9 @@ def get_competence_fiche_pdf(id_contact: str, id_comp: str, request: Request):
 
         code_label = skill.get("code") or "Compétence"
         intitule_label = skill.get("intitule") or "Compétence"
-        filename = _pdf_latin1_safe(
-            f"Fiche compétence {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(intitule_label, 80)}.pdf"
+        filename = (
+            f"{_pdf_safe_filename_part(code_label, 32)} - "
+            f"{_pdf_safe_filename_part(intitule_label, 120)}.pdf"
         )
 
         pdf_bytes = build_pdf_document(
@@ -1372,7 +1382,7 @@ def get_competence_fiche_pdf(id_contact: str, id_comp: str, request: Request):
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'inline; filename="{filename}"',
+                "Content-Disposition": _pdf_inline_content_disposition(filename),
                 "Cache-Control": "no-store",
             },
         )
@@ -1414,7 +1424,10 @@ def get_poste_fiche_pdf(id_contact: str, id_poste: str, request: Request):
         footer_parts.append("Novoskill Insights")
         footer_parts.append("Fiche de poste complète")
 
-        filename = _pdf_latin1_safe(f"Fiche de poste {ref_poste} - {intitule_poste}.pdf")
+        filename = (
+            f"{_pdf_safe_filename_part(ref_poste, 32)} - "
+            f"{_pdf_safe_filename_part(intitule_poste, 120)}.pdf"
+        )
         pdf_bytes = build_pdf_document(
             _build_poste_pdf_story({}, poste, dossier, referential),
             meta={
@@ -1432,7 +1445,7 @@ def get_poste_fiche_pdf(id_contact: str, id_poste: str, request: Request):
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'inline; filename="{filename}"',
+                "Content-Disposition": _pdf_inline_content_disposition(filename),
                 "Cache-Control": "no-store",
             },
         )

@@ -711,13 +711,17 @@
   }
 
   function renderPdfBlobInViewer(win, blob, title) {
-    const blobUrl = URL.createObjectURL(blob);
-    const safeTitle = escapeHtml(title || "Document PDF");
+    const safeFilename = String(title || "Document PDF").trim() || "Document PDF";
+    const pdfFile = new File([blob], safeFilename, { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(pdfFile);
+    const safeTitle = escapeHtml(safeFilename);
+
     if (!win || win.closed) {
       window.open(blobUrl, "_blank");
       setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, 60000);
       return;
     }
+
     win.document.open();
     win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bar__btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#334155;text-decoration:none;font-weight:600}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}</style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><a class="bar__btn" href="${blobUrl}" download="${safeTitle}">Télécharger</a></div><div class="viewer"><iframe src="${blobUrl}" title="${safeTitle}"></iframe></div></body></html>`);
     win.document.close();
