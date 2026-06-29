@@ -205,6 +205,69 @@
 
 .sb-actions--end{ justify-content:flex-end; }
 
+/* -------- Modal actions: édition / sauvegarde / messages inline -------- */
+.sb-modal-edit-actions{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+  min-height:34px;
+}
+
+.sb-modal-edit-actions .sb-modal-inline-msg{
+  margin:0 4px 0 0;
+  flex:0 0 auto;
+}
+
+.sb-modal-edit-actions .sb-modal-btn svg,
+.sb-modal-edit-actions .sb-btn-icon svg{
+  width:14px;
+  height:14px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.sb-modal-edit-actions .sb-modal-btn--edit,
+.sb-modal-edit-actions .sb-modal-btn--save,
+.sb-modal-edit-actions .sb-modal-btn--cancel{
+  height:32px;
+  border-radius:var(--sb-r-10);
+  font-size:var(--sb-fs-13);
+  font-weight:650;
+}
+
+.sb-inline-msg,
+.sb-modal-inline-msg{
+  color:#667085;
+  font-size:12px;
+  font-weight:700;
+  opacity:0;
+  transform:translateY(1px);
+  transition:opacity .12s ease;
+}
+
+.sb-inline-msg.is-visible,
+.sb-modal-inline-msg.is-visible{
+  opacity:1;
+}
+
+.sb-inline-msg--success,
+.sb-modal-inline-msg.is-success{
+  color:#16803a;
+}
+
+.sb-inline-msg--danger,
+.sb-modal-inline-msg.is-error{
+  color:#b91c1c;
+}
+
+
 /* -------- Hints (APE / IDCC / OPCO / messages inline) -------- */
 .sb-hint{
   margin-top:6px;
@@ -3120,6 +3183,24 @@ textarea.sb-ctrl{
   background:var(--accent);
 }
 
+/* Actions d'édition fiche poste : même logique que le modal collaborateur */
+#modalOrgPoste .org-ctr-btns,
+#modalOrgPoste .org-rh-btns{
+  width:100%;
+  justify-content:flex-end;
+}
+
+#modalOrgPoste .org-poste-rh-actions{
+  flex:1 1 auto;
+  justify-content:flex-end;
+}
+
+#modalOrgPoste .org-ctr-msg,
+#modalOrgPoste .org-rh-msg{
+  margin:0 4px 0 0;
+  flex:0 0 auto;
+}
+
 
 /* ======================================================
    Modal Collaborateur: onglet Identification
@@ -3132,6 +3213,7 @@ textarea.sb-ctrl{
 }
 
 #modalCollaborateur .sb-collab-ident-actions{
+  width:100%;
   display:flex;
   align-items:center;
   justify-content:flex-end;
@@ -3333,7 +3415,7 @@ textarea.sb-ctrl{
 
 /* Ajustements modal collaborateur : édition / selects / projection */
 #modalCollaborateur .sb-collab-ident-actions .sb-collab-inline-msg{
-  margin:0 4px 0 auto;
+  margin:0 4px 0 0;
   flex:0 0 auto;
 }
 

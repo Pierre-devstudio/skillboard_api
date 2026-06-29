@@ -1165,19 +1165,19 @@
 
               // Rendu HTML
               identHost.innerHTML = `
-                <div class="sb-collab-ident-actions">
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnEdit">
-                    <span aria-hidden="true">${collabIcon("edit")}</span>
-                    Modifier
-                  </button>
-                  <span class="sb-collab-inline-msg" aria-live="polite"></span>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="collabBtnCancel" style="display:none;">
+                <div class="sb-collab-ident-actions sb-modal-edit-actions">
+                  <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabBtnCancel" style="display:none;">
                     <span aria-hidden="true">${collabIcon("cancel")}</span>
                     Annuler
                   </button>
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--save" id="collabBtnSave" style="display:none;">
                     <span aria-hidden="true">${collabIcon("save")}</span>
                     Enregistrer
+                  </button>
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--edit" id="collabBtnEdit">
+                    <span aria-hidden="true">${collabIcon("edit")}</span>
+                    Modifier
                   </button>
                 </div>
 

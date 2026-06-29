@@ -243,6 +243,22 @@
     bindOrgCompCritModalOnce();
     bindOrgCertValidModalOnce();
 
+    const clearCtrOnChange = byId("orgPosteBlocContraintes");
+    if (clearCtrOnChange && !clearCtrOnChange._sbInlineClearBound){
+      clearCtrOnChange._sbInlineClearBound = true;
+      ["input", "change"].forEach(evtName => {
+        clearCtrOnChange.addEventListener(evtName, () => _clearInlineMsg("orgCtrMsg"));
+      });
+    }
+
+    const clearRhOnChange = byId("orgPosteBlocRh");
+    if (clearRhOnChange && !clearRhOnChange._sbInlineClearBound){
+      clearRhOnChange._sbInlineClearBound = true;
+      ["input", "change"].forEach(evtName => {
+        clearRhOnChange.addEventListener(evtName, () => _clearInlineMsg("orgRhMsg"));
+      });
+    }
+
 
     // Esc
     document.addEventListener("keydown", (e) => {
@@ -513,7 +529,7 @@
     const modal = byId("modalOrgPoste");
     const id_poste = modal?.getAttribute("data-id-poste") || "";
     if (!id_poste) {
-      portal.showAlert("error", "Impossible d’enregistrer : id_poste manquant.");
+      _showInlineMsg("orgRhMsg", "danger", "Impossible d’enregistrer : id_poste manquant.");
       return;
     }
 
@@ -523,7 +539,7 @@
     const d1 = v.date_debut_validite || "";
     const d2 = v.date_fin_validite || "";
     if (d1 && d2 && d2 < d1){
-      portal.showAlert("error", "La date de fin doit être ≥ à la date de début.");
+      _showInlineMsg("orgRhMsg", "danger", "La date de fin doit être ≥ à la date de début.");
       return;
     }
 
@@ -557,9 +573,10 @@
 
       // refresh UI (retour lecture)
       fillPosteParamRhTab(merged);
+      _showInlineMsg("orgRhMsg", "success", "Paramétrage RH enregistré.");
       
     } catch (e) {
-      portal.showAlert("error", "Erreur enregistrement RH : " + e.message);
+      _showInlineMsg("orgRhMsg", "danger", "Erreur enregistrement RH : " + e.message);
     }
   }
 
@@ -1115,7 +1132,12 @@
 
     if (_inlineMsgTimers[id]) clearTimeout(_inlineMsgTimers[id]);
 
-    el.className = `sb-inline-msg sb-inline-msg--${type || "info"} org-ctr-msg is-visible`;
+    const baseClasses = ["sb-inline-msg", "sb-modal-inline-msg"];
+    if (el.classList.contains("org-rh-msg")) baseClasses.push("org-rh-msg");
+    else baseClasses.push("org-ctr-msg");
+    baseClasses.push(`sb-inline-msg--${type || "info"}`, "is-visible");
+
+    el.className = baseClasses.join(" ");
     el.textContent = text || "";
 
     const hide = () => {
@@ -1136,6 +1158,17 @@
       };
       document.addEventListener("click", onDocClick, true);
     }, 0);
+  }
+
+  function _clearInlineMsg(id){
+    const el = byId(id);
+    if (!el) return;
+    if (_inlineMsgTimers[id]) {
+      clearTimeout(_inlineMsgTimers[id]);
+      _inlineMsgTimers[id] = null;
+    }
+    el.classList.remove("is-visible");
+    el.textContent = "";
   }
 
   function _ctrGetEditableIds(){
