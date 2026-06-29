@@ -19,6 +19,7 @@
     collabs: [],                  // liste collaborateurs
     collabMap: {},                // id_effectif => collab
     selectedIds: new Set(),       // multi-sélection; vide => tous
+    pending_service_raw: "",       // valeur du select avant application du filtre
     breaks: [],                   // indispos chargées
     lastRange: { start: null, end: null }, // YYYY-MM-DD
   };
@@ -87,10 +88,11 @@
   }
 
   function colorForId(id) {
+    // Palette plus vive pour mieux distinguer les collaborateurs dans le planning.
     const palette = [
-      "#1d4ed8", "#0f766e", "#7c3aed", "#b91c1c", "#0f172a",
-      "#a16207", "#065f46", "#be185d", "#2563eb", "#047857",
-      "#6d28d9", "#9f1239"
+      "#2563eb", "#059669", "#7c3aed", "#e11d48", "#f97316",
+      "#0891b2", "#16a34a", "#db2777", "#4f46e5", "#0d9488",
+      "#9333ea", "#dc2626", "#ca8a04", "#0284c7"
     ];
     const s = String(id || "");
     let h = 0;
@@ -352,7 +354,6 @@
       </div>
     `;
 
-    renderLegend();
   }
 
   function showBatchError(msg) {
@@ -604,6 +605,10 @@
     const btnToday = byId("btnPlanToday");
     const btnAdd = byId("btnPlanAdd");
     const btnReset = byId("btnPlanReset");
+    const btnApply = byId("btnPlanApply");
+    const btnFiltersToggle = byId("btnPlanFiltersToggle");
+    const filterCard = document.querySelector("#view-planning-indispo .plan-filter-card");
+    const serviceSelect = byId("planServiceSelect");
 
     const inputSearch = byId("planCollabSearch");
     const pickHost = byId("planCollabList");
@@ -650,10 +655,38 @@
 
     if (btnAdd) btnAdd.addEventListener("click", () => openModalBreakBatch());
 
+    if (btnFiltersToggle && filterCard) {
+      btnFiltersToggle.addEventListener("click", () => {
+        const collapsed = filterCard.classList.toggle("is-collapsed");
+        btnFiltersToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        btnFiltersToggle.setAttribute("title", collapsed ? "Déplier les filtres" : "Replier les filtres");
+        btnFiltersToggle.setAttribute("aria-label", collapsed ? "Déplier les filtres" : "Replier les filtres");
+      });
+    }
+
+    if (serviceSelect) {
+      serviceSelect.addEventListener("change", () => {
+        _state.pending_service_raw = (serviceSelect.value || "").trim();
+      });
+    }
+
+    if (btnApply) {
+      btnApply.addEventListener("click", async () => {
+        const raw = (serviceSelect?.value || "").trim();
+        _state.pending_service_raw = raw;
+        _state.id_service = window.portal.serviceFilter.toQueryId(raw);
+        _state.selectedIds = new Set();
+
+        await loadCollaborateurs(id_contact);
+        await refreshBreaksForCurrentMonth(id_contact);
+      });
+    }
+
     if (btnReset) btnReset.addEventListener("click", async () => {
       const selS = byId("planServiceSelect");
       if (selS) selS.value = window.portal.serviceFilter.ALL_ID;
 
+      _state.pending_service_raw = window.portal.serviceFilter.ALL_ID || "";
       _state.id_service = null;
       _state.search = "";
       _state.selectedIds = new Set();
@@ -883,19 +916,8 @@
 
     const selS = byId("planServiceSelect");
     if (selS) {
-      selS.addEventListener("change", async () => {
-        const raw = (selS.value || "").trim();
-        _state.id_service = window.portal.serviceFilter.toQueryId(raw);
-
-        // On reset la sélection collaborateurs quand on change de service
-        _state.selectedIds = new Set();
-        renderCollabPick();
-
-        await loadCollaborateurs(id_contact);
-        await refreshBreaksForCurrentMonth(id_contact);
-      });
-
       const raw0 = (selS.value || "").trim();
+      _state.pending_service_raw = raw0;
       _state.id_service = window.portal.serviceFilter.toQueryId(raw0);
     }
 

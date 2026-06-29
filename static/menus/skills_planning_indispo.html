@@ -1,79 +1,103 @@
 <section id="view-planning-indispo" style="display:none;">
-  <div class="card">
-    <div class="row" style="align-items:center; justify-content:space-between; gap:12px;">
-      <div style="min-width:0;">
-        <div class="card-title">Planning des indisponibilités</div>
-        <div class="card-sub" style="margin:0;">
+  <div class="card plan-page-hero">
+    <div class="plan-page-hero__main">
+      <div class="plan-page-hero__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <path d="M16 2v4"/>
+          <path d="M8 2v4"/>
+          <path d="M3 10h18"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title plan-page-hero__title">Planning des indisponibilités</div>
+        <div class="card-sub plan-page-hero__sub">
           Visualisez et planifiez les indisponibilités de vos collaborateurs.
         </div>
       </div>
+    </div>
 
-      <div class="row" style="gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-        <button type="button" class="sb-btn sb-btn--soft" id="btnPlanBack">Retour aux collaborateurs</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnPlanAdd">Ajouter des indisponibilités</button>
-      </div>
+    <div class="plan-page-hero__actions">
+      <button type="button" class="sb-btn sb-btn--soft" id="btnPlanBack">Retour aux collaborateurs</button>
+      <button type="button" class="sb-btn sb-btn--accent" id="btnPlanAdd">Ajouter des indisponibilités</button>
     </div>
   </div>
 
-  <div class="sb-split">
+  <div class="plan-workspace">
     <!-- Colonne filtres -->
-    <div class="sb-col">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Filtres</div>
-        <div class="card-sub" style="margin:0;">Filtrez le planning par service et collaborateurs.</div>
+    <aside class="plan-left-col">
+      <div class="card plan-filter-card is-collapsed">
+        <div class="plan-card-head">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Filtres</div>
+            <div class="card-sub" style="margin:0;">Le filtre service impacte la liste et le planning.</div>
+          </div>
+          <button type="button"
+                  class="plan-card-head__icon plan-filter-toggle"
+                  id="btnPlanFiltersToggle"
+                  aria-expanded="false"
+                  aria-controls="planFilterBody"
+                  title="Déplier les filtres"
+                  aria-label="Déplier les filtres">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </button>
+        </div>
 
-        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
-          <div class="info-item" style="min-width:0;">
-            <div class="label">Service</div>
-            <select id="planServiceSelect">
+        <div class="plan-filter-stack" id="planFilterBody">
+          <div class="info-item">
+            <label class="sb-label" for="planServiceSelect">Service</label>
+            <select id="planServiceSelect" class="sb-select">
               <option value="">Tous les services</option>
             </select>
           </div>
 
-          <div class="info-item" style="min-width:0;">
-            <div class="label">Recherche collaborateur</div>
-            <input type="text" id="planCollabSearch" placeholder="Nom, prénom…" />
+          <div class="plan-filter-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanReset">Réinitialiser</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnPlanApply">Appliquer</button>
           </div>
+        </div>
+      </div>
 
-          <div class="info-item" style="min-width:0;">
-            <div class="label">Collaborateurs</div>
-            <div id="planCollabList" class="sb-collab-pick"></div>
-            <div class="card-sub" style="margin-top:8px;">
-              Astuce: cochez plusieurs collaborateurs pour superposer leurs indisponibilités.
+      <div class="card plan-collab-card">
+        <div class="plan-card-head plan-card-head--simple">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Collaborateurs</div>
+            <div class="card-sub" style="margin:0;">Sélectionnez un ou plusieurs collaborateurs.</div>
+          </div>
+        </div>
+
+        <div class="plan-collab-stack">
+          <div class="info-item">
+            <label class="sb-label" for="planCollabSearch">Recherche</label>
+            <div class="plan-search-wrap">
+              <input type="text" id="planCollabSearch" class="sb-ctrl" placeholder="Nom, prénom…" />
+              <span class="plan-search-wrap__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              </span>
             </div>
           </div>
 
-          <div class="info-item" style="min-width:0;">
-            <button type="button" class="sb-btn sb-btn--init sb-btn--block" id="btnPlanReset">
-              Réinitialiser
-            </button>
+          <div class="info-item">
+            <div id="planCollabList" class="sb-collab-pick"></div>
           </div>
         </div>
       </div>
-
-      <div class="card" style="margin-top:12px;">
-        <div class="card-title" style="margin-bottom:6px;">Légende</div>
-        <div class="card-sub" style="margin:0;">Couleurs par collaborateur.</div>
-        <div id="planLegend" style="margin-top:10px;"></div>
-      </div>
-    </div>
+    </aside>
 
     <!-- Colonne calendrier -->
-    <div class="sb-col">
-      <div class="card">
-        <div class="row" style="align-items:center; justify-content:space-between; gap:12px;">
-          <div class="card-title" id="planMonthLabel" style="margin:0;">—</div>
+    <main class="card plan-calendar-card">
+      <div class="plan-calendar-head">
+        <div class="card-title" id="planMonthLabel" style="margin:0;">—</div>
 
-          <div class="row" style="gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanPrev">◀</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanToday">Aujourd’hui</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanNext">▶</button>
-          </div>
+        <div class="plan-calendar-actions">
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanPrev" aria-label="Mois précédent">‹</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanToday">Aujourd’hui</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanNext" aria-label="Mois suivant">›</button>
         </div>
-
-        <div id="planCalendar" class="sb-cal" style="margin-top:10px;"></div>
       </div>
-    </div>
+
+      <div id="planCalendar" class="sb-cal"></div>
+    </main>
   </div>
 
   <!-- Modal ajout batch indisponibilités -->

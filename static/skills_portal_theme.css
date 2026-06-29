@@ -24273,3 +24273,460 @@ body{
     justify-self:stretch;
   }
 }
+
+/* ======================================================
+   Planning indisponibilités : refonte visuelle Insights
+   - Alignement sur Vos collaborateurs / Votre organisation
+   ====================================================== */
+#view-planning-indispo{
+  --plan-red:#d81d30;
+  --plan-red-soft:#fff1f3;
+  --plan-green:#059669;
+  --plan-border:#e5e7eb;
+  --plan-border-soft:#edf0f4;
+  --plan-text:#111827;
+  --plan-muted:#667085;
+}
+
+#view-planning-indispo .plan-page-hero,
+#view-planning-indispo .plan-filter-card,
+#view-planning-indispo .plan-collab-card,
+#view-planning-indispo .plan-calendar-card{
+  border:1px solid var(--plan-border);
+  border-radius:18px;
+  background:#ffffff;
+}
+
+#view-planning-indispo .plan-page-hero{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:24px 28px;
+}
+
+#view-planning-indispo .plan-page-hero__main{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+}
+
+#view-planning-indispo .plan-page-hero__icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 42px;
+  background:var(--plan-red-soft);
+  color:var(--plan-red);
+}
+
+#view-planning-indispo .plan-page-hero__icon svg,
+#view-planning-indispo .plan-card-head__icon svg,
+#view-planning-indispo .plan-search-wrap__icon svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-planning-indispo .plan-page-hero__title{
+  margin:0 0 4px 0;
+  color:var(--plan-text);
+}
+
+#view-planning-indispo .plan-page-hero__sub{
+  margin:0;
+}
+
+#view-planning-indispo .plan-page-hero__actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#view-planning-indispo .plan-workspace{
+  display:grid;
+  grid-template-columns:300px minmax(720px, 1fr);
+  gap:16px;
+  align-items:start;
+  margin-top:18px;
+}
+
+#view-planning-indispo .plan-left-col{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+}
+
+#view-planning-indispo .plan-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+#view-planning-indispo .plan-card-head--simple{
+  margin-bottom:12px;
+}
+
+#view-planning-indispo .plan-card-head__icon{
+  width:28px;
+  height:28px;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 28px;
+  border:0;
+  padding:0;
+  background:#f8fafc;
+  color:#64748b;
+  cursor:pointer;
+  transition:background-color .15s ease, color .15s ease, transform .12s ease;
+}
+
+#view-planning-indispo .plan-card-head__icon svg{
+  width:16px;
+  height:16px;
+}
+
+#view-planning-indispo .plan-filter-toggle:hover{
+  background:var(--plan-red-soft);
+  color:var(--plan-red);
+}
+
+#view-planning-indispo .plan-filter-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-planning-indispo .plan-filter-toggle[aria-expanded="false"] svg{
+  transform:rotate(90deg);
+}
+
+#view-planning-indispo .plan-filter-card.is-collapsed .plan-card-head{
+  margin-bottom:0;
+}
+
+#view-planning-indispo .plan-filter-card.is-collapsed .plan-filter-stack{
+  display:none;
+}
+
+#view-planning-indispo .plan-filter-stack,
+#view-planning-indispo .plan-collab-stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#view-planning-indispo .plan-filter-stack .info-item,
+#view-planning-indispo .plan-collab-stack .info-item{
+  min-width:0;
+}
+
+#view-planning-indispo .plan-filter-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+#view-planning-indispo .plan-filter-actions .sb-btn{
+  width:100%;
+}
+
+#view-planning-indispo .plan-search-wrap{
+  position:relative;
+}
+
+#view-planning-indispo .plan-search-wrap input{
+  padding-right:36px;
+}
+
+#view-planning-indispo .plan-search-wrap__icon{
+  position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#64748b;
+  pointer-events:none;
+}
+
+#view-planning-indispo .plan-search-wrap__icon svg{
+  width:16px;
+  height:16px;
+}
+
+#view-planning-indispo .plan-calendar-card{
+  min-width:0;
+  overflow:hidden;
+}
+
+#view-planning-indispo .plan-calendar-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+#view-planning-indispo .plan-calendar-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#view-planning-indispo .plan-calendar-actions #btnPlanPrev,
+#view-planning-indispo .plan-calendar-actions #btnPlanNext{
+  width:34px;
+  padding:0;
+  font-size:20px;
+  line-height:1;
+}
+
+/* Neutralise l'ancien bloc légende si un fragment obsolète reste chargé. */
+#view-planning-indispo #planLegend,
+#view-planning-indispo #planLegend:empty{
+  display:none !important;
+}
+
+/* Calendrier */
+#view-planning-indispo #planCalendar{
+  margin-top:0 !important;
+}
+
+#view-planning-indispo #planCalendar > .sb-cal{
+  width:100%;
+  border:1px solid var(--plan-border-soft);
+  border-radius:14px;
+  overflow:hidden;
+  background:#ffffff;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-head{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  border-bottom:1px solid var(--plan-border);
+  background:#ffffff;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-wd{
+  padding:11px 10px;
+  font-size:12px;
+  font-weight:800;
+  color:#334155;
+  text-align:center;
+  user-select:none;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-grid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  grid-auto-rows:minmax(104px, 1fr);
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day{
+  position:relative;
+  padding:9px 10px;
+  background:#fff;
+  border-right:1px solid var(--plan-border-soft);
+  border-bottom:1px solid var(--plan-border-soft);
+  overflow:hidden;
+  min-width:0;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day:nth-child(7n){
+  border-right:none;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day.is-out{
+  background:#fafafa;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day.is-out .sb-cal-daynum{
+  color:#64748b;
+  opacity:.85;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day.is-today{
+  box-shadow:inset 0 0 0 2px var(--plan-red);
+  border-radius:10px;
+  background:linear-gradient(180deg, rgba(216,29,48,.06), rgba(216,29,48,.025));
+}
+
+#view-planning-indispo #planCalendar .sb-cal-daynum{
+  font-size:12px;
+  font-weight:800;
+  color:#0f172a;
+  line-height:1;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-evts{
+  margin-top:8px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  max-height:78px;
+  overflow:hidden;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-evt{
+  min-height:20px;
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  border-radius:7px;
+  color:#fff;
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  cursor:pointer;
+  box-shadow:0 1px 0 rgba(255,255,255,.16) inset, 0 4px 10px rgba(15,23,42,.08);
+}
+
+#view-planning-indispo #planCalendar .sb-cal-evt:hover{
+  filter:brightness(.96);
+}
+
+#view-planning-indispo #planCalendar .sb-cal-more{
+  font-size:11px;
+  color:var(--plan-muted);
+  margin-top:2px;
+  user-select:none;
+}
+
+/* Liste collaborateurs */
+#view-planning-indispo .sb-collab-pick{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  max-height:360px;
+  overflow:auto;
+  padding-right:4px;
+}
+
+#view-planning-indispo .sb-collab-pick-row{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 8px;
+  border:1px solid var(--plan-border-soft);
+  border-radius:10px;
+  background:#fff;
+  box-sizing:border-box;
+}
+
+#view-planning-indispo .sb-collab-pick-row:hover{
+  background:#f8fafc;
+  border-color:#d7dbe3;
+}
+
+#view-planning-indispo .sb-collab-pick-row input[type="checkbox"]{
+  width:15px;
+  height:15px;
+  transform:translateY(1px);
+}
+
+#view-planning-indispo .sb-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  flex:0 0 10px;
+  box-shadow:0 0 0 2px rgba(255,255,255,.95), 0 0 0 3px rgba(15,23,42,.08);
+}
+
+#view-planning-indispo .sb-collab-pick-name{
+  min-width:0;
+  flex:1 1 auto;
+  color:var(--plan-text);
+  font-size:12.5px;
+  font-weight:750;
+  line-height:1.2;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#view-planning-indispo .sb-collab-pick-svc{
+  max-width:112px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:20px;
+  padding:0 8px;
+  border-radius:999px;
+  background:#f1f5f9;
+  color:#475569;
+  font-size:11px;
+  font-weight:650;
+  line-height:1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  flex:0 0 auto;
+}
+
+@media (max-width:1200px){
+  #view-planning-indispo .plan-workspace{
+    grid-template-columns:280px minmax(600px, 1fr);
+  }
+}
+
+@media (max-width:900px){
+  #view-planning-indispo .plan-page-hero{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  #view-planning-indispo .plan-page-hero__actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+
+  #view-planning-indispo .plan-workspace{
+    grid-template-columns:1fr;
+  }
+
+  #view-planning-indispo .plan-calendar-card{
+    overflow:auto;
+  }
+
+  #view-planning-indispo #planCalendar{
+    min-width:760px;
+  }
+}
+
+#view-planning-indispo #btnPlanBack{
+  background:var(--sb-soft-bg) !important;
+  border-color:var(--sb-soft-border) !important;
+  color:#1f2937 !important;
+}
+
+#view-planning-indispo #btnPlanBack:hover{
+  background:var(--sb-soft-bg-hover) !important;
+  filter:none;
+}
+
+#view-planning-indispo #btnPlanAdd{
+  background:var(--accent) !important;
+  border-color:var(--accent) !important;
+  color:#ffffff !important;
+}
