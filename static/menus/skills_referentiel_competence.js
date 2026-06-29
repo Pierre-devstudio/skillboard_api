@@ -6,8 +6,13 @@
   let _servicesLoaded = false;
   let _activeTab = "competences"; // competences | certifs
   let _searchTimer = null;
+  let _pageSize = 25;
+  let _currentPageComp = 1;
+  let _currentPageCert = 1;
+  let _currentCompList = [];
+  let _currentCertList = [];
 
-    // Pareto (top 20%) sur les compétences, basé sur nb_postes_concernes
+  // Pareto (top 20%) sur les compétences, basé sur nb_postes_concernes
   let _paretoOnly = false;      // toggle filtre ON/OFF
   let _lastCompList = [];       // dernière liste compétences (non filtrée pareto)
   let _paretoTopIds = new Set(); // ids compétences dans le top 20%
@@ -198,10 +203,24 @@
         <td class="col-dom">${domaineCell(it)}</td>
         <td class="col-code">${escapeHtml(it.code)}</td>
         <td class="col-title">${escapeHtml(it.intitule)}</td>
-        <td class="col-center col-level">${niveauRequisCell(it)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-detail">
-          <button type="button" class="sb-btn sb-btn--xs" data-action="detail">Détail</button>
+          <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </td>
+        <td class="col-center col-detail">
+          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="print" title="Ouvrir la fiche imprimable" aria-label="Ouvrir la fiche imprimable">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
+              <path d="M14 2v6h6"></path>
+              <path d="M8.5 15.5h7"></path>
+              <path d="M8.5 18.5h5"></path>
+            </svg>
+          </button>
         </td>
       `;
 
@@ -241,8 +260,6 @@
           ? "—"
           : (Number(it.duree_validite) === 0 ? "Permanent" : `${it.duree_validite} mois`);
 
-
-
       tr.innerHTML = `
         <td class="col-title" style="font-weight:600;">${escapeHtml(it.nom_certification)}</td>
         <td>${escapeHtml(it.categorie || "—")}</td>
@@ -254,6 +271,16 @@
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
               <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </td>
+        <td class="col-center col-detail">
+          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="print" title="Ouvrir la fiche imprimable" aria-label="Ouvrir la fiche imprimable">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
+              <path d="M14 2v6h6"></path>
+              <path d="M8.5 15.5h7"></path>
+              <path d="M8.5 18.5h5"></path>
             </svg>
           </button>
         </td>
@@ -346,6 +373,89 @@
     else el.textContent = `${count ?? 0} compétence(s) requise(s)`;
   }
 
+  function getCurrentPage() {
+    return _activeTab === "certifs" ? _currentPageCert : _currentPageComp;
+  }
+
+  function setCurrentPage(page) {
+    const n = Math.max(1, Number(page) || 1);
+    if (_activeTab === "certifs") _currentPageCert = n;
+    else _currentPageComp = n;
+  }
+
+  function getActiveList() {
+    return _activeTab === "certifs" ? _currentCertList : _currentCompList;
+  }
+
+  function getPagedItems(list) {
+    const items = Array.isArray(list) ? list : [];
+    const total = items.length;
+    const pageSize = Math.max(1, Number(_pageSize) || 25);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(Math.max(1, getCurrentPage()), totalPages);
+
+    setCurrentPage(safePage);
+
+    const start = total === 0 ? 0 : ((safePage - 1) * pageSize);
+    const end = Math.min(start + pageSize, total);
+    return { items: items.slice(start, end), total, start, end, totalPages, page: safePage, pageSize };
+  }
+
+  function updateRangeLabel(total, start, end) {
+    const el = byId("refRangeLabel");
+    if (!el) return;
+
+    if (!total) {
+      el.textContent = "0–0 sur 0";
+      return;
+    }
+
+    el.textContent = `${start + 1}–${end} sur ${total}`;
+  }
+
+  function renderPagination(total, totalPages, page) {
+    const host = byId("refPagination");
+    if (!host) return;
+
+    const prevDisabled = page <= 1 ? ' disabled' : '';
+    const nextDisabled = page >= totalPages ? ' disabled' : '';
+
+    let pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i += 1) pages.push(i);
+    } else {
+      const start = Math.max(1, page - 1);
+      const end = Math.min(totalPages, start + 2);
+      for (let i = start; i <= end; i += 1) pages.push(i);
+      if (pages[0] > 1) pages.unshift(1);
+      if (pages[pages.length - 1] < totalPages) pages.push(totalPages);
+      pages = [...new Set(pages)];
+    }
+
+    host.innerHTML = `
+      <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      </button>
+      ${pages.map(p => `<button type="button" class="ref-page-btn${p === page ? ' is-active' : ''}" data-page="${p}" aria-label="Page ${p}" aria-current="${p === page ? 'page' : 'false'}">${p}</button>`).join("")}
+      <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </button>
+    `;
+  }
+
+  function renderActiveList() {
+    const list = getActiveList();
+    const pageData = getPagedItems(list);
+
+    if (_activeTab === "certifs") renderCertifs(pageData.items);
+    else renderCompetences(pageData.items);
+
+    setCountsForTab(pageData.total, _activeTab);
+    showEmptyIfNeeded(pageData.total);
+    updateRangeLabel(pageData.total, pageData.start, pageData.end);
+    renderPagination(pageData.total, pageData.totalPages, pageData.page);
+  }
+
   async function fetchCompetences(portal, id_contact, filters) {
     const { id_service, id_domaine, q, etat } = filters;
     const key = `${id_service}|${id_domaine}|${q}|${etat}`;
@@ -414,14 +524,12 @@
 
         updateParetoKpi(listAll.length, _paretoTopCount);
 
-        if (_activeTab === "competences") {
-          const listToRender = _paretoOnly
-            ? listAll.filter(x => _paretoTopIds.has(x.id_comp))
-            : listAll;
+        _currentCompList = _paretoOnly
+          ? listAll.filter(x => _paretoTopIds.has(x.id_comp))
+          : listAll;
 
-          renderCompetences(listToRender);
-          setCountsForTab(listToRender.length, "competences");
-          showEmptyIfNeeded(listToRender.length);
+        if (_activeTab === "competences") {
+          renderActiveList();
         }
 
       }
@@ -430,25 +538,21 @@
       if (cert.status === "fulfilled" && cert.value) {
         const data = cert.value;
         setText("kpiRefCertifs", data?.kpis?.nb_items ?? "–");
+        _currentCertList = Array.isArray(data?.certifications) ? data.certifications : [];
 
         if (_activeTab === "certifs") {
-          const list = Array.isArray(data?.certifications) ? data.certifications : [];
-          renderCertifs(list);
-          setCountsForTab(list.length, "certifs");
-          showEmptyIfNeeded(list.length);
+          renderActiveList();
         }
       }
 
       // Si onglet actif mais chargement a échoué
       if (_activeTab === "competences" && (comp.status !== "fulfilled")) {
-        renderCompetences([]);
-        setCountsForTab(0, "competences");
-        showEmptyIfNeeded(0);
+        _currentCompList = [];
+        renderActiveList();
       }
       if (_activeTab === "certifs" && (cert.status !== "fulfilled")) {
-        renderCertifs([]);
-        setCountsForTab(0, "certifs");
-        showEmptyIfNeeded(0);
+        _currentCertList = [];
+        renderActiveList();
       }
 
     } catch (e) {
@@ -618,14 +722,7 @@
   }
 
 
-  async function openCompetenceDetail(portal, id_comp) {
-    const id_contact = portal.contactId;
-    const id_service = (byId("refServiceSelect")?.value || "").trim();
-    if (!id_service) return;
-
-    const url = `${portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`;
-    const data = await portal.apiJson(url);
-
+  function buildCompetenceDetailView(data) {
     const c = data?.competence || {};
     const dom = c?.domaine || null;
 
@@ -637,9 +734,9 @@
       : label;
     let sub = "";
     if (dom) {
-      const label = (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
+      const domLabel = (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
       const col = normalizeColor(dom.couleur) || "#e5e7eb";
-      sub = `<span class="domain-pill" title="${escapeHtml(label)}"><span class="domain-dot" style="background:${escapeHtml(col)};"></span><span>${escapeHtml(label)}</span></span>`;
+      sub = `<span class="domain-pill" title="${escapeHtml(domLabel)}"><span class="domain-dot" style="background:${escapeHtml(col)};"></span><span>${escapeHtml(domLabel)}</span></span>`;
     }
 
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
@@ -672,10 +769,8 @@
       </div>
     `;
 
-
     const grid = renderGridEvaluation(c.grille_evaluation);
     const postes = renderPostesTable(data?.postes_concernes || [], false, null);
-
 
     const body = `
       <div class="row" style="flex-direction:column; gap:12px;">
@@ -689,23 +784,15 @@
       </div>
     `;
 
-    openModal(title, sub, body);
+    return { title, sub, body, printTitle: code ? `${code} - ${label}` : label || "Compétence" };
   }
 
-  async function openCertifDetail(portal, id_certification) {
-    const id_contact = portal.contactId;
-    const id_service = (byId("refServiceSelect")?.value || "").trim();
-    if (!id_service) return;
-
-    const url = `${portal.apiBase}/skills/referentiel/certification/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_certification)}`;
-    const data = await portal.apiJson(url);
-
+  function buildCertifDetailView(data) {
     const c = data?.certification || {};
     const title = c.nom_certification || "Certification";
 
     const badges = [];
     if (c.categorie) badges.push(`<span class="sb-badge">${escapeHtml(c.categorie)}</span>`);
-            // Validité EFFECTIVE (override si présent) + couleur (vert si identique, rouge si différente)
     const base = (c.duree_validite === null || c.duree_validite === undefined) ? null : Number(c.duree_validite);
     const postesList = Array.isArray(data?.postes_concernes) ? data.postes_concernes : [];
 
@@ -715,9 +802,8 @@
 
     const distinct = Array.from(new Set(overrides));
 
-
-    let effective = base;         // par défaut
-    let differs = false;          // vert si false, rouge si true
+    let effective = base;
+    let differs = false;
     let mixed = false;
 
     if (distinct.length === 0) {
@@ -736,20 +822,15 @@
     if (mixed) label = "Variable";
     else if (effective !== null) label = (effective === 0 ? "Permanent" : `${effective} mois`);
 
-    // badge "soft" vert/rouge
     const styleOk = "border:1px solid rgba(34,197,94,.35); background:rgba(34,197,94,.12); color:#166534;";
     const styleBad = "border:1px solid rgba(239,68,68,.35); background:rgba(239,68,68,.10); color:#991b1b;";
     const badgeStyle = differs ? styleBad : styleOk;
 
     if (label !== "—") badges.push(`<span class="sb-badge" style="${badgeStyle}">${escapeHtml(label)}</span>`);
 
-
     const sub = badges.join(" ");
-
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
-
     const postes = renderPostesTable(data?.postes_concernes || [], true, c.duree_validite);
-
 
     const body = `
       <div class="row" style="flex-direction:column; gap:12px;">
@@ -761,7 +842,104 @@
       </div>
     `;
 
-    openModal(title, sub, body);
+    return { title, sub, body, printTitle: title || "Certification" };
+  }
+
+  function openPrintWindow(title, sub, htmlBody) {
+    const popupWin = window.open("about:blank", "_blank");
+    if (!popupWin) throw new Error("Ouverture de la fiche bloquée par le navigateur.");
+
+    const safeTitle = escapeHtml(title || "Fiche");
+    popupWin.document.open();
+    popupWin.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${safeTitle}</title>
+  <style>
+    :root{color-scheme:light;}
+    *{box-sizing:border-box;}
+    body{margin:0;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#111827;background:#ffffff;}
+    h1{margin:0 0 8px 0;font-size:22px;}
+    .sub{margin:0 0 18px 0;color:#6b7280;font-size:13px;}
+    .card{border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;margin:0 0 12px 0;background:#fff;}
+    .card-title{font-size:15px;font-weight:700;margin:0 0 8px 0;color:#111827;}
+    .card-sub{font-size:13px;color:#6b7280;line-height:1.45;}
+    table{width:100%;border-collapse:collapse;margin-top:10px;}
+    th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:12px;}
+    th{text-transform:none;font-weight:700;color:#111827;}
+    .col-center{text-align:center;}
+    .sb-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 10px;border-radius:999px;border:1px solid #d1d5db;font-size:12px;font-weight:600;line-height:1;background:#fff;color:#111827;}
+    .sb-badge-ref-comp-code{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;}
+    .sb-badge-critere{background:#fef7ed;border-color:#d97706;color:#9a3412;}
+    .sb-badge-niv-a,.sb-badge-niv-b,.sb-badge-niv-c,.sb-badge-niv-d{background:#fff7ed;border-color:#f59e0b;color:#b45309;}
+    .domain-pill{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid #d1d5db;border-radius:999px;font-size:12px;color:#374151;background:#fff;}
+    .domain-dot{display:inline-block;width:10px;height:10px;border-radius:999px;border:1px solid #d1d5db;}
+    .ref-levels-table{display:flex;flex-direction:column;gap:0;margin-top:8px;}
+    .ref-level-row{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start;padding:8px 0;border-bottom:1px solid rgba(209,213,219,.65);}
+    .ref-level-row:last-child{border-bottom:0;}
+    .ref-level-text{font-size:13px;line-height:1.35;color:#111827;}
+    .sb-accordion{border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff;margin-bottom:10px;}
+    .sb-accordion summary{list-style:none;cursor:default;padding:10px 12px;background:#fafafa;}
+    .sb-accordion summary::-webkit-details-marker{display:none;}
+    .sb-acc-body{padding:10px 12px;}
+    .sb-acc-body ul{margin:0;padding-left:18px;}
+    .sb-acc-body li{margin:6px 0;line-height:1.45;}
+    @media print{body{padding:0;} button{display:none !important;}}
+  </style>
+</head>
+<body>
+  <h1>${safeTitle}</h1>
+  ${sub ? `<div class="sub">${sub}</div>` : ``}
+  ${htmlBody}
+  <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 150); });<\/script>
+</body>
+</html>`);
+    popupWin.document.close();
+  }
+
+  async function openCompetenceDetail(portal, id_comp) {
+    const id_contact = portal.contactId;
+    const id_service = (byId("refServiceSelect")?.value || "").trim();
+    if (!id_service) return;
+
+    const url = `${portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`;
+    const data = await portal.apiJson(url);
+    const view = buildCompetenceDetailView(data);
+    openModal(view.title, view.sub, view.body);
+  }
+
+  async function printCompetenceDetail(portal, id_comp) {
+    const id_contact = portal.contactId;
+    const id_service = (byId("refServiceSelect")?.value || "").trim();
+    if (!id_service) return;
+
+    const url = `${portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`;
+    const data = await portal.apiJson(url);
+    const view = buildCompetenceDetailView(data);
+    openPrintWindow(view.printTitle, view.sub, view.body);
+  }
+
+  async function openCertifDetail(portal, id_certification) {
+    const id_contact = portal.contactId;
+    const id_service = (byId("refServiceSelect")?.value || "").trim();
+    if (!id_service) return;
+
+    const url = `${portal.apiBase}/skills/referentiel/certification/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_certification)}`;
+    const data = await portal.apiJson(url);
+    const view = buildCertifDetailView(data);
+    openModal(view.title, view.sub, view.body);
+  }
+
+  async function printCertifDetail(portal, id_certification) {
+    const id_contact = portal.contactId;
+    const id_service = (byId("refServiceSelect")?.value || "").trim();
+    if (!id_service) return;
+
+    const url = `${portal.apiBase}/skills/referentiel/certification/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_certification)}`;
+    const data = await portal.apiJson(url);
+    const view = buildCertifDetailView(data);
+    openPrintWindow(view.printTitle, view.sub, view.body);
   }
 
   function bindOnce(portal) {
@@ -775,7 +953,11 @@
     const txtSearch = byId("refSearch");
     const selEtat = byId("refEtatSelect");
     const btnReset = byId("btnRefReset");
+    const btnApply = byId("btnRefApply");
+    const btnFiltersToggle = byId("btnRefFiltersToggle");
     const kpiParetoCard = byId("kpiRefParetoCard");
+    const pageSizeSelect = byId("refPageSizeSelect");
+    const pagination = byId("refPagination");
 
     const tabComp = byId("tabRefCompetences");
     const tabCert = byId("tabRefCertifs");
@@ -792,6 +974,8 @@
         _cacheComp.clear();
         _cacheCert.clear();
         _paretoOnly = false;
+        _currentPageComp = 1;
+        _currentPageCert = 1;
         // reset domaine au changement de service (sinon filtre vide et utilisateur croit que "ça bug")
         if (selDom) selDom.value = "";
         refreshAll(portal);
@@ -800,14 +984,31 @@
 
     const refreshDebounced = () => {
       clearTimeout(_searchTimer);
-      _searchTimer = setTimeout(() => refreshAll(portal), 250);
+      _searchTimer = setTimeout(() => {
+        setCurrentPage(1);
+        refreshAll(portal);
+      }, 250);
     };
 
-    if (selDom) selDom.addEventListener("change", refreshDebounced);
-    if (selEtat) selEtat.addEventListener("change", refreshDebounced);
+    if (selDom) selDom.addEventListener("change", () => {
+      setCurrentPage(1);
+      refreshAll(portal);
+    });
+    if (selEtat) selEtat.addEventListener("change", () => {
+      setCurrentPage(1);
+      refreshAll(portal);
+    });
 
     if (txtSearch) {
       txtSearch.addEventListener("input", refreshDebounced);
+      txtSearch.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          clearTimeout(_searchTimer);
+          setCurrentPage(1);
+          refreshAll(portal);
+        }
+      });
     }
 
     if (btnReset) {
@@ -822,6 +1023,9 @@
         _paretoOnly = false;
         updateParetoKpi(_lastCompList.length, _paretoTopCount);
 
+        _currentPageComp = 1;
+        _currentPageCert = 1;
+
         // cache + refresh
         _cacheComp.clear();
         _cacheCert.clear();
@@ -829,6 +1033,54 @@
       });
     }
 
+    if (btnApply) {
+      btnApply.addEventListener("click", () => {
+        _currentPageComp = 1;
+        _currentPageCert = 1;
+        refreshAll(portal);
+      });
+    }
+
+    if (btnFiltersToggle) {
+      btnFiltersToggle.addEventListener("click", () => {
+        const card = btnFiltersToggle.closest(".ref-filter-card");
+        const isCollapsed = card ? card.classList.toggle("is-collapsed") : false;
+        btnFiltersToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+        btnFiltersToggle.title = isCollapsed ? "Déplier les filtres" : "Replier les filtres";
+        btnFiltersToggle.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+      });
+    }
+
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener("change", () => {
+        const next = Number(pageSizeSelect.value) || 25;
+        _pageSize = next;
+        setCurrentPage(1);
+        renderActiveList();
+      });
+    }
+
+    if (pagination) {
+      pagination.addEventListener("click", (ev) => {
+        const navBtn = ev.target.closest("[data-page-nav]");
+        const pageBtn = ev.target.closest("[data-page]");
+
+        if (navBtn) {
+          if (navBtn.disabled) return;
+          const dir = navBtn.getAttribute("data-page-nav");
+          const current = getCurrentPage();
+          setCurrentPage(dir === "prev" ? current - 1 : current + 1);
+          renderActiveList();
+          return;
+        }
+
+        if (pageBtn) {
+          const nextPage = Number(pageBtn.getAttribute("data-page") || "1") || 1;
+          setCurrentPage(nextPage);
+          renderActiveList();
+        }
+      });
+    }
 
     if (kpiParetoCard) {
       kpiParetoCard.addEventListener("click", () => {
@@ -838,19 +1090,19 @@
         _paretoOnly = !_paretoOnly;
         updateParetoKpi(_lastCompList.length, _paretoTopCount);
 
-        const listToRender = _paretoOnly
+        _currentCompList = _paretoOnly
           ? _lastCompList.filter(x => _paretoTopIds.has(x.id_comp))
           : _lastCompList;
 
-        renderCompetences(listToRender);
-        setCountsForTab(listToRender.length, "competences");
-        showEmptyIfNeeded(listToRender.length);
+        _currentPageComp = 1;
+        renderActiveList();
       });
     }
 
     if (tabComp) {
       tabComp.addEventListener("click", async () => {
         setActiveTab("competences");
+        renderActiveList();
         await refreshAll(portal);
       });
     }
@@ -858,6 +1110,7 @@
     if (tabCert) {
       tabCert.addEventListener("click", async () => {
         setActiveTab("certifs");
+        renderActiveList();
         await refreshAll(portal);
       });
     }
@@ -867,10 +1120,16 @@
         const tr = ev.target.closest("tr");
         const id_comp = tr?.getAttribute("data-id_comp");
         if (!id_comp) return;
+
+        const actionBtn = ev.target.closest("[data-action]");
+        const action = actionBtn?.getAttribute("data-action") || "detail";
+
         try {
-          await openCompetenceDetail(portal, id_comp);
+          if (action === "print") await printCompetenceDetail(portal, id_comp);
+          else await openCompetenceDetail(portal, id_comp);
         } catch (e) {
-          portal.showAlert("error", "Erreur détail compétence : " + e.message);
+          const prefix = action === "print" ? "Erreur fiche compétence : " : "Erreur détail compétence : ";
+          portal.showAlert("error", prefix + e.message);
         }
       });
     }
@@ -880,10 +1139,16 @@
         const tr = ev.target.closest("tr");
         const id_cert = tr?.getAttribute("data-id_certification");
         if (!id_cert) return;
+
+        const actionBtn = ev.target.closest("[data-action]");
+        const action = actionBtn?.getAttribute("data-action") || "detail";
+
         try {
-          await openCertifDetail(portal, id_cert);
+          if (action === "print") await printCertifDetail(portal, id_cert);
+          else await openCertifDetail(portal, id_cert);
         } catch (e) {
-          portal.showAlert("error", "Erreur détail certification : " + e.message);
+          const prefix = action === "print" ? "Erreur fiche certification : " : "Erreur détail certification : ";
+          portal.showAlert("error", prefix + e.message);
         }
       });
     }

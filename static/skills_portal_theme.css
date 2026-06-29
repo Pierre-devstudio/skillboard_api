@@ -3043,82 +3043,411 @@ textarea.sb-ctrl{
   }
 }
 
-/* Référentiel compétences: tables plus aérées et lisibles */
-#view-referentiel-competences .sb-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+/* VUE: Référentiel de compétences */
+#view-referentiel-competences .ref-page-hero{
+  padding: 28px 32px;
 }
 
-#view-referentiel-competences .sb-table thead th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 13px;
-  color: #111827;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
+#view-referentiel-competences .ref-page-hero__main{
+  display:flex;
+  align-items:center;
+  gap:20px;
 }
 
-#view-referentiel-competences .sb-table tbody td {
-  padding: 12px 16px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
-  line-height: 1.35;
+#view-referentiel-competences .ref-page-hero__icon{
+  width:72px;
+  height:72px;
+  border-radius:20px;
+  background:linear-gradient(180deg, rgba(239,68,68,.10), rgba(239,68,68,.05));
+  border:1px solid rgba(239,68,68,.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#e11d48;
+  flex:0 0 auto;
 }
 
-#view-referentiel-competences .sb-table tbody tr:nth-child(even) {
-  background: #fafafa;
+#view-referentiel-competences .ref-page-hero__icon svg,
+#view-referentiel-competences .ref-kpi-card__icon svg,
+#view-referentiel-competences .ref-card-head__icon svg,
+#view-referentiel-competences .ref-search-wrap__icon svg,
+#view-referentiel-competences .ref-btn-icon svg,
+#view-referentiel-competences .ref-kpi-card__cta svg{
+  width:24px;
+  height:24px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
-#view-referentiel-competences .sb-table tbody tr:hover {
-  background: #f3f4f6;
+#view-referentiel-competences .ref-page-hero__title{
+  margin-bottom:6px;
 }
 
-#view-referentiel-competences .col-center {
-  text-align: center !important;
+#view-referentiel-competences .ref-page-hero__sub{
+  margin:0;
 }
 
-#view-referentiel-competences .col-dom { width: 60px; }
-#view-referentiel-competences .col-code { width: 90px; font-weight: 700; white-space: nowrap; }
-#view-referentiel-competences .col-level { width: 110px; white-space: nowrap; }
-#view-referentiel-competences .col-postes { width: 80px; white-space: nowrap; }
-#view-referentiel-competences .col-detail { width: 90px; white-space: nowrap; }
-
-#view-referentiel-competences .domain-dot {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
+#view-referentiel-competences .ref-kpi-strip{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:16px;
+  margin-top:16px;
 }
 
-#view-referentiel-competences .btn-secondary.btn-xs {
-  padding: 6px 10px;
-  font-size: 12px;
-  margin-left: 0;
+#view-referentiel-competences .ref-kpi-card{
+  width:100%;
+  border:1px solid #e5e7eb;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 18px 45px rgba(15,23,42,.04);
+  padding:20px 22px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  min-height:130px;
+  text-align:left;
 }
 
-/* Domaine en détail (modal) : dot + libellé */
-#view-referentiel-competences .domain-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  font-size: 12px;
-  color: #374151;
-  background: #fff;
+#view-referentiel-competences button.ref-kpi-card{
+  appearance:none;
+  font:inherit;
+  color:inherit;
+  cursor:pointer;
 }
 
-#view-referentiel-competences .domain-pill .domain-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
+#view-referentiel-competences .ref-kpi-card__icon{
+  width:72px;
+  height:72px;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
 }
 
-/* Modal référentiel: éviter le titre hors écran + permettre le scroll */
+#view-referentiel-competences .ref-kpi-card__label{
+  color:#667085;
+  font-size:14px;
+  line-height:1.35;
+}
+
+#view-referentiel-competences .ref-kpi-card__value{
+  margin-top:8px;
+  color:#111827;
+  font-size:22px;
+  font-weight:800;
+  line-height:1;
+}
+
+#view-referentiel-competences .ref-kpi-card__hint{
+  margin-top:10px;
+  color:#667085;
+  font-size:13px;
+}
+
+#view-referentiel-competences .ref-kpi-card__body{
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-kpi-card__cta{
+  margin-left:auto;
+  color:#111827;
+  opacity:.9;
+}
+
+#view-referentiel-competences .ref-kpi-card--postes .ref-kpi-card__icon{
+  background:rgba(244,63,94,.10);
+  color:#ef4444;
+}
+
+#view-referentiel-competences .ref-kpi-card--competences .ref-kpi-card__icon{
+  background:rgba(59,130,246,.10);
+  color:#3b82f6;
+}
+
+#view-referentiel-competences .ref-kpi-card--certifs .ref-kpi-card__icon{
+  background:rgba(249,115,22,.10);
+  color:#f97316;
+}
+
+#view-referentiel-competences .ref-kpi-card--pareto .ref-kpi-card__icon{
+  background:rgba(168,85,247,.12);
+  color:#8b5cf6;
+}
+
+#view-referentiel-competences .ref-kpi-card--pareto.sb-card--active{
+  border-color:rgba(139,92,246,.45);
+  box-shadow:0 20px 48px rgba(139,92,246,.12);
+}
+
+#view-referentiel-competences .ref-workspace{
+  display:grid;
+  grid-template-columns:minmax(280px, 320px) minmax(0, 1fr);
+  gap:16px;
+  align-items:start;
+  margin-top:16px;
+}
+
+#view-referentiel-competences .ref-left-col,
+#view-referentiel-competences .ref-list-card{
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-filter-card{
+  padding:20px;
+}
+
+#view-referentiel-competences .ref-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+
+#view-referentiel-competences .ref-card-head__icon{
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  color:#667085;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+}
+
+#view-referentiel-competences .ref-card-head__icon:hover{
+  background:#f8fafc;
+}
+
+#view-referentiel-competences .ref-filter-stack{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  margin-top:18px;
+}
+
+#view-referentiel-competences .ref-filter-card.is-collapsed .ref-filter-stack{
+  display:none;
+}
+
+#view-referentiel-competences .sb-label{
+  display:block;
+  margin:0 0 8px 0;
+  color:#667085;
+  font-size:13px;
+  font-weight:600;
+}
+
+#view-referentiel-competences .ref-search-wrap{
+  position:relative;
+}
+
+#view-referentiel-competences .ref-search-wrap .sb-ctrl{
+  padding-right:42px;
+}
+
+#view-referentiel-competences .ref-search-wrap__icon{
+  position:absolute;
+  right:14px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#667085;
+  pointer-events:none;
+  display:inline-flex;
+}
+
+#view-referentiel-competences .ref-search-wrap__icon svg{
+  width:18px;
+  height:18px;
+}
+
+#view-referentiel-competences .ref-filter-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:8px;
+}
+
+#view-referentiel-competences .ref-list-card{
+  padding:20px 20px 16px;
+}
+
+#view-referentiel-competences .ref-list-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+#view-referentiel-competences .ref-toggle-bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#view-referentiel-competences .ref-toggle-bar .sb-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:46px;
+  padding-inline:18px;
+}
+
+#view-referentiel-competences .ref-btn-icon{
+  display:inline-flex;
+}
+
+#view-referentiel-competences .ref-btn-icon svg{
+  width:18px;
+  height:18px;
+}
+
+#view-referentiel-competences .ref-table-wrap{
+  overflow-x:auto;
+}
+
+#view-referentiel-competences .sb-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  min-width:780px;
+}
+
+#view-referentiel-competences .sb-table thead th{
+  text-align:left;
+  font-weight:700;
+  font-size:13px;
+  color:#111827;
+  padding:14px 16px;
+  border-bottom:1px solid #e5e7eb;
+  white-space:nowrap;
+  background:#fff;
+}
+
+#view-referentiel-competences .sb-table tbody td{
+  padding:12px 16px;
+  vertical-align:middle;
+  border-bottom:1px solid #f1f5f9;
+  line-height:1.4;
+}
+
+#view-referentiel-competences .sb-table tbody tr:nth-child(even){
+  background:#fcfcfd;
+}
+
+#view-referentiel-competences .sb-table tbody tr:hover{
+  background:#f8fafc;
+}
+
+#view-referentiel-competences .col-center{
+  text-align:center !important;
+}
+
+#view-referentiel-competences .col-dom{ width:64px; }
+#view-referentiel-competences .col-code{ width:120px; font-weight:700; white-space:nowrap; }
+#view-referentiel-competences .col-postes{ width:90px; white-space:nowrap; }
+#view-referentiel-competences .col-detail{ width:64px; white-space:nowrap; }
+#view-referentiel-competences .ref-action-head{ width:64px; }
+
+#view-referentiel-competences .domain-dot{
+  display:inline-block;
+  width:14px;
+  height:14px;
+  border-radius:6px;
+  border:1px solid #d1d5db;
+}
+
+#view-referentiel-competences .domain-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:4px 10px;
+  border:1px solid #d1d5db;
+  border-radius:999px;
+  font-size:12px;
+  color:#374151;
+  background:#fff;
+}
+
+#view-referentiel-competences .domain-pill .domain-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+}
+
+#view-referentiel-competences .ref-table-footer{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:16px;
+  margin-top:18px;
+}
+
+#view-referentiel-competences .ref-page-size-wrap{
+  min-width:128px;
+}
+
+#view-referentiel-competences .ref-page-size-select{
+  min-width:128px;
+}
+
+#view-referentiel-competences .ref-pagination{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+#view-referentiel-competences .ref-page-btn{
+  min-width:38px;
+  height:38px;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  color:#111827;
+  font-weight:700;
+  font-size:14px;
+  padding:0 12px;
+}
+
+#view-referentiel-competences .ref-page-btn:hover,
+#view-referentiel-competences .ref-page-nav:hover{
+  background:#f8fafc;
+}
+
+#view-referentiel-competences .ref-page-btn.is-active{
+  background:linear-gradient(135deg, #ef233c, #d90429);
+  border-color:#d90429;
+  color:#fff;
+  box-shadow:0 12px 24px rgba(217,4,41,.22);
+}
+
+#view-referentiel-competences .ref-page-nav{
+  width:38px;
+  height:38px;
+}
+
+#view-referentiel-competences .ref-page-nav[disabled]{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+#view-referentiel-competences #refRangeLabel{
+  text-align:right;
+  white-space:nowrap;
+}
+
+#view-referentiel-competences #refEmpty{
+  margin-top:16px;
+}
+
 #modalRefDetail.modal.show {
   align-items: flex-start;
 }
@@ -3128,14 +3457,54 @@ textarea.sb-ctrl{
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
-
-
 }
-
 
 #modalRefDetail .modal-body {
   overflow: auto;
   flex: 1 1 auto;
+}
+
+@media (max-width: 1180px){
+  #view-referentiel-competences .ref-kpi-strip{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  #view-referentiel-competences .ref-workspace{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 860px){
+  #view-referentiel-competences .ref-page-hero{
+    padding:22px;
+  }
+
+  #view-referentiel-competences .ref-page-hero__main{
+    align-items:flex-start;
+  }
+
+  #view-referentiel-competences .ref-kpi-strip{
+    grid-template-columns:1fr;
+  }
+
+  #view-referentiel-competences .ref-list-head,
+  #view-referentiel-competences .ref-table-footer{
+    grid-template-columns:1fr;
+    display:grid;
+  }
+
+  #view-referentiel-competences .ref-table-footer{
+    justify-items:start;
+  }
+
+  #view-referentiel-competences .ref-pagination{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+
+  #view-referentiel-competences #refRangeLabel{
+    text-align:left;
+  }
 }
 
 /* Modal Référentiel — Grille d’évaluation : lisibilité (espacement des bullets) */
@@ -14369,82 +14738,411 @@ textarea.sb-ctrl{
 }
 
 
-/* Référentiel compétences: tables plus aérées et lisibles */
-#view-referentiel-competences .sb-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+/* VUE: Référentiel de compétences */
+#view-referentiel-competences .ref-page-hero{
+  padding: 28px 32px;
 }
 
-#view-referentiel-competences .sb-table thead th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 13px;
-  color: #111827;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
+#view-referentiel-competences .ref-page-hero__main{
+  display:flex;
+  align-items:center;
+  gap:20px;
 }
 
-#view-referentiel-competences .sb-table tbody td {
-  padding: 12px 16px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
-  line-height: 1.35;
+#view-referentiel-competences .ref-page-hero__icon{
+  width:72px;
+  height:72px;
+  border-radius:20px;
+  background:linear-gradient(180deg, rgba(239,68,68,.10), rgba(239,68,68,.05));
+  border:1px solid rgba(239,68,68,.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#e11d48;
+  flex:0 0 auto;
 }
 
-#view-referentiel-competences .sb-table tbody tr:nth-child(even) {
-  background: #fafafa;
+#view-referentiel-competences .ref-page-hero__icon svg,
+#view-referentiel-competences .ref-kpi-card__icon svg,
+#view-referentiel-competences .ref-card-head__icon svg,
+#view-referentiel-competences .ref-search-wrap__icon svg,
+#view-referentiel-competences .ref-btn-icon svg,
+#view-referentiel-competences .ref-kpi-card__cta svg{
+  width:24px;
+  height:24px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
-#view-referentiel-competences .sb-table tbody tr:hover {
-  background: #f3f4f6;
+#view-referentiel-competences .ref-page-hero__title{
+  margin-bottom:6px;
 }
 
-#view-referentiel-competences .col-center {
-  text-align: center !important;
+#view-referentiel-competences .ref-page-hero__sub{
+  margin:0;
 }
 
-#view-referentiel-competences .col-dom { width: 60px; }
-#view-referentiel-competences .col-code { width: 90px; font-weight: 700; white-space: nowrap; }
-#view-referentiel-competences .col-level { width: 110px; white-space: nowrap; }
-#view-referentiel-competences .col-postes { width: 80px; white-space: nowrap; }
-#view-referentiel-competences .col-detail { width: 90px; white-space: nowrap; }
-
-#view-referentiel-competences .domain-dot {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
+#view-referentiel-competences .ref-kpi-strip{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:16px;
+  margin-top:16px;
 }
 
-#view-referentiel-competences .btn-secondary.btn-xs {
-  padding: 6px 10px;
-  font-size: 12px;
-  margin-left: 0;
+#view-referentiel-competences .ref-kpi-card{
+  width:100%;
+  border:1px solid #e5e7eb;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 18px 45px rgba(15,23,42,.04);
+  padding:20px 22px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  min-height:130px;
+  text-align:left;
 }
 
-/* Domaine en détail (modal) : dot + libellé */
-#view-referentiel-competences .domain-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  font-size: 12px;
-  color: #374151;
-  background: #fff;
+#view-referentiel-competences button.ref-kpi-card{
+  appearance:none;
+  font:inherit;
+  color:inherit;
+  cursor:pointer;
 }
 
-#view-referentiel-competences .domain-pill .domain-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
+#view-referentiel-competences .ref-kpi-card__icon{
+  width:72px;
+  height:72px;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
 }
 
-/* Modal référentiel: éviter le titre hors écran + permettre le scroll */
+#view-referentiel-competences .ref-kpi-card__label{
+  color:#667085;
+  font-size:14px;
+  line-height:1.35;
+}
+
+#view-referentiel-competences .ref-kpi-card__value{
+  margin-top:8px;
+  color:#111827;
+  font-size:22px;
+  font-weight:800;
+  line-height:1;
+}
+
+#view-referentiel-competences .ref-kpi-card__hint{
+  margin-top:10px;
+  color:#667085;
+  font-size:13px;
+}
+
+#view-referentiel-competences .ref-kpi-card__body{
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-kpi-card__cta{
+  margin-left:auto;
+  color:#111827;
+  opacity:.9;
+}
+
+#view-referentiel-competences .ref-kpi-card--postes .ref-kpi-card__icon{
+  background:rgba(244,63,94,.10);
+  color:#ef4444;
+}
+
+#view-referentiel-competences .ref-kpi-card--competences .ref-kpi-card__icon{
+  background:rgba(59,130,246,.10);
+  color:#3b82f6;
+}
+
+#view-referentiel-competences .ref-kpi-card--certifs .ref-kpi-card__icon{
+  background:rgba(249,115,22,.10);
+  color:#f97316;
+}
+
+#view-referentiel-competences .ref-kpi-card--pareto .ref-kpi-card__icon{
+  background:rgba(168,85,247,.12);
+  color:#8b5cf6;
+}
+
+#view-referentiel-competences .ref-kpi-card--pareto.sb-card--active{
+  border-color:rgba(139,92,246,.45);
+  box-shadow:0 20px 48px rgba(139,92,246,.12);
+}
+
+#view-referentiel-competences .ref-workspace{
+  display:grid;
+  grid-template-columns:minmax(280px, 320px) minmax(0, 1fr);
+  gap:16px;
+  align-items:start;
+  margin-top:16px;
+}
+
+#view-referentiel-competences .ref-left-col,
+#view-referentiel-competences .ref-list-card{
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-filter-card{
+  padding:20px;
+}
+
+#view-referentiel-competences .ref-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+
+#view-referentiel-competences .ref-card-head__icon{
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  color:#667085;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+}
+
+#view-referentiel-competences .ref-card-head__icon:hover{
+  background:#f8fafc;
+}
+
+#view-referentiel-competences .ref-filter-stack{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  margin-top:18px;
+}
+
+#view-referentiel-competences .ref-filter-card.is-collapsed .ref-filter-stack{
+  display:none;
+}
+
+#view-referentiel-competences .sb-label{
+  display:block;
+  margin:0 0 8px 0;
+  color:#667085;
+  font-size:13px;
+  font-weight:600;
+}
+
+#view-referentiel-competences .ref-search-wrap{
+  position:relative;
+}
+
+#view-referentiel-competences .ref-search-wrap .sb-ctrl{
+  padding-right:42px;
+}
+
+#view-referentiel-competences .ref-search-wrap__icon{
+  position:absolute;
+  right:14px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#667085;
+  pointer-events:none;
+  display:inline-flex;
+}
+
+#view-referentiel-competences .ref-search-wrap__icon svg{
+  width:18px;
+  height:18px;
+}
+
+#view-referentiel-competences .ref-filter-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:8px;
+}
+
+#view-referentiel-competences .ref-list-card{
+  padding:20px 20px 16px;
+}
+
+#view-referentiel-competences .ref-list-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+#view-referentiel-competences .ref-toggle-bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#view-referentiel-competences .ref-toggle-bar .sb-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:46px;
+  padding-inline:18px;
+}
+
+#view-referentiel-competences .ref-btn-icon{
+  display:inline-flex;
+}
+
+#view-referentiel-competences .ref-btn-icon svg{
+  width:18px;
+  height:18px;
+}
+
+#view-referentiel-competences .ref-table-wrap{
+  overflow-x:auto;
+}
+
+#view-referentiel-competences .sb-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  min-width:780px;
+}
+
+#view-referentiel-competences .sb-table thead th{
+  text-align:left;
+  font-weight:700;
+  font-size:13px;
+  color:#111827;
+  padding:14px 16px;
+  border-bottom:1px solid #e5e7eb;
+  white-space:nowrap;
+  background:#fff;
+}
+
+#view-referentiel-competences .sb-table tbody td{
+  padding:12px 16px;
+  vertical-align:middle;
+  border-bottom:1px solid #f1f5f9;
+  line-height:1.4;
+}
+
+#view-referentiel-competences .sb-table tbody tr:nth-child(even){
+  background:#fcfcfd;
+}
+
+#view-referentiel-competences .sb-table tbody tr:hover{
+  background:#f8fafc;
+}
+
+#view-referentiel-competences .col-center{
+  text-align:center !important;
+}
+
+#view-referentiel-competences .col-dom{ width:64px; }
+#view-referentiel-competences .col-code{ width:120px; font-weight:700; white-space:nowrap; }
+#view-referentiel-competences .col-postes{ width:90px; white-space:nowrap; }
+#view-referentiel-competences .col-detail{ width:64px; white-space:nowrap; }
+#view-referentiel-competences .ref-action-head{ width:64px; }
+
+#view-referentiel-competences .domain-dot{
+  display:inline-block;
+  width:14px;
+  height:14px;
+  border-radius:6px;
+  border:1px solid #d1d5db;
+}
+
+#view-referentiel-competences .domain-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:4px 10px;
+  border:1px solid #d1d5db;
+  border-radius:999px;
+  font-size:12px;
+  color:#374151;
+  background:#fff;
+}
+
+#view-referentiel-competences .domain-pill .domain-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+}
+
+#view-referentiel-competences .ref-table-footer{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:16px;
+  margin-top:18px;
+}
+
+#view-referentiel-competences .ref-page-size-wrap{
+  min-width:128px;
+}
+
+#view-referentiel-competences .ref-page-size-select{
+  min-width:128px;
+}
+
+#view-referentiel-competences .ref-pagination{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+#view-referentiel-competences .ref-page-btn{
+  min-width:38px;
+  height:38px;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  color:#111827;
+  font-weight:700;
+  font-size:14px;
+  padding:0 12px;
+}
+
+#view-referentiel-competences .ref-page-btn:hover,
+#view-referentiel-competences .ref-page-nav:hover{
+  background:#f8fafc;
+}
+
+#view-referentiel-competences .ref-page-btn.is-active{
+  background:linear-gradient(135deg, #ef233c, #d90429);
+  border-color:#d90429;
+  color:#fff;
+  box-shadow:0 12px 24px rgba(217,4,41,.22);
+}
+
+#view-referentiel-competences .ref-page-nav{
+  width:38px;
+  height:38px;
+}
+
+#view-referentiel-competences .ref-page-nav[disabled]{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+#view-referentiel-competences #refRangeLabel{
+  text-align:right;
+  white-space:nowrap;
+}
+
+#view-referentiel-competences #refEmpty{
+  margin-top:16px;
+}
+
 #modalRefDetail.modal.show {
   align-items: flex-start;
 }
@@ -14454,14 +15152,54 @@ textarea.sb-ctrl{
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
-
-
 }
-
 
 #modalRefDetail .modal-body {
   overflow: auto;
   flex: 1 1 auto;
+}
+
+@media (max-width: 1180px){
+  #view-referentiel-competences .ref-kpi-strip{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  #view-referentiel-competences .ref-workspace{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 860px){
+  #view-referentiel-competences .ref-page-hero{
+    padding:22px;
+  }
+
+  #view-referentiel-competences .ref-page-hero__main{
+    align-items:flex-start;
+  }
+
+  #view-referentiel-competences .ref-kpi-strip{
+    grid-template-columns:1fr;
+  }
+
+  #view-referentiel-competences .ref-list-head,
+  #view-referentiel-competences .ref-table-footer{
+    grid-template-columns:1fr;
+    display:grid;
+  }
+
+  #view-referentiel-competences .ref-table-footer{
+    justify-items:start;
+  }
+
+  #view-referentiel-competences .ref-pagination{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+
+  #view-referentiel-competences #refRangeLabel{
+    text-align:left;
+  }
 }
 
 /* Modal Référentiel — Grille d’évaluation : lisibilité (espacement des bullets) */
