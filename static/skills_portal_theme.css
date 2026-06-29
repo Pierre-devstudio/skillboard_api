@@ -22512,20 +22512,17 @@ body{
 }
 
 #modalOrgPosteCompCrit .org-comp-level-name{
+  display:flex;
+  align-items:center;
+  gap:9px;
   font-size:13px;
   font-weight:800;
   color:#0f172a;
 }
 
-#modalOrgPosteCompCrit .org-comp-level-radio{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  color:#64748b;
-}
-
-#modalOrgPosteCompCrit .org-comp-level-radio input{
+#modalOrgPosteCompCrit .org-comp-level-name input{
+  flex:0 0 auto;
+  margin:0;
   accent-color:var(--accent);
 }
 
