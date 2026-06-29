@@ -29,6 +29,8 @@
     pendingPreselectCollaborateurId: "",
     pendingPreselectServiceId: "",
     pendingPreselectFallbackAll: false,
+    _collabLoadSeq: 0,
+    _collabLoadingKey: "",
     selectedCompetenceId: null,
     scoring: null,
     selectedEntretienId: null,
@@ -649,18 +651,23 @@
     const idEff = String(detail?.id_effectif || detail?.idEffectif || detail?.id_collaborateur || "").trim();
     if (!idEff) return;
 
+    const idService = String(detail?.id_service || detail?.serviceId || "").trim();
+    const samePending =
+      String(state.pendingPreselectCollaborateurId || "") === idEff &&
+      String(state.pendingPreselectServiceId || "") === idService;
+
     state.pendingPreselectCollaborateurId = idEff;
-    state.pendingPreselectServiceId = String(detail?.id_service || detail?.serviceId || "").trim();
+    state.pendingPreselectServiceId = idService;
     state.pendingPreselectFallbackAll = false;
 
     const search = $("ep_txtSearchCollab");
-    if (search) search.value = "";
+    if (search && search.value) search.value = "";
 
     if ($("view-entretien-performance")?.style.display !== "none") {
       if (state.pendingPreselectServiceId) {
         setServiceForCollaborateurPreselect(state.pendingPreselectServiceId);
       }
-      if (state.serviceId) {
+      if (state.serviceId && !samePending) {
         loadCollaborateurs();
       }
     }
@@ -1846,11 +1853,20 @@ function renderCollaborateurs(list) {
     if (!_portal) return;
     if (!state.serviceId) return;
 
+    const q = ($("ep_txtSearchCollab")?.value || "").trim();
+    const pendingId = String(state.pendingPreselectCollaborateurId || "").trim();
+    const loadKey = [state.serviceId || "", q || "", pendingId || ""].join("|");
+
+    if (state._collabLoadingKey === loadKey) return;
+
+    const loadSeq = Number(state._collabLoadSeq || 0) + 1;
+    state._collabLoadSeq = loadSeq;
+    state._collabLoadingKey = loadKey;
+
     try {
       _portal.showAlert("", "");
 
       setText("ep_collabCount", "…");
-      const q = ($("ep_txtSearchCollab")?.value || "").trim();
 
       const params = new URLSearchParams();
       if (q) params.set("q", q);
@@ -1858,19 +1874,28 @@ function renderCollaborateurs(list) {
       const url = `${_portal.apiBase}/skills/entretien-performance/collaborateurs/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.serviceId)}?${params.toString()}`;
       const data = await _portal.apiJson(url);
 
+      if (state._collabLoadSeq !== loadSeq) return;
+
       renderCollaborateurs(data || []);
       setText("ep_ctxService", getSelectedServiceName() || "—");
 
     } catch (e) {
+      if (state._collabLoadSeq !== loadSeq) return;
+
       _portal.showAlert("error", "Impossible de charger les collaborateurs : " + String(e?.message || e));
       console.error(e);
       renderCollaborateurs([]);
       setText("ep_ctxService", getSelectedServiceName() || "—");
+    } finally {
+      if (state._collabLoadSeq === loadSeq) {
+        state._collabLoadingKey = "";
+      }
     }
   }
 
   async function onScopeChanged() {
     localStorage.setItem("sb_ep_service", state.serviceId || "");
+    state._collabLoadingKey = "";
     clearCollaborateurs();
     clearCompetences();
     resetEvaluationPanel();

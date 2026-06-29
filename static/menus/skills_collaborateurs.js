@@ -482,7 +482,6 @@
     if (!idEff) return;
 
     const fullName = getCollaborateurFullName(it);
-
     const serviceId = String(it?.id_service || "").trim();
 
     try {
@@ -504,57 +503,16 @@
       collaborateur: fullName
     };
 
-    const tryApply = () => {
-      const root = byId("view-entretien-performance") || document;
-      const search = byId("ep_txtSearchCollab");
-
-      if (search && fullName && search.value !== fullName) {
-        search.value = fullName;
-        fireDomEvent(search, "input");
-        fireDomEvent(search, "change");
-        fireDomEvent(search, "keyup");
-      }
-
-      const sid = cssEscapeValue(idEff);
-      const selectors = [
-        `[data-id-effectif="${sid}"]`,
-        `[data-id_effectif="${sid}"]`,
-        `[data-effectif-id="${sid}"]`,
-        `[data-id-collaborateur="${sid}"]`,
-        `[data-id="${sid}"]`,
-        `.ep-collab-card[data-id-effectif="${sid}"]`,
-        `.ep-collab-card[data-id="${sid}"]`
-      ];
-
-      for (const sel of selectors) {
-        const target = root.querySelector(sel);
-        if (target) {
-          target.click();
-          return;
-        }
-      }
-
-      if (fullName) {
-        const nameKey = fullName.toLowerCase();
-        const cards = Array.from(root.querySelectorAll("#ep_listCollaborateurs .ep-collab-card, #ep_listCollaborateurs button, #ep_listCollaborateurs [role='button'], #ep_listCollaborateurs [data-id]"));
-        const found = cards.find(card => (card.textContent || "").toLowerCase().includes(nameKey));
-        if (found) found.click();
-      }
-
-      try {
-        window.dispatchEvent(new CustomEvent("novoskill:entretien-preselect", { detail }));
-        window.dispatchEvent(new CustomEvent("skills:entretien-preselect", { detail }));
-        window.dispatchEvent(new CustomEvent("ep:preselect-collaborateur", { detail }));
-      } catch (_) {}
-    };
-
     try {
       if (window.SkillsEntretienPerformance && typeof window.SkillsEntretienPerformance.preselectCollaborateur === "function") {
         window.SkillsEntretienPerformance.preselectCollaborateur(detail);
+        return;
       }
     } catch (_) {}
 
-    [120, 350, 700, 1200, 1800].forEach(delay => window.setTimeout(tryApply, delay));
+    try {
+      window.dispatchEvent(new CustomEvent("novoskill:entretien-preselect", { detail }));
+    } catch (_) {}
   }
 
   function selectCollaborateurRow(id_effectif) {
@@ -2080,8 +2038,6 @@
           } else {
             window.location.hash = "entretien-performance";
           }
-
-          prepareEntretienCollaborateurPreselect(_selectedCollaborateur);
         });
       }
 
