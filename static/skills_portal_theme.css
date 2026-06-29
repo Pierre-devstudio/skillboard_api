@@ -3205,7 +3205,7 @@ textarea.sb-ctrl{
 
 #modalCollaborateur .sb-collab-ident-bottom{
   display:grid;
-  grid-template-columns:minmax(0, 1.28fr) minmax(320px, .72fr);
+  grid-template-columns:minmax(0, 1.45fr) minmax(300px, .65fr);
   gap:12px;
   align-items:stretch;
 }
@@ -3227,7 +3227,7 @@ textarea.sb-ctrl{
 
 #modalCollaborateur .sb-collab-comment-card textarea{
   flex:1;
-  min-height:132px;
+  min-height:136px;
   height:auto;
   resize:vertical;
 }
@@ -3252,7 +3252,8 @@ textarea.sb-ctrl{
 
 /* Ajustements modal collaborateur : édition / selects / projection */
 #modalCollaborateur .sb-collab-ident-actions .sb-collab-inline-msg{
-  margin-right:0;
+  margin:0 2px 0 0;
+  flex:0 0 auto;
 }
 
 #modalCollaborateur .sb-collab-ident-actions .sb-btn svg{
@@ -3272,13 +3273,8 @@ textarea.sb-ctrl{
   font-weight:700;
 }
 
-#modalCollaborateur .sb-collab-ident-panel select.sb-select.sb-select--selected-soft{
-  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
-  border-color:color-mix(in srgb, var(--accent) 24%, #d8dee8);
-}
-
 #modalCollaborateur .sb-collab-projection-grid{
-  grid-template-columns:minmax(220px, 1.35fr) minmax(220px, 1.35fr) minmax(150px, .9fr);
+  grid-template-columns:minmax(280px, 1.45fr) minmax(280px, 1.45fr) minmax(150px, .75fr);
   align-items:end;
 }
 
@@ -3288,7 +3284,7 @@ textarea.sb-ctrl{
 
 #modalCollaborateur .sb-collab-projection-field--education,
 #modalCollaborateur .sb-collab-projection-field--domain{
-  min-width:220px;
+  min-width:280px;
 }
 
 #modalCollaborateur .sb-collab-projection-field--retirement{
@@ -3302,7 +3298,7 @@ textarea.sb-ctrl{
 
 #modalCollaborateur .sb-collab-projection-field--exit-date,
 #modalCollaborateur .sb-collab-projection-field--exit-reason{
-  min-width:180px;
+  min-width:0;
 }
 
 @media (max-width:980px){

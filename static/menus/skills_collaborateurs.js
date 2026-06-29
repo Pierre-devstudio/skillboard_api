@@ -481,8 +481,7 @@
   function refreshSelectSelectedSoftState(root) {
     const scope = root && typeof root.querySelectorAll === "function" ? root : document;
     scope.querySelectorAll("select.sb-select").forEach(sel => {
-      const hasValue = String(sel.value || "").trim() !== "";
-      sel.classList.toggle("sb-select--selected-soft", hasValue);
+      sel.classList.remove("sb-select--selected-soft");
     });
   }
 
@@ -1152,18 +1151,18 @@
               // Rendu HTML
               identHost.innerHTML = `
                 <div class="sb-collab-ident-actions">
-                  <span class="sb-collab-inline-msg" aria-live="polite"></span>
                   <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnEdit">
                     <span aria-hidden="true">${collabIcon("edit")}</span>
                     Modifier
                   </button>
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">
-                    <span aria-hidden="true">${collabIcon("save")}</span>
-                    Enregistrer
-                  </button>
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="collabBtnCancel" style="display:none;">
                     <span aria-hidden="true">${collabIcon("cancel")}</span>
                     Annuler
+                  </button>
+                  <span class="sb-collab-inline-msg" aria-live="polite"></span>
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">
+                    <span aria-hidden="true">${collabIcon("save")}</span>
+                    Enregistrer
                   </button>
                 </div>
 
