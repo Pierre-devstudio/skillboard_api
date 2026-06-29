@@ -22441,17 +22441,19 @@ body{
 
 #modalOrgPosteCompCrit,
 #modalOrgPosteCertValid{
-  z-index:1300;
+  z-index:10090;
 }
 
 #modalOrgPosteCompCrit .modal-card,
 #modalOrgPosteCertValid .modal-card{
   position:relative;
-  z-index:1301;
+  z-index:10091;
 }
 
 #modalOrgPosteCompCrit .org-mini-modal-card{
   max-width:920px;
+  border:1px solid rgba(148,163,184,.32);
+  box-shadow:0 24px 70px rgba(15,23,42,.28);
 }
 
 #modalOrgPosteCertValid .org-mini-modal-card{
@@ -22466,11 +22468,14 @@ body{
 #modalOrgPosteCompCrit .modal-body{
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:14px;
+  background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
 #modalOrgPosteCompCrit .org-comp-edit-card{
-  padding:12px;
+  padding:14px;
+  border-color:rgba(148,163,184,.32);
+  box-shadow:0 10px 28px rgba(15,23,42,.045);
 }
 
 #modalOrgPosteCompCrit .org-comp-level-grid{
@@ -22481,39 +22486,43 @@ body{
 }
 
 #modalOrgPosteCompCrit .org-comp-level-card{
+  position:relative;
   display:flex;
   flex-direction:column;
   gap:8px;
   min-width:0;
-  border:1px solid rgba(17,24,39,.14);
-  border-radius:12px;
-  padding:10px;
-  background:#fff;
+  border:1px solid rgba(148,163,184,.42);
+  border-radius:14px;
+  padding:12px;
+  background:linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
   cursor:pointer;
-  transition:border-color .12s ease, box-shadow .12s ease, background .12s ease;
+  transition:border-color .12s ease, box-shadow .12s ease, background .12s ease, transform .12s ease;
 }
 
 #modalOrgPosteCompCrit .org-comp-level-card:hover{
-  border-color:color-mix(in srgb, var(--accent) 30%, #d1d5db);
+  border-color:color-mix(in srgb, var(--accent) 34%, #cbd5e1);
   background:color-mix(in srgb, var(--accent) 3%, #ffffff);
+  transform:translateY(-1px);
 }
 
 #modalOrgPosteCompCrit .org-comp-level-card.is-selected{
   border-color:color-mix(in srgb, var(--accent) 72%, #ffffff);
-  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
-  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
+  box-shadow:0 12px 28px rgba(var(--sb-accent-rgb), .11), 0 0 0 3px rgba(var(--sb-accent-rgb), .10);
+  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
 }
 
 #modalOrgPosteCompCrit .org-comp-level-name{
   font-size:13px;
   font-weight:800;
-  color:#111827;
+  color:#0f172a;
 }
 
 #modalOrgPosteCompCrit .org-comp-level-radio{
   display:flex;
   align-items:center;
   gap:8px;
+  font-size:12px;
+  color:#64748b;
 }
 
 #modalOrgPosteCompCrit .org-comp-level-radio input{
@@ -22522,11 +22531,11 @@ body{
 
 #modalOrgPosteCompCrit .org-comp-level-text{
   min-height:54px;
-  padding:8px;
-  border:1px solid rgba(17,24,39,.08);
-  border-radius:9px;
-  background:rgba(17,24,39,.03);
-  color:#374151;
+  padding:9px;
+  border:1px solid rgba(148,163,184,.28);
+  border-radius:10px;
+  background:#f8fafc;
+  color:#334155;
   font-size:12px;
   line-height:1.35;
 }
@@ -22546,10 +22555,10 @@ body{
 }
 
 #modalOrgPosteCompCrit .org-crit-row .label{
-  margin:0 0 6px 0;
+  margin:0 0 7px 0;
   font-size:12px;
-  font-weight:700;
-  color:#334155;
+  font-weight:750;
+  color:#1e293b;
 }
 
 #modalOrgPosteCompCrit input[type="range"]{
@@ -22558,20 +22567,20 @@ body{
 }
 
 #modalOrgPosteCompCrit input[type="range"]::-webkit-slider-runnable-track{
-  height:6px;
+  height:7px;
   border-radius:999px;
-  background:color-mix(in srgb, var(--accent) 17%, #eef2f7);
+  background:linear-gradient(90deg, color-mix(in srgb, var(--accent) 22%, #ffffff), #eef2f7);
 }
 
 #modalOrgPosteCompCrit input[type="range"]::-webkit-slider-thumb{
   -webkit-appearance:none;
   appearance:none;
-  width:18px;
-  height:18px;
+  width:19px;
+  height:19px;
   border-radius:999px;
   background:var(--accent);
-  border:2px solid #fff;
-  box-shadow:0 0 0 1px rgba(var(--sb-accent-rgb), .24);
+  border:3px solid #fff;
+  box-shadow:0 5px 13px rgba(var(--sb-accent-rgb), .28), 0 0 0 1px rgba(var(--sb-accent-rgb), .18);
   margin-top:-6px;
 }
 
@@ -22582,12 +22591,12 @@ body{
 }
 
 #modalOrgPosteCompCrit input[type="range"]::-moz-range-thumb{
-  width:18px;
-  height:18px;
-  border:0;
+  width:19px;
+  height:19px;
+  border:3px solid #fff;
   border-radius:999px;
   background:var(--accent);
-  box-shadow:0 0 0 1px rgba(var(--sb-accent-rgb), .24);
+  box-shadow:0 5px 13px rgba(var(--sb-accent-rgb), .28), 0 0 0 1px rgba(var(--sb-accent-rgb), .18);
 }
 
 #modalOrgPosteCompCrit .org-crit-ring{
@@ -22595,17 +22604,20 @@ body{
   width:168px;
   height:168px;
   justify-self:center;
+  border-radius:999px;
+  background:radial-gradient(circle at center, #ffffff 58%, color-mix(in srgb, var(--accent) 6%, #ffffff) 100%);
+  box-shadow:0 16px 38px rgba(15,23,42,.08);
 }
 
 #modalOrgPosteCompCrit .org-crit-ring__svg{
   width:100%;
   height:100%;
-  filter:drop-shadow(0 8px 16px rgba(17,24,39,.06));
+  filter:drop-shadow(0 8px 16px rgba(17,24,39,.05));
 }
 
 #modalOrgPosteCompCrit .org-crit-ring__bg{
   fill:none;
-  stroke:#eef2f7;
+  stroke:#e2e8f0;
   stroke-width:3.6;
 }
 
