@@ -483,10 +483,14 @@
 
     const fullName = getCollaborateurFullName(it);
 
+    const serviceId = String(it?.id_service || "").trim();
+
     try {
       window.sessionStorage.setItem("skills_ep_preselect_id_effectif", idEff);
       window.sessionStorage.setItem("skills_ep_preselect_nom", fullName);
+      window.sessionStorage.setItem("skills_ep_preselect_id_service", serviceId);
       window.sessionStorage.setItem("ep_preselect_id_effectif", idEff);
+      window.sessionStorage.setItem("ep_preselect_id_service", serviceId);
       window.sessionStorage.setItem("novoskill_ep_preselect_id_effectif", idEff);
     } catch (_) {}
 
@@ -494,6 +498,8 @@
       id_effectif: idEff,
       idEffectif: idEff,
       id_collaborateur: idEff,
+      id_service: serviceId,
+      serviceId,
       nom: fullName,
       collaborateur: fullName
     };
@@ -541,6 +547,12 @@
         window.dispatchEvent(new CustomEvent("ep:preselect-collaborateur", { detail }));
       } catch (_) {}
     };
+
+    try {
+      if (window.SkillsEntretienPerformance && typeof window.SkillsEntretienPerformance.preselectCollaborateur === "function") {
+        window.SkillsEntretienPerformance.preselectCollaborateur(detail);
+      }
+    } catch (_) {}
 
     [120, 350, 700, 1200, 1800].forEach(delay => window.setTimeout(tryApply, delay));
   }

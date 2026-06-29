@@ -26,6 +26,9 @@
     focusMode: false,
     selectedCollaborateurId: null,
     selectedCollaborateurServiceId: "",
+    pendingPreselectCollaborateurId: "",
+    pendingPreselectServiceId: "",
+    pendingPreselectFallbackAll: false,
     selectedCompetenceId: null,
     scoring: null,
     selectedEntretienId: null,
@@ -539,6 +542,128 @@
     if (tbody) tbody.innerHTML = "";
     setText("ep_compCount", "0");
     state.selectedCompetenceId = null;
+  }
+
+  function readPendingCollaborateurPreselect() {
+    let idEff = "";
+    let idService = "";
+
+    try {
+      idEff = (
+        window.sessionStorage.getItem("skills_ep_preselect_id_effectif") ||
+        window.sessionStorage.getItem("ep_preselect_id_effectif") ||
+        window.sessionStorage.getItem("novoskill_ep_preselect_id_effectif") ||
+        ""
+      ).toString().trim();
+
+      idService = (
+        window.sessionStorage.getItem("skills_ep_preselect_id_service") ||
+        window.sessionStorage.getItem("ep_preselect_id_service") ||
+        ""
+      ).toString().trim();
+    } catch (_) {}
+
+    if (!idEff) return false;
+
+    state.pendingPreselectCollaborateurId = idEff;
+    state.pendingPreselectServiceId = idService;
+    state.pendingPreselectFallbackAll = false;
+
+    const search = $("ep_txtSearchCollab");
+    if (search) search.value = "";
+
+    return true;
+  }
+
+  function clearPendingCollaborateurPreselect() {
+    state.pendingPreselectCollaborateurId = "";
+    state.pendingPreselectServiceId = "";
+    state.pendingPreselectFallbackAll = false;
+
+    try {
+      window.sessionStorage.removeItem("skills_ep_preselect_id_effectif");
+      window.sessionStorage.removeItem("skills_ep_preselect_nom");
+      window.sessionStorage.removeItem("skills_ep_preselect_id_service");
+      window.sessionStorage.removeItem("ep_preselect_id_effectif");
+      window.sessionStorage.removeItem("ep_preselect_id_service");
+      window.sessionStorage.removeItem("novoskill_ep_preselect_id_effectif");
+    } catch (_) {}
+  }
+
+  function escapeCssValue(value) {
+    const s = String(value || "");
+    if (window.CSS && typeof window.CSS.escape === "function") {
+      return window.CSS.escape(s);
+    }
+    return s.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+  }
+
+  function setServiceForCollaborateurPreselect(idService) {
+    const selService = $("ep_selService");
+    if (!selService || !window.portal?.serviceFilter) return false;
+
+    const wanted = String(idService || "").trim() || window.portal.serviceFilter.ALL_ID;
+    const exists = Array.from(selService.options || []).some(opt => String(opt.value || "") === wanted);
+    const target = exists ? wanted : window.portal.serviceFilter.ALL_ID;
+
+    if (String(selService.value || "") !== target) {
+      selService.value = target;
+    }
+
+    state.serviceId = window.portal.serviceFilter.normalizeId(target || "");
+    return !!state.serviceId;
+  }
+
+  function applyPendingCollaborateurPreselect() {
+    const idEff = String(state.pendingPreselectCollaborateurId || "").trim();
+    if (!idEff) return false;
+
+    const wrap = $("ep_listCollaborateurs");
+    if (!wrap) return false;
+
+    const safeId = escapeCssValue(idEff);
+    const btn = wrap.querySelector(`.ep-collab-card[data-id-effectif="${safeId}"]`);
+
+    if (btn) {
+      btn.click();
+      clearPendingCollaborateurPreselect();
+      return true;
+    }
+
+    if (!state.pendingPreselectFallbackAll && window.portal?.serviceFilter?.ALL_ID) {
+      state.pendingPreselectFallbackAll = true;
+      const selService = $("ep_selService");
+      const allId = window.portal.serviceFilter.ALL_ID;
+
+      if (selService && String(selService.value || "") !== allId) {
+        selService.value = allId;
+        state.serviceId = window.portal.serviceFilter.normalizeId(allId);
+        loadCollaborateurs();
+      }
+    }
+
+    return false;
+  }
+
+  function preselectCollaborateurFromExternal(detail) {
+    const idEff = String(detail?.id_effectif || detail?.idEffectif || detail?.id_collaborateur || "").trim();
+    if (!idEff) return;
+
+    state.pendingPreselectCollaborateurId = idEff;
+    state.pendingPreselectServiceId = String(detail?.id_service || detail?.serviceId || "").trim();
+    state.pendingPreselectFallbackAll = false;
+
+    const search = $("ep_txtSearchCollab");
+    if (search) search.value = "";
+
+    if ($("view-entretien-performance")?.style.display !== "none") {
+      if (state.pendingPreselectServiceId) {
+        setServiceForCollaborateurPreselect(state.pendingPreselectServiceId);
+      }
+      if (state.serviceId) {
+        loadCollaborateurs();
+      }
+    }
   }
 
   function resetContextPanel() {
@@ -1207,6 +1332,8 @@ function renderCollaborateurs(list) {
       item.type = "button";
       item.className = `ep-collab-card ep-collab-card--${priority}`;
       item.dataset.priority = priority;
+      item.dataset.idEffectif = String(c.id_effectif || "");
+      item.dataset.idService = String(c.id_service || "");
       item.title = poste ? `${name} - ${poste}` : name;
 
       const left = document.createElement("div");
@@ -1632,6 +1759,8 @@ function renderCollaborateurs(list) {
 
       wrap.appendChild(item);
     });
+
+    applyPendingCollaborateurPreselect();
   }
 
   function getEpCritPctValue(value) {
@@ -3575,6 +3704,18 @@ function renderCollaborateurs(list) {
         if (_bound) return;
         _bound = true;
 
+        if (!state._preselectListenersBound) {
+          state._preselectListenersBound = true;
+
+          const onPreselect = (ev) => {
+            preselectCollaborateurFromExternal(ev?.detail || {});
+          };
+
+          window.addEventListener("novoskill:entretien-preselect", onPreselect);
+          window.addEventListener("skills:entretien-preselect", onPreselect);
+          window.addEventListener("ep:preselect-collaborateur", onPreselect);
+        }
+
         bindPriorityHelpOnce();
 
         // Modal évaluation (standard)
@@ -4534,12 +4675,19 @@ function renderCollaborateurs(list) {
 
     await loadBootstrap();
 
+    const hasPreselect = readPendingCollaborateurPreselect();
+
     // Chargement services dès affichage
     await loadServices();
 
-    // Si un service est déjà sélectionné (auto/restore), on charge les collaborateurs
+    // Si un collaborateur vient de la page Collaborateurs, on se place directement
+    // sur son service, sans passer par une recherche texte fragile aux accents.
     const selService = $("ep_selService");
-    state.serviceId = (selService?.value || "").trim();
+    if (hasPreselect) {
+      setServiceForCollaborateurPreselect(state.pendingPreselectServiceId);
+    } else {
+      state.serviceId = (selService?.value || "").trim();
+    }
 
     if (state.serviceId) {
       applyUiLockedState();
@@ -4702,5 +4850,8 @@ function renderCollaborateurs(list) {
     return saved;
   }
 
-  window.SkillsEntretienPerformance = { onShow };
+  window.SkillsEntretienPerformance = {
+    onShow,
+    preselectCollaborateur: preselectCollaborateurFromExternal
+  };
 })();
