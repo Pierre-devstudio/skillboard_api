@@ -54,6 +54,11 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
+  function formatDateFr(s) {
+    const d = parseYmd(s);
+    return d ? `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}` : "—";
+  }
+
   function addDays(d, n) {
     const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     x.setDate(x.getDate() + n);
@@ -410,15 +415,49 @@
     modal.setAttribute("aria-hidden", "true");
   }
 
+
+  function updateBatchMeta() {
+    const host = byId("breakBatchRows");
+    const meta = byId("breakBatchMeta");
+    if (!meta) return;
+
+    const rows = host ? Array.from(host.querySelectorAll("tr")) : [];
+    const count = rows.filter(tr => {
+      const s = (tr.querySelector('[data-k="start"]')?.value || "").trim();
+      const e = (tr.querySelector('[data-k="end"]')?.value || "").trim();
+      return !!(s || e);
+    }).length;
+
+    meta.textContent = `${count} ligne(s) saisie(s)`;
+  }
+
+  function syncEditActionUi() {
+    const radArchive = byId("radBreakEditArchive");
+    const btn = byId("btnBreakEditSave");
+    const lbl = btn ? btn.querySelector(".js-break-edit-save-label") : null;
+    const icon = btn ? btn.querySelector(".sb-btn-icon") : null;
+    const isArchive = !!(radArchive && radArchive.checked);
+
+    byId("breakEditCardUpdate")?.classList.toggle("is-active", !isArchive);
+    byId("breakEditCardArchive")?.classList.toggle("is-active", isArchive);
+
+    if (lbl) lbl.textContent = isArchive ? "Archiver" : "Enregistrer";
+    if (icon) {
+      icon.innerHTML = isArchive
+        ? `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>`
+        : `<svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>`;
+    }
+  }
+
   function addBatchRow(d1 = "", d2 = "") {
-    const host = byId("breakBatchRows"); // tbody
+    const host = byId("breakBatchRows");
     if (!host) return;
 
     const tr = document.createElement("tr");
     tr.className = "sb-batch-tr";
     tr.innerHTML = `
-      <td><input type="date" class="sb-batch-date" data-k="start" value="${escapeHtml(d1)}"></td>
-      <td><input type="date" class="sb-batch-date" data-k="end" value="${escapeHtml(d2)}"></td>
+      <td><input type="date" class="sb-batch-date sb-ctrl" data-k="start" value="${escapeHtml(d1)}"></td>
+      <td><input type="date" class="sb-batch-date sb-ctrl" data-k="end" value="${escapeHtml(d2)}"></td>
       <td><span class="sb-batch-status">—</span></td>
       <td class="col-center">
         <button type="button" class="sb-icon-btn sb-icon-btn--danger sb-batch-del" title="Retirer" aria-label="Retirer">
@@ -431,18 +470,46 @@
       </td>
     `;
 
-    tr.querySelector(".sb-batch-del")?.addEventListener("click", () => tr.remove());
+    tr.querySelectorAll(".sb-batch-date").forEach(input => {
+      input.addEventListener("input", () => {
+        _setBatchStatus(tr, "—", "");
+        showBatchError(null);
+        updateBatchMeta();
+      });
+      input.addEventListener("change", updateBatchMeta);
+    });
+
+    tr.querySelector(".sb-batch-del")?.addEventListener("click", () => {
+      tr.remove();
+      updateBatchMeta();
+    });
+
     host.appendChild(tr);
+    updateBatchMeta();
   }
 
   function _setBatchStatus(tr, text, kind) {
     const cell = tr ? tr.querySelector(".sb-batch-status") : null;
-    if (cell) cell.textContent = text || "—";
+    const safeText = text || "—";
+    const statusKind = kind || "";
+
+    if (cell) {
+      cell.className = "sb-batch-status";
+      if (statusKind) cell.classList.add(`is-${statusKind}`);
+
+      const icon = statusKind === "ok"
+        ? `<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>`
+        : statusKind === "err"
+          ? `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><path d="M12 17h.01"/></svg>`
+          : "";
+
+      cell.innerHTML = icon ? `<span class="sb-batch-status-icon" aria-hidden="true">${icon}</span><span>${escapeHtml(safeText)}</span>` : escapeHtml(safeText);
+    }
 
     if (tr) {
-      tr.dataset.batchKind = kind || "";
-      tr.classList.toggle("is-ok", kind === "ok");
-      tr.classList.toggle("is-err", kind === "err");
+      tr.dataset.batchKind = statusKind;
+      tr.classList.toggle("is-ok", statusKind === "ok");
+      tr.classList.toggle("is-err", statusKind === "err");
     }
   }
 
@@ -517,6 +584,7 @@
       .filter(x => (x.tr?.dataset?.batchKind || "") === "ok")
       .map(x => ({ tr: x.tr, ds: x.ds, de: x.de, item: x.item }));
 
+    updateBatchMeta();
     return { hasError, items, rowsOk };
   }
 
@@ -779,6 +847,16 @@
       if (!editModal) return;
       showEditError(null);
 
+      const idEff = String(b?.id_effectif || "").trim();
+      const collab = _state.collabMap[idEff] || null;
+
+      const summaryName = byId("breakEditCollabName");
+      const summaryPeriod = byId("breakEditCurrentPeriod");
+      const summaryService = byId("breakEditService");
+      if (summaryName) summaryName.textContent = collabLabel(collab || null);
+      if (summaryPeriod) summaryPeriod.textContent = `${formatDateFr(b?.date_debut)} → ${formatDateFr(b?.date_fin)}`;
+      if (summaryService) summaryService.textContent = (collab?.nom_service || "—").trim() || "—";
+
       if (radUpdate) radUpdate.checked = true;
       if (radArchive) radArchive.checked = false;
 
@@ -786,9 +864,9 @@
       if (editStart) editStart.value = String(b?.date_debut || "").slice(0, 10);
       if (editEnd) editEnd.value = String(b?.date_fin || "").slice(0, 10);
 
-      // champs actifs par défaut (update)
       if (editStart) editStart.disabled = false;
       if (editEnd) editEnd.disabled = false;
+      syncEditActionUi();
 
       editModal.classList.add("show");
       editModal.setAttribute("aria-hidden", "false");
@@ -804,7 +882,10 @@
       const isArchive = !!(radArchive && radArchive.checked);
       if (editStart) editStart.disabled = isArchive;
       if (editEnd) editEnd.disabled = isArchive;
+      showEditError(null);
+      syncEditActionUi();
     };
+
 
     if (radUpdate) radUpdate.addEventListener("change", syncEditMode);
     if (radArchive) radArchive.addEventListener("change", syncEditMode);

@@ -2655,122 +2655,394 @@ textarea.sb-ctrl{
   }
 }
 
-/* Modal batch indisponibilités : inputs date plus modernes */
-#modalBreakBatch input[type="date"]{
-  width: 100%;
-  height: 24px;
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 13px;
-  color: #111827af;
-  outline: none;
-  box-shadow: none;
+/* Modals planning indisponibilités : ajout / modification */
+#modalBreakBatch .plan-break-modal,
+#modalBreakEdit .plan-break-modal{
+  border-radius:16px;
+  border:1px solid #d8dee8;
+  box-shadow:0 18px 48px rgba(15,23,42,.20);
 }
 
-#modalBreakBatch input[type="date"]:focus{
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(193,39,45,0.15);
+#modalBreakBatch .modal-header,
+#modalBreakEdit .modal-header{
+  padding:16px 20px;
 }
 
-#modalBreakBatch .sb-table td{
-  vertical-align: middle;
+#modalBreakBatch .modal-body,
+#modalBreakEdit .modal-body{
+  padding:16px 20px 18px;
+}
+
+#modalBreakBatch .sb-modal-title,
+#modalBreakEdit .sb-modal-title{
+  font-size:16px;
+  font-weight:800;
+  color:#111827;
+}
+
+#modalBreakBatch .modal-x,
+#modalBreakEdit .modal-x{
+  color:#667085;
+}
+
+#modalBreakBatch .modal-x:hover,
+#modalBreakEdit .modal-x:hover{
+  color:var(--accent);
+}
+
+#modalBreakBatch .plan-break-modal__intro{
+  margin:0 0 14px 0;
+  color:#667085;
+  font-size:13px;
+  line-height:1.4;
+}
+
+#modalBreakBatch .plan-break-toprow{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 284px;
+  gap:38px;
+  align-items:end;
+  margin-bottom:18px;
+}
+
+#modalBreakBatch .plan-break-collab-field{
+  min-width:0;
+}
+
+#modalBreakBatch #breakBatchEffectifSelect{
+  width:100%;
+  height:40px;
+}
+
+#modalBreakBatch .plan-break-add-row{
+  height:40px;
+  width:100%;
+  justify-self:end;
+  border-color:color-mix(in srgb, var(--accent) 48%, #d1d5db);
+  background:#ffffff;
+  color:var(--accent);
+  font-weight:750;
+}
+
+#modalBreakBatch .plan-break-add-row:hover{
+  background:color-mix(in srgb, var(--accent) 7%, #ffffff);
+  filter:none;
+}
+
+#modalBreakBatch .plan-break-table-card{
+  overflow:hidden;
+  border:1px solid #d8dee8;
+  border-radius:12px;
+  background:#ffffff;
+}
+
+#modalBreakBatch .plan-break-table{
+  table-layout:fixed;
+  border-spacing:0;
+}
+
+#modalBreakBatch .plan-break-table thead th{
+  height:44px;
+  padding:0 28px;
+  border-bottom:1px solid #e5e7eb;
+  background:#ffffff;
+  color:#111827;
+  font-size:13px;
+  font-weight:800;
+  text-align:left;
+}
+
+#modalBreakBatch .plan-break-table thead th:nth-child(1),
+#modalBreakBatch .plan-break-table thead th:nth-child(2){
+  width:31%;
+}
+
+#modalBreakBatch .plan-break-table thead th:nth-child(3){
+  width:22%;
+}
+
+#modalBreakBatch .plan-break-table thead th:nth-child(4){
+  width:86px;
+}
+
+#modalBreakBatch .plan-break-table tbody tr{
+  background:#ffffff;
+}
+
+#modalBreakBatch .plan-break-table tbody tr:nth-child(even){
+  background:#fbfcfe;
+}
+
+#modalBreakBatch .plan-break-table tbody td{
+  height:58px;
+  padding:8px 28px;
+  border-bottom:1px solid #eef2f6;
+  vertical-align:middle;
+}
+
+#modalBreakBatch .plan-break-table tbody tr:last-child td{
+  border-bottom:0;
+}
+
+#modalBreakBatch input[type="date"].sb-batch-date,
+#modalBreakEdit input[type="date"]{
+  width:100%;
+  height:36px;
+  box-sizing:border-box;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#ffffff;
+  color:#111827;
+  font-family:inherit;
+  font-size:13px;
+  outline:none;
+  box-shadow:none;
+}
+
+#modalBreakBatch input[type="date"].sb-batch-date{
+  padding:0 10px;
+}
+
+#modalBreakEdit input[type="date"]{
+  padding:0 10px;
+}
+
+#modalBreakBatch input[type="date"].sb-batch-date:focus,
+#modalBreakEdit input[type="date"]:focus{
+  border-color:color-mix(in srgb, var(--accent) 55%, #d1d5db);
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#modalBreakBatch tr.is-err input[type="date"].sb-batch-date{
+  border-color:#fca5a5;
+  box-shadow:0 0 0 3px rgba(239,68,68,.10);
+}
+
+#modalBreakBatch .sb-batch-status{
+  min-height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid transparent;
+  color:#667085;
+  font-size:12px;
+  font-weight:750;
+  white-space:nowrap;
+}
+
+#modalBreakBatch .sb-batch-status.is-ok{
+  color:#047857;
+  border-color:#bbf7d0;
+  background:#ecfdf3;
+}
+
+#modalBreakBatch .sb-batch-status.is-err{
+  color:#b91c1c;
+  border-color:#fecaca;
+  background:#fef2f2;
+}
+
+#modalBreakBatch .sb-batch-status-icon,
+#modalBreakBatch .sb-batch-status-icon svg{
+  width:14px;
+  height:14px;
+  display:inline-flex;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 #modalBreakBatch .sb-batch-del{
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 10px;
-  line-height: 1;
+  width:30px;
+  height:30px;
+  border-radius:10px;
 }
 
-/* Modal batch : feedback par ligne (OK / erreur) */
-#modalBreakBatch .sb-batch-status{
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
+#modalBreakBatch .sb-batch-del svg{
+  width:14px;
+  height:14px;
 }
 
-#modalBreakBatch tr.is-ok .sb-batch-status{
-  color: #065f46;
+#modalBreakBatch .plan-break-footer,
+#modalBreakEdit .plan-break-footer{
+  padding:14px 20px;
 }
 
-#modalBreakBatch tr.is-err .sb-batch-status{
-  color: #b91c1c;
+#modalBreakBatch .plan-break-footer .sb-btn,
+#modalBreakEdit .plan-break-footer .sb-btn{
+  height:36px;
+  border-radius:10px;
+  font-weight:750;
 }
 
-#modalBreakBatch tr.is-err input[type="date"]{
-  border-color: #fca5a5;
-  box-shadow: 0 0 0 3px rgba(239,68,68,0.10);
+#modalBreakBatch .plan-break-footer .sb-btn-icon svg,
+#modalBreakBatch .plan-break-add-row .sb-btn-icon svg,
+#modalBreakEdit .plan-break-footer .sb-btn-icon svg,
+#modalBreakEdit .plan-break-warning svg,
+#modalBreakEdit .plan-break-info-icon svg{
+  width:15px;
+  height:15px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
-
-#modalBreakEdit input[type="date"]{
-  width: 100%;
-  height: 24px;
-  padding: 2px 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 13px;
-  color: #111827;
-  outline: none;
-  box-shadow: none;
+#modalBreakBatch .plan-break-footer-msg,
+#modalBreakEdit .plan-break-footer-msg{
+  margin-right:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  color:#667085;
+  font-size:13px;
+  font-weight:500;
 }
 
-
-#modalBreakEdit input[type="date"]:focus{
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(193,39,45,0.15);
+#modalBreakBatch .plan-break-info-icon,
+#modalBreakEdit .plan-break-info-icon{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#475569;
+  flex:0 0 18px;
 }
 
-#modalBreakEdit .sb-radio-row{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  cursor: pointer;
-  user-select: none;
+#modalBreakBatch #breakBatchError,
+#modalBreakEdit #breakEditError{
+  margin-left:4px;
+  opacity:1;
+  transform:none;
 }
 
-#modalBreakEdit .sb-radio-row input[type="radio"]{
-  transform: translateY(1px);
+#modalBreakBatch #breakBatchError:not(.is-visible),
+#modalBreakEdit #breakEditError:not(.is-visible){
+  display:none;
 }
 
-#modalBreakEdit .sb-radio-card{
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  padding: 12px;
+#modalBreakEdit .plan-break-summary{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:14px;
+  padding:14px 16px;
+  margin-bottom:14px;
+  border:1px solid #d8dee8;
+  border-radius:12px;
+  background:#ffffff;
+}
+
+#modalBreakEdit .plan-break-summary div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+#modalBreakEdit .plan-break-summary span{
+  color:#667085;
+  font-size:11.5px;
+  font-weight:700;
+}
+
+#modalBreakEdit .plan-break-summary strong{
+  min-width:0;
+  color:#111827;
+  font-size:13px;
+  font-weight:800;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalBreakEdit .plan-break-choice-stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#modalBreakEdit .plan-break-action-card{
+  padding:16px 18px;
+  border:1px solid #d8dee8;
+  border-radius:14px;
+  background:#ffffff;
+}
+
+#modalBreakEdit .plan-break-action-card.is-active{
+  border-color:color-mix(in srgb, var(--accent) 55%, #d8dee8);
+  background:linear-gradient(180deg, rgba(var(--sb-accent-rgb), .055), #ffffff 76%);
+}
+
+#modalBreakEdit .plan-break-radio-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+}
+
+#modalBreakEdit .plan-break-radio-row input[type="radio"]{
+  width:16px;
+  height:16px;
+  margin:0;
+  accent-color:var(--accent);
+}
+
+#modalBreakEdit .plan-break-radio-row span{
+  color:#0f172a;
+  font-size:16px;
+  font-weight:750;
 }
 
 #modalBreakEdit .sb-edit-dates-grid{
-  margin-left: 16px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  margin:14px 0 0 36px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:14px 48px;
 }
 
 #modalBreakEdit .sb-edit-dates-grid .info-item{
-  min-width: 0;
+  min-width:0;
 }
 
-#modalBreakEdit .sb-edit-dates-grid input[type="date"]{
-  min-width: 0;
-  box-sizing: border-box;
+#modalBreakEdit .plan-break-warning{
+  margin:12px 0 0 36px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#dc2626;
+  font-size:13px;
+  font-weight:650;
 }
 
-@media (max-width: 720px){
+#modalBreakEdit .plan-break-warning span:first-child{
+  flex:0 0 16px;
+}
+
+@media (max-width:720px){
+  #modalBreakBatch .plan-break-toprow,
+  #modalBreakEdit .plan-break-summary,
   #modalBreakEdit .sb-edit-dates-grid{
-    grid-template-columns: 1fr;
-    margin-left: 0;
+    grid-template-columns:1fr;
+  }
+
+  #modalBreakEdit .sb-edit-dates-grid,
+  #modalBreakEdit .plan-break-warning{
+    margin-left:0;
   }
 }
+
 /* Référentiel compétences: tables plus aérées et lisibles */
 #view-referentiel-competences .sb-table {
   width: 100%;
@@ -14097,122 +14369,6 @@ textarea.sb-ctrl{
 }
 
 
-/* Modal batch indisponibilités : inputs date plus modernes */
-#modalBreakBatch input[type="date"]{
-  width: 100%;
-  height: 24px;
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 13px;
-  color: #111827af;
-  outline: none;
-  box-shadow: none;
-}
-
-#modalBreakBatch input[type="date"]:focus{
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(193,39,45,0.15);
-}
-
-#modalBreakBatch .sb-table td{
-  vertical-align: middle;
-}
-
-#modalBreakBatch .sb-batch-del{
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 10px;
-  line-height: 1;
-}
-
-/* Modal batch : feedback par ligne (OK / erreur) */
-#modalBreakBatch .sb-batch-status{
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-}
-
-#modalBreakBatch tr.is-ok .sb-batch-status{
-  color: #065f46;
-}
-
-#modalBreakBatch tr.is-err .sb-batch-status{
-  color: #b91c1c;
-}
-
-#modalBreakBatch tr.is-err input[type="date"]{
-  border-color: #fca5a5;
-  box-shadow: 0 0 0 3px rgba(239,68,68,0.10);
-}
-
-
-#modalBreakEdit input[type="date"]{
-  width: 100%;
-  height: 24px;
-  padding: 2px 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 13px;
-  color: #111827;
-  outline: none;
-  box-shadow: none;
-}
-
-
-#modalBreakEdit input[type="date"]:focus{
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(193,39,45,0.15);
-}
-
-#modalBreakEdit .sb-radio-row{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  cursor: pointer;
-  user-select: none;
-}
-
-#modalBreakEdit .sb-radio-row input[type="radio"]{
-  transform: translateY(1px);
-}
-
-#modalBreakEdit .sb-radio-card{
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  padding: 12px;
-}
-
-#modalBreakEdit .sb-edit-dates-grid{
-  margin-left: 16px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-#modalBreakEdit .sb-edit-dates-grid .info-item{
-  min-width: 0;
-}
-
-#modalBreakEdit .sb-edit-dates-grid input[type="date"]{
-  min-width: 0;
-  box-sizing: border-box;
-}
-
-@media (max-width: 720px){
-  #modalBreakEdit .sb-edit-dates-grid{
-    grid-template-columns: 1fr;
-    margin-left: 0;
-  }
-}
 /* Référentiel compétences: tables plus aérées et lisibles */
 #view-referentiel-competences .sb-table {
   width: 100%;
