@@ -22338,11 +22338,40 @@ body{
 #modalOrgPoste #orgPosteCompTable th:nth-child(4),
 #modalOrgPoste #orgPosteCompTable td:nth-child(4){
   width:120px;
+  text-align:center;
+}
+
+#modalOrgPoste #orgPosteCompTable th:nth-child(5),
+#modalOrgPoste #orgPosteCompTable td:nth-child(5){
+  width:72px;
+  text-align:center;
 }
 
 #modalOrgPoste #orgPosteCertTable th:nth-child(2),
 #modalOrgPoste #orgPosteCertTable td:nth-child(2){
-  width:220px;
+  width:190px;
+}
+
+#modalOrgPoste #orgPosteCertTable th:nth-child(3),
+#modalOrgPoste #orgPosteCertTable td:nth-child(3){
+  width:120px;
+  text-align:center;
+}
+
+#modalOrgPoste #orgPosteCertTable th:nth-child(4),
+#modalOrgPoste #orgPosteCertTable td:nth-child(4){
+  width:42px;
+  text-align:center;
+}
+
+#modalOrgPoste .org-exi-row-actions{
+  justify-content:center;
+  gap:6px;
+}
+
+#modalOrgPoste .org-exi-row-actions .sb-icon-btn{
+  width:30px;
+  height:30px;
 }
 
 #modalOrgPoste .org-exi-more{
@@ -22408,6 +22437,111 @@ body{
   stroke-width:1.7;
   stroke-linecap:round;
   stroke-linejoin:round;
+}
+
+#modalOrgPosteCompCrit,
+#modalOrgPosteCertValid{
+  z-index:1060;
+}
+
+#modalOrgPosteCompCrit .org-mini-modal-card,
+#modalOrgPosteCertValid .org-mini-modal-card{
+  max-width:680px;
+}
+
+#modalOrgPosteCertValid .org-mini-modal-card{
+  max-width:520px;
+}
+
+#modalOrgPosteCompCrit .modal-body,
+#modalOrgPosteCertValid .modal-body{
+  padding:18px;
+}
+
+#modalOrgPosteCompCrit .org-crit-edit-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 190px;
+  gap:18px;
+  align-items:center;
+}
+
+#modalOrgPosteCompCrit .org-crit-edit-fields{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+#modalOrgPosteCompCrit .org-crit-row .label{
+  margin:0 0 6px 0;
+  font-size:12px;
+  font-weight:700;
+  color:#334155;
+}
+
+#modalOrgPosteCompCrit input[type="range"]{
+  width:100%;
+  accent-color:var(--accent);
+}
+
+#modalOrgPosteCompCrit .org-crit-ring{
+  position:relative;
+  width:168px;
+  height:168px;
+  justify-self:center;
+}
+
+#modalOrgPosteCompCrit .org-crit-ring__svg{
+  width:100%;
+  height:100%;
+}
+
+#modalOrgPosteCompCrit .org-crit-ring__bg{
+  fill:none;
+  stroke:#e5e7eb;
+  stroke-width:3.6;
+}
+
+#modalOrgPosteCompCrit .org-crit-ring__prog{
+  fill:none;
+  stroke:rgb(var(--crit-violet, 124,58,237));
+  stroke-width:3.6;
+  stroke-linecap:round;
+  transform:rotate(-90deg);
+  transform-origin:50% 50%;
+}
+
+#modalOrgPosteCompCrit .org-crit-ring__center{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+}
+
+#modalOrgPosteCompCrit .org-crit-ring__value{
+  font-size:30px;
+  font-weight:800;
+  color:#111827;
+  line-height:1;
+}
+
+#modalOrgPosteCompCrit .org-crit-ring__label{
+  margin-top:5px;
+  font-size:12px;
+  font-weight:700;
+  color:#64748b;
+}
+
+#modalOrgPosteCompCrit .modal-footer,
+#modalOrgPosteCertValid .modal-footer{
+  gap:10px;
+}
+
+#modalOrgPosteCompCrit .modal-footer .sb-inline-msg.is-visible,
+#modalOrgPosteCertValid .modal-footer .sb-inline-msg.is-visible{
+  margin-right:auto;
 }
 
 @media (max-width: 980px){

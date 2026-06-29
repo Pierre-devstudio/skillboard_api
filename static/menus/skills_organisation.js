@@ -241,6 +241,9 @@
       });
     }
 
+    bindOrgCompCritModalOnce();
+    bindOrgCertValidModalOnce();
+
 
     // Esc
     document.addEventListener("keydown", (e) => {
@@ -737,6 +740,25 @@
     }
   }
 
+  async function openOrgCompetenceFichePdf(portal, item) {
+    const cid = String(item?.id_competence || item?.id_comp || "").trim();
+    if (!portal?.contactId) throw new Error("Contact introuvable.");
+    if (!cid) throw new Error("Compétence manquante.");
+
+    const code = String(item?.code || "").trim();
+    const title = String(item?.intitule || "Compétence").trim();
+    const viewer = openPdfViewerWindow(`Fiche compétence - ${code ? `${code} - ` : ""}${title}`);
+
+    try {
+      const url = `${portal.apiBase}/skills/organisation/competences/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(cid)}/fiche_pdf`;
+      const { blob, filename } = await fetchOrganisationPdfBlob(url);
+      renderPdfBlobInViewer(viewer, blob, filename || "Fiche compétence.pdf");
+    } catch (err) {
+      if (viewer && !viewer.closed) viewer.close();
+      throw err;
+    }
+  }
+
   function renderPostes(list) {
     const container = document.getElementById("postesContainer");
     const empty = document.getElementById("postesEmpty");
@@ -1060,6 +1082,8 @@
   let _ctrEdit = { editing:false, snapshot:null };
   let _ctrNsfGroupes = [];
   let _orgCompState = { list:[], expanded:false };
+  let _orgCompCritEdit = null;
+  let _orgCertValidEdit = null;
   const _inlineMsgTimers = Object.create(null);
 
   function _showInlineMsg(id, type, text){
@@ -1395,9 +1419,46 @@
       tr.innerHTML = `
         <td class="col-center">${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
         <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
-        <td>${nivCell}</td>
+        <td class="col-center">${nivCell}</td>
         <td class="col-center">${critHtml}</td>
+        <td class="col-center"><div class="sb-icon-actions org-exi-row-actions"></div></td>
       `;
+
+      const actions = tr.querySelector(".org-exi-row-actions");
+      if (actions){
+        const btnCrit = document.createElement("button");
+        btnCrit.type = "button";
+        btnCrit.className = "sb-icon-btn";
+        btnCrit.title = "Évaluer la criticité";
+        btnCrit.setAttribute("aria-label", "Évaluer la criticité");
+        btnCrit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>';
+        btnCrit.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openOrgCompCritModal(it);
+        });
+        actions.appendChild(btnCrit);
+
+        const btnPdf = document.createElement("button");
+        btnPdf.type = "button";
+        btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
+        btnPdf.title = "Ouvrir la fiche compétence PDF";
+        btnPdf.setAttribute("aria-label", "Ouvrir la fiche compétence PDF");
+        btnPdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
+        btnPdf.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const portal = window.__skillsPortalInstance;
+          if (!portal) return;
+          try {
+            await openOrgCompetenceFichePdf(portal, it);
+          } catch (err) {
+            portal.showAlert("error", err?.message || String(err));
+          }
+        });
+        actions.appendChild(btnPdf);
+      }
+
       tbody.appendChild(tr);
     });
 
@@ -1429,14 +1490,232 @@
       const nom = (it?.nom_certification || "").toString().trim();
       const desc = (it?.description || "").toString().trim();
       const cat = (it?.categorie || "").toString().trim();
+      const validity = _formatValidityMonths(it?.validite_override || it?.duree_validite);
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td title="${escapeHtml(desc)}">${escapeHtml(nom || "—")}</td>
         <td>${escapeHtml(cat || "-")}</td>
+        <td class="col-center">${escapeHtml(validity)}</td>
+        <td class="col-center"><div class="sb-icon-actions org-exi-row-actions"></div></td>
       `;
+
+      const actions = tr.querySelector(".org-exi-row-actions");
+      if (actions){
+        const btnEdit = document.createElement("button");
+        btnEdit.type = "button";
+        btnEdit.className = "sb-icon-btn";
+        btnEdit.title = "Modifier la validité";
+        btnEdit.setAttribute("aria-label", "Modifier la validité");
+        btnEdit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+        btnEdit.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openOrgCertValidModal(it);
+        });
+        actions.appendChild(btnEdit);
+      }
+
       tbody.appendChild(tr);
     });
+  }
+
+  function _calcCritScore(freq, impact, dep){
+    const f = Math.max(0, Math.min(10, parseInt(freq ?? 0, 10) || 0));
+    const i = Math.max(0, Math.min(10, parseInt(impact ?? 0, 10) || 0));
+    const d = Math.max(0, Math.min(10, parseInt(dep ?? 0, 10) || 0));
+    return { f, i, d, total: Math.max(0, Math.min(100, (f * 2) + (i * 5) + (d * 3))) };
+  }
+
+  function _setOrgCompCritRing(score){
+    const s = Math.max(0, Math.min(100, parseInt(score ?? 0, 10) || 0));
+    const prog = byId("orgCompCritRingProg");
+    const val = byId("orgCompCritRingVal");
+    if (prog) prog.setAttribute("stroke-dasharray", `${s} 100`);
+    if (val) val.textContent = String(s);
+  }
+
+  function _refreshOrgCompCritDisplay(){
+    const dd = _calcCritScore(byId("orgCompCritFreq")?.value, byId("orgCompCritImpact")?.value, byId("orgCompCritDep")?.value);
+    if (byId("orgCompCritFreqTxt")) byId("orgCompCritFreqTxt").textContent = `${dd.f}/10`;
+    if (byId("orgCompCritImpactTxt")) byId("orgCompCritImpactTxt").textContent = `${dd.i}/10`;
+    if (byId("orgCompCritDepTxt")) byId("orgCompCritDepTxt").textContent = `${dd.d}/10`;
+    _setOrgCompCritRing(dd.total);
+  }
+
+  function openOrgCompCritModal(it){
+    _orgCompCritEdit = Object.assign({}, it || {});
+
+    const badge = byId("orgCompCritBadge");
+    const code = (_orgCompCritEdit.code || "").toString().trim();
+    if (badge){
+      badge.textContent = code;
+      badge.style.display = code ? "" : "none";
+    }
+    _setText("orgCompCritTitle", _orgCompCritEdit.intitule || "Compétence");
+
+    _setValue("orgCompCritFreq", String(_orgCompCritEdit.freq_usage ?? 0));
+    _setValue("orgCompCritImpact", String(_orgCompCritEdit.impact_resultat ?? 0));
+    _setValue("orgCompCritDep", String(_orgCompCritEdit.dependance ?? 0));
+    _refreshOrgCompCritDisplay();
+
+    const modal = byId("modalOrgPosteCompCrit");
+    if (modal){
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+    }
+  }
+
+  function closeOrgCompCritModal(){
+    const modal = byId("modalOrgPosteCompCrit");
+    if (modal){
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+    }
+    _orgCompCritEdit = null;
+  }
+
+  async function saveOrgCompCrit(){
+    const portal = window.__skillsPortalInstance;
+    if (!portal || !_orgCompCritEdit) return;
+
+    const modal = byId("modalOrgPoste");
+    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    const id_competence = (_orgCompCritEdit.id_competence || _orgCompCritEdit.id_comp || "").toString().trim();
+    if (!id_poste || !id_competence){
+      _showInlineMsg("orgCompCritMsg", "danger", "Poste ou compétence introuvable.");
+      return;
+    }
+
+    const payload = {
+      id_competence,
+      niveau_requis: (_orgCompCritEdit.niveau_requis || "C").toString().trim().toUpperCase(),
+      freq_usage: parseInt(byId("orgCompCritFreq")?.value || "0", 10) || 0,
+      impact_resultat: parseInt(byId("orgCompCritImpact")?.value || "0", 10) || 0,
+      dependance: parseInt(byId("orgCompCritDep")?.value || "0", 10) || 0,
+      valider_eval: true
+    };
+
+    try {
+      const url = `${portal.apiBase}/skills/organisation/poste_competence_update/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(id_poste)}`;
+      const updated = await portal.apiJson(url, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      _posteDetailCache.set(id_poste, updated);
+      fillPosteCompetencesTab(updated);
+      closeOrgCompCritModal();
+    } catch (e) {
+      _showInlineMsg("orgCompCritMsg", "danger", "Erreur enregistrement : " + e.message);
+    }
+  }
+
+  function bindOrgCompCritModalOnce(){
+    const modal = byId("modalOrgPosteCompCrit");
+    if (!modal || modal.getAttribute("data-bound") === "1") return;
+    modal.setAttribute("data-bound", "1");
+
+    byId("orgCompCritX")?.addEventListener("click", closeOrgCompCritModal);
+    byId("orgCompCritCancel")?.addEventListener("click", closeOrgCompCritModal);
+    byId("orgCompCritSave")?.addEventListener("click", (e) => { e.preventDefault(); saveOrgCompCrit(); });
+    ["orgCompCritFreq", "orgCompCritImpact", "orgCompCritDep"].forEach(id => {
+      byId(id)?.addEventListener("input", _refreshOrgCompCritDisplay);
+    });
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeOrgCompCritModal(); });
+  }
+
+  function openOrgCertValidModal(it){
+    _orgCertValidEdit = Object.assign({}, it || {});
+    _setText("orgCertValidTitle", _orgCertValidEdit.nom_certification || "Certification");
+    _setText("orgCertValidSub", _orgCertValidEdit.categorie || "Sans catégorie");
+    _setValue("orgCertValidOverride", (_orgCertValidEdit.validite_override ?? "").toString());
+
+    const base = _formatValidityMonths(_orgCertValidEdit.duree_validite);
+    const renewal = _formatValidityMonths(_orgCertValidEdit.delai_renouvellement);
+    const parts = [`Validité catalogue : ${base}`];
+    if (renewal !== "—") parts.push(`Délai de renouvellement : ${renewal}`);
+    _setText("orgCertValidBaseInfo", parts.join(" · "));
+
+    const modal = byId("modalOrgPosteCertValid");
+    if (modal){
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+    }
+  }
+
+  function closeOrgCertValidModal(){
+    const modal = byId("modalOrgPosteCertValid");
+    if (modal){
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+    }
+    _orgCertValidEdit = null;
+  }
+
+  async function saveOrgCertValid(){
+    const portal = window.__skillsPortalInstance;
+    if (!portal || !_orgCertValidEdit) return;
+
+    const modal = byId("modalOrgPoste");
+    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    const id_certification = (_orgCertValidEdit.id_certification || "").toString().trim();
+    if (!id_poste || !id_certification){
+      _showInlineMsg("orgCertValidMsg", "danger", "Poste ou certification introuvable.");
+      return;
+    }
+
+    const raw = (byId("orgCertValidOverride")?.value || "").trim();
+    if (raw && !/^\d+$/.test(raw)){
+      _showInlineMsg("orgCertValidMsg", "danger", "La validité doit être un nombre de mois.");
+      return;
+    }
+
+    try {
+      const url = `${portal.apiBase}/skills/organisation/poste_certification_update/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(id_poste)}`;
+      const updated = await portal.apiJson(url, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({
+          id_certification,
+          validite_override: raw ? parseInt(raw, 10) : null
+        })
+      });
+
+      _posteDetailCache.set(id_poste, updated);
+      fillPosteCertificationsTab(updated);
+      closeOrgCertValidModal();
+    } catch (e) {
+      _showInlineMsg("orgCertValidMsg", "danger", "Erreur enregistrement : " + e.message);
+    }
+  }
+
+  function bindOrgCertValidModalOnce(){
+    const modal = byId("modalOrgPosteCertValid");
+    if (!modal || modal.getAttribute("data-bound") === "1") return;
+    modal.setAttribute("data-bound", "1");
+
+    byId("orgCertValidX")?.addEventListener("click", closeOrgCertValidModal);
+    byId("orgCertValidCancel")?.addEventListener("click", closeOrgCertValidModal);
+    byId("orgCertValidSave")?.addEventListener("click", (e) => { e.preventDefault(); saveOrgCertValid(); });
+
+    const step = (delta) => {
+      const input = byId("orgCertValidOverride");
+      if (!input) return;
+      const cur = parseInt(input.value || "0", 10);
+      const next = Math.max(1, (Number.isFinite(cur) && cur > 0 ? cur : 0) + delta);
+      input.value = String(next);
+    };
+    byId("orgCertValidMinus")?.addEventListener("click", () => step(-1));
+    byId("orgCertValidPlus")?.addEventListener("click", () => step(1));
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeOrgCertValidModal(); });
+  }
+
+  function _formatValidityMonths(v){
+    const n = parseInt(v ?? "", 10);
+    if (!Number.isFinite(n) || n <= 0) return "—";
+    return `${n} mois`;
   }
 
   let _rhSelectsInit = false;

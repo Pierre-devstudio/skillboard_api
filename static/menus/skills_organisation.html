@@ -282,6 +282,7 @@
                     <th>Compétence</th>
                     <th style="width:90px; text-align:center;">Niveau requis</th>
                     <th style="width:80px; text-align:center;">Criticité</th>
+                    <th style="width:72px;"></th>
                   </tr>
                 </thead>
                 <tbody id="orgPosteCompTbody"></tbody>
@@ -316,6 +317,8 @@
                   <tr>
                     <th>Certification</th>
                     <th style="width:160px;">Catégorie</th>
+                    <th style="width:120px; text-align:center;">Validité</th>
+                    <th style="width:42px;"></th>
                   </tr>
                 </thead>
                 <tbody id="orgPosteCertTbody"></tbody>
@@ -477,4 +480,100 @@
 
     </div>
   </div>
+
+  <!-- Modal : évaluation criticité compétence poste -->
+  <div id="modalOrgPosteCompCrit" class="modal" aria-hidden="true">
+    <div class="modal-card modal-card--md org-mini-modal-card">
+      <div class="modal-header">
+        <div class="sb-modal-titleline">
+          <span id="orgCompCritBadge" class="sb-badge sb-badge-ref-comp-code" style="display:none;"></span>
+          <div id="orgCompCritTitle" class="sb-title-text">Compétence</div>
+        </div>
+        <button type="button" class="modal-x" id="orgCompCritX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="org-crit-edit-grid">
+          <div class="org-crit-edit-fields">
+            <div class="org-crit-row">
+              <div class="label">Fréquence d’usage</div>
+              <input id="orgCompCritFreq" type="range" min="0" max="10" step="1" />
+              <div class="sb-help"><span id="orgCompCritFreqTxt">0/10</span></div>
+            </div>
+
+            <div class="org-crit-row">
+              <div class="label">Impact sur le résultat</div>
+              <input id="orgCompCritImpact" type="range" min="0" max="10" step="1" />
+              <div class="sb-help"><span id="orgCompCritImpactTxt">0/10</span></div>
+            </div>
+
+            <div class="org-crit-row">
+              <div class="label">Dépendance au poste</div>
+              <input id="orgCompCritDep" type="range" min="0" max="10" step="1" />
+              <div class="sb-help"><span id="orgCompCritDepTxt">0/10</span></div>
+            </div>
+          </div>
+
+          <div class="org-crit-ring" aria-label="Score de criticité">
+            <svg viewBox="0 0 36 36" class="org-crit-ring__svg">
+              <path class="org-crit-ring__bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path id="orgCompCritRingProg" class="org-crit-ring__prog" stroke-dasharray="0 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <div class="org-crit-ring__center">
+              <div id="orgCompCritRingVal" class="org-crit-ring__value">0</div>
+              <div class="org-crit-ring__label">Criticité</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <span id="orgCompCritMsg" class="sb-inline-msg" aria-live="polite"></span>
+        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="orgCompCritCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="orgCompCritSave">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          </span>
+          <span>Enregistrer</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : validité certification poste -->
+  <div id="modalOrgPosteCertValid" class="modal" aria-hidden="true">
+    <div class="modal-card modal-card--sm org-mini-modal-card">
+      <div class="modal-header">
+        <div>
+          <div id="orgCertValidTitle" class="sb-title-text">Certification</div>
+          <div id="orgCertValidSub" class="card-sub" style="margin:4px 0 0 0;">—</div>
+        </div>
+        <button type="button" class="modal-x" id="orgCertValidX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="sb-field">
+          <div class="label">Validité spécifique au poste</div>
+          <div class="sb-stepper">
+            <button type="button" class="sb-stepper-btn" id="orgCertValidMinus">−</button>
+            <input id="orgCertValidOverride" type="number" min="1" step="1" inputmode="numeric" />
+            <button type="button" class="sb-stepper-btn" id="orgCertValidPlus">+</button>
+          </div>
+          <div class="sb-help" id="orgCertValidBaseInfo">Laissez vide pour utiliser la validité catalogue.</div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <span id="orgCertValidMsg" class="sb-inline-msg" aria-live="polite"></span>
+        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="orgCertValidCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="orgCertValidSave">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          </span>
+          <span>Enregistrer</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
 </section>

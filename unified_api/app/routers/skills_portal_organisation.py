@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 from psycopg.rows import dict_row
 
@@ -13,7 +13,7 @@ import html as _html
 import re
 from html.parser import HTMLParser
 
-from app.routers.skills_portal_pdf_common import build_pdf_document
+from app.routers.skills_portal_pdf_common import build_pdf_document, build_competence_pdf_story
 from app.routers.studio_portal_organisation import (
     _build_poste_pdf_story,
     _fetch_ccn_referential,
@@ -289,6 +289,41 @@ def _dt_to_iso(v):
             return str(v)
         except Exception:
             return None
+
+
+def _clamp_0_10(v) -> int:
+    try:
+        n = int(v)
+    except Exception:
+        n = 0
+    if n < 0:
+        return 0
+    if n > 10:
+        return 10
+    return n
+
+
+def _calc_poids_criticite_100(freq_usage_0_10: int, impact_0_10: int, dependance_0_10: int) -> int:
+    fu = _clamp_0_10(freq_usage_0_10)
+    im = _clamp_0_10(impact_0_10)
+    de = _clamp_0_10(dependance_0_10)
+    total = (fu * 2) + (im * 5) + (de * 3)
+    if total < 0:
+        total = 0
+    if total > 100:
+        total = 100
+    return int(total)
+
+
+def _pdf_safe_filename_part(v: Any, max_len: int = 120) -> str:
+    s = str(v or "").strip()
+    s = re.sub(r'[\/:*?"<>|]+', " ", s)
+    s = re.sub(r"\s+", " ", s).strip(" ._-")
+    if not s:
+        return "Competence"
+    if len(s) > max_len:
+        s = s[:max_len].rsplit(" ", 1)[0].strip()
+    return s or "Competence"
 
 
 def _rtf_to_html_basic(rtf: str) -> str:
@@ -742,6 +777,13 @@ class PosteCompetenceItem(BaseModel):
     etat: Optional[str] = None
     niveau_requis: Optional[str] = None
     poids_criticite: Optional[float] = None
+    freq_usage: Optional[int] = None
+    impact_resultat: Optional[int] = None
+    dependance: Optional[int] = None
+    niveaua: Optional[str] = None
+    niveaub: Optional[str] = None
+    niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
 
 class PosteCertificationItem(BaseModel):
     id_certification: str
@@ -749,6 +791,10 @@ class PosteCertificationItem(BaseModel):
     description: Optional[str] = None
     categorie: Optional[str] = None
     niveau_exigence: Optional[str] = None
+    duree_validite: Optional[int] = None
+    delai_renouvellement: Optional[int] = None
+    validite_override: Optional[int] = None
+    commentaire: Optional[str] = None
 
 
 class PosteDetailResponse(BaseModel):
@@ -810,6 +856,20 @@ class PosteParamRhUpdatePayload(BaseModel):
     criticite_poste: Optional[int] = None
     strategie_pourvoi: Optional[str] = None
     param_rh_commentaire: Optional[str] = None
+
+
+class PosteCompetenceUpdatePayload(BaseModel):
+    id_competence: str
+    niveau_requis: Optional[str] = None
+    freq_usage: Optional[int] = 0
+    impact_resultat: Optional[int] = 0
+    dependance: Optional[int] = 0
+    valider_eval: Optional[bool] = True
+
+
+class PosteCertificationUpdatePayload(BaseModel):
+    id_certification: str
+    validite_override: Optional[int] = None
 
 
 # ======================================================
@@ -1006,12 +1066,19 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                       c.intitule,
                       c.description,
                       c.etat,
+                      c.niveaua,
+                      c.niveaub,
+                      c.niveauc,
+                      c.niveaud,
                       fpc.niveau_requis,
-                      fpc.poids_criticite
+                      fpc.poids_criticite,
+                      fpc.freq_usage,
+                      fpc.impact_resultat,
+                      fpc.dependance
                     FROM public.tbl_fiche_poste_competence fpc
                     JOIN public.tbl_competence c ON c.id_comp = fpc.id_competence
                     WHERE fpc.id_poste = %s
-                      AND c.etat IN ('active', 'à valider')
+                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
                       AND COALESCE(c.masque, FALSE) = FALSE
                     ORDER BY fpc.poids_criticite DESC NULLS LAST, c.intitule ASC
                     """,
@@ -1028,6 +1095,13 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                         "etat": rr.get("etat"),
                         "niveau_requis": rr.get("niveau_requis"),
                         "poids_criticite": rr.get("poids_criticite"),
+                        "freq_usage": rr.get("freq_usage"),
+                        "impact_resultat": rr.get("impact_resultat"),
+                        "dependance": rr.get("dependance"),
+                        "niveaua": rr.get("niveaua"),
+                        "niveaub": rr.get("niveaub"),
+                        "niveauc": rr.get("niveauc"),
+                        "niveaud": rr.get("niveaud"),
                     })
 
                 # --- Certifications requises (tbl_fiche_poste_certification + tbl_certification)
@@ -1038,7 +1112,11 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                       c.nom_certification,
                       c.description,
                       c.categorie,
-                      fpc.niveau_exigence
+                      c.duree_validite,
+                      c.delai_renouvellement,
+                      fpc.niveau_exigence,
+                      fpc.validite_override,
+                      fpc.commentaire
                     FROM public.tbl_fiche_poste_certification fpc
                     JOIN public.tbl_certification c
                       ON c.id_certification = fpc.id_certification
@@ -1057,6 +1135,10 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                         "description": rr.get("description"),
                         "categorie": rr.get("categorie"),
                         "niveau_exigence": rr.get("niveau_exigence"),
+                        "duree_validite": rr.get("duree_validite"),
+                        "delai_renouvellement": rr.get("delai_renouvellement"),
+                        "validite_override": rr.get("validite_override"),
+                        "commentaire": rr.get("commentaire"),
                     })
 
                 # --- Paramétrage RH : lecture + auto-init si absent
@@ -1185,6 +1267,105 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get("/skills/organisation/competences/{id_contact}/{id_comp}/fiche_pdf")
+def get_competence_fiche_pdf(id_contact: str, id_comp: str, request: Request):
+    cid = (id_comp or "").strip()
+    if not cid:
+        raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT
+                      c.id_comp,
+                      c.code,
+                      c.intitule,
+                      c.description,
+                      c.domaine,
+                      c.niveaua,
+                      c.niveaub,
+                      c.niveauc,
+                      c.niveaud,
+                      c.grille_evaluation,
+                      dc.titre_court AS domaine_titre_court,
+                      dc.titre AS domaine_titre,
+                      ent.nom_ent AS nom_ent
+                    FROM public.tbl_competence c
+                    LEFT JOIN public.tbl_domaine_competence dc
+                      ON dc.id_domaine_competence = c.domaine
+                     AND COALESCE(dc.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_entreprise ent
+                      ON ent.id_ent = c.id_owner
+                     AND COALESCE(ent.masque, FALSE) = FALSE
+                    WHERE c.id_owner = %s
+                      AND c.id_comp = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                    LIMIT 1
+                    """,
+                    (id_ent, cid),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(status_code=404, detail="Compétence introuvable.")
+
+                logo_bytes = _fetch_logo_bytes_for_ent(cur, id_ent)
+                header_right = (row.get("nom_ent") or "Entreprise").strip()
+
+        skill = {
+            "id_comp": row.get("id_comp"),
+            "code": (row.get("code") or "").strip(),
+            "intitule": (row.get("intitule") or "").strip(),
+            "description": row.get("description") or "",
+            "niveaua": row.get("niveaua") or "",
+            "niveaub": row.get("niveaub") or "",
+            "niveauc": row.get("niveauc") or "",
+            "niveaud": row.get("niveaud") or "",
+            "grille_evaluation": row.get("grille_evaluation"),
+            "domaine": row.get("domaine") or "",
+            "domaine_titre": (
+                (row.get("domaine_titre_court") or "").strip()
+                or (row.get("domaine_titre") or "").strip()
+            ),
+        }
+
+        code_label = skill.get("code") or "Compétence"
+        intitule_label = skill.get("intitule") or "Compétence"
+        filename = _pdf_latin1_safe(
+            f"Fiche compétence {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(intitule_label, 80)}.pdf"
+        )
+
+        pdf_bytes = build_pdf_document(
+            build_competence_pdf_story(skill),
+            meta={
+                "title": _pdf_latin1_safe(f"Fiche compétence - {code_label} - {intitule_label}"),
+                "doc_label": _pdf_latin1_safe("Fiche compétence"),
+                "footer_left": _pdf_latin1_safe("Novoskill Insights • Fiche compétence"),
+                "header_right": _pdf_latin1_safe(header_right),
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+                "logo_bytes": logo_bytes,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur génération PDF compétence : {e}")
+
 
 @router.get("/skills/organisation/postes/{id_contact}/{id_poste}/fiche_pdf")
 def get_poste_fiche_pdf(id_contact: str, id_poste: str, request: Request):
@@ -1318,6 +1499,145 @@ def update_poste_contraintes(id_contact: str, id_poste: str, payload: PosteContr
                         id_ent,
                         id_poste,
                     ),
+                )
+                conn.commit()
+
+        return get_poste_detail(id_contact, id_poste, request)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.post(
+    "/skills/organisation/poste_competence_update/{id_contact}/{id_poste}",
+    response_model=PosteDetailResponse,
+)
+def update_poste_competence(id_contact: str, id_poste: str, payload: PosteCompetenceUpdatePayload, request: Request):
+    """Update de l'évaluation de criticité d'une compétence rattachée au poste."""
+    try:
+        cid = (payload.id_competence or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_competence manquant.")
+
+        niv = (payload.niveau_requis or "C").strip().upper()
+        if niv not in ("A", "B", "C", "D"):
+            raise HTTPException(status_code=400, detail="niveau_requis invalide (A/B/C/D).")
+
+        fu = _clamp_0_10(payload.freq_usage or 0)
+        im = _clamp_0_10(payload.impact_resultat or 0)
+        de = _clamp_0_10(payload.dependance or 0)
+        poids = _calc_poids_criticite_100(fu, im, de)
+        statut_eval = "valide" if bool(payload.valider_eval) else "proposition"
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_fiche_poste p
+                    JOIN public.tbl_fiche_poste_competence pc
+                      ON pc.id_poste = p.id_poste
+                     AND pc.id_competence = %s
+                     AND COALESCE(pc.masque, FALSE) = FALSE
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = pc.id_competence
+                     AND c.id_owner = p.id_owner
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    WHERE p.id_ent = %s
+                      AND COALESCE(p.actif, TRUE) = TRUE
+                      AND p.id_poste = %s
+                    LIMIT 1
+                    """,
+                    (cid, id_ent, id_poste),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Compétence rattachée au poste introuvable.")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_fiche_poste_competence
+                    SET
+                      niveau_requis = %s,
+                      poids_criticite = %s,
+                      freq_usage = %s,
+                      impact_resultat = %s,
+                      dependance = %s,
+                      statut_eval = %s,
+                      date_valorisation = NOW(),
+                      date_modification = NOW(),
+                      masque = FALSE
+                    WHERE id_poste = %s
+                      AND id_competence = %s
+                      AND COALESCE(masque, FALSE) = FALSE
+                    """,
+                    (niv, poids, fu, im, de, statut_eval, id_poste, cid),
+                )
+                conn.commit()
+
+        return get_poste_detail(id_contact, id_poste, request)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.post(
+    "/skills/organisation/poste_certification_update/{id_contact}/{id_poste}",
+    response_model=PosteDetailResponse,
+)
+def update_poste_certification(id_contact: str, id_poste: str, payload: PosteCertificationUpdatePayload, request: Request):
+    """Update de la validité spécifique d'une certification rattachée au poste."""
+    try:
+        cid = (payload.id_certification or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_certification manquant.")
+
+        validite_override = payload.validite_override
+        if validite_override is not None:
+            try:
+                validite_override = int(validite_override)
+            except Exception:
+                raise HTTPException(status_code=400, detail="validite_override invalide.")
+            if validite_override <= 0:
+                raise HTTPException(status_code=400, detail="validite_override doit être > 0.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_fiche_poste p
+                    JOIN public.tbl_fiche_poste_certification pc
+                      ON pc.id_poste = p.id_poste
+                     AND pc.id_certification = %s
+                    JOIN public.tbl_certification c
+                      ON c.id_certification = pc.id_certification
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    WHERE p.id_ent = %s
+                      AND COALESCE(p.actif, TRUE) = TRUE
+                      AND p.id_poste = %s
+                    LIMIT 1
+                    """,
+                    (cid, id_ent, id_poste),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Certification rattachée au poste introuvable.")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_fiche_poste_certification
+                    SET validite_override = %s
+                    WHERE id_poste = %s
+                      AND id_certification = %s
+                    """,
+                    (validite_override, id_poste, cid),
                 )
                 conn.commit()
 
