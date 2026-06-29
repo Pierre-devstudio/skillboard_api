@@ -456,6 +456,95 @@
     if (roles) roles.innerHTML = renderRolePills(it);
   }
 
+  function cssEscapeValue(value) {
+    const s = String(value || "");
+    if (window.CSS && typeof window.CSS.escape === "function") {
+      return window.CSS.escape(s);
+    }
+    return s.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+  }
+
+  function fireDomEvent(el, type) {
+    if (!el) return;
+    try {
+      el.dispatchEvent(new Event(type, { bubbles: true }));
+    } catch (_) {
+      try {
+        const evt = document.createEvent("Event");
+        evt.initEvent(type, true, true);
+        el.dispatchEvent(evt);
+      } catch (_) {}
+    }
+  }
+
+  function prepareEntretienCollaborateurPreselect(it) {
+    const idEff = String(it?.id_effectif || "").trim();
+    if (!idEff) return;
+
+    const fullName = getCollaborateurFullName(it);
+
+    try {
+      window.sessionStorage.setItem("skills_ep_preselect_id_effectif", idEff);
+      window.sessionStorage.setItem("skills_ep_preselect_nom", fullName);
+      window.sessionStorage.setItem("ep_preselect_id_effectif", idEff);
+      window.sessionStorage.setItem("novoskill_ep_preselect_id_effectif", idEff);
+    } catch (_) {}
+
+    const detail = {
+      id_effectif: idEff,
+      idEffectif: idEff,
+      id_collaborateur: idEff,
+      nom: fullName,
+      collaborateur: fullName
+    };
+
+    const tryApply = () => {
+      const root = byId("view-entretien-performance") || document;
+      const search = byId("ep_txtSearchCollab");
+
+      if (search && fullName && search.value !== fullName) {
+        search.value = fullName;
+        fireDomEvent(search, "input");
+        fireDomEvent(search, "change");
+        fireDomEvent(search, "keyup");
+      }
+
+      const sid = cssEscapeValue(idEff);
+      const selectors = [
+        `[data-id-effectif="${sid}"]`,
+        `[data-id_effectif="${sid}"]`,
+        `[data-effectif-id="${sid}"]`,
+        `[data-id-collaborateur="${sid}"]`,
+        `[data-id="${sid}"]`,
+        `.ep-collab-card[data-id-effectif="${sid}"]`,
+        `.ep-collab-card[data-id="${sid}"]`
+      ];
+
+      for (const sel of selectors) {
+        const target = root.querySelector(sel);
+        if (target) {
+          target.click();
+          return;
+        }
+      }
+
+      if (fullName) {
+        const nameKey = fullName.toLowerCase();
+        const cards = Array.from(root.querySelectorAll("#ep_listCollaborateurs .ep-collab-card, #ep_listCollaborateurs button, #ep_listCollaborateurs [role='button'], #ep_listCollaborateurs [data-id]"));
+        const found = cards.find(card => (card.textContent || "").toLowerCase().includes(nameKey));
+        if (found) found.click();
+      }
+
+      try {
+        window.dispatchEvent(new CustomEvent("novoskill:entretien-preselect", { detail }));
+        window.dispatchEvent(new CustomEvent("skills:entretien-preselect", { detail }));
+        window.dispatchEvent(new CustomEvent("ep:preselect-collaborateur", { detail }));
+      } catch (_) {}
+    };
+
+    [120, 350, 700, 1200, 1800].forEach(delay => window.setTimeout(tryApply, delay));
+  }
+
   function selectCollaborateurRow(id_effectif) {
     const body = byId("tblCollaborateursBody");
     if (!body) return;
@@ -1972,13 +2061,7 @@
         btnPreviewEval.addEventListener("click", async () => {
           if (!_selectedCollaborateur) return;
 
-          const idEff = String(_selectedCollaborateur.id_effectif || "").trim();
-          if (idEff) {
-            try {
-              window.sessionStorage.setItem("skills_ep_preselect_id_effectif", idEff);
-              window.sessionStorage.setItem("skills_ep_preselect_nom", getCollaborateurFullName(_selectedCollaborateur));
-            } catch (_) {}
-          }
+          prepareEntretienCollaborateurPreselect(_selectedCollaborateur);
 
           if (window.portal && typeof window.portal.switchView === "function") {
             await window.portal.switchView("entretien-performance");
@@ -1986,14 +2069,7 @@
             window.location.hash = "entretien-performance";
           }
 
-          window.setTimeout(() => {
-            try {
-              const evt = new CustomEvent("novoskill:entretien-preselect", {
-                detail: { id_effectif: idEff }
-              });
-              window.dispatchEvent(evt);
-            } catch (_) {}
-          }, 120);
+          prepareEntretienCollaborateurPreselect(_selectedCollaborateur);
         });
       }
 

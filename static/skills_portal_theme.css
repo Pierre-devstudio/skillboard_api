@@ -2008,14 +2008,14 @@ textarea.sb-ctrl{
 }
 
 #view-vos-collaborateurs .collab-preview-fields span{
-  color:var(--collab-text);
+  color:#334155;
   font-size:12px;
   font-weight:700;
 }
 
 #view-vos-collaborateurs .collab-preview-fields strong{
   min-width:0;
-  color:#334155;
+  color:#475569;
   font-size:12.5px;
   font-weight:500;
   line-height:1.3;
