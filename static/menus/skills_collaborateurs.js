@@ -447,6 +447,7 @@
       org: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"/><path d="M4 10h16"/><path d="M6 10v11"/><path d="M18 10v11"/><path d="M8 6l4-3 4 3"/><path d="M12 10v11"/></svg>`,
       audit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"/><path d="M9 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M15 5h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M9 3h6v4H9z"/></svg>`,
       medal: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
+      edit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`,
       save: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>`,
       cancel: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
       trend: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg>`
@@ -475,6 +476,14 @@
 
     if (!text) return;
     msg.classList.add("is-visible", type === "error" ? "is-error" : (type === "success" ? "is-success" : "is-info"));
+  }
+
+  function refreshSelectSelectedSoftState(root) {
+    const scope = root && typeof root.querySelectorAll === "function" ? root : document;
+    scope.querySelectorAll("select.sb-select").forEach(sel => {
+      const hasValue = String(sel.value || "").trim() !== "";
+      sel.classList.toggle("sb-select--selected-soft", hasValue);
+    });
   }
 
   function renderCollaborateurPreview(it) {
@@ -1088,9 +1097,9 @@
                 if (indispo) badges.push({ label: "Indisponible", cls: "sb-badge--indispo" });
               } catch (_) {}
 
-              if (d.is_temp) badges.push({ label: "Temp", cls: "sb-badge--temp" });
-              if (d.ismanager) badges.push({ label: "Manager", cls: "sb-badge-manager" });
-              if (d.isformateur) badges.push({ label: "Formateur", cls: "sb-badge--formateur" });
+              if (d.is_temp) badges.push({ label: "Temp", cls: "collab-role-badge collab-role-badge--temp" });
+              if (d.ismanager) badges.push({ label: "Manager", cls: "collab-role-badge collab-role-badge--manager" });
+              if (d.isformateur) badges.push({ label: "Formateur", cls: "collab-role-badge collab-role-badge--formateur" });
 
               const badgesHtml = badges
                 .map(b => `<span class="sb-badge ${escapeHtml(b.cls)}">${escapeHtml(b.label)}</span>`)
@@ -1145,7 +1154,7 @@
                 <div class="sb-collab-ident-actions">
                   <span class="sb-collab-inline-msg" aria-live="polite"></span>
                   <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnEdit">
-                    <span aria-hidden="true">✎</span>
+                    <span aria-hidden="true">${collabIcon("edit")}</span>
                     Modifier
                   </button>
                   <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">
@@ -1289,7 +1298,7 @@
                     </div>
                     <div class="sb-collab-grid sb-collab-projection-grid">
                       <input type="hidden" id="collabDist" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" />
-                      <div class="sb-field">
+                      <div class="sb-field sb-collab-projection-field--education">
                         <div class="sb-label">Dernier diplôme obtenu</div>
                         <select class="sb-select" id="collabEduNiv" disabled>
                           <option value=""></option>
@@ -1303,7 +1312,7 @@
                         </select>
                       </div>
 
-                      <div class="sb-field">
+                      <div class="sb-field sb-collab-projection-field--domain">
                         <div class="sb-label">Domaine d'éducation</div>
                         <select class="sb-select" id="collabEduDom" disabled>
                           <option value="">Chargement…</option>
@@ -1311,22 +1320,22 @@
                       </div>
 
 
-                      <div class="sb-field">
+                      <div class="sb-field sb-collab-projection-field--retirement">
                         <div class="sb-label">Retraite estimée</div>
                         <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
                       </div>
 
-                      <label class="sb-check sb-collab-sortie-check">
+                      <label class="sb-check sb-collab-sortie-check sb-collab-projection-field--exit-check">
                         <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
                         <span>Sortie prévue</span>
                       </label>
 
-                      <div class="sb-field">
+                      <div class="sb-field sb-collab-projection-field--exit-date">
                         <div class="sb-label">Date de sortie prévue</div>
                         <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
                       </div>
 
-                      <div class="sb-field">
+                      <div class="sb-field sb-collab-projection-field--exit-reason">
                         <div class="sb-label">Motif de sortie</div>
                         <select class="sb-select" id="collabMotifSortie" disabled>
                           <option value=""></option>
@@ -1441,6 +1450,13 @@
 
               let _collabEditSnap = snapshotValues();
               setEditMode(false);
+              refreshSelectSelectedSoftState(identHost);
+
+              identHost.addEventListener("change", (ev) => {
+                if (ev.target && ev.target.matches && ev.target.matches("select.sb-select")) {
+                  refreshSelectSelectedSoftState(identHost);
+                }
+              });
               
               // Etat global édition (pour éviter les closures foireuses)
               var _collabIsEdit = false;
@@ -1602,6 +1618,7 @@
                     _collabEditSnap = snapshotValues();
                     setEditMode(false);
                     setInlineMsg(identHost, "success", "Enregistré");
+                    refreshSelectSelectedSoftState(identHost);
 
                     // Le titre modal suit les éventuelles corrections nom/prénom.
                     if (title) {
@@ -1648,6 +1665,7 @@
                   return `<option value="${escapeHtml(id)}"${selAttr}>${escapeHtml(label)}</option>`;
                 }).join("");
                 sel.innerHTML = opt0 + opts;
+                refreshSelectSelectedSoftState(identHost);
               };
 
               const fillSelectStrings = (sel, items, selectedLabel, emptyLabel) => {
@@ -1660,6 +1678,7 @@
                   return `<option value="${escapeHtml(label)}"${selAttr}>${escapeHtml(label)}</option>`;
                 }).join("");
                 sel.innerHTML = opt0 + opts;
+                refreshSelectSelectedSoftState(identHost);
               };
 
               // Services

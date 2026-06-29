@@ -2931,6 +2931,31 @@ textarea.sb-ctrl{
   flex-wrap:wrap;
 }
 
+#modalCollaborateur .sb-collab-modal-badges .collab-role-badge{
+  background:#ffffff;
+  border-color:#d1d5db;
+  color:#111827;
+  font-weight:650;
+}
+
+#modalCollaborateur .sb-collab-modal-badges .collab-role-badge--manager{
+  background:rgba(2,132,199,.08);
+  border-color:var(--sb-info);
+  color:var(--sb-info);
+}
+
+#modalCollaborateur .sb-collab-modal-badges .collab-role-badge--formateur{
+  background:rgba(248,47,204,.08);
+  border-color:var(--sb-badge-formateur-border);
+  color:var(--sb-badge-formateur-border);
+}
+
+#modalCollaborateur .sb-collab-modal-badges .collab-role-badge--temp{
+  background:rgba(2,132,199,.06);
+  border-color:#94a3b8;
+  color:#475569;
+}
+
 #modalCollaborateur .modal-x{
   margin-top:4px;
 }
@@ -3031,10 +3056,10 @@ textarea.sb-ctrl{
   justify-content:flex-end;
   gap:8px;
   min-height:34px;
+  flex-wrap:wrap;
 }
 
 #modalCollaborateur .sb-collab-inline-msg{
-  margin-right:auto;
   color:#667085;
   font-size:12px;
   font-weight:700;
@@ -3180,9 +3205,14 @@ textarea.sb-ctrl{
 
 #modalCollaborateur .sb-collab-ident-bottom{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:minmax(0, 1.28fr) minmax(320px, .72fr);
   gap:12px;
   align-items:stretch;
+}
+
+#modalCollaborateur .sb-collab-ident-bottom > .sb-collab-block{
+  height:100%;
+  box-sizing:border-box;
 }
 
 #modalCollaborateur .sb-collab-comment-card{
@@ -3192,11 +3222,13 @@ textarea.sb-ctrl{
 
 #modalCollaborateur .sb-collab-comment-card .sb-field{
   flex:1;
+  display:flex;
 }
 
 #modalCollaborateur .sb-collab-comment-card textarea{
-  min-height:140px;
-  height:100%;
+  flex:1;
+  min-height:132px;
+  height:auto;
   resize:vertical;
 }
 
@@ -3240,12 +3272,43 @@ textarea.sb-ctrl{
   font-weight:700;
 }
 
+#modalCollaborateur .sb-collab-ident-panel select.sb-select.sb-select--selected-soft{
+  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
+  border-color:color-mix(in srgb, var(--accent) 24%, #d8dee8);
+}
+
 #modalCollaborateur .sb-collab-projection-grid{
-  grid-template-columns:repeat(2, minmax(0, 1fr));
+  grid-template-columns:minmax(220px, 1.35fr) minmax(220px, 1.35fr) minmax(150px, .9fr);
+  align-items:end;
 }
 
 #modalCollaborateur .sb-collab-projection-grid select.sb-select{
   min-width:0;
+}
+
+#modalCollaborateur .sb-collab-projection-field--education,
+#modalCollaborateur .sb-collab-projection-field--domain{
+  min-width:220px;
+}
+
+#modalCollaborateur .sb-collab-projection-field--retirement{
+  min-width:140px;
+}
+
+#modalCollaborateur .sb-collab-projection-field--exit-check{
+  align-self:end;
+  margin-top:0;
+}
+
+#modalCollaborateur .sb-collab-projection-field--exit-date,
+#modalCollaborateur .sb-collab-projection-field--exit-reason{
+  min-width:180px;
+}
+
+@media (max-width:980px){
+  #modalCollaborateur .sb-collab-ident-bottom{
+    grid-template-columns:1fr;
+  }
 }
 
 @media (max-width:780px){
