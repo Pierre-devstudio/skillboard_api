@@ -3389,12 +3389,13 @@ textarea.sb-ctrl{
 #modalCollaborateur .sb-collab-comment-card .sb-field{
   flex:1;
   display:flex;
+  min-height:0;
 }
 
 #modalCollaborateur .sb-collab-comment-card textarea{
   flex:1;
-  min-height:136px;
-  height:auto;
+  min-height:0;
+  height:100%;
   resize:vertical;
 }
 
@@ -3440,8 +3441,32 @@ textarea.sb-ctrl{
 }
 
 #modalCollaborateur .sb-collab-projection-grid{
-  grid-template-columns:repeat(2, minmax(0, 1fr));
+  grid-template-columns:repeat(6, minmax(0, 1fr));
   align-items:end;
+}
+
+#modalCollaborateur .sb-collab-projection-field--education{
+  grid-column:1 / 4;
+}
+
+#modalCollaborateur .sb-collab-projection-field--domain{
+  grid-column:4 / 7;
+}
+
+#modalCollaborateur .sb-collab-projection-field--retirement{
+  grid-column:1 / 3;
+}
+
+#modalCollaborateur .sb-collab-projection-field--exit-check{
+  grid-column:3 / 4;
+}
+
+#modalCollaborateur .sb-collab-projection-field--exit-date{
+  grid-column:4 / 7;
+}
+
+#modalCollaborateur .sb-collab-projection-field--exit-reason{
+  grid-column:1 / 7;
 }
 
 #modalCollaborateur .sb-collab-projection-grid > input[type="hidden"]{
@@ -3475,6 +3500,11 @@ textarea.sb-ctrl{
 @media (max-width:780px){
   #modalCollaborateur .sb-collab-projection-grid{
     grid-template-columns:1fr;
+  }
+
+  #modalCollaborateur .sb-collab-projection-grid > .sb-field,
+  #modalCollaborateur .sb-collab-projection-field--exit-check{
+    grid-column:1 / -1;
   }
 }
 
