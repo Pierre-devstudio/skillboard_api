@@ -22360,7 +22360,13 @@ body{
 
 #modalOrgPoste #orgPosteCertTable th:nth-child(4),
 #modalOrgPoste #orgPosteCertTable td:nth-child(4){
-  width:42px;
+  width:120px;
+  text-align:center;
+}
+
+#modalOrgPoste #orgPosteCertTable th:nth-child(5),
+#modalOrgPoste #orgPosteCertTable td:nth-child(5){
+  width:58px;
   text-align:center;
 }
 
@@ -22439,6 +22445,31 @@ body{
   stroke-linejoin:round;
 }
 
+#modalOrgPoste .org-cert-req-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:82px;
+  height:23px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  box-sizing:border-box;
+}
+
+#modalOrgPoste .org-cert-req-badge--strong{
+  background:color-mix(in srgb, var(--accent) 10%, #ffffff);
+  border:1px solid color-mix(in srgb, var(--accent) 46%, #d1d5db);
+  color:var(--accent);
+}
+
+#modalOrgPoste .org-cert-req-badge--soft{
+  background:#ffffff;
+  border:1px solid color-mix(in srgb, var(--sb-poste) 42%, #d1d5db);
+  color:var(--sb-poste);
+}
+
 #modalOrgPosteCompCrit,
 #modalOrgPosteCertValid{
   z-index:10090;
@@ -22456,8 +22487,10 @@ body{
   box-shadow:0 24px 70px rgba(15,23,42,.28);
 }
 
-#modalOrgPosteCertValid .org-mini-modal-card{
-  max-width:520px;
+#modalOrgPosteCertValid .org-cert-modal-card{
+  max-width:940px;
+  border:1px solid rgba(148,163,184,.32);
+  box-shadow:0 24px 70px rgba(15,23,42,.28);
 }
 
 #modalOrgPosteCompCrit .modal-body,
@@ -22470,6 +22503,51 @@ body{
   flex-direction:column;
   gap:14px;
   background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+#modalOrgPosteCertValid .modal-body{
+  background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+#modalOrgPosteCertValid .org-cert-edit-card{
+  padding:14px;
+  margin:0;
+  border-color:rgba(148,163,184,.32);
+  box-shadow:0 10px 28px rgba(15,23,42,.045);
+}
+
+#modalOrgPosteCertValid .org-cert-edit-title{
+  margin:0;
+  font-size:14px;
+}
+
+#modalOrgPosteCertValid .org-cert-edit-sub{
+  margin:4px 0 0 0;
+}
+
+#modalOrgPosteCertValid .org-cert-edit-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px 16px;
+  margin-top:12px;
+}
+
+#modalOrgPosteCertValid textarea{
+  min-height:88px;
+  resize:vertical;
+}
+
+#modalOrgPosteCertValid select,
+#modalOrgPosteCertValid textarea,
+#modalOrgPosteCertValid input{
+  width:100%;
+  box-sizing:border-box;
+}
+
+@media (max-width:760px){
+  #modalOrgPosteCertValid .org-cert-edit-grid{
+    grid-template-columns:1fr;
+  }
 }
 
 #modalOrgPosteCompCrit .org-comp-edit-card{

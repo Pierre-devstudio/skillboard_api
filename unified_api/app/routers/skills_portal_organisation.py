@@ -870,6 +870,8 @@ class PosteCompetenceUpdatePayload(BaseModel):
 class PosteCertificationUpdatePayload(BaseModel):
     id_certification: str
     validite_override: Optional[int] = None
+    niveau_exigence: Optional[str] = None
+    commentaire: Optional[str] = None
 
 
 # ======================================================
@@ -1643,14 +1645,25 @@ def update_poste_certification(id_contact: str, id_poste: str, payload: PosteCer
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Certification rattachée au poste introuvable.")
 
+                niveau_exigence = (payload.niveau_exigence or "requis").strip().lower()
+                if niveau_exigence not in {"requis", "souhaité", "souhaite"}:
+                    raise HTTPException(status_code=400, detail="niveau_exigence invalide.")
+                if niveau_exigence == "souhaite":
+                    niveau_exigence = "souhaité"
+
+                commentaire = (payload.commentaire or "").strip() or None
+
                 cur.execute(
                     """
                     UPDATE public.tbl_fiche_poste_certification
-                    SET validite_override = %s
+                    SET
+                      validite_override = %s,
+                      niveau_exigence = %s,
+                      commentaire = %s
                     WHERE id_poste = %s
                       AND id_certification = %s
                     """,
-                    (validite_override, id_poste, cid),
+                    (validite_override, niveau_exigence, commentaire, id_poste, cid),
                 )
                 conn.commit()
 

@@ -316,9 +316,10 @@
                 <thead>
                   <tr>
                     <th>Certification</th>
-                    <th style="width:160px;">Catégorie</th>
+                    <th style="width:170px;">Catégorie</th>
                     <th style="width:120px; text-align:center;">Validité</th>
-                    <th style="width:42px;"></th>
+                    <th style="width:120px; text-align:center;">Exigence</th>
+                    <th style="width:58px;"></th>
                   </tr>
                 </thead>
                 <tbody id="orgPosteCertTbody"></tbody>
@@ -584,9 +585,9 @@
     </div>
   </div>
 
-  <!-- Modal : validité certification poste -->
+  <!-- Modal : paramétrage certification poste -->
   <div id="modalOrgPosteCertValid" class="modal" aria-hidden="true">
-    <div class="modal-card modal-card--sm org-mini-modal-card">
+    <div class="modal-card modal-card--md org-cert-modal-card">
       <div class="modal-header">
         <div>
           <div id="orgCertValidTitle" class="sb-title-text">Certification</div>
@@ -596,14 +597,33 @@
       </div>
 
       <div class="modal-body">
-        <div class="sb-field">
-          <div class="label">Validité spécifique au poste</div>
-          <div class="sb-stepper">
-            <button type="button" class="sb-stepper-btn" id="orgCertValidMinus">−</button>
-            <input id="orgCertValidOverride" type="number" min="1" step="1" inputmode="numeric" />
-            <button type="button" class="sb-stepper-btn" id="orgCertValidPlus">+</button>
+        <div class="card org-cert-edit-card">
+          <div class="card-title org-cert-edit-title">Paramétrage pour le poste</div>
+          <div class="card-sub org-cert-edit-sub" id="orgCertValidBaseInfo">Validité catalogue : —</div>
+
+          <div class="org-cert-edit-grid">
+            <div class="sb-field">
+              <div class="label">Validité spécifique (mois)</div>
+              <div class="sb-stepper">
+                <button type="button" class="sb-stepper-btn" id="orgCertValidMinus">−</button>
+                <input id="orgCertValidOverride" type="number" min="1" step="1" inputmode="numeric" placeholder="Laisser vide pour garder la validité catalogue" />
+                <button type="button" class="sb-stepper-btn" id="orgCertValidPlus">+</button>
+              </div>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Niveau d’exigence</div>
+              <select id="orgCertValidLevel">
+                <option value="requis">Requis</option>
+                <option value="souhaité">Souhaité</option>
+              </select>
+            </div>
+
+            <div class="sb-field sb-span-2">
+              <div class="label">Commentaire</div>
+              <textarea id="orgCertValidComment" rows="4" placeholder="Précision éventuelle pour ce poste"></textarea>
+            </div>
           </div>
-          <div class="sb-help" id="orgCertValidBaseInfo">Laissez vide pour utiliser la validité catalogue.</div>
         </div>
       </div>
 

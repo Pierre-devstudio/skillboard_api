@@ -1490,13 +1490,17 @@
       const nom = (it?.nom_certification || "").toString().trim();
       const desc = (it?.description || "").toString().trim();
       const cat = (it?.categorie || "").toString().trim();
-      const validity = _formatValidityMonths(it?.validite_override || it?.duree_validite);
+      const validity = _getCertEffectiveValidity(it);
+      const validityTitle = validity.isOverride
+        ? `Validité spécifique au poste. ${_buildCertBaseInfo(it)}`
+        : _buildCertBaseInfo(it);
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td title="${escapeHtml(desc)}">${escapeHtml(nom || "—")}</td>
         <td>${escapeHtml(cat || "-")}</td>
-        <td class="col-center">${escapeHtml(validity)}</td>
+        <td class="col-center" title="${escapeHtml(validityTitle)}">${escapeHtml(validity.label)}</td>
+        <td class="col-center">${_certRequirementBadge(it?.niveau_exigence)}</td>
         <td class="col-center"><div class="sb-icon-actions org-exi-row-actions"></div></td>
       `;
 
@@ -1505,8 +1509,8 @@
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
         btnEdit.className = "sb-icon-btn";
-        btnEdit.title = "Modifier la validité";
-        btnEdit.setAttribute("aria-label", "Modifier la validité");
+        btnEdit.title = "Modifier le paramétrage de la certification";
+        btnEdit.setAttribute("aria-label", "Modifier le paramétrage de la certification");
         btnEdit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
         btnEdit.addEventListener("click", (e) => {
           e.preventDefault();
@@ -1671,12 +1675,10 @@
     _setText("orgCertValidTitle", _orgCertValidEdit.nom_certification || "Certification");
     _setText("orgCertValidSub", _orgCertValidEdit.categorie || "Sans catégorie");
     _setValue("orgCertValidOverride", (_orgCertValidEdit.validite_override ?? "").toString());
-
-    const base = _formatValidityMonths(_orgCertValidEdit.duree_validite);
-    const renewal = _formatValidityMonths(_orgCertValidEdit.delai_renouvellement);
-    const parts = [`Validité catalogue : ${base}`];
-    if (renewal !== "—") parts.push(`Délai de renouvellement : ${renewal}`);
-    _setText("orgCertValidBaseInfo", parts.join(" · "));
+    _setText("orgCertValidBaseInfo", _buildCertBaseInfo(_orgCertValidEdit));
+    _setValue("orgCertValidLevel", (_orgCertValidEdit.niveau_exigence || "requis").toString().trim().toLowerCase());
+    _setValue("orgCertValidComment", (_orgCertValidEdit.commentaire || "").toString());
+    _showInlineMsg("orgCertValidMsg", "", "");
 
     const modal = byId("modalOrgPosteCertValid");
     if (modal){
@@ -1719,7 +1721,9 @@
         headers: { "Content-Type":"application/json" },
         body: JSON.stringify({
           id_certification,
-          validite_override: raw ? parseInt(raw, 10) : null
+          validite_override: raw ? parseInt(raw, 10) : null,
+          niveau_exigence: (byId("orgCertValidLevel")?.value || "requis").trim().toLowerCase(),
+          commentaire: (byId("orgCertValidComment")?.value || "").trim() || null
         })
       });
 
@@ -1756,6 +1760,35 @@
     const n = parseInt(v ?? "", 10);
     if (!Number.isFinite(n) || n <= 0) return "—";
     return `${n} mois`;
+  }
+
+  function _getCertEffectiveValidity(it){
+    const override = parseInt(it?.validite_override ?? "", 10);
+    if (Number.isFinite(override) && override > 0){
+      return { label: `${override} mois`, isOverride: true };
+    }
+
+    const base = parseInt(it?.duree_validite ?? "", 10);
+    if (Number.isFinite(base) && base > 0){
+      return { label: `${base} mois`, isOverride: false };
+    }
+
+    return { label: "—", isOverride: false };
+  }
+
+  function _certRequirementBadge(v){
+    const raw = (v || "requis").toString().trim().toLowerCase();
+    const isSouhaite = raw === "souhaité" || raw === "souhaite";
+    const label = isSouhaite ? "Souhaité" : "Requis";
+    const cls = isSouhaite ? "org-cert-req-badge org-cert-req-badge--soft" : "org-cert-req-badge org-cert-req-badge--strong";
+    return `<span class="${cls}">${escapeHtml(label)}</span>`;
+  }
+
+  function _buildCertBaseInfo(it){
+    const parts = [`Validité catalogue : ${_formatValidityMonths(it?.duree_validite)}`];
+    const renewal = _formatValidityMonths(it?.delai_renouvellement);
+    if (renewal !== "—") parts.push(`Délai de renouvellement : ${renewal}`);
+    return parts.join(" · ");
   }
 
   let _rhSelectsInit = false;
