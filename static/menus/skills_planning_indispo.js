@@ -87,18 +87,33 @@
     return { gridStart, gridEnd };
   }
 
-  function colorForId(id) {
-    // Palette plus vive pour mieux distinguer les collaborateurs dans le planning.
-    const palette = [
-      "#2563eb", "#059669", "#7c3aed", "#e11d48", "#f97316",
-      "#0891b2", "#16a34a", "#db2777", "#4f46e5", "#0d9488",
-      "#9333ea", "#dc2626", "#ca8a04", "#0284c7"
-    ];
+  const COLLAB_COLOR_PALETTE = [
+    "#2563eb", "#16a34a", "#f97316", "#dc2626", "#7c3aed",
+    "#0891b2", "#db2777", "#84cc16", "#4f46e5", "#14b8a6",
+    "#eab308", "#ec4899", "#22c55e", "#0ea5e9", "#a855f7",
+    "#ef4444", "#10b981", "#f59e0b"
+  ];
+
+  function fallbackColorForId(id) {
     const s = String(id || "");
     let h = 0;
     for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
     h = Math.abs(h | 0);
-    return palette[h % palette.length];
+    return COLLAB_COLOR_PALETTE[h % COLLAB_COLOR_PALETTE.length];
+  }
+
+  function assignCollaborateurColors() {
+    _state.collabColors = {};
+    (_state.collabs || []).forEach((c, idx) => {
+      const id = String(c?.id_effectif || "").trim();
+      if (!id) return;
+      _state.collabColors[id] = COLLAB_COLOR_PALETTE[idx % COLLAB_COLOR_PALETTE.length];
+    });
+  }
+
+  function colorForId(id) {
+    const key = String(id || "").trim();
+    return _state.collabColors[key] || fallbackColorForId(key);
   }
 
   function collabLabel(c) {
