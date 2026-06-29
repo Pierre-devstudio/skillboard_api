@@ -3447,11 +3447,11 @@ textarea.sb-ctrl{
 }
 
 #modalCollaborateur .sb-collab-projection-field--education{
-  grid-column:1 / 6;
+  grid-column:1 / 5;
 }
 
 #modalCollaborateur .sb-collab-projection-field--domain{
-  grid-column:6 / 13;
+  grid-column:5 / 13;
 }
 
 #modalCollaborateur .sb-collab-projection-field--retirement{
