@@ -68,6 +68,11 @@
     return "-";
   }
 
+  function formatPhoneFr(value) {
+    const digits = (value ?? "").toString().replace(/\D+/g, "").slice(0, 10);
+    return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+  }
+
   function pad2(n) { return String(n).padStart(2, "0"); }
 
   function toDateOnly(d) {
@@ -442,6 +447,8 @@
       org: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"/><path d="M4 10h16"/><path d="M6 10v11"/><path d="M18 10v11"/><path d="M8 6l4-3 4 3"/><path d="M12 10v11"/></svg>`,
       audit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"/><path d="M9 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M15 5h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M9 3h6v4H9z"/></svg>`,
       medal: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
+      save: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>`,
+      cancel: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
       trend: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg>`
     };
     return icons[name] || "";
@@ -1141,8 +1148,14 @@
                     <span aria-hidden="true">✎</span>
                     Modifier
                   </button>
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">Enregistrer</button>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="collabBtnCancel" style="display:none;">Annuler</button>
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">
+                    <span aria-hidden="true">${collabIcon("save")}</span>
+                    Enregistrer
+                  </button>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="collabBtnCancel" style="display:none;">
+                    <span aria-hidden="true">${collabIcon("cancel")}</span>
+                    Annuler
+                  </button>
                 </div>
 
                 <div class="sb-collab-summary-strip">
@@ -1205,7 +1218,7 @@
 
                     <div class="sb-field">
                       <div class="sb-label">Téléphone</div>
-                      <input class="sb-ctrl" id="collabTel" type="text" value="${escapeHtml(v(d.telephone_effectif))}" disabled />
+                      <input class="sb-ctrl" id="collabTel" type="text" inputmode="numeric" maxlength="14" placeholder="00 00 00 00 00" value="${escapeHtml(formatPhoneFr(d.telephone_effectif))}" disabled />
                     </div>
 
                     <div class="sb-field">
@@ -1274,7 +1287,8 @@
                       <span aria-hidden="true">${collabIcon("graduation")}</span>
                       Parcours / projection
                     </div>
-                    <div class="sb-collab-grid sb-collab-grid--two">
+                    <div class="sb-collab-grid sb-collab-projection-grid">
+                      <input type="hidden" id="collabDist" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" />
                       <div class="sb-field">
                         <div class="sb-label">Dernier diplôme obtenu</div>
                         <select class="sb-select" id="collabEduNiv" disabled>
@@ -1296,10 +1310,6 @@
                         </select>
                       </div>
 
-                      <div class="sb-field">
-                        <div class="sb-label">Distance entreprise/domicile (km)</div>
-                        <input class="sb-ctrl" id="collabDist" type="text" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" disabled />
-                      </div>
 
                       <div class="sb-field">
                         <div class="sb-label">Retraite estimée</div>
@@ -1370,7 +1380,6 @@
 
                 "#collabEduNiv",
                 "#collabEduDom",
-                "#collabDist",
                 "#collabDateSortie",
                 "#collabMotifSortie",
                 "#collabComment",
@@ -1473,6 +1482,21 @@
               if (chkEl && !chkEl._sbBoundSortie) {
                 chkEl.addEventListener("change", syncSortie);
                 chkEl._sbBoundSortie = true;
+              }
+
+              const telEl = identHost.querySelector("#collabTel");
+              if (telEl && !telEl._sbBoundPhoneFormat) {
+                telEl.addEventListener("input", () => {
+                  const start = telEl.selectionStart;
+                  const before = telEl.value;
+                  telEl.value = formatPhoneFr(telEl.value);
+                  if (document.activeElement === telEl && start != null) {
+                    const delta = telEl.value.length - before.length;
+                    const pos = Math.max(0, Math.min(telEl.value.length, start + delta));
+                    try { telEl.setSelectionRange(pos, pos); } catch (_) {}
+                  }
+                });
+                telEl._sbBoundPhoneFormat = true;
               }
 
 

@@ -3218,6 +3218,42 @@ textarea.sb-ctrl{
   color:#111827;
 }
 
+/* Ajustements modal collaborateur : édition / selects / projection */
+#modalCollaborateur .sb-collab-ident-actions .sb-collab-inline-msg{
+  margin-right:0;
+}
+
+#modalCollaborateur .sb-collab-ident-actions .sb-btn svg{
+  width:14px;
+  height:14px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalCollaborateur .sb-collab-ident-panel select.sb-select option:checked{
+  background:color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color:var(--accent);
+  font-weight:700;
+}
+
+#modalCollaborateur .sb-collab-projection-grid{
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+#modalCollaborateur .sb-collab-projection-grid select.sb-select{
+  min-width:0;
+}
+
+@media (max-width:780px){
+  #modalCollaborateur .sb-collab-projection-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 /* ======================================================
    Modal Collaborateur: onglets Compétences / Certifications
    ====================================================== */
