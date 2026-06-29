@@ -684,7 +684,21 @@
     return "";
   }
 
-  async function fetchOrganisationPdfBlob(url) {
+  function sanitizePdfFilenamePart(value, fallback) {
+    let s = String(value || "").trim();
+    if (!s) s = String(fallback || "Document").trim();
+    s = s.replace(/[\/:*?"<>|]+/g, " ");
+    s = s.replace(/\s+/g, " ").trim().replace(/^[ ._-]+|[ ._-]+$/g, "");
+    return s || String(fallback || "Document").trim() || "Document";
+  }
+
+  function buildPdfFilename(code, title, fallbackCode, fallbackTitle) {
+    const c = sanitizePdfFilenamePart(code, fallbackCode || "Document");
+    const t = sanitizePdfFilenamePart(title, fallbackTitle || "PDF");
+    return `${c} - ${t}.pdf`;
+  }
+
+  async function fetchOrganisationPdfBlob(url, fallbackFilename) {
     const headers = {};
     const token = await resolveInsightsAccessToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -696,7 +710,7 @@
     }
     return {
       blob: await resp.blob(),
-      filename: getFilenameFromContentDisposition(resp.headers.get("Content-Disposition")) || "Fiche de poste.pdf",
+      filename: getFilenameFromContentDisposition(resp.headers.get("Content-Disposition")) || fallbackFilename || "Document.pdf",
     };
   }
 
@@ -729,15 +743,20 @@
     setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, 5 * 60 * 1000);
   }
 
-  async function openPosteFichePdf(portal, idPoste) {
-    const pid = String(idPoste || "").trim();
+  async function openPosteFichePdf(portal, posteOrId) {
+    const raw = (posteOrId && typeof posteOrId === "object") ? posteOrId : { id_poste: posteOrId };
+    const pid = String(raw?.id_poste || posteOrId || "").trim();
     if (!portal?.contactId) throw new Error("Contact introuvable.");
     if (!pid) throw new Error("Poste manquant.");
-    const viewer = openPdfViewerWindow("Fiche de poste");
+
+    const code = String(raw?.codif_client || raw?.codif_poste || raw?.code_poste || "").trim();
+    const title = String(raw?.intitule_poste || raw?.intitule || "Poste").trim();
+    const fallbackFilename = buildPdfFilename(code || pid, title, "Poste", "Poste");
+    const viewer = openPdfViewerWindow(fallbackFilename);
     try {
       const url = `${portal.apiBase}/skills/organisation/postes/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(pid)}/fiche_pdf`;
-      const { blob, filename } = await fetchOrganisationPdfBlob(url);
-      renderPdfBlobInViewer(viewer, blob, filename || "Fiche de poste.pdf");
+      const { blob, filename } = await fetchOrganisationPdfBlob(url, fallbackFilename);
+      renderPdfBlobInViewer(viewer, blob, filename || fallbackFilename);
     } catch (err) {
       if (viewer && !viewer.closed) viewer.close();
       throw err;
@@ -751,12 +770,13 @@
 
     const code = String(item?.code || "").trim();
     const title = String(item?.intitule || "Compétence").trim();
-    const viewer = openPdfViewerWindow(`Fiche compétence - ${code ? `${code} - ` : ""}${title}`);
+    const fallbackFilename = buildPdfFilename(code || cid, title, "Compétence", "Compétence");
+    const viewer = openPdfViewerWindow(fallbackFilename);
 
     try {
       const url = `${portal.apiBase}/skills/organisation/competences/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(cid)}/fiche_pdf`;
-      const { blob, filename } = await fetchOrganisationPdfBlob(url);
-      renderPdfBlobInViewer(viewer, blob, filename || "Fiche compétence.pdf");
+      const { blob, filename } = await fetchOrganisationPdfBlob(url, fallbackFilename);
+      renderPdfBlobInViewer(viewer, blob, filename || fallbackFilename);
     } catch (err) {
       if (viewer && !viewer.closed) viewer.close();
       throw err;
@@ -850,7 +870,7 @@
         const portal = window.__skillsPortalInstance;
         if (!portal) return;
         try {
-          await openPosteFichePdf(portal, p.id_poste);
+          await openPosteFichePdf(portal, p);
         } catch (err) {
           portal.showAlert("error", err?.message || String(err));
         }

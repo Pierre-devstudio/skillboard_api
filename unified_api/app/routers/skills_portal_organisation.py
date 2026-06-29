@@ -1368,7 +1368,7 @@ def get_competence_fiche_pdf(id_contact: str, id_comp: str, request: Request):
         pdf_bytes = build_pdf_document(
             build_competence_pdf_story(skill),
             meta={
-                "title": _pdf_latin1_safe(f"Fiche compétence - {code_label} - {intitule_label}"),
+                "title": _pdf_latin1_safe(filename),
                 "doc_label": _pdf_latin1_safe("Fiche compétence"),
                 "footer_left": _pdf_latin1_safe("Novoskill Insights • Fiche compétence"),
                 "header_right": _pdf_latin1_safe(header_right),
@@ -1431,7 +1431,7 @@ def get_poste_fiche_pdf(id_contact: str, id_poste: str, request: Request):
         pdf_bytes = build_pdf_document(
             _build_poste_pdf_story({}, poste, dossier, referential),
             meta={
-                "title": _pdf_latin1_safe(f"Fiche de poste - {intitule_poste}"),
+                "title": _pdf_latin1_safe(filename),
                 "doc_label": _pdf_latin1_safe("Fiche de poste complète"),
                 "footer_left": _pdf_latin1_safe(" • ".join(footer_parts) if footer_parts else "Novoskill Insights"),
                 "header_right": _pdf_latin1_safe(header_right),
