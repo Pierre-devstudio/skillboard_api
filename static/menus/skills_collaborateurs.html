@@ -1,181 +1,299 @@
 <section id="view-vos-collaborateurs" style="display:none;">
-  <div class="card">
-    <div class="card-title">Vos collaborateurs</div>
-    <div class="card-sub">
-      Pilotez vos effectifs, filtrez par service, et accédez au détail d’un collaborateur.
+  <div class="card collab-page-hero">
+    <div class="collab-page-hero__main">
+      <div class="collab-page-hero__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title collab-page-hero__title">Vos collaborateurs</div>
+        <div class="card-sub collab-page-hero__sub">
+          Pilotez vos effectifs, filtrez par service, et accédez au détail d’un collaborateur.
+        </div>
+      </div>
     </div>
+
+    <div class="collab-kpi-strip">
+      <div class="collab-kpi-card collab-kpi-card--total">
+        <div class="collab-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <div class="collab-kpi-card__label">Total</div>
+          <div class="collab-kpi-card__value" id="kpiTotal">–</div>
+        </div>
+      </div>
+
+      <div class="collab-kpi-card collab-kpi-card--active">
+        <div class="collab-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg>
+        </div>
+        <div>
+          <div class="collab-kpi-card__label">Actifs</div>
+          <div class="collab-kpi-card__value" id="kpiActifs">–</div>
+        </div>
+      </div>
+
+      <div class="collab-kpi-card">
+        <div class="collab-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </div>
+        <div>
+          <div class="collab-kpi-card__label">Sorties prévues (3 ans)</div>
+          <div class="collab-kpi-card__value" id="kpiSorties">–</div>
+        </div>
+      </div>
+
+      <div class="collab-kpi-card">
+        <div class="collab-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>
+        </div>
+        <div>
+          <div class="collab-kpi-card__label">Managers</div>
+          <div class="collab-kpi-card__value" id="kpiManagers">–</div>
+        </div>
+      </div>
+
+      <div class="collab-kpi-card">
+        <div class="collab-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>
+        </div>
+        <div>
+          <div class="collab-kpi-card__label">Formateurs</div>
+          <div class="collab-kpi-card__value" id="kpiFormateurs">–</div>
+        </div>
+      </div>
+
+      <div class="collab-kpi-card">
+        <div class="collab-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4.93"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 19.07"/></svg>
+        </div>
+        <div>
+          <div class="collab-kpi-card__label">Non liés (service)</div>
+          <div class="collab-kpi-card__value" id="kpiNonLies">–</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-sub collab-kpi-scope" id="collabKpiScope">Périmètre : entreprise</div>
   </div>
 
-  <div class="sb-split">
-    <!-- Colonne filtres -->
-    <div class="sb-col">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Filtres</div>
-        <div class="card-sub" style="margin:0;">Le filtre service impacte la liste et les KPI.</div>
+  <div class="collab-workspace">
+    <aside class="collab-left-col">
+      <div class="card collab-filter-card">
+        <div class="collab-card-head">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Filtres</div>
+            <div class="card-sub" style="margin:0;">Le filtre service impacte la liste et les KPI.</div>
+          </div>
+          <div class="collab-card-head__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </div>
+        </div>
 
-        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
-          <div class="info-item" style="min-width:0;">
+        <div class="collab-filter-stack">
+          <div class="info-item">
             <label class="sb-label" for="collabServiceSelect">Service</label>
             <select id="collabServiceSelect" class="sb-select">
               <option value="">Tous les services</option>
             </select>
           </div>
 
-          <div class="info-item" style="min-width:0;">
+          <div class="info-item">
             <label class="sb-label" for="collabSearch">Recherche</label>
-            <input type="text" id="collabSearch" class="sb-ctrl" placeholder="Nom, prénom, mail, matricule…" />
+            <div class="collab-search-wrap">
+              <input type="text" id="collabSearch" class="sb-ctrl" placeholder="Nom, prénom, mail, matricule…" />
+              <span class="collab-search-wrap__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              </span>
+            </div>
           </div>
 
-          <div class="info-item" style="min-width:0;">
+          <div class="info-item">
             <div class="sb-label">Statut</div>
-              <div class="row" style="gap:10px; margin-top:6px;">
-                <label class="sb-check">
-                  <input type="checkbox" id="collabOnlyActifs" checked />
-                  <span>Actifs uniquement</span>
-                </label>
+            <div class="collab-check-grid collab-check-grid--two">
+              <label class="sb-check">
+                <input type="checkbox" id="collabOnlyActifs" checked />
+                <span>Actifs uniquement</span>
+              </label>
 
-                <label class="sb-check">
-                  <input type="checkbox" id="collabIncludeArchived" />
-                  <span>Inclure archivés</span>
-                </label>
-              </div>
+              <label class="sb-check">
+                <input type="checkbox" id="collabIncludeArchived" />
+                <span>Inclure archivés</span>
+              </label>
+            </div>
           </div>
 
-          <div class="info-item" style="min-width:0;">
+          <div class="info-item">
             <div class="sb-label">Rôles</div>
-              <div class="row" style="gap:10px; margin-top:6px;">
-                <label class="sb-check">
-                  <input type="checkbox" id="collabOnlyManagers" />
-                  <span>Managers</span>
-                </label>
+            <div class="collab-check-grid">
+              <label class="sb-check">
+                <input type="checkbox" id="collabOnlyManagers" />
+                <span>Managers</span>
+              </label>
 
-                <label class="sb-check">
-                  <input type="checkbox" id="collabOnlyFormateurs" />
-                  <span>Formateurs</span>
-                </label>
+              <label class="sb-check">
+                <input type="checkbox" id="collabOnlyFormateurs" />
+                <span>Formateurs</span>
+              </label>
 
-                <label class="sb-check">
-                  <input type="checkbox" id="collabOnlyTemp" />
-                  <span>Temporaires</span>
-                </label>
-              </div>
+              <label class="sb-check">
+                <input type="checkbox" id="collabOnlyTemp" />
+                <span>Temporaires</span>
+              </label>
+            </div>
           </div>
 
-          <div class="info-item" style="min-width:0;">
-            <button type="button" class="sb-btn sb-btn--init sb-btn--block" id="btnCollabReset">
-              Réinitialiser les filtres
+          <div class="collab-filter-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnCollabReset">
+              Réinitialiser
+            </button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnCollabApply">
+              Appliquer
             </button>
           </div>
         </div>
       </div>
 
-
-      <!-- Tuile Indisponibilités -->
-      <div class="card" id="collabIndispoTile" style="margin-top:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+      <div class="card collab-indispo-card" id="collabIndispoTile">
+        <div class="collab-card-head">
           <div>
             <div class="card-title" style="margin-bottom:4px;">Indisponibilités</div>
             <div class="card-sub" style="margin:0;">Accédez au planning et planifiez les indisponibilités.</div>
           </div>
-
-          <button type="button" class="sb-btn sb-btn--accent" id="btnOpenIndispoPlanning">
-            Voir le planning
-          </button>
         </div>
 
-        <div class="row" style="margin-top:12px;">
-          <div class="card" id="kpiBreakNowCard" style="padding:12px; margin:0; flex:1; min-width:160px; cursor:pointer;">
-            <div class="label">Indispos en cours</div>
-            <div class="value" id="kpiBreakNow">–</div>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnOpenIndispoPlanning">
+          <span aria-hidden="true">▣</span>
+          Voir le planning
+        </button>
+
+        <div class="collab-indispo-kpis">
+          <div class="collab-indispo-kpi" id="kpiBreakNowCard">
+            <div>
+              <div class="label">Indispos en cours</div>
+              <div class="value" id="kpiBreakNow">–</div>
+            </div>
+            <span aria-hidden="true">›</span>
           </div>
 
-          <div class="card" id="kpiBreakNext30Card" style="padding:12px; margin:0; flex:1; min-width:160px; cursor:pointer;">
-            <div class="label">Indispos à venir (30j)</div>
-            <div class="value" id="kpiBreakNext30">–</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Colonne contenu -->
-
-
-    <div class="sb-col">
-      <!-- KPI -->
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
-          <div>
-            <div class="card-title" style="margin-bottom:4px;">Indicateurs</div>
-            <div class="card-sub" style="margin:0;">Calculés selon le service sélectionné.</div>
-          </div>
-          <div class="card-sub" id="collabKpiScope" style="margin:0;">Périmètre : entreprise</div>
-        </div>
-
-        <div class="row" style="margin-top:12px;">
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Total</div>
-            <div class="value" id="kpiTotal">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Actifs</div>
-            <div class="value" id="kpiActifs">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Sorties prévues dans les 3 ans</div>
-            <div class="value" id="kpiSorties">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Managers</div>
-            <div class="value" id="kpiManagers">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Formateurs</div>
-            <div class="value" id="kpiFormateurs">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Non liés (service)</div>
-            <div class="value" id="kpiNonLies">–</div>
+          <div class="collab-indispo-kpi" id="kpiBreakNext30Card">
+            <div>
+              <div class="label">Indispos à venir (30j)</div>
+              <div class="value" id="kpiBreakNext30">–</div>
+            </div>
+            <span aria-hidden="true">›</span>
           </div>
         </div>
       </div>
+    </aside>
 
-      <!-- Liste -->
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
-          <div>
-            <div class="card-title" style="margin-bottom:4px;">Liste</div>
-            <div class="card-sub" style="margin:0;">Cliquez sur une ligne pour voir le détail.</div>
-          </div>
+    <main class="card collab-list-card">
+      <div class="collab-list-head">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">Liste des collaborateurs</div>
           <div class="card-sub" id="collabCount" style="margin:0;">—</div>
         </div>
 
-        <div class="table-wrap" style="margin-top:12px;">
-          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" id="tblCollaborateurs">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Service</th>
-                <th>Poste</th>
-                <th>Statut</th>
-                <th>Entrée</th>
-                <th>Sortie prévue</th>
-                <th>Contact</th>
-              </tr>
-            </thead>
-            <tbody id="tblCollaborateursBody"></tbody>
-          </table>
-        </div>
-
-        <div class="card-sub" id="collabEmpty" style="display:none; margin-top:10px;">
-          Aucun collaborateur pour les filtres sélectionnés.
+        <div class="collab-list-toolbar">
+          <div class="collab-toolbar-search">
+            <span aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </span>
+            <input type="text" id="collabTableSearchMirror" placeholder="Rechercher un collaborateur…" />
+            <kbd>Ctrl K</kbd>
+          </div>
+          <button type="button" class="sb-icon-btn" id="btnCollabRefresh" title="Actualiser" aria-label="Actualiser">↻</button>
         </div>
       </div>
-    </div>
+
+      <div class="table-wrap collab-table-wrap">
+        <table class="sb-table sb-table--airy sb-table--hover collab-table" id="tblCollaborateurs">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Service</th>
+              <th>Poste</th>
+              <th>Statut</th>
+              <th>Entrée</th>
+              <th>Sortie prévue</th>
+              <th>Contact</th>
+            </tr>
+          </thead>
+          <tbody id="tblCollaborateursBody"></tbody>
+        </table>
+      </div>
+
+      <div class="collab-table-footer">
+        <div class="collab-page-size">25 par page</div>
+        <div class="collab-pagination" aria-hidden="true">
+          <span>‹</span>
+          <strong>1</strong>
+          <span>›</span>
+        </div>
+        <div class="card-sub" id="collabRangeLabel" style="margin:0;">—</div>
+      </div>
+
+      <div class="card-sub" id="collabEmpty" style="display:none; margin-top:10px;">
+        Aucun collaborateur pour les filtres sélectionnés.
+      </div>
+    </main>
+
+    <aside class="card collab-preview-card" id="collabPreviewCard">
+      <div class="collab-preview-head">
+        <div class="collab-preview-head__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="card-title" style="margin:0;">Aperçu collaborateur</div>
+      </div>
+
+      <div id="collabPreviewEmpty" class="collab-preview-empty">
+        Sélectionnez un collaborateur pour afficher son aperçu.
+      </div>
+
+      <div id="collabPreviewContent" class="collab-preview-content" style="display:none;">
+        <div class="collab-preview-identity">
+          <div class="collab-avatar collab-avatar--lg" id="collabPreviewAvatar">–</div>
+          <div>
+            <div class="collab-preview-name" id="collabPreviewName">–</div>
+            <div class="collab-preview-statusline">
+              <span class="collab-status-dot"></span>
+              <span id="collabPreviewStatusText">–</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="collab-preview-fields">
+          <div><span>Service</span><strong id="collabPreviewService">–</strong></div>
+          <div><span>Poste</span><strong id="collabPreviewPoste">–</strong></div>
+          <div><span>Statut</span><strong id="collabPreviewStatut">–</strong></div>
+          <div><span>Date d’entrée</span><strong id="collabPreviewEntree">–</strong></div>
+          <div><span>Sortie prévue</span><strong id="collabPreviewSortie">–</strong></div>
+          <div><span>Rôles</span><strong id="collabPreviewRoles">–</strong></div>
+          <div><span>Email</span><strong id="collabPreviewEmail">–</strong></div>
+          <div><span>Téléphone</span><strong id="collabPreviewPhone">–</strong></div>
+        </div>
+
+        <div class="collab-preview-actions">
+          <button type="button" class="collab-preview-action" id="btnCollabPreviewOpen">
+            <span>Voir la fiche</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" class="collab-preview-action" id="btnCollabPreviewEval">
+            <span>Évaluer</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" class="collab-preview-action" id="btnCollabPreviewPlan">
+            <span>Planifier</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+    </aside>
   </div>
 
   <!-- Modal détail collaborateur (squelette pour la suite) -->

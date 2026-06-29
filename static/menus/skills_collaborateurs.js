@@ -380,10 +380,101 @@
     el.textContent = `Périmètre : ${label}`;
   }
 
+  let _selectedCollaborateur = null;
+
+  function getCollaborateurFullName(it) {
+    return `${it?.prenom_effectif || ""} ${(it?.nom_effectif || "").toUpperCase()}`.trim();
+  }
+
+  function getCollaborateurInitials(it) {
+    const p = (it?.prenom_effectif || "").trim();
+    const n = (it?.nom_effectif || "").trim();
+    const a = p ? p[0] : "";
+    const b = n ? n[0] : "";
+    return `${a}${b}`.toUpperCase() || "–";
+  }
+
+  function getCollaborateurRoles(it) {
+    const roles = [];
+    if (it?.is_temp) roles.push("Temporaire");
+    if (it?.ismanager) roles.push("Manager");
+    if (it?.isformateur) roles.push("Formateur");
+    if (!roles.length) roles.push("Employé");
+    return roles;
+  }
+
+  function getCollaborateurStatusLabel(it) {
+    const parts = [];
+    if (it?.archive) parts.push("Archivé");
+    else if (it?.statut_actif) parts.push("Actif");
+    else parts.push("Inactif");
+
+    if (it?.ismanager) parts.push("Manager");
+    if (it?.isformateur) parts.push("Formateur");
+    if (it?.is_temp) parts.push("Temp");
+
+    return parts.join(" · ");
+  }
+
+  function getCollaborateurStatusClass(it) {
+    if (it?.archive) return "sb-badge--archive";
+    if (!it?.statut_actif) return "sb-badge--inactif";
+    if (it?.ismanager) return "sb-badge-manager";
+    if (it?.isformateur) return "sb-badge--formateur";
+    if (it?.is_temp) return "sb-badge--temp";
+    return "sb-badge--actif";
+  }
+
+  function renderRolePills(it) {
+    return getCollaborateurRoles(it)
+      .map(r => `<span class="sb-badge">${escapeHtml(r)}</span>`)
+      .join("");
+  }
+
+  function renderCollaborateurPreview(it) {
+    const empty = byId("collabPreviewEmpty");
+    const content = byId("collabPreviewContent");
+
+    if (!it) {
+      _selectedCollaborateur = null;
+      if (empty) empty.style.display = "";
+      if (content) content.style.display = "none";
+      return;
+    }
+
+    _selectedCollaborateur = it;
+    if (empty) empty.style.display = "none";
+    if (content) content.style.display = "";
+
+    const fullName = getCollaborateurFullName(it);
+    setText("collabPreviewAvatar", getCollaborateurInitials(it), "–");
+    setText("collabPreviewName", fullName, "Collaborateur");
+    setText("collabPreviewStatusText", it.archive ? "Archivé" : (it.statut_actif ? "Actif" : "Inactif"));
+    setText("collabPreviewService", it.nom_service || (it.id_service ? it.id_service : "Non lié"));
+    setText("collabPreviewPoste", it.intitule_poste || "–");
+    setText("collabPreviewStatut", getCollaborateurStatusLabel(it));
+    setText("collabPreviewEntree", formatDateFR(it.date_entree_entreprise_effectif));
+    setText("collabPreviewSortie", formatDateFR(it.date_sortie_prevue));
+    setText("collabPreviewEmail", it.email_effectif || "–");
+    setText("collabPreviewPhone", it.telephone_effectif || "–");
+
+    const roles = byId("collabPreviewRoles");
+    if (roles) roles.innerHTML = renderRolePills(it);
+  }
+
+  function selectCollaborateurRow(id_effectif) {
+    const body = byId("tblCollaborateursBody");
+    if (!body) return;
+    Array.from(body.querySelectorAll("tr[data-id-effectif]")).forEach(tr => {
+      tr.classList.toggle("is-selected", tr.getAttribute("data-id-effectif") === String(id_effectif || ""));
+    });
+  }
+
   function renderList(items) {
     const body = byId("tblCollaborateursBody");
     const empty = byId("collabEmpty");
     const count = byId("collabCount");
+    const range = byId("collabRangeLabel");
     if (!body || !empty) return;
 
     body.innerHTML = "";
@@ -393,59 +484,57 @@
     if (count) {
       count.textContent = `${list.length} collaborateur(s)`;
     }
+    if (range) {
+      range.textContent = list.length ? `1 – ${list.length} sur ${list.length}` : "0 – 0 sur 0";
+    }
 
     if (list.length === 0) {
       empty.style.display = "block";
+      renderCollaborateurPreview(null);
       return;
     }
     empty.style.display = "none";
 
+    const currentId = _selectedCollaborateur?.id_effectif || "";
+    let selected = list.find(x => String(x?.id_effectif || "") === String(currentId));
+    if (!selected) selected = list[0];
+
     list.forEach(it => {
       const tr = document.createElement("tr");
-      tr.style.cursor = "pointer";
+      const idEff = String(it?.id_effectif || "");
+      tr.setAttribute("data-id-effectif", idEff);
 
-      const fullName = `${it.prenom_effectif || ""} ${(it.nom_effectif || "").toUpperCase()}`.trim();
+      const fullName = getCollaborateurFullName(it);
+      const statusLabel = getCollaborateurStatusLabel(it);
+      const statusCls = getCollaborateurStatusClass(it);
 
-      const statutParts = [];
-      if (it.archive) statutParts.push("Archivé");
-      else if (it.statut_actif) statutParts.push("Actif");
-      else statutParts.push("Inactif");
+      tr.innerHTML = `
+        <td>
+          <div class="collab-person-cell">
+            <span class="collab-avatar">${escapeHtml(getCollaborateurInitials(it))}</span>
+            <strong>${escapeHtml(fullName || "–")}</strong>
+          </div>
+        </td>
+        <td>${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non lié"))}</td>
+        <td>${escapeHtml(it.intitule_poste || "–")}</td>
+        <td><span class="sb-badge ${escapeHtml(statusCls)}">${escapeHtml(statusLabel || "–")}</span></td>
+        <td>${escapeHtml(formatDateFR(it.date_entree_entreprise_effectif))}</td>
+        <td>${escapeHtml(formatDateFR(it.date_sortie_prevue))}</td>
+        <td>${escapeHtml(it.email_effectif || it.telephone_effectif || "–")}</td>
+      `;
 
-      if (it.is_temp) statutParts.push("Temp");
-      if (it.ismanager) statutParts.push("Manager");
-      if (it.isformateur) statutParts.push("Formateur");
+      tr.addEventListener("click", () => {
+        renderCollaborateurPreview(it);
+        selectCollaborateurRow(idEff);
+      });
 
-      const statut = statutParts.join(" · ");
-
-      const tdNom = document.createElement("td");
-      tdNom.textContent = fullName || "–";
-      tr.appendChild(tdNom);
-
-      const tdService = document.createElement("td");
-      tdService.textContent = it.nom_service || (it.id_service ? it.id_service : "Non lié");
-      tr.appendChild(tdService);
-
-      const tdPoste = document.createElement("td");
-      tdPoste.textContent = it.intitule_poste || "–";
-      tr.appendChild(tdPoste);
-
-      const tdStatut = document.createElement("td");
-      tdStatut.textContent = statut || "–";
-      tr.appendChild(tdStatut);
-
-      const tdEntree = document.createElement("td");
-      tdEntree.textContent = formatDateFR(it.date_entree_entreprise_effectif);
-      tr.appendChild(tdEntree);
-
-      const tdSortie = document.createElement("td");
-      tdSortie.textContent = formatDateFR(it.date_sortie_prevue);
-      tr.appendChild(tdSortie);
-
-
-      tr.addEventListener("click", () => openCollaborateurModal(it));
+      tr.addEventListener("dblclick", () => openCollaborateurModal(it));
 
       body.appendChild(tr);
     });
+
+    renderCollaborateurPreview(selected);
+    selectCollaborateurRow(selected?.id_effectif);
   }
 
   function openCollaborateurModal(it) {
@@ -1814,7 +1903,13 @@
       const chkTemp = byId("collabOnlyTemp");
 
       const btnReset = byId("btnCollabReset");
+      const btnApply = byId("btnCollabApply");
+      const btnRefresh = byId("btnCollabRefresh");
       const btnOpenPlanning = byId("btnOpenIndispoPlanning");
+      const btnPreviewOpen = byId("btnCollabPreviewOpen");
+      const btnPreviewEval = byId("btnCollabPreviewEval");
+      const btnPreviewPlan = byId("btnCollabPreviewPlan");
+      const tableSearchMirror = byId("collabTableSearchMirror");
 
       // Filtre service: appliquer immédiatement au changement
       if (selService) {
@@ -1828,6 +1923,7 @@
         btnReset.addEventListener("click", () => {
           if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
           if (inputSearch) inputSearch.value = "";
+          if (tableSearchMirror) tableSearchMirror.value = "";
           if (chkActifs) chkActifs.checked = true;
           if (chkArchived) chkArchived.checked = false;
           if (chkManagers) chkManagers.checked = false;
@@ -1835,6 +1931,53 @@
           if (chkTemp) chkTemp.checked = false;
 
           refreshAll(id_contact);
+        });
+      }
+
+      if (btnApply) {
+        btnApply.addEventListener("click", () => {
+          _breakFocus = null;
+          refreshAll(id_contact);
+        });
+      }
+
+      if (btnRefresh) {
+        btnRefresh.addEventListener("click", () => refreshAll(id_contact));
+      }
+
+      if (tableSearchMirror && inputSearch) {
+        tableSearchMirror.addEventListener("input", () => {
+          inputSearch.value = tableSearchMirror.value;
+          _breakFocus = null;
+          clearTimeout(_searchTimer);
+          _searchTimer = setTimeout(() => refreshAll(id_contact), 250);
+        });
+      }
+
+      if (inputSearch && tableSearchMirror) {
+        inputSearch.addEventListener("input", () => {
+          if (tableSearchMirror.value !== inputSearch.value) tableSearchMirror.value = inputSearch.value;
+        });
+      }
+
+      if (btnPreviewOpen) {
+        btnPreviewOpen.addEventListener("click", () => {
+          if (_selectedCollaborateur) openCollaborateurModal(_selectedCollaborateur);
+        });
+      }
+
+      if (btnPreviewEval) {
+        btnPreviewEval.addEventListener("click", () => {
+          if (_selectedCollaborateur) openCollaborateurModal(_selectedCollaborateur);
+        });
+      }
+
+      if (btnPreviewPlan) {
+        btnPreviewPlan.addEventListener("click", () => {
+          window.location.hash = "planning-indispo";
+          if (window.portal && typeof window.portal.switchView === "function") {
+            window.portal.switchView("planning-indispo");
+          }
         });
       }
 
