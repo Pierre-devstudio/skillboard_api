@@ -1300,15 +1300,28 @@ def get_competence_fiche_pdf(id_contact: str, id_comp: str, request: Request):
                       ON dc.id_domaine_competence = c.domaine
                      AND COALESCE(dc.masque, FALSE) = FALSE
                     LEFT JOIN public.tbl_entreprise ent
-                      ON ent.id_ent = c.id_owner
+                      ON ent.id_ent = %s
                      AND COALESCE(ent.masque, FALSE) = FALSE
-                    WHERE c.id_owner = %s
-                      AND c.id_comp = %s
+                    WHERE c.id_comp = %s
                       AND COALESCE(c.masque, FALSE) = FALSE
                       AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                      AND (
+                        c.id_owner = %s
+                        OR EXISTS (
+                          SELECT 1
+                          FROM public.tbl_fiche_poste_competence fpc
+                          JOIN public.tbl_fiche_poste p
+                            ON p.id_poste = fpc.id_poste
+                           AND p.id_ent = %s
+                           AND COALESCE(p.actif, TRUE) = TRUE
+                          WHERE fpc.id_competence = c.id_comp
+                            AND COALESCE(fpc.masque, FALSE) = FALSE
+                          LIMIT 1
+                        )
+                      )
                     LIMIT 1
                     """,
-                    (id_ent, cid),
+                    (id_ent, cid, id_ent, id_ent),
                 )
                 row = cur.fetchone() or {}
                 if not row:

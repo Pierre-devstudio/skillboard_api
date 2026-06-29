@@ -493,35 +493,83 @@
       </div>
 
       <div class="modal-body">
-        <div class="org-crit-edit-grid">
-          <div class="org-crit-edit-fields">
-            <div class="org-crit-row">
-              <div class="label">Fréquence d’usage</div>
-              <input id="orgCompCritFreq" type="range" min="0" max="10" step="1" />
-              <div class="sb-help"><span id="orgCompCritFreqTxt">0/10</span></div>
-            </div>
+        <div class="card org-comp-edit-card">
+          <div class="card-title" style="font-size:14px; margin-bottom:4px;">Niveau requis</div>
+          <div class="card-sub" style="margin:0;">Sélectionnez le niveau attendu sur ce poste.</div>
 
-            <div class="org-crit-row">
-              <div class="label">Impact sur le résultat</div>
-              <input id="orgCompCritImpact" type="range" min="0" max="10" step="1" />
-              <div class="sb-help"><span id="orgCompCritImpactTxt">0/10</span></div>
-            </div>
+          <div class="org-comp-level-grid" id="orgCompCritNivGrid">
+            <label class="org-comp-level-card" data-niv="A">
+              <div class="org-comp-level-name">Débutant</div>
+              <div class="org-comp-level-radio">
+                <input type="radio" name="orgCompCritNiv" value="A" />
+                <span class="card-sub" style="margin:0;">Niveau A - Débutant</span>
+              </div>
+              <div class="org-comp-level-text" id="orgCompCritRefA">—</div>
+            </label>
 
-            <div class="org-crit-row">
-              <div class="label">Dépendance au poste</div>
-              <input id="orgCompCritDep" type="range" min="0" max="10" step="1" />
-              <div class="sb-help"><span id="orgCompCritDepTxt">0/10</span></div>
-            </div>
+            <label class="org-comp-level-card" data-niv="B">
+              <div class="org-comp-level-name">Intermédiaire</div>
+              <div class="org-comp-level-radio">
+                <input type="radio" name="orgCompCritNiv" value="B" />
+                <span class="card-sub" style="margin:0;">Niveau B - Intermédiaire</span>
+              </div>
+              <div class="org-comp-level-text" id="orgCompCritRefB">—</div>
+            </label>
+
+            <label class="org-comp-level-card" data-niv="C">
+              <div class="org-comp-level-name">Avancé</div>
+              <div class="org-comp-level-radio">
+                <input type="radio" name="orgCompCritNiv" value="C" />
+                <span class="card-sub" style="margin:0;">Niveau C - Avancé</span>
+              </div>
+              <div class="org-comp-level-text" id="orgCompCritRefC">—</div>
+            </label>
+
+            <label class="org-comp-level-card" data-niv="D">
+              <div class="org-comp-level-name">Expert</div>
+              <div class="org-comp-level-radio">
+                <input type="radio" name="orgCompCritNiv" value="D" />
+                <span class="card-sub" style="margin:0;">Niveau D - Expert</span>
+              </div>
+              <div class="org-comp-level-text" id="orgCompCritRefD">—</div>
+            </label>
           </div>
+        </div>
 
-          <div class="org-crit-ring" aria-label="Score de criticité">
-            <svg viewBox="0 0 36 36" class="org-crit-ring__svg">
-              <path class="org-crit-ring__bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              <path id="orgCompCritRingProg" class="org-crit-ring__prog" stroke-dasharray="0 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            </svg>
-            <div class="org-crit-ring__center">
-              <div id="orgCompCritRingVal" class="org-crit-ring__value">0</div>
-              <div class="org-crit-ring__label">Criticité</div>
+        <div class="card org-comp-edit-card">
+          <div class="card-title" style="font-size:14px; margin-bottom:4px;">Évaluation de la criticité</div>
+          <div class="card-sub" style="margin:0;">Pondération appliquée : Fréquence (x2), Impact (x5), Dépendance (x3).</div>
+
+          <div class="org-crit-edit-grid">
+            <div class="org-crit-edit-fields">
+              <div class="org-crit-row">
+                <div class="label">Fréquence d’usage</div>
+                <input id="orgCompCritFreq" type="range" min="0" max="10" step="1" />
+                <div class="sb-help"><span id="orgCompCritFreqTxt">0/10</span></div>
+              </div>
+
+              <div class="org-crit-row">
+                <div class="label">Impact sur le résultat</div>
+                <input id="orgCompCritImpact" type="range" min="0" max="10" step="1" />
+                <div class="sb-help"><span id="orgCompCritImpactTxt">0/10</span></div>
+              </div>
+
+              <div class="org-crit-row">
+                <div class="label">Dépendance au poste</div>
+                <input id="orgCompCritDep" type="range" min="0" max="10" step="1" />
+                <div class="sb-help"><span id="orgCompCritDepTxt">0/10</span></div>
+              </div>
+            </div>
+
+            <div class="org-crit-ring" aria-label="Score de criticité">
+              <svg viewBox="0 0 36 36" class="org-crit-ring__svg">
+                <path class="org-crit-ring__bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path id="orgCompCritRingProg" class="org-crit-ring__prog" stroke-dasharray="0 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="org-crit-ring__center">
+                <div id="orgCompCritRingVal" class="org-crit-ring__value">0</div>
+                <div class="org-crit-ring__label">/100</div>
+              </div>
             </div>
           </div>
         </div>

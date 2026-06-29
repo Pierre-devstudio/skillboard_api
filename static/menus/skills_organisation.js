@@ -1543,6 +1543,34 @@
     _setOrgCompCritRing(dd.total);
   }
 
+  function _refreshOrgCompCritNivCards(){
+    document.querySelectorAll('#orgCompCritNivGrid .org-comp-level-card').forEach(card => {
+      const r = card.querySelector('input[type="radio"]');
+      card.classList.toggle('is-selected', !!(r && r.checked));
+    });
+  }
+
+  function _setOrgCompCritNiv(v){
+    const niv = ((v || '').toString().trim().toUpperCase() || 'C');
+    const finalNiv = ['A','B','C','D'].includes(niv) ? niv : 'C';
+    const r = document.querySelector(`#orgCompCritNivGrid input[name="orgCompCritNiv"][value="${finalNiv}"]`);
+    if (r) r.checked = true;
+    _refreshOrgCompCritNivCards();
+  }
+
+  function _getOrgCompCritNiv(){
+    const r = document.querySelector('#orgCompCritNivGrid input[name="orgCompCritNiv"]:checked');
+    const v = (r?.value || 'C').toString().trim().toUpperCase();
+    return ['A','B','C','D'].includes(v) ? v : 'C';
+  }
+
+  function _setOrgCompCritLevelTexts(it){
+    _setText('orgCompCritRefA', it?.niveaua || 'Premiers repères, exécution accompagnée.');
+    _setText('orgCompCritRefB', it?.niveaub || 'Exécution régulière sur situations simples.');
+    _setText('orgCompCritRefC', it?.niveauc || 'Autonomie sur situations courantes et aléas modérés.');
+    _setText('orgCompCritRefD', it?.niveaud || 'Maîtrise complète, sécurisation et transmission.');
+  }
+
   function openOrgCompCritModal(it){
     _orgCompCritEdit = Object.assign({}, it || {});
 
@@ -1553,6 +1581,8 @@
       badge.style.display = code ? "" : "none";
     }
     _setText("orgCompCritTitle", _orgCompCritEdit.intitule || "Compétence");
+    _setOrgCompCritLevelTexts(_orgCompCritEdit);
+    _setOrgCompCritNiv(_orgCompCritEdit.niveau_requis || "C");
 
     _setValue("orgCompCritFreq", String(_orgCompCritEdit.freq_usage ?? 0));
     _setValue("orgCompCritImpact", String(_orgCompCritEdit.impact_resultat ?? 0));
@@ -1589,7 +1619,7 @@
 
     const payload = {
       id_competence,
-      niveau_requis: (_orgCompCritEdit.niveau_requis || "C").toString().trim().toUpperCase(),
+      niveau_requis: _getOrgCompCritNiv(),
       freq_usage: parseInt(byId("orgCompCritFreq")?.value || "0", 10) || 0,
       impact_resultat: parseInt(byId("orgCompCritImpact")?.value || "0", 10) || 0,
       dependance: parseInt(byId("orgCompCritDep")?.value || "0", 10) || 0,
@@ -1622,6 +1652,16 @@
     byId("orgCompCritSave")?.addEventListener("click", (e) => { e.preventDefault(); saveOrgCompCrit(); });
     ["orgCompCritFreq", "orgCompCritImpact", "orgCompCritDep"].forEach(id => {
       byId(id)?.addEventListener("input", _refreshOrgCompCritDisplay);
+    });
+    modal.querySelectorAll('#orgCompCritNivGrid input[name="orgCompCritNiv"]').forEach(r => {
+      r.addEventListener("change", _refreshOrgCompCritNivCards);
+    });
+    modal.querySelectorAll('#orgCompCritNivGrid .org-comp-level-card').forEach(card => {
+      card.addEventListener("click", () => {
+        const r = card.querySelector('input[type="radio"]');
+        if (r) r.checked = true;
+        _refreshOrgCompCritNivCards();
+      });
     });
     modal.addEventListener("click", (e) => { if (e.target === modal) closeOrgCompCritModal(); });
   }
