@@ -404,25 +404,11 @@
   }
 
   function getCollaborateurStatusLabel(it) {
-    const parts = [];
-    if (it?.archive) parts.push("Archivé");
-    else if (it?.statut_actif) parts.push("Actif");
-    else parts.push("Inactif");
-
-    if (it?.ismanager) parts.push("Manager");
-    if (it?.isformateur) parts.push("Formateur");
-    if (it?.is_temp) parts.push("Temp");
-
-    return parts.join(" · ");
+    return it?.statut_actif ? "Actif" : "Inactif";
   }
 
   function getCollaborateurStatusClass(it) {
-    if (it?.archive) return "sb-badge--archive";
-    if (!it?.statut_actif) return "sb-badge--inactif";
-    if (it?.ismanager) return "sb-badge-manager";
-    if (it?.isformateur) return "sb-badge--formateur";
-    if (it?.is_temp) return "sb-badge--temp";
-    return "sb-badge--actif";
+    return it?.statut_actif ? "sb-badge--actif" : "sb-badge--inactif";
   }
 
   function renderRolePills(it) {
@@ -518,9 +504,6 @@
         <td>${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non lié"))}</td>
         <td>${escapeHtml(it.intitule_poste || "–")}</td>
         <td><span class="sb-badge ${escapeHtml(statusCls)}">${escapeHtml(statusLabel || "–")}</span></td>
-        <td>${escapeHtml(formatDateFR(it.date_entree_entreprise_effectif))}</td>
-        <td>${escapeHtml(formatDateFR(it.date_sortie_prevue))}</td>
-        <td>${escapeHtml(it.email_effectif || it.telephone_effectif || "–")}</td>
       `;
 
       tr.addEventListener("click", () => {

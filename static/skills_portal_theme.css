@@ -1475,8 +1475,6 @@ textarea.sb-ctrl{
 
 #view-vos-collaborateurs .collab-page-hero__title{
   margin:0 0 4px 0;
-  font-size:19px;
-  font-weight:800;
   color:var(--collab-text);
 }
 
@@ -1533,18 +1531,29 @@ textarea.sb-ctrl{
   color:var(--collab-green);
 }
 
+#view-vos-collaborateurs .collab-kpi-card--manager .collab-kpi-card__icon{
+  background:rgba(2,132,199,.08);
+  color:var(--sb-info);
+}
+
+#view-vos-collaborateurs .collab-kpi-card--formateur .collab-kpi-card__icon{
+  background:rgba(248,47,204,.08);
+  color:var(--sb-badge-formateur-border);
+}
+
 #view-vos-collaborateurs .collab-kpi-card__label{
   color:var(--collab-muted);
-  font-size:12px;
+  font-size:11.5px;
+  font-weight:500;
   line-height:1.15;
   white-space:nowrap;
 }
 
 #view-vos-collaborateurs .collab-kpi-card__value{
-  margin-top:4px;
+  margin-top:3px;
   color:var(--collab-text);
-  font-size:20px;
-  font-weight:800;
+  font-size:16px;
+  font-weight:700;
   line-height:1;
 }
 
@@ -1776,7 +1785,7 @@ textarea.sb-ctrl{
 
 #view-vos-collaborateurs #tblCollaborateurs{
   table-layout:fixed;
-  min-width:760px;
+  min-width:640px;
 }
 
 #view-vos-collaborateurs #tblCollaborateurs thead th{
@@ -1811,31 +1820,14 @@ textarea.sb-ctrl{
   background:linear-gradient(90deg, rgba(216,29,48,.14), rgba(216,29,48,.05));
 }
 
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(1){ width:185px; }
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(2){ width:135px; }
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(3){ width:250px; }
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(4){ width:120px; }
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(5){ width:95px; }
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(6){ width:105px; }
+#view-vos-collaborateurs #tblCollaborateurs th:nth-child(1){ width:210px; }
+#view-vos-collaborateurs #tblCollaborateurs th:nth-child(2){ width:150px; }
+#view-vos-collaborateurs #tblCollaborateurs th:nth-child(3){ width:auto; }
+#view-vos-collaborateurs #tblCollaborateurs th:nth-child(4){ width:110px; }
 
 #view-vos-collaborateurs #tblCollaborateurs th:nth-child(4),
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(5),
-#view-vos-collaborateurs #tblCollaborateurs th:nth-child(6),
-#view-vos-collaborateurs #tblCollaborateurs td:nth-child(4),
-#view-vos-collaborateurs #tblCollaborateurs td:nth-child(5),
-#view-vos-collaborateurs #tblCollaborateurs td:nth-child(6){
+#view-vos-collaborateurs #tblCollaborateurs td:nth-child(4){
   text-align:center;
-}
-
-#view-vos-collaborateurs #tblCollaborateurs td:nth-child(5),
-#view-vos-collaborateurs #tblCollaborateurs td:nth-child(6){
-  white-space:nowrap;
-}
-
-/* Contact masqué dans la vue principale, conservé pour compatibilité données */
-#view-vos-collaborateurs #tblCollaborateurs thead th:nth-child(7),
-#view-vos-collaborateurs #tblCollaborateurs tbody td:nth-child(7){
-  display:none;
 }
 
 #view-vos-collaborateurs .collab-person-cell{
