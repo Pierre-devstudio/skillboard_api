@@ -411,9 +411,17 @@
     return it?.statut_actif ? "sb-badge--actif" : "sb-badge--inactif";
   }
 
+  function getCollaborateurRoleClass(role) {
+    const key = (role || "").toString().trim().toLowerCase();
+    if (key === "manager") return "collab-role-badge collab-role-badge--manager";
+    if (key === "formateur") return "collab-role-badge collab-role-badge--formateur";
+    if (key === "temporaire") return "collab-role-badge collab-role-badge--temp";
+    return "collab-role-badge";
+  }
+
   function renderRolePills(it) {
     return getCollaborateurRoles(it)
-      .map(r => `<span class="sb-badge">${escapeHtml(r)}</span>`)
+      .map(r => `<span class="sb-badge ${getCollaborateurRoleClass(r)}">${escapeHtml(r)}</span>`)
       .join("");
   }
 
@@ -438,9 +446,9 @@
     setText("collabPreviewStatusText", it.archive ? "Archivé" : (it.statut_actif ? "Actif" : "Inactif"));
     setText("collabPreviewService", it.nom_service || (it.id_service ? it.id_service : "Non lié"));
     setText("collabPreviewPoste", it.intitule_poste || "–");
-    setText("collabPreviewStatut", getCollaborateurStatusLabel(it));
     setText("collabPreviewEntree", formatDateFR(it.date_entree_entreprise_effectif));
     setText("collabPreviewSortie", formatDateFR(it.date_sortie_prevue));
+    setText("collabPreviewContrat", it.type_contrat || "–");
     setText("collabPreviewEmail", it.email_effectif || "–");
     setText("collabPreviewPhone", it.telephone_effectif || "–");
 
@@ -1961,8 +1969,31 @@
       }
 
       if (btnPreviewEval) {
-        btnPreviewEval.addEventListener("click", () => {
-          if (_selectedCollaborateur) openCollaborateurModal(_selectedCollaborateur);
+        btnPreviewEval.addEventListener("click", async () => {
+          if (!_selectedCollaborateur) return;
+
+          const idEff = String(_selectedCollaborateur.id_effectif || "").trim();
+          if (idEff) {
+            try {
+              window.sessionStorage.setItem("skills_ep_preselect_id_effectif", idEff);
+              window.sessionStorage.setItem("skills_ep_preselect_nom", getCollaborateurFullName(_selectedCollaborateur));
+            } catch (_) {}
+          }
+
+          if (window.portal && typeof window.portal.switchView === "function") {
+            await window.portal.switchView("entretien-performance");
+          } else {
+            window.location.hash = "entretien-performance";
+          }
+
+          window.setTimeout(() => {
+            try {
+              const evt = new CustomEvent("novoskill:entretien-preselect", {
+                detail: { id_effectif: idEff }
+              });
+              window.dispatchEvent(evt);
+            } catch (_) {}
+          }, 120);
         });
       }
 

@@ -102,6 +102,7 @@ class CollaborateurItem(BaseModel):
 
     id_poste_actuel: Optional[str] = None
     intitule_poste: Optional[str] = None
+    type_contrat: Optional[str] = None
 
     statut_actif: bool
     archive: bool
@@ -839,6 +840,7 @@ def get_collaborateurs_list(
 
                         ec.id_poste_actuel,
                         fp.intitule_poste,
+                        ec.type_contrat,
 
                         COALESCE(ec.statut_actif, FALSE) AS statut_actif,
                         COALESCE(ec.archive, FALSE) AS archive,
@@ -879,6 +881,7 @@ def get_collaborateurs_list(
                     nom_service=r.get("nom_service"),
                     id_poste_actuel=r.get("id_poste_actuel"),
                     intitule_poste=r.get("intitule_poste"),
+                    type_contrat=r.get("type_contrat"),
                     statut_actif=bool(r.get("statut_actif")),
                     archive=bool(r.get("archive")),
                     ismanager=bool(r.get("ismanager")),

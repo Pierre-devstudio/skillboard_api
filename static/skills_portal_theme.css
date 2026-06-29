@@ -2027,6 +2027,32 @@ textarea.sb-ctrl{
   font-size:11px;
 }
 
+
+#view-vos-collaborateurs .collab-role-badge{
+  background:#ffffff;
+  border-color:#d1d5db;
+  color:var(--collab-text);
+  font-weight:650;
+}
+
+#view-vos-collaborateurs .collab-role-badge--manager{
+  background:rgba(2,132,199,.08);
+  border-color:var(--sb-info);
+  color:var(--sb-info);
+}
+
+#view-vos-collaborateurs .collab-role-badge--formateur{
+  background:rgba(248,47,204,.08);
+  border-color:var(--sb-badge-formateur-border);
+  color:var(--sb-badge-formateur-border);
+}
+
+#view-vos-collaborateurs .collab-role-badge--temp{
+  background:rgba(2,132,199,.06);
+  border-color:#94a3b8;
+  color:#475569;
+}
+
 #view-vos-collaborateurs .collab-preview-actions{
   display:flex;
   flex-direction:column;
