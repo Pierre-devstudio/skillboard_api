@@ -1058,7 +1058,38 @@
 
   let _contraintesSelectsInit = false;
   let _ctrEdit = { editing:false, snapshot:null };
+  let _ctrNsfGroupes = [];
   let _orgCompState = { list:[], expanded:false };
+  const _inlineMsgTimers = Object.create(null);
+
+  function _showInlineMsg(id, type, text){
+    const el = byId(id);
+    if (!el) return;
+
+    if (_inlineMsgTimers[id]) clearTimeout(_inlineMsgTimers[id]);
+
+    el.className = `sb-inline-msg sb-inline-msg--${type || "info"} org-ctr-msg is-visible`;
+    el.textContent = text || "";
+
+    const hide = () => {
+      el.classList.remove("is-visible");
+      el.textContent = "";
+    };
+
+    _inlineMsgTimers[id] = setTimeout(hide, 5000);
+
+    setTimeout(() => {
+      const onDocClick = (ev) => {
+        if (el.contains(ev.target)) return;
+        const actions = el.closest(".sb-actions");
+        if (actions && actions.contains(ev.target)) return;
+        if (_inlineMsgTimers[id]) clearTimeout(_inlineMsgTimers[id]);
+        hide();
+        document.removeEventListener("click", onDocClick, true);
+      };
+      document.addEventListener("click", onDocClick, true);
+    }, 0);
+  }
 
   function _ctrGetEditableIds(){
     return [
@@ -1103,6 +1134,7 @@
       niveau_education_minimum: byId("orgCtrEduMin")?.value || "",
       nsf_groupe_code: byId("orgCtrNsfGroupe")?.value || "",
       nsf_groupe_titre: byId("orgCtrNsfGroupe")?.selectedOptions?.[0]?.textContent?.replace(/\s*\([^)]*\)\s*$/, "") || "",
+      nsf_groupes: _ctrNsfGroupes.slice(),
       nsf_groupe_obligatoire: nsfOblig,
       mobilite: byId("orgCtrMobilite")?.value || "",
       risque_physique: byId("orgCtrRisquePhys")?.value || "",
@@ -1112,22 +1144,56 @@
     };
   }
 
-  function _ctrWriteForm(v){
-    _selectByStoredValue("orgCtrEduMin", v?.niveau_education_minimum);
-
+  function _fillNsfGroupeSelect(list, selectedCode, selectedTitle){
     const nsfSel = byId("orgCtrNsfGroupe");
-    if (nsfSel){
-      nsfSel.innerHTML = "";
-      const code = (v?.nsf_groupe_code ?? "").toString().trim();
-      const titre = (v?.nsf_groupe_titre ?? "").toString().trim();
+    if (!nsfSel) return;
+
+    const source = Array.isArray(list) && list.length ? list : _ctrNsfGroupes;
+    if (Array.isArray(list) && list.length) _ctrNsfGroupes = list.slice();
+
+    const code = (selectedCode ?? "").toString().trim();
+    const titre = (selectedTitle ?? "").toString().trim();
+
+    nsfSel.innerHTML = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "—";
+    empty.title = "—";
+    nsfSel.appendChild(empty);
+
+    let selectedFound = !code;
+    (source || []).forEach(row => {
+      const optCode = (row?.code ?? "").toString().trim();
+      const optTitle = (row?.titre ?? "").toString().trim();
+      if (!optCode) return;
       const opt = document.createElement("option");
-      opt.value = code || "";
-      opt.textContent = code ? (titre ? `${titre} (${code})` : code) : "—";
+      opt.value = optCode;
+      opt.textContent = optTitle ? `${optTitle} (${optCode})` : optCode;
       opt.title = opt.textContent;
       nsfSel.appendChild(opt);
-      nsfSel.value = code || "";
-      _refreshSelectTitleEl(nsfSel);
+      if (optCode === code) selectedFound = true;
+    });
+
+    if (code && !selectedFound){
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = titre ? `${titre} (${code})` : code;
+      opt.title = opt.textContent;
+      nsfSel.appendChild(opt);
     }
+
+    if (!nsfSel._sbSelectTitleBound){
+      nsfSel._sbSelectTitleBound = true;
+      nsfSel.addEventListener("change", () => _refreshSelectTitleEl(nsfSel));
+    }
+
+    nsfSel.value = code || "";
+    _refreshSelectTitleEl(nsfSel);
+  }
+
+  function _ctrWriteForm(v){
+    _selectByStoredValue("orgCtrEduMin", v?.niveau_education_minimum);
+    _fillNsfGroupeSelect(v?.nsf_groupes, v?.nsf_groupe_code, v?.nsf_groupe_titre);
 
     _setChecked("orgCtrNsfOblig", v?.nsf_groupe_obligatoire);
     _selectByStoredValue("orgCtrNsfObligView", v?.nsf_groupe_obligatoire ? "oui" : "non");
@@ -1137,10 +1203,6 @@
     _selectByStoredValue("orgCtrNivContrainte", v?.niveau_contrainte);
     _setValue("orgCtrDetailContrainte", v?.detail_contrainte || "");
 
-    const rSel = byId("orgCtrRisquePhys");
-    if (rSel && typeof rSel._sbRefreshHelp === "function") rSel._sbRefreshHelp();
-    const nSel = byId("orgCtrNivContrainte");
-    if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
   }
 
   function _ctrEnterEditMode(){
@@ -1163,7 +1225,7 @@
     const modal = byId("modalOrgPoste");
     const id_poste = modal?.getAttribute("data-id-poste") || "";
     if (!id_poste){
-      portal.showAlert("error", "Impossible d’enregistrer : id_poste manquant.");
+      _showInlineMsg("orgCtrMsg", "danger", "Poste introuvable : enregistrement impossible.");
       return;
     }
 
@@ -1190,9 +1252,9 @@
       const merged = Object.assign({}, _posteDetailCache.get(id_poste) || {}, updated || {}, v);
       _posteDetailCache.set(id_poste, merged);
       fillPosteContraintesTab(merged);
-      portal.showAlert("success", "Contraintes enregistrées.");
+      _showInlineMsg("orgCtrMsg", "success", "Contraintes enregistrées.");
     } catch (e) {
-      portal.showAlert("error", "Erreur enregistrement contraintes : " + e.message);
+      _showInlineMsg("orgCtrMsg", "danger", "Erreur enregistrement : " + e.message);
     }
   }
 
@@ -1251,37 +1313,7 @@
       { value:"Critique", text:"Critique : stress ou responsabilité vitale." }
     ]);
 
-        // Aide : afficher le libellé complet sélectionné (utile car <select> tronque)
-    const bindHelp = (selectId, helpId) => {
-      const sel = byId(selectId);
-      const help = byId(helpId);
-      if (!sel || !help) return;
-
-      const refresh = () => {
-        const opt = sel.options[sel.selectedIndex];
-        const txt = (opt?.textContent || "").trim();
-        if (txt && txt !== "—") {
-          help.textContent = txt;
-          help.style.display = "";
-          sel.title = txt; // tooltip natif en bonus
-        } else {
-          help.textContent = "";
-          help.style.display = "none";
-          sel.title = "";
-        }
-      };
-
-      // Stocke pour réutilisation depuis fillPosteContraintesTab
-      sel._sbRefreshHelp = refresh;
-
-      // Pour le futur (quand tu enlèveras disabled)
-      sel.addEventListener("change", refresh);
-
-      refresh();
-    };
-
-    bindHelp("orgCtrRisquePhys", "orgCtrRisquePhysHelp");
-    bindHelp("orgCtrNivContrainte", "orgCtrNivContrainteHelp");
+    // Les libellés complets sont visibles dans le select et dans les options.
 
   }
 

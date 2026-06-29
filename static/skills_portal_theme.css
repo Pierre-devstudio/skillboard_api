@@ -22238,6 +22238,11 @@ body{
   flex:0 0 auto;
 }
 
+#modalOrgPoste .org-ctr-btns .org-ctr-msg.is-visible{
+  margin-top:0;
+  margin-right:4px;
+}
+
 #modalOrgPoste .org-ctr-btns .sb-btn{
   height:36px;
   padding:0 14px;
@@ -22284,10 +22289,17 @@ body{
   white-space:normal;
 }
 
-#modalOrgPoste #orgPosteBlocContraintes .sb-help{
-  margin-top:4px;
-  font-size:11.5px;
-  line-height:1.25;
+#modalOrgPoste #orgPosteBlocContraintes select:focus,
+#modalOrgPoste #orgPosteBlocContraintes textarea:focus{
+  border-color:color-mix(in srgb, var(--accent) 55%, #d1d5db);
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .12);
+  outline:none;
+}
+
+#modalOrgPoste #orgPosteBlocContraintes select option:checked{
+  background:color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color:var(--accent);
+  font-weight:700;
 }
 
 #modalOrgPoste .org-exi-table-card{
@@ -22320,6 +22332,7 @@ body{
 #modalOrgPoste #orgPosteCompTable th:nth-child(3),
 #modalOrgPoste #orgPosteCompTable td:nth-child(3){
   width:150px;
+  text-align:center;
 }
 
 #modalOrgPoste #orgPosteCompTable th:nth-child(4),

@@ -769,6 +769,7 @@ class PosteDetailResponse(BaseModel):
     nsf_groupe_code: Optional[str] = None
     nsf_groupe_titre: Optional[str] = None
     nsf_groupe_obligatoire: Optional[bool] = None
+    nsf_groupes: List[Dict[str, str]] = []
     mobilite: Optional[str] = None
     risque_physique: Optional[str] = None
     perspectives_evolution: Optional[str] = None
@@ -789,6 +790,17 @@ class PosteDetailResponse(BaseModel):
     rh_param_rh_date_maj: Optional[str] = None
     rh_param_rh_verrouille: Optional[bool] = None
     rh_param_rh_commentaire: Optional[str] = None
+
+class PosteContraintesUpdatePayload(BaseModel):
+    niveau_education_minimum: Optional[str] = None
+    nsf_groupe_code: Optional[str] = None
+    nsf_groupe_obligatoire: Optional[bool] = None
+    mobilite: Optional[str] = None
+    risque_physique: Optional[str] = None
+    perspectives_evolution: Optional[str] = None
+    niveau_contrainte: Optional[str] = None
+    detail_contrainte: Optional[str] = None
+
 
 class PosteParamRhUpdatePayload(BaseModel):
     statut_poste: Optional[str] = None
@@ -1106,6 +1118,24 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                     )
                     pr = cur.fetchone()
 
+                cur.execute(
+                    """
+                    SELECT
+                      code,
+                      titre
+                    FROM public.tbl_nsf_groupe
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY lower(COALESCE(titre, '')), code
+                    """
+                )
+                nsf_groupes = [
+                    {
+                        "code": str(row.get("code") or ""),
+                        "titre": str(row.get("titre") or ""),
+                    }
+                    for row in (cur.fetchall() or [])
+                    if row.get("code")
+                ]
 
                 dm = r.get("date_maj")
                 try:
@@ -1129,6 +1159,7 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                     nsf_groupe_code=r.get("nsf_groupe_code"),
                     nsf_groupe_titre=r.get("nsf_groupe_titre"),
                     nsf_groupe_obligatoire=r.get("nsf_groupe_obligatoire"),
+                    nsf_groupes=nsf_groupes,
                     mobilite=r.get("mobilite"),
                     risque_physique=r.get("risque_physique"),
                     perspectives_evolution=r.get("perspectives_evolution"),
@@ -1213,6 +1244,89 @@ def get_poste_fiche_pdf(id_contact: str, id_poste: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur génération PDF poste : {e}")
+
+
+@router.post(
+    "/skills/organisation/poste_contraintes_update/{id_contact}/{id_poste}",
+    response_model=PosteDetailResponse,
+)
+def update_poste_contraintes(id_contact: str, id_poste: str, payload: PosteContraintesUpdatePayload, request: Request):
+    """
+    Update des contraintes poste depuis Insights.
+    Règles : vérification entreprise/contact, champs poste uniquement, date_maj rafraîchie.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_ent = %s
+                      AND COALESCE(p.actif, TRUE) = TRUE
+                      AND p.id_poste = %s
+                    LIMIT 1
+                    """,
+                    (id_ent, id_poste),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                nsf_code = (payload.nsf_groupe_code or "").strip() or None
+                if nsf_code:
+                    cur.execute(
+                        """
+                        SELECT 1
+                        FROM public.tbl_nsf_groupe
+                        WHERE code = %s
+                          AND COALESCE(masque, FALSE) = FALSE
+                        LIMIT 1
+                        """,
+                        (nsf_code,),
+                    )
+                    if not cur.fetchone():
+                        raise HTTPException(status_code=400, detail="Domaine NSF introuvable ou masqué.")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_fiche_poste
+                    SET
+                        niveau_education_minimum = %s,
+                        nsf_groupe_code = %s,
+                        nsf_groupe_obligatoire = %s,
+                        mobilite = %s,
+                        risque_physique = %s,
+                        perspectives_evolution = %s,
+                        niveau_contrainte = %s,
+                        detail_contrainte = %s,
+                        date_maj = now()
+                    WHERE id_ent = %s
+                      AND id_poste = %s
+                      AND COALESCE(actif, TRUE) = TRUE
+                    """,
+                    (
+                        (payload.niveau_education_minimum or "").strip() or None,
+                        nsf_code,
+                        bool(payload.nsf_groupe_obligatoire),
+                        (payload.mobilite or "").strip() or None,
+                        (payload.risque_physique or "").strip() or None,
+                        (payload.perspectives_evolution or "").strip() or None,
+                        (payload.niveau_contrainte or "").strip() or None,
+                        (payload.detail_contrainte or "").strip() or None,
+                        id_ent,
+                        id_poste,
+                    ),
+                )
+                conn.commit()
+
+        return get_poste_detail(id_contact, id_poste, request)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
 
 @router.post(
