@@ -24228,3 +24228,48 @@ body{
     justify-content:flex-end;
   }
 }
+
+/* Correctif modal collaborateur : largeurs explicites Parcours / projection.
+   Placé en fin de fichier pour neutraliser les anciennes surcharges locales. */
+#modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-grid{
+  grid-template-columns:repeat(12, minmax(0, 1fr)) !important;
+  align-items:end;
+  gap:12px 14px;
+}
+
+#modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-field--education{
+  grid-column:1 / 5 !important;
+}
+
+#modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-field--domain{
+  grid-column:5 / 13 !important;
+}
+
+#modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-field--retirement{
+  grid-column:1 / 6 !important;
+}
+
+#modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-field--exit-check{
+  grid-column:6 / 8 !important;
+  justify-self:center;
+}
+
+#modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-field--exit-date{
+  grid-column:8 / 13 !important;
+}
+
+#modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-field--exit-reason{
+  grid-column:1 / 13 !important;
+}
+
+@media (max-width:780px){
+  #modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  #modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-grid > .sb-field,
+  #modalCollaborateur .sb-collab-ident-panel .sb-collab-projection-field--exit-check{
+    grid-column:1 / -1 !important;
+    justify-self:stretch;
+  }
+}
