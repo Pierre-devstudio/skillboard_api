@@ -25052,3 +25052,65 @@ body{
   width:13px;
   height:13px;
 }
+
+/* ======================================================
+   Planning indisponibilités — statut contrôle propre
+   ====================================================== */
+#modalBreakBatch .plan-break-table thead th{
+  font-weight:650;
+}
+
+#modalBreakBatch .plan-break-table thead th:nth-child(3),
+#modalBreakBatch .plan-break-table tbody td:nth-child(3){
+  width:220px;
+}
+
+#modalBreakBatch .sb-batch-status{
+  min-height:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:6px;
+  max-width:100%;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:#667085;
+  font-size:12px;
+  font-weight:650;
+  line-height:1.25;
+  white-space:normal;
+  text-align:left;
+}
+
+#modalBreakBatch .sb-batch-status::before{
+  content:"";
+  width:14px;
+  height:14px;
+  flex:0 0 14px;
+  border-radius:999px;
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:14px 14px;
+}
+
+#modalBreakBatch .sb-batch-status.is-ok,
+#modalBreakBatch tr.is-ok .sb-batch-status{
+  color:#166534;
+}
+
+#modalBreakBatch .sb-batch-status.is-ok::before,
+#modalBreakBatch tr.is-ok .sb-batch-status::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='8' cy='8' r='7' stroke='%2316a34a' stroke-width='1.5'/%3E%3Cpath d='M4.7 8.1 7 10.4l4.3-4.4' stroke='%2316a34a' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+#modalBreakBatch .sb-batch-status.is-err,
+#modalBreakBatch tr.is-err .sb-batch-status{
+  color:#b42318;
+}
+
+#modalBreakBatch .sb-batch-status.is-err::before,
+#modalBreakBatch tr.is-err .sb-batch-status::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='8' cy='8' r='7' stroke='%23d92d20' stroke-width='1.5'/%3E%3Cpath d='M8 4.6v4' stroke='%23d92d20' stroke-width='1.7' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11.6' r='1' fill='%23d92d20'/%3E%3C/svg%3E");
+}
