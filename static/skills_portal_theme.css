@@ -25894,3 +25894,541 @@ body{
   display:inline-block;
   padding:0 1px;
 }
+
+
+/* ======================================================
+   VUE: Référentiel de compétences
+   Correctif visuel — alignement strict sur "Vos collaborateurs"
+   ====================================================== */
+#view-referentiel-competences{
+  --ref-red:#d81d30;
+  --ref-red-soft:#fff1f3;
+  --ref-green:#16a34a;
+  --ref-green-soft:#ecfdf3;
+  --ref-blue-soft:#eff6ff;
+  --ref-border:#e5e7eb;
+  --ref-border-soft:#edf0f4;
+  --ref-text:#111827;
+  --ref-muted:#667085;
+}
+
+/* Même gabarit que Vos collaborateurs */
+#view-referentiel-competences .ref-page-hero,
+#view-referentiel-competences .ref-filter-card,
+#view-referentiel-competences .ref-list-card{
+  border:1px solid var(--ref-border);
+  border-radius:18px;
+  background:#ffffff;
+  box-shadow:none;
+}
+
+#view-referentiel-competences .ref-page-hero{
+  position:relative;
+  padding:24px 28px 20px;
+}
+
+#view-referentiel-competences .ref-page-hero__main{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-page-hero__icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 42px;
+  background:var(--ref-red-soft);
+  border:0;
+  color:var(--ref-red);
+}
+
+#view-referentiel-competences .ref-page-hero__icon svg,
+#view-referentiel-competences .ref-kpi-card__icon svg,
+#view-referentiel-competences .ref-card-head__icon svg,
+#view-referentiel-competences .ref-search-wrap__icon svg,
+#view-referentiel-competences .ref-btn-icon svg,
+#view-referentiel-competences .ref-kpi-card__cta svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-referentiel-competences .ref-page-hero__title{
+  margin:0 0 4px 0;
+  color:var(--ref-text);
+}
+
+#view-referentiel-competences .ref-page-hero__sub{
+  margin:0;
+}
+
+/* KPI : proportions et respiration identiques à la bande Collaborateurs */
+#view-referentiel-competences .ref-kpi-strip{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(160px, 1fr));
+  gap:12px;
+  margin-top:16px;
+}
+
+#view-referentiel-competences .ref-kpi-card{
+  min-width:0;
+  min-height:78px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid var(--ref-border-soft);
+  border-radius:14px;
+  background:#ffffff;
+  box-shadow:none;
+  text-align:left;
+}
+
+#view-referentiel-competences button.ref-kpi-card{
+  appearance:none;
+  font:inherit;
+  color:inherit;
+  cursor:pointer;
+}
+
+#view-referentiel-competences .ref-kpi-card__icon{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 34px;
+  background:#f8fafc;
+  color:#334155;
+}
+
+#view-referentiel-competences .ref-kpi-card__icon svg{
+  width:20px;
+  height:20px;
+}
+
+#view-referentiel-competences .ref-kpi-card--postes .ref-kpi-card__icon{
+  background:var(--ref-red-soft);
+  color:var(--ref-red);
+}
+
+#view-referentiel-competences .ref-kpi-card--competences .ref-kpi-card__icon{
+  background:var(--ref-blue-soft);
+  color:#2563eb;
+}
+
+#view-referentiel-competences .ref-kpi-card--certifs .ref-kpi-card__icon{
+  background:rgba(249,115,22,.10);
+  color:#f97316;
+}
+
+#view-referentiel-competences .ref-kpi-card--pareto .ref-kpi-card__icon{
+  background:rgba(124,58,237,.10);
+  color:#7c3aed;
+}
+
+#view-referentiel-competences .ref-kpi-card--pareto.sb-card--active{
+  outline:2px solid rgba(124,58,237,.28);
+  border-color:rgba(124,58,237,.34);
+  background:linear-gradient(180deg, rgba(124,58,237,.045), #ffffff 78%);
+  box-shadow:none;
+}
+
+#view-referentiel-competences .ref-kpi-card__label{
+  color:var(--ref-muted);
+  font-size:11.5px;
+  font-weight:500;
+  line-height:1.15;
+  white-space:nowrap;
+}
+
+#view-referentiel-competences .ref-kpi-card__value{
+  margin-top:3px;
+  color:var(--ref-text);
+  font-size:16px;
+  font-weight:700;
+  line-height:1;
+}
+
+#view-referentiel-competences .ref-kpi-card__hint{
+  margin-top:6px;
+  color:var(--ref-muted);
+  font-size:12px;
+  line-height:1;
+}
+
+#view-referentiel-competences .ref-kpi-card__body{
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-kpi-card__cta{
+  margin-left:auto;
+  color:#0f172a;
+  opacity:.85;
+  display:inline-flex;
+  flex:0 0 auto;
+}
+
+#view-referentiel-competences .ref-kpi-card__cta svg{
+  width:16px;
+  height:16px;
+}
+
+/* Workspace strictement calé sur la page Collaborateurs */
+#view-referentiel-competences .ref-workspace{
+  display:grid;
+  grid-template-columns:300px minmax(620px, 1fr);
+  gap:16px;
+  align-items:start;
+  margin-top:18px;
+}
+
+#view-referentiel-competences .ref-left-col{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-filter-card{
+  padding:20px;
+}
+
+#view-referentiel-competences .ref-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+#view-referentiel-competences .ref-card-head__icon{
+  width:28px;
+  height:28px;
+  border:0;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 28px;
+  padding:0;
+  background:#f8fafc;
+  color:#64748b;
+  cursor:pointer;
+}
+
+#view-referentiel-competences .ref-card-head__icon svg{
+  width:16px;
+  height:16px;
+  transition:transform .12s ease;
+}
+
+#view-referentiel-competences .ref-filter-toggle:hover{
+  background:var(--ref-red-soft);
+  color:var(--ref-red);
+}
+
+#view-referentiel-competences .ref-filter-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-referentiel-competences .ref-filter-toggle[aria-expanded="false"] svg{
+  transform:rotate(90deg);
+}
+
+#view-referentiel-competences .ref-filter-card.is-collapsed .ref-card-head{
+  margin-bottom:0;
+}
+
+#view-referentiel-competences .ref-filter-card.is-collapsed .ref-filter-stack{
+  display:none;
+}
+
+#view-referentiel-competences .ref-filter-stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#view-referentiel-competences .ref-filter-stack .info-item{
+  min-width:0;
+}
+
+#view-referentiel-competences .ref-search-wrap{
+  position:relative;
+}
+
+#view-referentiel-competences .ref-search-wrap input{
+  padding-right:36px;
+}
+
+#view-referentiel-competences .ref-search-wrap__icon{
+  position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#64748b;
+  pointer-events:none;
+}
+
+#view-referentiel-competences .ref-search-wrap__icon svg{
+  width:16px;
+  height:16px;
+}
+
+#view-referentiel-competences .ref-filter-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+#view-referentiel-competences .ref-filter-actions .sb-btn{
+  width:100%;
+}
+
+#view-referentiel-competences .ref-list-card{
+  min-width:0;
+  padding:18px 20px 16px;
+}
+
+#view-referentiel-competences .ref-list-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+
+#view-referentiel-competences .ref-toggle-bar{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#view-referentiel-competences .ref-toggle-bar .sb-btn{
+  height:36px;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:700;
+}
+
+#view-referentiel-competences .ref-toggle-bar .sb-btn--soft{
+  background:#ffffff;
+  border-color:#d8dee8;
+  color:#0f2742;
+  box-shadow:none;
+}
+
+#view-referentiel-competences .ref-toggle-bar .sb-btn--soft:hover{
+  background:#f8fafc;
+  border-color:#cbd5e1;
+  filter:none;
+}
+
+#view-referentiel-competences .ref-btn-icon,
+#view-referentiel-competences .ref-btn-icon svg{
+  width:16px;
+  height:16px;
+  display:inline-flex;
+}
+
+/* Table : même densité que Collaborateurs */
+#view-referentiel-competences .ref-table-wrap{
+  margin-top:0;
+  overflow:auto;
+}
+
+#view-referentiel-competences .ref-table-wrap .sb-table{
+  table-layout:fixed;
+  min-width:760px;
+  border-collapse:separate;
+  border-spacing:0;
+}
+
+#view-referentiel-competences .ref-table-wrap .sb-table thead th{
+  background:#ffffff;
+  font-size:12px;
+  font-weight:700;
+  color:var(--ref-text);
+  padding:11px 12px;
+  border-bottom:1px solid var(--ref-border);
+  white-space:nowrap;
+}
+
+#view-referentiel-competences .ref-table-wrap .sb-table tbody td{
+  padding:10px 12px;
+  font-size:12.5px;
+  vertical-align:middle;
+  line-height:1.25;
+  border-bottom:1px solid #eef2f6;
+}
+
+#view-referentiel-competences .ref-table-wrap .sb-table tbody tr:nth-child(even){
+  background:#fafafa;
+}
+
+#view-referentiel-competences .ref-table-wrap .sb-table tbody tr:hover{
+  background:#f8fafc;
+}
+
+#view-referentiel-competences #tblRefCompetences th:nth-child(1){ width:64px; }
+#view-referentiel-competences #tblRefCompetences th:nth-child(2){ width:116px; }
+#view-referentiel-competences #tblRefCompetences th:nth-child(3){ width:auto; }
+#view-referentiel-competences #tblRefCompetences th:nth-child(4){ width:90px; }
+#view-referentiel-competences #tblRefCompetences th:nth-child(5),
+#view-referentiel-competences #tblRefCompetences th:nth-child(6){ width:54px; }
+
+#view-referentiel-competences #tblRefCertifs th:nth-child(1){ width:auto; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(2){ width:150px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(3){ width:110px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(4){ width:110px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(5){ width:90px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(6),
+#view-referentiel-competences #tblRefCertifs th:nth-child(7){ width:54px; }
+
+#view-referentiel-competences .col-code{
+  font-weight:800;
+  color:#0f172a;
+}
+
+#view-referentiel-competences .domain-dot{
+  display:inline-block;
+  width:14px;
+  height:14px;
+  border-radius:6px;
+  border:1px solid #d1d5db;
+}
+
+#view-referentiel-competences .col-center{
+  text-align:center !important;
+}
+
+#view-referentiel-competences .col-detail .sb-icon-btn{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+}
+
+/* Footer pagination repris du gabarit Collaborateurs */
+#view-referentiel-competences .ref-table-footer{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:12px;
+  margin-top:12px;
+  color:var(--ref-muted);
+  font-size:12px;
+}
+
+#view-referentiel-competences .ref-page-size-wrap{
+  justify-self:start;
+}
+
+#view-referentiel-competences .ref-page-size-select{
+  width:auto;
+  min-width:118px;
+  height:34px;
+  border-radius:10px;
+  padding:0 34px 0 10px;
+  color:var(--ref-text);
+  background-color:#ffffff;
+}
+
+#view-referentiel-competences .ref-pagination{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+}
+
+#view-referentiel-competences .ref-page-btn{
+  width:24px;
+  height:24px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#0f172a;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+#view-referentiel-competences .ref-page-btn.is-active{
+  background:var(--accent);
+  color:#ffffff;
+  box-shadow:none;
+}
+
+#view-referentiel-competences .ref-page-nav{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+}
+
+#view-referentiel-competences .ref-page-nav svg{
+  width:14px;
+  height:14px;
+}
+
+#view-referentiel-competences #refRangeLabel{
+  justify-self:end;
+  margin:0;
+}
+
+@media (max-width:1320px){
+  #view-referentiel-competences .ref-kpi-strip{
+    grid-template-columns:repeat(2, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width:900px){
+  #view-referentiel-competences .ref-workspace{
+    grid-template-columns:1fr;
+  }
+
+  #view-referentiel-competences .ref-kpi-strip{
+    grid-template-columns:1fr 1fr;
+  }
+
+  #view-referentiel-competences .ref-table-footer{
+    grid-template-columns:1fr;
+    justify-items:start;
+  }
+
+  #view-referentiel-competences #refRangeLabel{
+    justify-self:start;
+  }
+}
+
+@media (max-width:620px){
+  #view-referentiel-competences .ref-page-hero{
+    padding:18px;
+  }
+
+  #view-referentiel-competences .ref-kpi-strip{
+    grid-template-columns:1fr;
+  }
+
+  #view-referentiel-competences .ref-filter-actions{
+    grid-template-columns:1fr;
+  }
+}
