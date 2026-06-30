@@ -214,10 +214,24 @@ class PosteCertificationRequirement(BaseModel):
     commentaire: Optional[str] = None
 
 
+class CollaborateurCertificationHolder(BaseModel):
+    id_effectif: str
+    nom_effectif: str
+    prenom_effectif: str
+    id_poste: Optional[str] = None
+    codif_poste: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    id_service: Optional[str] = None
+    nom_service: Optional[str] = None
+    date_obtention: Optional[str] = None
+    date_renouvellement: Optional[str] = None
+
+
 class CertificationDetailResponse(BaseModel):
     service: ServiceScope
     certification: CertificationDetail
     postes_concernes: List[PosteCertificationRequirement]
+    collaborateurs_detenteurs: List[CollaborateurCertificationHolder] = []
 
 
 # ======================================================
@@ -1177,10 +1191,100 @@ def get_referentiel_certification_detail(
                     for p in postes_rows
                 ]
 
+                eff_scope_filter = _effectifs_scope_filter(id_service)
+                holders_params: List[Any] = [id_certification, id_ent]
+                if id_service == NON_LIE_ID:
+                    holders_params.append(id_ent)
+                elif id_service != ALL_SERVICES_ID:
+                    holders_params.append(id_service)
+
+                cur.execute(
+                    f"""
+                    WITH latest_cert_raw AS (
+                        SELECT
+                            ecc.*,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY ecc.id_effectif, ecc.id_certification
+                                ORDER BY
+                                    ecc.date_obtention DESC NULLS LAST,
+                                    ecc.date_creation DESC NULLS LAST,
+                                    ecc.id_effectif_certification DESC
+                            ) AS rn
+                        FROM public.tbl_effectif_client_certification ecc
+                        WHERE ecc.id_certification = %s
+                          AND COALESCE(ecc.archive, FALSE) = FALSE
+                    ),
+                    latest_cert AS (
+                        SELECT *
+                        FROM latest_cert_raw
+                        WHERE rn = 1
+                    )
+                    SELECT
+                        ec.id_effectif,
+                        ec.nom_effectif,
+                        ec.prenom_effectif,
+                        ec.id_poste_actuel AS id_poste,
+                        fp.codif_poste,
+                        fp.intitule_poste,
+                        ec.id_service,
+                        o.nom_service,
+                        lc.date_obtention,
+                        COALESCE(
+                            lc.date_expiration,
+                            CASE
+                                WHEN lc.date_obtention IS NOT NULL
+                                 AND COALESCE(fpc.validite_override, c.duree_validite) IS NOT NULL
+                                THEN (lc.date_obtention + make_interval(months => COALESCE(fpc.validite_override, c.duree_validite)))::date
+                                ELSE NULL
+                            END
+                        ) AS date_renouvellement
+                    FROM latest_cert lc
+                    JOIN public.tbl_effectif_client ec
+                      ON ec.id_effectif = lc.id_effectif
+                     AND ec.id_ent = %s
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = ec.id_poste_actuel
+                     AND fp.id_ent = ec.id_ent
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_fiche_poste_certification fpc
+                      ON fpc.id_poste = ec.id_poste_actuel
+                     AND fpc.id_certification = lc.id_certification
+                    LEFT JOIN public.tbl_certification c
+                      ON c.id_certification = lc.id_certification
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_service = ec.id_service
+                     AND o.id_ent = ec.id_ent
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    WHERE COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                      {eff_scope_filter}
+                    ORDER BY lower(COALESCE(ec.nom_effectif, '')), lower(COALESCE(ec.prenom_effectif, ''))
+                    """,
+                    tuple(holders_params),
+                )
+                holders_rows = cur.fetchall() or []
+
+                collaborateurs_detenteurs = [
+                    CollaborateurCertificationHolder(
+                        id_effectif=r.get("id_effectif"),
+                        nom_effectif=r.get("nom_effectif") or "",
+                        prenom_effectif=r.get("prenom_effectif") or "",
+                        id_poste=r.get("id_poste"),
+                        codif_poste=r.get("codif_poste"),
+                        intitule_poste=r.get("intitule_poste"),
+                        id_service=r.get("id_service"),
+                        nom_service=r.get("nom_service"),
+                        date_obtention=str(r.get("date_obtention")) if r.get("date_obtention") else None,
+                        date_renouvellement=str(r.get("date_renouvellement")) if r.get("date_renouvellement") else None,
+                    )
+                    for r in holders_rows
+                ]
+
                 return CertificationDetailResponse(
                     service=service_scope,
                     certification=cert,
                     postes_concernes=postes,
+                    collaborateurs_detenteurs=collaborateurs_detenteurs,
                 )
 
     except HTTPException:

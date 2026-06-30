@@ -25630,13 +25630,15 @@ body{
 }
 
 #modalRefDetail .sb-ref-postes-table,
-#modalRefDetail .sb-ref-collabs-table{
+#modalRefDetail .sb-ref-collabs-table,
+#modalRefDetail .sb-ref-cert-holders-table{
   table-layout:fixed;
   min-width:760px;
 }
 
 #modalRefDetail .sb-ref-postes-table thead th,
-#modalRefDetail .sb-ref-collabs-table thead th{
+#modalRefDetail .sb-ref-collabs-table thead th,
+#modalRefDetail .sb-ref-cert-holders-table thead th{
   background:#f8fafc;
   font-size:11.5px;
   font-weight:700;
@@ -25646,7 +25648,8 @@ body{
 }
 
 #modalRefDetail .sb-ref-postes-table tbody td,
-#modalRefDetail .sb-ref-collabs-table tbody td{
+#modalRefDetail .sb-ref-collabs-table tbody td,
+#modalRefDetail .sb-ref-cert-holders-table tbody td{
   font-size:12.5px;
   padding:8px 9px;
   border-bottom:1px solid #f1f5f9;
@@ -25654,9 +25657,23 @@ body{
 }
 
 #modalRefDetail .sb-ref-postes-table tbody tr:nth-child(even),
-#modalRefDetail .sb-ref-collabs-table tbody tr:nth-child(even){
+#modalRefDetail .sb-ref-collabs-table tbody tr:nth-child(even),
+#modalRefDetail .sb-ref-cert-holders-table tbody tr:nth-child(even){
   background:#fafafa;
 }
+
+
+#modalRefDetail .sb-ref-cert-postes-table{ min-width:680px; }
+#modalRefDetail .sb-ref-cert-postes-table .ref-col-poste{ width:auto; }
+#modalRefDetail .sb-ref-cert-postes-table .ref-col-service{ width:112px; }
+#modalRefDetail .sb-ref-cert-postes-table .ref-col-exigence{ width:105px; }
+#modalRefDetail .sb-ref-cert-postes-table .ref-col-validite{ width:105px; }
+
+#modalRefDetail .sb-ref-cert-holders-table{ min-width:720px; }
+#modalRefDetail .sb-ref-cert-holders-table .ref-col-collab{ width:190px; }
+#modalRefDetail .sb-ref-cert-holders-table .ref-col-poste{ width:auto; }
+#modalRefDetail .sb-ref-cert-holders-table .ref-col-date-obt{ width:130px; }
+#modalRefDetail .sb-ref-cert-holders-table .ref-col-date-renouv{ width:140px; }
 
 #modalRefDetail .sb-ref-postes-actions-table .ref-col-poste{ width:auto; }
 #modalRefDetail .sb-ref-postes-actions-table .ref-col-service{ width:150px; }

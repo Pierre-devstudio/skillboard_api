@@ -761,8 +761,8 @@
       let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
         ${sectionTitleHtml("postes", "Postes concernés")}
         <div class="table-wrap ref-modal-table-wrap">
-          <table class="sb-table sb-ref-postes-table">
-            <thead><tr><th>Poste</th><th>Service</th><th class="col-center">Exigence</th><th class="col-center">Validité</th></tr></thead>
+          <table class="sb-table sb-ref-postes-table sb-ref-cert-postes-table">
+            <thead><tr><th class="ref-col-poste">Poste</th><th class="ref-col-service">Service</th><th class="col-center ref-col-exigence">Exigence</th><th class="col-center ref-col-validite">Validité</th></tr></thead>
             <tbody>`;
 
       if (!list.length) {
@@ -779,10 +779,10 @@
           if (eff !== null) vlabel = (eff === 0 ? "Permanent" : `${eff} mois`);
 
           html += `<tr>
-            <td>${poste}</td>
-            <td>${service}</td>
-            <td class="col-center" style="white-space:nowrap;">${ex}</td>
-            <td class="col-center" style="white-space:nowrap;">${escapeHtml(vlabel)}</td>
+            <td class="ref-col-poste">${poste}</td>
+            <td class="ref-col-service">${service}</td>
+            <td class="col-center ref-col-exigence" style="white-space:nowrap;">${ex}</td>
+            <td class="col-center ref-col-validite" style="white-space:nowrap;">${escapeHtml(vlabel)}</td>
           </tr>`;
         });
       }
@@ -922,6 +922,38 @@
     return { title, sub, body };
   }
 
+  function renderCertifHoldersTable(collaborateurs) {
+    const list = Array.isArray(collaborateurs) ? collaborateurs : [];
+
+    let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
+      ${sectionTitleHtml("users", "Collaborateurs détenteurs")}
+      <div class="table-wrap ref-modal-table-wrap">
+        <table class="sb-table sb-ref-cert-holders-table">
+          <thead><tr><th class="ref-col-collab">Prénom nom</th><th class="ref-col-poste">Poste</th><th class="col-center ref-col-date-obt">Date d’obtention</th><th class="col-center ref-col-date-renouv">Date renouvellement</th></tr></thead>
+          <tbody>`;
+
+    if (!list.length) {
+      html += `<tr><td colspan="4">Aucun collaborateur détenteur de cette certification.</td></tr>`;
+    } else {
+      list.forEach(c => {
+        const fullName = `${c.prenom_effectif || ""} ${(c.nom_effectif || "").toString().toUpperCase()}`.trim() || "—";
+        const poste = ((c.intitule_poste || "").toString().trim()) || "—";
+        const obt = formatDateFR(c.date_obtention);
+        const renouv = formatDateFR(c.date_renouvellement);
+
+        html += `<tr>
+          <td class="ref-col-collab"><strong>${escapeHtml(fullName)}</strong></td>
+          <td class="ref-col-poste">${escapeHtml(poste)}</td>
+          <td class="col-center ref-col-date-obt">${obt}</td>
+          <td class="col-center ref-col-date-renouv">${renouv}</td>
+        </tr>`;
+      });
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
+  }
+
   function buildCertifDetailView(data) {
     const c = data?.certification || {};
     const title = c.nom_certification || "Certification";
@@ -966,14 +998,16 @@
     const sub = badges.join(" ");
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
     const postes = renderPostesTable(data?.postes_concernes || [], true, c.duree_validite);
+    const collaborateurs = renderCertifHoldersTable(data?.collaborateurs_detenteurs || []);
 
     const body = `
-      <div class="row" style="flex-direction:column; gap:12px;">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Description</div>
+      <div class="ref-modal-stack">
+        <div class="card ref-modal-card" style="padding:12px; margin:0;">
+          ${sectionTitleHtml("description", "Description")}
           ${desc}
         </div>
         ${postes}
+        ${collaborateurs}
       </div>
     `;
 
