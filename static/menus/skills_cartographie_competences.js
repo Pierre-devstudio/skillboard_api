@@ -425,11 +425,17 @@
       : "Recherchez puis ajoutez une ou plusieurs compétences.";
   }
 
+  function setAdvancedPrintEnabled(enabled) {
+    const btn = byId("btnMapAdvancedPrint");
+    if (btn) btn.disabled = !enabled;
+  }
+
   function renderAdvancedEmpty(message) {
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
     if (head) head.innerHTML = "";
     if (body) body.innerHTML = `<tr><td class="map-advanced-empty">${escapeHtml(message || "Aucune recherche lancée.")}</td></tr>`;
+    setAdvancedPrintEnabled(false);
   }
 
   function advancedLevelBadge(value) {
@@ -442,17 +448,48 @@
     return `${safeTrim(it?.prenom_effectif)} ${safeTrim(it?.nom_effectif)}`.trim() || "—";
   }
 
+  function advancedPosteParts(it) {
+    return {
+      code: safeTrim(it?.codif_client) || safeTrim(it?.codif_poste),
+      label: safeTrim(it?.intitule_poste),
+      service: safeTrim(it?.nom_service)
+    };
+  }
+
   function advancedPosteLabel(it) {
-    const code = safeTrim(it?.codif_client) || safeTrim(it?.codif_poste);
-    const label = safeTrim(it?.intitule_poste);
-    if (code && label) return `${code} — ${label}`;
-    return label || code || "—";
+    const p = advancedPosteParts(it);
+    if (p.code && p.label) return `${p.code} — ${p.label}`;
+    return p.label || p.code || "—";
+  }
+
+  function advancedPosteHtml(it) {
+    const p = advancedPosteParts(it);
+    const title = p.label || "Poste non renseigné";
+    return `
+      <div class="map-advanced-poste-cell">
+        <div class="map-advanced-poste-line">
+          ${p.code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.code)}</span>` : ``}
+          <span>${escapeHtml(title)}</span>
+        </div>
+        <div class="map-advanced-poste-service">${escapeHtml(p.service || "Service non renseigné")}</div>
+      </div>
+    `;
   }
 
   function advancedCompLabel(it) {
     const code = safeTrim(it?.code);
     const comp = safeTrim(it?.intitule) || "Compétence";
     return { code, comp };
+  }
+
+  function advancedCompHtml(it) {
+    const { code, comp } = advancedCompLabel(it);
+    return `
+      <div class="map-advanced-comp-line">
+        ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+        <span>${escapeHtml(comp)}</span>
+      </div>
+    `;
   }
 
   function renderAdvancedSelection() {
@@ -576,56 +613,36 @@
     head.innerHTML = `
       <tr>
         <th>Collaborateur</th>
-        <th>Service</th>
         <th>Poste actuel</th>
-        <th class="col-center">Couverture</th>
-        <th>Compétences détenues</th>
-        <th class="col-center">Dernière éval.</th>
+        <th>Compétence</th>
+        <th class="col-center">Niveau atteint</th>
       </tr>
     `;
 
     if (!items.length) {
-      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="6">Aucun collaborateur ne correspond à cette combinaison.</td></tr>`;
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucun collaborateur ne correspond à cette combinaison.</td></tr>`;
       setAdvancedStatus("Aucun résultat trouvé.");
+      setAdvancedPrintEnabled(false);
       return;
     }
 
     body.innerHTML = items.map(it => {
       const comps = Array.isArray(it.competences) ? it.competences : [];
-      const matched = Number(it.matched_count || comps.length || 0);
-      const selected = Number(it.selected_count || _advancedSelectedSkills.length || 0);
-      const complete = selected > 0 && matched >= selected;
-      const lastEval = comps
-        .map(c => safeTrim(c.date_derniere_eval))
-        .filter(Boolean)
-        .sort()
-        .pop();
-
-      const compHtml = comps.map(c => {
-        const code = safeTrim(c.code);
-        const label = safeTrim(c.intitule) || "Compétence";
-        return `
-          <span class="map-advanced-mini-skill">
-            ${code ? `<strong>${escapeHtml(code)}</strong>` : ``}
-            <span>${escapeHtml(label)}</span>
-            ${advancedLevelBadge(c.niveau_actuel)}
-          </span>
-        `;
-      }).join("");
+      const compHtml = comps.map(c => advancedCompHtml(c)).join("");
+      const levelHtml = comps.map(c => `
+        <div class="map-advanced-level-line">${advancedLevelBadge(c.niveau_actuel)}</div>
+      `).join("");
 
       return `
         <tr>
           <td><strong>${escapeHtml(advancedPersonName(it))}</strong></td>
-          <td>${escapeHtml(safeTrim(it.nom_service) || "—")}</td>
-          <td>${escapeHtml(advancedPosteLabel(it))}</td>
-          <td class="col-center">
-            <span class="sb-badge ${complete ? "sb-badge--success" : "sb-badge--warning"}">${escapeHtml(String(matched))}/${escapeHtml(String(selected || matched))}</span>
-          </td>
-          <td><div class="map-advanced-mini-skills">${compHtml || "—"}</div></td>
-          <td class="col-center">${escapeHtml(formatDateFr(lastEval))}</td>
+          <td>${advancedPosteHtml(it)}</td>
+          <td><div class="map-advanced-skill-list">${compHtml || "—"}</div></td>
+          <td class="col-center"><div class="map-advanced-level-list">${levelHtml || `<span class="sb-badge">—</span>`}</div></td>
         </tr>
       `;
     }).join("");
+    setAdvancedPrintEnabled(true);
     setAdvancedStatus(`${items.length} collaborateur(s) trouvé(s) · logique ${_advancedOperator === "or" ? "OU" : "ET"}.`);
   }
 
@@ -636,40 +653,32 @@
 
     head.innerHTML = `
       <tr>
-        <th>Compétence</th>
         <th>Collaborateur</th>
         <th>Poste actuel</th>
-        <th class="col-center">Niveau détenu</th>
-        <th class="col-center">Dernière éval.</th>
+        <th>Compétence</th>
+        <th class="col-center">Niveau atteint</th>
       </tr>
     `;
 
     if (!items.length) {
-      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="5">Aucun résultat pour cette recherche.</td></tr>`;
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucun résultat pour cette recherche.</td></tr>`;
       setAdvancedStatus("Aucun résultat trouvé.");
+      setAdvancedPrintEnabled(false);
       return;
     }
 
     body.innerHTML = items.map(it => {
-      const code = safeTrim(it.code);
-      const comp = safeTrim(it.intitule) || "—";
-      const person = advancedPersonName(it);
       const hasPerson = safeTrim(it.id_effectif) !== "";
       return `
         <tr>
-          <td>
-            <div class="map-advanced-comp-line">
-              ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
-              <span>${escapeHtml(comp)}</span>
-            </div>
-          </td>
-          <td>${hasPerson ? escapeHtml(person) : `<span class="sb-muted">Aucun détenteur identifié</span>`}</td>
-          <td>${escapeHtml(advancedPosteLabel(it))}</td>
+          <td>${hasPerson ? `<strong>${escapeHtml(advancedPersonName(it))}</strong>` : `<span class="sb-muted">Aucun détenteur identifié</span>`}</td>
+          <td>${hasPerson ? advancedPosteHtml(it) : `<span class="sb-muted">—</span>`}</td>
+          <td>${advancedCompHtml(it)}</td>
           <td class="col-center">${hasPerson ? advancedLevelBadge(it.niveau_actuel) : `<span class="sb-badge">—</span>`}</td>
-          <td class="col-center">${escapeHtml(formatDateFr(it.date_derniere_eval))}</td>
         </tr>
       `;
     }).join("");
+    setAdvancedPrintEnabled(true);
     setAdvancedStatus(`${items.length} résultat(s).`);
   }
 
@@ -681,38 +690,34 @@
     head.innerHTML = `
       <tr>
         <th>Collaborateur</th>
-        <th>Compétence</th>
-        <th>Domaine</th>
-        <th class="col-center">Niveau détenu</th>
         <th>Poste actuel</th>
-        <th class="col-center">Dernière éval.</th>
+        <th>Compétence</th>
+        <th class="col-center">Niveau atteint</th>
       </tr>
     `;
 
     if (!items.length) {
-      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="6">Aucune compétence évaluée dans le périmètre cartographié.</td></tr>`;
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucune compétence évaluée dans le périmètre cartographié.</td></tr>`;
       setAdvancedStatus("Aucun résultat trouvé.");
+      setAdvancedPrintEnabled(false);
       return;
     }
 
     body.innerHTML = items.map(it => {
-      const { code, comp } = advancedCompLabel(it);
+      const domain = safeTrim(it.domaine_label);
       return `
         <tr>
           <td><strong>${escapeHtml(advancedPersonName(it))}</strong></td>
+          <td>${advancedPosteHtml(it)}</td>
           <td>
-            <div class="map-advanced-comp-line">
-              ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
-              <span>${escapeHtml(comp)}</span>
-            </div>
+            ${advancedCompHtml(it)}
+            ${domain ? `<div class="map-advanced-comp-domain">${escapeHtml(domain)}</div>` : ``}
           </td>
-          <td>${escapeHtml(safeTrim(it.domaine_label) || "—")}</td>
           <td class="col-center">${advancedLevelBadge(it.niveau_actuel)}</td>
-          <td>${escapeHtml(advancedPosteLabel(it))}</td>
-          <td class="col-center">${escapeHtml(formatDateFr(it.date_derniere_eval))}</td>
         </tr>
       `;
     }).join("");
+    setAdvancedPrintEnabled(true);
     setAdvancedStatus(`${items.length} compétence(s) détenue(s).`);
   }
 
@@ -729,6 +734,64 @@
     }
 
     renderAdvancedCompetenceTextResults(items);
+  }
+
+  function printAdvancedCurrentTable() {
+    const table = byId("mapAdvancedTableBody")?.closest?.("table");
+    const body = byId("mapAdvancedTableBody");
+    if (!table || !body || body.querySelector(".map-advanced-empty")) {
+      setAdvancedStatus("Aucun tableau à imprimer.");
+      return;
+    }
+
+    const title = "Recherche avancée - Cartographie des compétences";
+    const modeLabel = _advancedMode === "collaborateur" ? "Par collaborateur" : "Par compétences";
+    const status = safeTrim(byId("mapAdvancedStatus")?.textContent) || "";
+    const selectedText = safeTrim(byId("mapAdvancedSelected")?.innerText)
+      .replace(/×/g, "")
+      .replace(/\n{2,}/g, "\n");
+    const tableHtml = table.outerHTML;
+    const win = window.open("about:blank", "_blank");
+    if (!win) {
+      setAdvancedStatus("Ouverture de l'impression bloquée par le navigateur.");
+      return;
+    }
+
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    *{box-sizing:border-box;}
+    body{margin:24px;font-family:Arial,sans-serif;color:#111827;background:#fff;font-size:12px;}
+    h1{margin:0 0 6px 0;font-size:18px;}
+    .meta{margin:0 0 14px 0;color:#475569;line-height:1.35;white-space:pre-line;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;}
+    th,td{border:1px solid #e5e7eb;padding:8px 9px;vertical-align:top;text-align:left;}
+    th{background:#f8fafc;font-size:11px;font-weight:700;color:#111827;}
+    td{font-size:11.5px;line-height:1.35;}
+    .col-center{text-align:center;}
+    .sb-badge{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:0 8px;border-radius:999px;border:1px solid #d1d5db;font-size:10.5px;font-weight:700;white-space:nowrap;}
+    .sb-badge-ref-comp-code{background:#3763a7;border-color:#3763a7;color:#fff;}
+    .sb-badge-ref-poste-code{background:#d133bc;border-color:#d133bc;color:#fff;}
+    .map-advanced-poste-service,.map-advanced-comp-domain{margin-top:4px;color:#64748b;font-size:10.5px;}
+    .map-advanced-comp-line,.map-advanced-poste-line{display:flex;gap:6px;align-items:flex-start;}
+    .map-advanced-skill-list,.map-advanced-level-list{display:flex;flex-direction:column;gap:5px;}
+    .map-advanced-level-line{min-height:20px;display:flex;align-items:center;justify-content:center;}
+    .map-advanced-chip-x,.map-advanced-chip button{display:none;}
+    @page{size:A4 landscape;margin:12mm;}
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <div class="meta"><strong>${escapeHtml(modeLabel)}</strong>${selectedText ? "\n" + escapeHtml(selectedText) : ""}${status ? "\n" + escapeHtml(status) : ""}</div>
+  ${tableHtml}
+  <script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script>
+</body>
+</html>`);
+    win.document.close();
   }
 
   function formatDateFr(value) {
@@ -779,6 +842,7 @@
       renderAdvancedResults(data, _advancedMode);
     } catch (e) {
       setAdvancedStatus("Erreur pendant la recherche.");
+      setAdvancedPrintEnabled(false);
       const body = byId("mapAdvancedTableBody");
       if (body) body.innerHTML = `<tr><td class="map-advanced-empty">${escapeHtml(e.message || "Erreur inconnue")}</td></tr>`;
     }
@@ -1212,6 +1276,7 @@
     const btnAdvanced = byId("btnMapAdvancedSearch");
     const advancedInput = byId("mapAdvancedSearchInput");
     const btnAdvancedRun = byId("btnMapAdvancedRun");
+    const btnAdvancedPrint = byId("btnMapAdvancedPrint");
     const btnAdvancedCloseX = byId("btnCloseMapAdvancedModal");
     const btnAdvancedClose = byId("btnMapAdvancedClose");
     const advancedModal = byId("modalMapAdvancedSearch");
@@ -1272,6 +1337,7 @@
     });
 
     if (btnAdvancedRun) btnAdvancedRun.addEventListener("click", () => runAdvancedSearch(portal));
+    if (btnAdvancedPrint) btnAdvancedPrint.addEventListener("click", () => printAdvancedCurrentTable());
     if (advancedInput) {
       advancedInput.addEventListener("keydown", (ev) => {
         if (ev.key !== "Enter") return;
