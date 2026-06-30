@@ -16,56 +16,56 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="ref-kpi-strip">
-    <div class="ref-kpi-card ref-kpi-card--postes">
-      <div class="ref-kpi-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <div class="ref-kpi-strip">
+      <div class="ref-kpi-card ref-kpi-card--postes">
+        <div class="ref-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <div class="ref-kpi-card__label">Postes concernés</div>
+          <div class="ref-kpi-card__value" id="kpiRefPostes">–</div>
+        </div>
       </div>
-      <div>
-        <div class="ref-kpi-card__label">Postes concernés</div>
-        <div class="ref-kpi-card__value" id="kpiRefPostes">–</div>
+
+      <div class="ref-kpi-card ref-kpi-card--competences">
+        <div class="ref-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>
+        </div>
+        <div>
+          <div class="ref-kpi-card__label">Compétences requises</div>
+          <div class="ref-kpi-card__value" id="kpiRefCompetences">–</div>
+        </div>
       </div>
+
+      <div class="ref-kpi-card ref-kpi-card--certifs">
+        <div class="ref-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M10.5 12.5 8 21l4-2 4 2-2.5-8.5"/></svg>
+        </div>
+        <div>
+          <div class="ref-kpi-card__label">Certifications requises</div>
+          <div class="ref-kpi-card__value" id="kpiRefCertifs">–</div>
+        </div>
+      </div>
+
+      <button type="button"
+              class="ref-kpi-card ref-kpi-card--pareto"
+              id="kpiRefParetoCard"
+              title="Cliquez pour afficher les compétences comprises dans le Pareto"
+              aria-label="Afficher le Pareto des compétences">
+        <div class="ref-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 12 2v10Z"/><path d="M22 12A10 10 0 0 0 12 2"/></svg>
+        </div>
+        <div class="ref-kpi-card__body">
+          <div class="ref-kpi-card__label" id="kpiRefParetoLabel">Pareto (Top 20 %)</div>
+          <div class="ref-kpi-card__value" id="kpiRefPareto">–</div>
+          <div class="ref-kpi-card__hint">Cliquer pour voir</div>
+        </div>
+        <span class="ref-kpi-card__cta" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </span>
+      </button>
     </div>
-
-    <div class="ref-kpi-card ref-kpi-card--competences">
-      <div class="ref-kpi-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>
-      </div>
-      <div>
-        <div class="ref-kpi-card__label">Compétences requises</div>
-        <div class="ref-kpi-card__value" id="kpiRefCompetences">–</div>
-      </div>
-    </div>
-
-    <div class="ref-kpi-card ref-kpi-card--certifs">
-      <div class="ref-kpi-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M10.5 12.5 8 21l4-2 4 2-2.5-8.5"/></svg>
-      </div>
-      <div>
-        <div class="ref-kpi-card__label">Certifications requises</div>
-        <div class="ref-kpi-card__value" id="kpiRefCertifs">–</div>
-      </div>
-    </div>
-
-    <button type="button"
-            class="ref-kpi-card ref-kpi-card--pareto"
-            id="kpiRefParetoCard"
-            title="Cliquez pour afficher les compétences comprises dans le Pareto"
-            aria-label="Afficher le Pareto des compétences">
-      <div class="ref-kpi-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 12 2v10Z"/><path d="M22 12A10 10 0 0 0 12 2"/></svg>
-      </div>
-      <div class="ref-kpi-card__body">
-        <div class="ref-kpi-card__label" id="kpiRefParetoLabel">Pareto (Top 20 %)</div>
-        <div class="ref-kpi-card__value" id="kpiRefPareto">–</div>
-        <div class="ref-kpi-card__hint">Cliquer pour voir</div>
-      </div>
-      <span class="ref-kpi-card__cta" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-      </span>
-    </button>
   </div>
 
   <div class="ref-workspace">
@@ -161,8 +161,7 @@
                 <th class="col-title">Compétence</th>
                 <th class="col-domain">Domaine</th>
                 <th class="col-center col-postes">Postes</th>
-                <th class="col-center ref-action-head" aria-label="Voir"></th>
-                <th class="col-center ref-action-head" aria-label="Document"></th>
+                <th class="col-center ref-action-head" aria-label="Actions"></th>
               </tr>
             </thead>
             <tbody id="tblRefCompetencesBody"></tbody>
@@ -180,8 +179,7 @@
                 <th>Validité</th>
                 <th>Exigence</th>
                 <th class="col-center col-postes">Postes</th>
-                <th class="col-center ref-action-head" aria-label="Voir"></th>
-                <th class="col-center ref-action-head" aria-label="Document"></th>
+                <th class="col-center ref-action-head" aria-label="Actions"></th>
               </tr>
             </thead>
             <tbody id="tblRefCertifsBody"></tbody>

@@ -25043,9 +25043,8 @@ body{
 
 #view-referentiel-competences .ref-kpi-strip{
   display:grid;
-  grid-template-columns:repeat(4, minmax(190px, 260px));
-  justify-content:space-between;
-  gap:18px;
+  grid-template-columns:repeat(4, minmax(150px, 1fr));
+  gap:12px;
   margin-top:22px;
 }
 
@@ -25357,16 +25356,14 @@ body{
 #view-referentiel-competences #tblRefCompetences th:nth-child(1){ width:auto; }
 #view-referentiel-competences #tblRefCompetences th:nth-child(2){ width:190px; }
 #view-referentiel-competences #tblRefCompetences th:nth-child(3){ width:86px; }
-#view-referentiel-competences #tblRefCompetences th:nth-child(4),
-#view-referentiel-competences #tblRefCompetences th:nth-child(5){ width:54px; }
+#view-referentiel-competences #tblRefCompetences th:nth-child(4){ width:82px; }
 
 #view-referentiel-competences #tblRefCertifs th:nth-child(1){ width:auto; }
 #view-referentiel-competences #tblRefCertifs th:nth-child(2){ width:150px; }
 #view-referentiel-competences #tblRefCertifs th:nth-child(3){ width:110px; }
 #view-referentiel-competences #tblRefCertifs th:nth-child(4){ width:110px; }
 #view-referentiel-competences #tblRefCertifs th:nth-child(5){ width:90px; }
-#view-referentiel-competences #tblRefCertifs th:nth-child(6),
-#view-referentiel-competences #tblRefCertifs th:nth-child(7){ width:54px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(6){ width:54px; }
 
 #view-referentiel-competences .ref-comp-titleline{
   display:flex;
@@ -25395,6 +25392,12 @@ body{
 
 #view-referentiel-competences .col-center{
   text-align:center !important;
+}
+
+#view-referentiel-competences .ref-row-actions{
+  justify-content:center;
+  gap:6px;
+  flex-wrap:nowrap;
 }
 
 #view-referentiel-competences .col-detail .sb-icon-btn{
@@ -25538,8 +25541,7 @@ body{
 
 @media (max-width:1320px){
   #view-referentiel-competences .ref-kpi-strip{
-    grid-template-columns:repeat(2, minmax(190px, 1fr));
-    justify-content:stretch;
+    grid-template-columns:repeat(2, minmax(160px, 1fr));
   }
 }
 

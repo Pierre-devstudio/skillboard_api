@@ -211,22 +211,22 @@
         <td class="col-domain">${domaineCell(it)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-detail">
-          <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </button>
-        </td>
-        <td class="col-center col-detail">
-          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="print" title="Ouvrir la fiche imprimable" aria-label="Ouvrir la fiche imprimable">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
-              <path d="M14 2v6h6"></path>
-              <path d="M8.5 15.5h7"></path>
-              <path d="M8.5 18.5h5"></path>
-            </svg>
-          </button>
+          <div class="sb-icon-actions ref-row-actions">
+            <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+            <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="pdf" title="Ouvrir la fiche compétence PDF" aria-label="Ouvrir la fiche compétence PDF">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
+                <path d="M14 2v6h6"></path>
+                <path d="M8.5 15.5h7"></path>
+                <path d="M8.5 18.5h5"></path>
+              </svg>
+            </button>
+          </div>
         </td>
       `;
 
@@ -273,22 +273,14 @@
         <td class="col-center" style="white-space:nowrap;">${escapeHtml(it.niveau_exigence_max || "—")}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-detail">
-          <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </button>
-        </td>
-        <td class="col-center col-detail">
-          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="print" title="Ouvrir la fiche imprimable" aria-label="Ouvrir la fiche imprimable">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
-              <path d="M14 2v6h6"></path>
-              <path d="M8.5 15.5h7"></path>
-              <path d="M8.5 18.5h5"></path>
-            </svg>
-          </button>
+          <div class="sb-icon-actions ref-row-actions">
+            <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
         </td>
       `;
 
@@ -812,7 +804,7 @@
       </div>
     `;
 
-    return { title, sub, body, printTitle: code ? `${code} - ${label}` : label || "Compétence" };
+    return { title, sub, body };
   }
 
   function buildCertifDetailView(data) {
@@ -870,60 +862,96 @@
       </div>
     `;
 
-    return { title, sub, body, printTitle: title || "Certification" };
+    return { title, sub, body };
   }
 
-  function openPrintWindow(title, sub, htmlBody) {
-    const popupWin = window.open("about:blank", "_blank");
-    if (!popupWin) throw new Error("Ouverture de la fiche bloquée par le navigateur.");
+  async function fetchReferentielCompetencePdfBlob(portal, id_contact, id_service, id_comp) {
+    const paths = [
+      `/skills/referentiel/competences/fiche_pdf/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`,
+      `/skills/referentiel/competence/fiche_pdf/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`
+    ];
 
-    const safeTitle = escapeHtml(title || "Fiche");
-    popupWin.document.open();
-    popupWin.document.write(`<!doctype html>
+    const headers = new Headers();
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token ? String(session.access_token) : "";
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+      }
+    } catch (_) {}
+
+    let lastError = "Erreur PDF compétence.";
+    for (const path of paths) {
+      const resp = await fetch(`${portal.apiBase}${path}`, { headers });
+      if (resp.ok) return await resp.blob();
+
+      try {
+        const ct = (resp.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) {
+          const js = await resp.json();
+          lastError = js?.detail || js?.message || JSON.stringify(js);
+        } else {
+          lastError = await resp.text() || `Erreur PDF (${resp.status})`;
+        }
+      } catch (_) {
+        lastError = `Erreur PDF (${resp.status})`;
+      }
+
+      if (resp.status !== 404) break;
+    }
+
+    throw new Error(lastError);
+  }
+
+  function renderPdfBlobInWindow(popupWin, blob, title) {
+    const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
+    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+
+    const blobUrl = URL.createObjectURL(blob);
+    const safeTitle = escapeHtml(title || "Fiche compétence");
+
+    win.document.open();
+    win.document.write(`<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
   <title>${safeTitle}</title>
   <style>
-    :root{color-scheme:light;}
-    *{box-sizing:border-box;}
-    body{margin:0;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#111827;background:#ffffff;}
-    h1{margin:0 0 8px 0;font-size:22px;}
-    .sub{margin:0 0 18px 0;color:#6b7280;font-size:13px;}
-    .card{border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;margin:0 0 12px 0;background:#fff;}
-    .card-title{font-size:15px;font-weight:700;margin:0 0 8px 0;color:#111827;}
-    .card-sub{font-size:13px;color:#6b7280;line-height:1.45;}
-    table{width:100%;border-collapse:collapse;margin-top:10px;}
-    th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:12px;}
-    th{text-transform:none;font-weight:700;color:#111827;}
-    .col-center{text-align:center;}
-    .sb-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 10px;border-radius:999px;border:1px solid #d1d5db;font-size:12px;font-weight:600;line-height:1;background:#fff;color:#111827;}
-    .sb-badge-ref-comp-code{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;}
-    .sb-badge-critere{background:#fef7ed;border-color:#d97706;color:#9a3412;}
-    .sb-badge-niv-a,.sb-badge-niv-b,.sb-badge-niv-c,.sb-badge-niv-d{background:#fff7ed;border-color:#f59e0b;color:#b45309;}
-    .domain-pill{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid #d1d5db;border-radius:999px;font-size:12px;color:#374151;background:#fff;}
-    .domain-dot{display:inline-block;width:10px;height:10px;border-radius:999px;border:1px solid #d1d5db;}
-    .ref-levels-table{display:flex;flex-direction:column;gap:0;margin-top:8px;}
-    .ref-level-row{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start;padding:8px 0;border-bottom:1px solid rgba(209,213,219,.65);}
-    .ref-level-row:last-child{border-bottom:0;}
-    .ref-level-text{font-size:13px;line-height:1.35;color:#111827;}
-    .sb-accordion{border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff;margin-bottom:10px;}
-    .sb-accordion summary{list-style:none;cursor:default;padding:10px 12px;background:#fafafa;}
-    .sb-accordion summary::-webkit-details-marker{display:none;}
-    .sb-acc-body{padding:10px 12px;}
-    .sb-acc-body ul{margin:0;padding-left:18px;}
-    .sb-acc-body li{margin:6px 0;line-height:1.45;}
-    @media print{body{padding:0;} button{display:none !important;}}
+    html,body{height:100%;margin:0;background:#f3f4f6;}
+    iframe{width:100%;height:100%;border:0;background:#fff;}
   </style>
 </head>
 <body>
-  <h1>${safeTitle}</h1>
-  ${sub ? `<div class="sub">${sub}</div>` : ``}
-  ${htmlBody}
-  <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 150); });<\/script>
+  <iframe src="${blobUrl}" title="${safeTitle}"></iframe>
 </body>
 </html>`);
-    popupWin.document.close();
+    win.document.close();
+
+    const revoke = () => {
+      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+    };
+    try { win.addEventListener("beforeunload", revoke, { once: true }); } catch (_) {}
+    setTimeout(revoke, 5 * 60 * 1000);
+  }
+
+  async function openCompetencePdf(portal, id_comp) {
+    const id_contact = portal.contactId;
+    const id_service = (byId("refServiceSelect")?.value || "").trim() || ALL_SERVICES_ID;
+    if (!id_contact || !id_comp) return;
+
+    const item = _lastCompList.find(x => String(x?.id_comp || "") === String(id_comp)) || {};
+    const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+
+    const popupWin = window.open("about:blank", "_blank");
+    if (popupWin) popupWin.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>");
+
+    try {
+      const blob = await fetchReferentielCompetencePdfBlob(portal, id_contact, id_service, id_comp);
+      renderPdfBlobInWindow(popupWin, blob, title);
+    } catch (e) {
+      try { if (popupWin && !popupWin.closed) popupWin.close(); } catch (_) {}
+      throw e;
+    }
   }
 
   async function openCompetenceDetail(portal, id_comp) {
@@ -937,16 +965,6 @@
     openModal(view.title, view.sub, view.body);
   }
 
-  async function printCompetenceDetail(portal, id_comp) {
-    const id_contact = portal.contactId;
-    const id_service = (byId("refServiceSelect")?.value || "").trim();
-    if (!id_service) return;
-
-    const url = `${portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`;
-    const data = await portal.apiJson(url);
-    const view = buildCompetenceDetailView(data);
-    openPrintWindow(view.printTitle, view.sub, view.body);
-  }
 
   async function openCertifDetail(portal, id_certification) {
     const id_contact = portal.contactId;
@@ -959,16 +977,6 @@
     openModal(view.title, view.sub, view.body);
   }
 
-  async function printCertifDetail(portal, id_certification) {
-    const id_contact = portal.contactId;
-    const id_service = (byId("refServiceSelect")?.value || "").trim();
-    if (!id_service) return;
-
-    const url = `${portal.apiBase}/skills/referentiel/certification/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_certification)}`;
-    const data = await portal.apiJson(url);
-    const view = buildCertifDetailView(data);
-    openPrintWindow(view.printTitle, view.sub, view.body);
-  }
 
   function bindOnce(portal) {
     if (_bound) return;
@@ -1155,10 +1163,10 @@
         const action = actionBtn?.getAttribute("data-action") || "detail";
 
         try {
-          if (action === "print") await printCompetenceDetail(portal, id_comp);
+          if (action === "pdf") await openCompetencePdf(portal, id_comp);
           else await openCompetenceDetail(portal, id_comp);
         } catch (e) {
-          const prefix = action === "print" ? "Erreur fiche compétence : " : "Erreur détail compétence : ";
+          const prefix = action === "pdf" ? "Erreur PDF compétence : " : "Erreur détail compétence : ";
           portal.showAlert("error", prefix + e.message);
         }
       });
@@ -1170,15 +1178,10 @@
         const id_cert = tr?.getAttribute("data-id_certification");
         if (!id_cert) return;
 
-        const actionBtn = ev.target.closest("[data-action]");
-        const action = actionBtn?.getAttribute("data-action") || "detail";
-
         try {
-          if (action === "print") await printCertifDetail(portal, id_cert);
-          else await openCertifDetail(portal, id_cert);
+          await openCertifDetail(portal, id_cert);
         } catch (e) {
-          const prefix = action === "print" ? "Erreur fiche certification : " : "Erreur détail certification : ";
-          portal.showAlert("error", prefix + e.message);
+          portal.showAlert("error", "Erreur détail certification : " + e.message);
         }
       });
     }
