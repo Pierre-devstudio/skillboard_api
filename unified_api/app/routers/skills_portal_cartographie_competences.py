@@ -570,6 +570,29 @@ def get_cartographie_cell_detail(
                     if domaine_obj is None:
                         domaine_obj = {"id_domaine_competence": id_domaine}
 
+                # --- nombre de postes concernés par le domaine sélectionné (pour les cartes du modal)
+                nb_postes_concernes = 1
+                if id_domaine:
+                    sql_postes_concernes = f"""
+                    WITH {postes_cte}
+                    SELECT COUNT(DISTINCT ps.id_poste)::int AS nb_postes
+                    FROM postes_scope ps
+                    JOIN public.tbl_fiche_poste_competence fpc
+                      ON fpc.id_poste = ps.id_poste
+                    JOIN public.tbl_competence c
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                    WHERE c.domaine = %s
+                      AND c.etat = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(fpc.masque, FALSE) = FALSE
+                    """
+                    cur.execute(
+                        sql_postes_concernes,
+                        tuple([id_ent] + svc_params + [id_domaine, (etat_norm or "active")])
+                    )
+                    row_nb = cur.fetchone() or {}
+                    nb_postes_concernes = int(row_nb.get("nb_postes") or 0)
+
                 # --- construction competences (modifiable / enrichissable)
                 competences = []
                 for r in rows:
@@ -774,6 +797,11 @@ def get_cartographie_cell_detail(
                             comp["porteurs"] = porteurs_by_comp.get(cid, [])
 
 
+                nb_competences_non_couvertes = len([
+                    comp for comp in competences
+                    if int(comp.get("nb_porteurs_qualifies") or 0) < int(nb_titulaires_cible or 1)
+                ])
+
                 # réponse clean
                 return {
                     "poste": {
@@ -793,6 +821,8 @@ def get_cartographie_cell_detail(
                     },
                     "domaine": domaine_obj,
                     "nb_competences": len(rows),
+                    "nb_postes_concernes": nb_postes_concernes,
+                    "nb_competences_non_couvertes": nb_competences_non_couvertes,
                     "competences": competences
                 }
 

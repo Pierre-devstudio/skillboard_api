@@ -37,6 +37,7 @@
   const STORE_RISK_DETAIL_EXPANDED = "sb_analyse_risk_detail_expanded";
   const STORE_SIM_ORG_CONTEXT = "sb_simulations_rh_context_v1";
   const STORE_BF_FOCUS = "sb_bf_focus_v1";
+  const STORE_CARTO_COMP_FOCUS = "sb_analyse_comp_focus_v1";
   const CRITICITE_MIN_DEFAULT = 70;
   const POSTES_SCOPE_PREVIEW_LIMIT = 10;
   const PREV_TABLE_PREVIEW_LIMIT = 10;
@@ -7523,6 +7524,27 @@ function bindOnce(portal) {
     modal.setAttribute("aria-hidden", "true");
   }
 
+  function consumeCartographieCompetenceFocus() {
+    try {
+      const raw = sessionStorage.getItem(STORE_CARTO_COMP_FOCUS) || "";
+      if (!raw) return null;
+      sessionStorage.removeItem(STORE_CARTO_COMP_FOCUS);
+      const payload = JSON.parse(raw);
+      if (!payload || typeof payload !== "object") return null;
+      const key = String(payload.id_comp || payload.code || "").trim();
+      if (!key) return null;
+      return {
+        id_comp: key,
+        id_service: String(payload.id_service || "").trim(),
+        code: String(payload.code || "").trim(),
+        intitule: String(payload.intitule || "").trim(),
+      };
+    } catch (_) {
+      try { sessionStorage.removeItem(STORE_CARTO_COMP_FOCUS); } catch (__) {}
+      return null;
+    }
+  }
+
   window.SkillsAnalyse = {
     onShow: async (portal) => {
       try {
@@ -7534,18 +7556,33 @@ function bindOnce(portal) {
           await loadServices(portal);
         }
 
+        const pendingCompFocus = consumeCartographieCompetenceFocus();
+        if (pendingCompFocus) {
+          if (pendingCompFocus.id_service) localStorage.setItem(STORE_SERVICE, pendingCompFocus.id_service);
+          else localStorage.removeItem(STORE_SERVICE);
+          localStorage.setItem(STORE_MODE, "risques");
+        }
+
         const storedService = (localStorage.getItem(STORE_SERVICE) || "").trim();
         setAnalyseServiceRawValue(storedService);
         initCriticiteMinFromStorage();
 
         await refreshSummary(portal);
 
-        const storedMode = (localStorage.getItem(STORE_MODE) || "risques").trim();
+        const storedMode = (pendingCompFocus ? "risques" : (localStorage.getItem(STORE_MODE) || "risques")).trim();
         setMode(storedMode);
 
         if (storedMode === "risques") {
           const rf = getRiskFilter();
           setActiveRiskKpi(rf);
+        }
+
+        if (pendingCompFocus && pendingCompFocus.id_comp) {
+          try {
+            await showAnalyseCompetenceDetailModal(portal, pendingCompFocus.id_comp, getFilters().id_service);
+          } catch (focusErr) {
+            portal.showAlert("error", "Erreur ouverture analyse compétence : " + (focusErr.message || "inconnue"));
+          }
         }
 
 

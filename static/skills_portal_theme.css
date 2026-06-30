@@ -26208,3 +26208,247 @@ body{
     grid-template-columns:1fr;
   }
 }
+
+/* ======================================================
+   Cartographie — modal détail compétences requises
+   ====================================================== */
+#modalMapDetail.is-map-detail-modal .modal-card--wide{
+  max-width: 1080px;
+}
+
+#modalMapDetail.is-map-detail-modal #mapModalSub{
+  margin: 0;
+}
+
+#modalMapDetail .map-modal-titleline{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+
+#modalMapDetail .map-modal-titletext{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalMapDetail .map-detail-modal-body{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#modalMapDetail .map-detail-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:12px;
+}
+
+#modalMapDetail .map-detail-kpi-card{
+  min-width:0;
+  min-height:62px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:13px 14px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  background:#ffffff;
+}
+
+#modalMapDetail .map-detail-kpi-card__icon{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 34px;
+  background:#f8fafc;
+  color:#334155;
+}
+
+#modalMapDetail .map-detail-kpi-card__icon svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalMapDetail .map-detail-kpi-card--domain .map-detail-kpi-card__icon{
+  background:#eff6ff;
+  color:#2563eb;
+}
+
+#modalMapDetail .map-detail-kpi-card--postes .map-detail-kpi-card__icon{
+  background:#fff1f2;
+  color:#e11d48;
+}
+
+#modalMapDetail .map-detail-kpi-card--skills .map-detail-kpi-card__icon{
+  background:#f5f3ff;
+  color:#7c3aed;
+}
+
+#modalMapDetail .map-detail-kpi-card--users .map-detail-kpi-card__icon{
+  background:#ecfdf3;
+  color:#16a34a;
+}
+
+#modalMapDetail .map-detail-kpi-card__label{
+  color:var(--sb-gray-500);
+  font-size:11.5px;
+  font-weight:600;
+  line-height:1.15;
+}
+
+#modalMapDetail .map-detail-kpi-card__value{
+  margin-top:4px;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:800;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:185px;
+}
+
+#modalMapDetail .map-detail-table-card{
+  padding:12px;
+  margin:0;
+  border-radius:14px;
+}
+
+#modalMapDetail .map-detail-section-titleline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:8px;
+}
+
+#modalMapDetail .map-detail-section-icon{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 18px;
+  color:var(--sb-gray-700);
+}
+
+#modalMapDetail .map-detail-section-icon svg{
+  width:17px;
+  height:17px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalMapDetail .map-detail-section-title{
+  margin:0;
+  font-size:14px;
+  font-weight:750;
+}
+
+#modalMapDetail .map-detail-table-wrap{
+  margin-top:8px;
+}
+
+#modalMapDetail .map-detail-table{
+  table-layout:fixed;
+  min-width:820px;
+}
+
+#modalMapDetail .map-detail-table thead th{
+  font-size:12px;
+  font-weight:700;
+  padding:9px 10px;
+}
+
+#modalMapDetail .map-detail-table tbody td{
+  font-size:12.5px;
+  padding:8px 10px;
+}
+
+#modalMapDetail .map-detail-table th:nth-child(1){ width:auto; }
+#modalMapDetail .map-detail-table th:nth-child(2){ width:128px; }
+#modalMapDetail .map-detail-table th:nth-child(3){ width:86px; }
+#modalMapDetail .map-detail-table th:nth-child(4){ width:96px; }
+#modalMapDetail .map-detail-table th:nth-child(5){ width:82px; }
+
+#modalMapDetail .map-detail-comp-cell{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+#modalMapDetail .map-detail-comp-cell .sb-badge-ref-comp-code{
+  flex:0 0 auto;
+  background:#f1f5f9;
+  border-color:#eef2f7;
+  color:#0f172a;
+}
+
+#modalMapDetail .map-detail-comp-title{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:normal;
+  line-height:1.25;
+  font-weight:600;
+  color:var(--sb-gray-900);
+}
+
+#modalMapDetail .map-detail-level-cell .sb-badge-niv{
+  min-width:78px;
+}
+
+#modalMapDetail .map-coverage-dot{
+  display:inline-flex;
+  width:14px;
+  height:14px;
+  border-radius:999px;
+  box-shadow:0 0 0 2px #ffffff, 0 0 0 3px rgba(15,23,42,.06);
+  vertical-align:middle;
+}
+
+#modalMapDetail .map-coverage-dot--ok{ background:var(--sb-success); }
+#modalMapDetail .map-coverage-dot--partial{ background:var(--sb-warning); }
+#modalMapDetail .map-coverage-dot--none{ background:var(--sb-danger); }
+#modalMapDetail .map-coverage-dot--paused{ background:var(--sb-gray-300); }
+
+#modalMapDetail .map-detail-actions{
+  justify-content:center;
+  gap:6px;
+}
+
+#modalMapDetail .map-detail-actions .sb-icon-btn svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+@media (max-width: 980px){
+  #modalMapDetail .map-detail-kpi-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px){
+  #modalMapDetail .map-detail-kpi-grid{
+    grid-template-columns:1fr;
+  }
+}

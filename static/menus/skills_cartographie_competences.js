@@ -194,11 +194,28 @@
     const s = byId("mapModalSub");
     const b = byId("mapModalBody");
 
-    if (t) t.textContent = title || "Détail";
-    if (s) s.innerHTML = sub || "";
+    if (t) {
+      if (title && typeof title === "object") {
+        const code = safeTrim(title.code);
+        const text = safeTrim(title.text) || "Détail";
+        t.innerHTML = `
+          <div class="map-modal-titleline">
+            ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ``}
+            <span class="map-modal-titletext">${escapeHtml(text)}</span>
+          </div>
+        `;
+      } else {
+        t.textContent = title || "Détail";
+      }
+    }
+
+    if (s) {
+      s.innerHTML = sub || "";
+      s.style.display = sub ? "" : "none";
+    }
     if (b) b.innerHTML = bodyHtml || "";
 
-    modal.classList.add("show");
+    modal.classList.add("show", "is-map-detail-modal");
     modal.setAttribute("aria-hidden", "false");
 
     const mb = modal.querySelector(".modal-body");
@@ -274,6 +291,168 @@
 
     const url = `${portal.apiBase}/skills/cartographie/cell/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
     return await portal.apiJson(url);
+  }
+
+  function mapIconSvg(name) {
+    const icons = {
+      domain: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+      postes: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>`,
+      skills: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+      users: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      section: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
+      stats: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M9 19v-6"/><path d="M14 19V9"/><path d="M19 19V3"/></svg>`,
+      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`
+    };
+    return icons[name] || "";
+  }
+
+  function mapModalKpiCard(icon, tone, label, value) {
+    return `
+      <div class="map-detail-kpi-card map-detail-kpi-card--${escapeHtml(tone || "default")}">
+        <div class="map-detail-kpi-card__icon" aria-hidden="true">${mapIconSvg(icon)}</div>
+        <div>
+          <div class="map-detail-kpi-card__label">${escapeHtml(label)}</div>
+          <div class="map-detail-kpi-card__value">${escapeHtml(value)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function mapCritBadgeHtml(raw) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return `<span class="sb-crit-badge sb-crit-l1">—</span>`;
+    const v = Math.max(0, Math.min(100, Math.round(n)));
+    const level = v >= 80 ? 5 : (v >= 60 ? 4 : (v >= 40 ? 3 : (v >= 20 ? 2 : 1)));
+    return `<span class="sb-crit-badge sb-crit-l${level}" title="Criticité ${v}">${escapeHtml(String(v))}</span>`;
+  }
+
+  function mapCoverageState(comp, cible, pauseActive) {
+    if (pauseActive) return "paused";
+    const nbQual = Number(comp?.nb_porteurs_qualifies || 0);
+    const target = Math.max(1, Number(cible || 1));
+    if (nbQual >= target) return "ok";
+    if (nbQual > 0) return "partial";
+    return "none";
+  }
+
+  function mapCoverageIndicatorHtml(comp, cible, pauseActive) {
+    const state = mapCoverageState(comp, cible, pauseActive);
+    const nbQual = Number(comp?.nb_porteurs_qualifies || 0);
+    const nbDispo = Number(comp?.nb_porteurs_disponibles ?? comp?.nb_porteurs ?? 0);
+    const nbBrut = Number(comp?.nb_porteurs ?? 0);
+    const target = Math.max(1, Number(cible || 1));
+    const labels = {
+      ok: "Couvert",
+      partial: "Partiellement couvert",
+      none: "Non couvert",
+      paused: "Poste en pause"
+    };
+    const title = `${labels[state] || "Couverture"} — Qualifiés: ${nbQual} | Disponibles: ${nbDispo} | Bruts: ${nbBrut} | Cible: ${target}`;
+    return `<span class="map-coverage-dot map-coverage-dot--${state}" title="${escapeHtml(title)}" aria-label="${escapeHtml(labels[state] || "Couverture")}"></span>`;
+  }
+
+  function mapSafeFilenamePart(v, maxLen = 90) {
+    const raw = (v || "").toString().trim() || "document";
+    return raw
+      .replace(/[\\/:*?"<>|]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, maxLen)
+      .trim() || "document";
+  }
+
+  async function mapApiPdfBlob(url) {
+    const headers = new Headers();
+    headers.set("Accept", "application/pdf");
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token ? String(session.access_token) : "";
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+      }
+    } catch (_) {}
+
+    const res = await fetch(url, { method: "GET", headers });
+    if (!res.ok) {
+      let msg = `Erreur PDF (${res.status})`;
+      try {
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) {
+          const js = await res.json();
+          msg = js?.detail || js?.message || JSON.stringify(js);
+        } else {
+          msg = await res.text() || msg;
+        }
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    return await res.blob();
+  }
+
+  function mapRenderPdfBlobInWindow(popupWin, blob, title) {
+    const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
+    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+
+    const blobUrl = URL.createObjectURL(blob);
+    const safeTitle = escapeHtml(title || "Fiche compétence");
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${safeTitle}</title>
+  <style>html,body{height:100%;margin:0;background:#f3f4f6;}iframe{width:100%;height:100%;border:0;background:#fff;}</style>
+</head>
+<body><iframe src="${blobUrl}" title="${safeTitle}"></iframe></body>
+</html>`);
+    win.document.close();
+
+    const revoke = () => { try { URL.revokeObjectURL(blobUrl); } catch (_) {} };
+    try { win.addEventListener("beforeunload", revoke, { once: true }); } catch (_) {}
+    setTimeout(revoke, 5 * 60 * 1000);
+  }
+
+  async function openMapCompetenceFichePdf(portal, comp, popupWin) {
+    const idComp = safeTrim(comp?.id_comp);
+    if (!portal?.contactId || !portal?.apiBase || !idComp) throw new Error("Compétence introuvable.");
+
+    const code = safeTrim(comp?.code);
+    const intitule = safeTrim(comp?.intitule) || "Compétence";
+    const title = `${code ? `${code} - ` : ""}${intitule}`;
+    const url = `${portal.apiBase}/skills/analyse/competences/fiche_pdf/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(idComp)}?_=${Date.now()}`;
+    const blob = await mapApiPdfBlob(url);
+    mapRenderPdfBlobInWindow(popupWin, blob, `Fiche compétence - ${mapSafeFilenamePart(title)}`);
+  }
+
+  function openMapCompetenceAnalyse(portal, comp, filters) {
+    const compKey = safeTrim(comp?.id_comp) || safeTrim(comp?.code);
+    if (!compKey) throw new Error("Compétence introuvable.");
+
+    const payload = {
+      id_comp: compKey,
+      code: safeTrim(comp?.code),
+      intitule: safeTrim(comp?.intitule),
+      id_service: safeTrim(filters?.id_service),
+      source: "cartographie_competences",
+      ts: Date.now()
+    };
+
+    sessionStorage.setItem("sb_analyse_comp_focus_v1", JSON.stringify(payload));
+    localStorage.setItem("sb_analyse_mode", "risques");
+    if (payload.id_service) localStorage.setItem("sb_analyse_service", payload.id_service);
+    else localStorage.removeItem("sb_analyse_service");
+
+    closeModal();
+    const p = portal || window.portal;
+    if (p && typeof p.switchView === "function") {
+      p.switchView("analyse-competences");
+      return;
+    }
+    if (window.portal && typeof window.portal.switchView === "function") {
+      window.portal.switchView("analyse-competences");
+      return;
+    }
+    throw new Error("Navigation vers Analyse des compétences indisponible.");
   }
 
 
@@ -576,6 +755,42 @@
     const modal = byId("modalMapDetail");
     const grid = byId("heatmapGrid");
 
+    if (modal) {
+      modal.addEventListener("click", async (ev) => {
+        const btnStat = ev.target?.closest?.("[data-map-comp-stat]");
+        const btnPdf = ev.target?.closest?.("[data-map-comp-pdf]");
+        if (!btnStat && !btnPdf) return;
+
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const raw = (btnStat || btnPdf).getAttribute(btnStat ? "data-map-comp-stat" : "data-map-comp-pdf") || "{}";
+        let comp = {};
+        try { comp = JSON.parse(raw); } catch (_) { comp = {}; }
+
+        let popup = null;
+        try {
+          if (btnStat) {
+            openMapCompetenceAnalyse(portal, comp, getFilters());
+            return;
+          }
+
+          popup = window.open("about:blank", "_blank");
+          if (popup) {
+            popup.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du PDF…</p>");
+          }
+          await openMapCompetenceFichePdf(portal, comp, popup);
+        } catch (e) {
+          try {
+            if (popup && !popup.closed) {
+              popup.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">${escapeHtml(e.message || "Erreur PDF")}</pre>`;
+            }
+          } catch (_) {}
+          portal.showAlert("error", (e && e.message) ? e.message : "Action indisponible.");
+        }
+      });
+    }
+
     initCollapsibleCard("mapFilterCard", "btnMapFiltersToggle", STORE_FILTERS_OPEN);
     initCollapsibleCard("mapDomainCard", "btnMapDomainesToggle", STORE_DOMAINES_OPEN);
 
@@ -733,153 +948,96 @@
           const prh = (poste && poste.param_rh) ? poste.param_rh : {};
           const cible = Number(prh?.nb_titulaires_cible || 1);
           const pauseActive = !!prh?.pause_active;
+          const nbPostesConcernes = Number(data?.nb_postes_concernes ?? (isPosteTotal ? 1 : 0));
+          const nbNonCouvertes = Number(
+            data?.nb_competences_non_couvertes ??
+            listSorted.filter(c => mapCoverageState(c, cible, pauseActive) !== "ok").length
+          );
 
-          const fmtDate = (v) => {
-            const s = (v ?? "").toString().trim();
-            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            return m ? `${m[3]}/${m[2]}/${m[1]}` : (s || "—");
-          };
+          const body = `
+            <div class="map-detail-modal-body">
+              <div class="map-detail-kpi-grid">
+                ${mapModalKpiCard("domain", "domain", "Domaine", domLabel)}
+                ${mapModalKpiCard("postes", "postes", "Postes concernés", String(Number.isFinite(nbPostesConcernes) && nbPostesConcernes > 0 ? nbPostesConcernes : 1))}
+                ${mapModalKpiCard("skills", "skills", "Compétences requises", String(list.length))}
+                ${mapModalKpiCard("users", "users", "Compétences non couvertes", String(Math.max(0, nbNonCouvertes || 0)))}
+              </div>
 
-          const pauseLabel = (() => {
-            const d1 = prh?.date_debut_validite;
-            const d2 = prh?.date_fin_validite;
+              <div class="card map-detail-table-card">
+                <div class="map-detail-section-titleline">
+                  <span class="map-detail-section-icon" aria-hidden="true">${mapIconSvg("section")}</span>
+                  <div class="card-title map-detail-section-title">Compétences requises</div>
+                </div>
 
-            if (!pauseActive) return "";
-            if (!d1 && !d2) return "Pause indéfinie";
-            if (!d1 && d2) return `Pause jusqu’au ${fmtDate(d2)}`;
-            if (d1 && !d2) return `Pause à partir du ${fmtDate(d1)} (indéfinie)`;
-            return `Pause du ${fmtDate(d1)} au ${fmtDate(d2)}`;
-          })();
+                ${!list.length ? `
+                  <div class="card-sub" style="margin:10px 0 0 0;">Aucune compétence trouvée pour cette cellule.</div>
+                ` : `
+                  <div class="table-wrap map-detail-table-wrap">
+                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover map-detail-table">
+                      <thead>
+                        <tr>
+                          <th>Compétence</th>
+                          <th class="col-center">Niveau requis</th>
+                          <th class="col-center">Criticité</th>
+                          <th class="col-center">Couverture</th>
+                          <th class="col-center" aria-label="Actions"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${listSorted.map(c => {
+                          const compJson = escapeHtml(JSON.stringify({
+                            id_comp: c.id_comp || "",
+                            code: c.code || "",
+                            intitule: c.intitule || ""
+                          }));
+                          const code = safeTrim(c.code) || "—";
+                          const intit = safeTrim(c.intitule) || "—";
+                          const niv = window.NovoskillLevels
+                            ? window.NovoskillLevels.badgeHtml(c.niveau_requis || "—", "Niveau requis")
+                            : levelBadgeHtml4(c.niveau_requis || "—", "Niveau requis");
 
-          const sub = `
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-
-              <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
-                <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(domColor)};"></span>
-                <span>${escapeHtml(domLabel)}</span>
-              </span>
-
-              <span class="sb-badge">Titulaires cible : <b>${escapeHtml(String(cible))}</b></span>
-
-              ${pauseActive ? `<span class="sb-badge sb-badge--warning" title="${escapeHtml(pauseLabel)}">Poste en pause</span>` : ``}
-
-              <span class="sb-badge sb-badge-accent">${list.length} compétence(s)</span>
+                          return `
+                            <tr>
+                              <td class="map-detail-comp-cell">
+                                <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
+                                <span class="map-detail-comp-title">${escapeHtml(intit)}</span>
+                              </td>
+                              <td class="col-center map-detail-level-cell">${niv}</td>
+                              <td class="col-center map-detail-crit-cell">${mapCritBadgeHtml(c.poids_criticite)}</td>
+                              <td class="col-center map-detail-coverage-cell">${mapCoverageIndicatorHtml(c, cible, pauseActive)}</td>
+                              <td class="col-center map-detail-actions-cell">
+                                <div class="sb-icon-actions map-detail-actions">
+                                  <button type="button"
+                                          class="sb-icon-btn"
+                                          data-map-comp-stat="${compJson}"
+                                          title="Voir l’analyse de la compétence"
+                                          aria-label="Voir l’analyse de la compétence">
+                                    ${mapIconSvg("stats")}
+                                  </button>
+                                  <button type="button"
+                                          class="sb-icon-btn sb-icon-btn--doc"
+                                          data-map-comp-pdf="${compJson}"
+                                          title="PDF fiche compétence"
+                                          aria-label="PDF fiche compétence">
+                                    ${mapIconSvg("doc")}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          `;
+                        }).join("")}
+                      </tbody>
+                    </table>
+                  </div>
+                `}
+              </div>
             </div>
           `;
-
-
-          let body = `
-            <div class="row" style="flex-direction:column; gap:12px;">
-              <div class="card" style="padding:12px; margin:0;">
-                <div class="card-title" style="margin-bottom:6px;">Synthèse</div>
-                <div class="card-sub" style="margin:0;">
-                  ${posteCode ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(posteCode)}</span><br/>` : ``}
-                  Poste : <b>${escapeHtml(posteLabel)}</b><br/>
-                  Domaine de compétence : <b>${escapeHtml(domLabel)}</b><br/>
-                  Titulaires cible : <b>${escapeHtml(String(cible))}</b>
-                  ${pauseActive ? `<br/><span class="sb-badge sb-badge--warning" title="${escapeHtml(pauseLabel)}">Poste en pause</span>` : ``}
-                </div>
-              </div>
-          `;
-
-          if (!list.length) {
-            body += `
-              <div class="card" style="padding:12px; margin:0;">
-                <div class="card-sub" style="margin:0;">Aucune compétence trouvée pour cette cellule.</div>
-              </div>
-            `;
-          } else {
-            body += `
-              <div class="card" style="padding:12px; margin:0;">
-                <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
-
-                <div class="table-wrap" style="margin-top:10px;">
-                  <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-                    <thead>
-                      <tr>
-                        <th style="width:90px;">Code</th>
-                        <th>Compétence</th>
-                        <th class="col-center" style="width:70px;">Niveau</th>
-                        <th class="col-center" style="width:70px;">Criticité</th>
-                        <th class="col-center" style="width:140px;">Couv. titulaires</th>
-                        <th class="col-center" style="width:70px;">Gap</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${listSorted.map(c => {
-                        const code = escapeHtml(c.code || "—");
-                        const intit = escapeHtml(c.intitule || "—");
-                        const niv = window.NovoskillLevels ? window.NovoskillLevels.badgeHtml(c.niveau_requis || "—", "Niveau requis") : escapeHtml(c.niveau_requis || "—");
-                        const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
-
-                        const nbBrut = (c.nb_porteurs === null || c.nb_porteurs === undefined)
-                          ? 0
-                          : Number(c.nb_porteurs || 0);
-
-                        const nbDispo = (c.nb_porteurs_disponibles === null || c.nb_porteurs_disponibles === undefined)
-                          ? nbBrut
-                          : Number(c.nb_porteurs_disponibles || 0);
-
-                        const nbQual = (c.nb_porteurs_qualifies === null || c.nb_porteurs_qualifies === undefined)
-                          ? nbDispo
-                          : Number(c.nb_porteurs_qualifies || 0);
-
-                        const gap = (c.gap_qualifie === null || c.gap_qualifie === undefined)
-                          ? Math.max(0, Number(cible || 1) - Number(nbQual || 0))
-                          : Number(c.gap_qualifie || 0);
-
-                        const covTitle = `Titulaires qualifiés: ${nbQual} | Titulaires dispo: ${nbDispo} | Titulaires bruts: ${nbBrut} | Cible: ${cible}`;
-
-
-                        let coverCls = "sb-badge sb-badge--danger";
-                        if (pauseActive) {
-                          coverCls = "sb-badge";
-                        } else if (nbQual >= cible) {
-                          coverCls = "sb-badge sb-badge--success";
-                        } else if (nbQual > 0) {
-                          coverCls = "sb-badge sb-badge--warning";
-                        }
-
-                        const gapCls = pauseActive
-                          ? "sb-badge"
-                          : (gap === 0 ? "sb-badge sb-badge--success" : "sb-badge sb-badge--danger");
-
-                        const badgeCover = `<span class="${coverCls}" title="${escapeHtml(covTitle)}">${escapeHtml(String(nbQual))}</span>`;
-                        const badgeGap = `<span class="${gapCls}">${escapeHtml(String(gap))}</span>`;
-
-                        return `
-                          <tr>
-                            <td style="font-weight:700; white-space:nowrap;">${code}</td>
-                            <td>${intit}</td>
-                            <td class="col-center" style="white-space:nowrap;">${niv}</td>
-                            <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                            <td class="col-center" style="white-space:nowrap;">${badgeCover}</td>
-                            <td class="col-center" style="white-space:nowrap;">${badgeGap}</td>
-                          </tr>
-                        `;
-
-                      }).join("")}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-                  Couverture titulaires = titulaires actuels du poste, disponibles aujourd’hui (hors indisponibilités) dont le niveau actuel est ≥ au niveau requis.<br/>
-                  Gap = max(0, titulaires cible − couverture titulaires).
-                  ${pauseActive ? `<br/><b>Poste en pause</b> : indicateurs affichés à titre informatif (hors périmètre).` : ``}
-                </div>
-              </div>
-            `;
-          }
-
-
-          body += `</div>`;
 
           const posteTitleOnly = ((poste.intitule_poste || "").toString().trim());
           const posteModalTitle = posteTitleOnly || posteCode || (isPosteTotal ? "Détail poste" : "Détail cellule");
 
-          openModal(posteModalTitle, sub, body);
+          openModal({ code: posteCode, text: posteModalTitle }, "", body);
 
         } catch (e) {
           openModal(
