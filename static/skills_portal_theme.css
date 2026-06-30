@@ -25928,7 +25928,7 @@ body{
 #view-cartographie-competences .map-kpi-card__value{
   color:var(--map-text);
   font-size:17px;
-  font-weight:800;
+  font-weight:700;
   line-height:1;
 }
 
@@ -26492,6 +26492,7 @@ body{
 
 #view-cartographie-competences .map-kpi-card--search .map-kpi-card__value{
   font-size:14px;
+  font-weight:650;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
