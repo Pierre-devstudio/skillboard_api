@@ -300,11 +300,11 @@
   }
 
 
-  async function fetchAdvancedSearch(portal, mode, query, filters) {
+  function buildAdvancedSearchParams(mode, query, filters, limit = "120") {
     const params = new URLSearchParams();
     params.set("mode", mode === "collaborateur" ? "collaborateur" : "competence");
     params.set("q", query || "");
-    params.set("limit", "120");
+    params.set("limit", limit);
 
     if (mode === "competence" && _advancedSelectedSkills.length) {
       params.set("id_comps", _advancedSelectedSkills.map(x => x.id_comp).filter(Boolean).join(","));
@@ -320,6 +320,11 @@
       params.set("id_service", svc);
     }
 
+    return params;
+  }
+
+  async function fetchAdvancedSearch(portal, mode, query, filters) {
+    const params = buildAdvancedSearchParams(mode, query, filters, "120");
     const url = `${portal.apiBase}/skills/cartographie/recherche_avancee/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
     return await portal.apiJson(url);
   }
@@ -430,6 +435,13 @@
     if (btn) btn.disabled = !enabled;
   }
 
+  function setAdvancedTableVariant(variant) {
+    const table = byId("mapAdvancedTableBody")?.closest?.("table");
+    if (!table) return;
+    table.classList.toggle("map-advanced-table--competence", variant !== "collaborateur");
+    table.classList.toggle("map-advanced-table--collaborateur", variant === "collaborateur");
+  }
+
   function renderAdvancedEmpty(message) {
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
@@ -490,6 +502,12 @@
         <span>${escapeHtml(comp)}</span>
       </div>
     `;
+  }
+
+  function advancedDomainBadgeHtml(it) {
+    const label = safeTrim(it?.domaine_label) || "Domaine non renseigné";
+    const color = normalizeColor(it?.domaine_couleur) || "#9ca3af";
+    return `<span class="sb-badge-domaine sb-badge-domaine--soft map-advanced-domain-badge" style="--dom-color:${escapeHtml(color)}">${escapeHtml(label)}</span>`;
   }
 
   function renderAdvancedSelection() {
@@ -609,6 +627,7 @@
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
     if (!head || !body) return;
+    setAdvancedTableVariant("competence");
 
     head.innerHTML = `
       <tr>
@@ -628,19 +647,16 @@
 
     body.innerHTML = items.map(it => {
       const comps = Array.isArray(it.competences) ? it.competences : [];
-      const compHtml = comps.map(c => advancedCompHtml(c)).join("");
-      const levelHtml = comps.map(c => `
-        <div class="map-advanced-level-line">${advancedLevelBadge(c.niveau_actuel)}</div>
-      `).join("");
-
-      return `
-        <tr>
-          <td><strong>${escapeHtml(advancedPersonName(it))}</strong></td>
-          <td>${advancedPosteHtml(it)}</td>
-          <td><div class="map-advanced-skill-list">${compHtml || "—"}</div></td>
-          <td class="col-center"><div class="map-advanced-level-list">${levelHtml || `<span class="sb-badge">—</span>`}</div></td>
+      const rows = comps.length ? comps : [{ code: "", intitule: "—", niveau_actuel: "" }];
+      const span = rows.length;
+      return rows.map((c, index) => `
+        <tr class="${index > 0 ? "map-advanced-subrow" : ""}">
+          ${index === 0 ? `<td rowspan="${span}"><strong>${escapeHtml(advancedPersonName(it))}</strong></td>` : ``}
+          ${index === 0 ? `<td rowspan="${span}">${advancedPosteHtml(it)}</td>` : ``}
+          <td>${advancedCompHtml(c)}</td>
+          <td class="col-center">${advancedLevelBadge(c.niveau_actuel)}</td>
         </tr>
-      `;
+      `).join("");
     }).join("");
     setAdvancedPrintEnabled(true);
     setAdvancedStatus(`${items.length} collaborateur(s) trouvé(s) · logique ${_advancedOperator === "or" ? "OU" : "ET"}.`);
@@ -650,6 +666,7 @@
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
     if (!head || !body) return;
+    setAdvancedTableVariant("competence");
 
     head.innerHTML = `
       <tr>
@@ -686,37 +703,30 @@
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
     if (!head || !body) return;
+    setAdvancedTableVariant("collaborateur");
 
     head.innerHTML = `
       <tr>
-        <th>Collaborateur</th>
-        <th>Poste actuel</th>
         <th>Compétence</th>
+        <th>Domaine</th>
         <th class="col-center">Niveau atteint</th>
       </tr>
     `;
 
     if (!items.length) {
-      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucune compétence évaluée dans le périmètre cartographié.</td></tr>`;
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="3">Aucune compétence évaluée dans le périmètre cartographié.</td></tr>`;
       setAdvancedStatus("Aucun résultat trouvé.");
       setAdvancedPrintEnabled(false);
       return;
     }
 
-    body.innerHTML = items.map(it => {
-      const domain = safeTrim(it.domaine_label);
-      return `
-        <tr>
-          <td><strong>${escapeHtml(advancedPersonName(it))}</strong></td>
-          <td>${advancedPosteHtml(it)}</td>
-          <td>
-            ${advancedCompHtml(it)}
-            ${domain ? `<div class="map-advanced-comp-domain">${escapeHtml(domain)}</div>` : ``}
-          </td>
-          <td class="col-center">${advancedLevelBadge(it.niveau_actuel)}</td>
-        </tr>
-      `;
-    }).join("");
+    body.innerHTML = items.map(it => `
+      <tr>
+        <td>${advancedCompHtml(it)}</td>
+        <td>${advancedDomainBadgeHtml(it)}</td>
+        <td class="col-center">${advancedLevelBadge(it.niveau_actuel)}</td>
+      </tr>
+    `).join("");
     setAdvancedPrintEnabled(true);
     setAdvancedStatus(`${items.length} compétence(s) détenue(s).`);
   }
@@ -736,62 +746,41 @@
     renderAdvancedCompetenceTextResults(items);
   }
 
-  function printAdvancedCurrentTable() {
-    const table = byId("mapAdvancedTableBody")?.closest?.("table");
+  async function openAdvancedCurrentPdf(portal) {
     const body = byId("mapAdvancedTableBody");
-    if (!table || !body || body.querySelector(".map-advanced-empty")) {
-      setAdvancedStatus("Aucun tableau à imprimer.");
+    if (!body || body.querySelector(".map-advanced-empty")) {
+      setAdvancedStatus("Aucun tableau à exporter en PDF.");
       return;
     }
 
-    const title = "Recherche avancée - Cartographie des compétences";
-    const modeLabel = _advancedMode === "collaborateur" ? "Par collaborateur" : "Par compétences";
-    const status = safeTrim(byId("mapAdvancedStatus")?.textContent) || "";
-    const selectedText = safeTrim(byId("mapAdvancedSelected")?.innerText)
-      .replace(/×/g, "")
-      .replace(/\n{2,}/g, "\n");
-    const tableHtml = table.outerHTML;
-    const win = window.open("about:blank", "_blank");
-    if (!win) {
-      setAdvancedStatus("Ouverture de l'impression bloquée par le navigateur.");
+    if (_advancedMode === "collaborateur" && !_advancedSelectedPerson?.id_effectif) {
+      setAdvancedStatus("Sélectionnez un collaborateur avant de générer le PDF.");
       return;
     }
 
-    win.document.open();
-    win.document.write(`<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <title>${escapeHtml(title)}</title>
-  <style>
-    *{box-sizing:border-box;}
-    body{margin:24px;font-family:Arial,sans-serif;color:#111827;background:#fff;font-size:12px;}
-    h1{margin:0 0 6px 0;font-size:18px;}
-    .meta{margin:0 0 14px 0;color:#475569;line-height:1.35;white-space:pre-line;}
-    table{width:100%;border-collapse:collapse;table-layout:fixed;}
-    th,td{border:1px solid #e5e7eb;padding:8px 9px;vertical-align:top;text-align:left;}
-    th{background:#f8fafc;font-size:11px;font-weight:700;color:#111827;}
-    td{font-size:11.5px;line-height:1.35;}
-    .col-center{text-align:center;}
-    .sb-badge{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:0 8px;border-radius:999px;border:1px solid #d1d5db;font-size:10.5px;font-weight:700;white-space:nowrap;}
-    .sb-badge-ref-comp-code{background:#3763a7;border-color:#3763a7;color:#fff;}
-    .sb-badge-ref-poste-code{background:#d133bc;border-color:#d133bc;color:#fff;}
-    .map-advanced-poste-service,.map-advanced-comp-domain{margin-top:4px;color:#64748b;font-size:10.5px;}
-    .map-advanced-comp-line,.map-advanced-poste-line{display:flex;gap:6px;align-items:flex-start;}
-    .map-advanced-skill-list,.map-advanced-level-list{display:flex;flex-direction:column;gap:5px;}
-    .map-advanced-level-line{min-height:20px;display:flex;align-items:center;justify-content:center;}
-    .map-advanced-chip-x,.map-advanced-chip button{display:none;}
-    @page{size:A4 landscape;margin:12mm;}
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(title)}</h1>
-  <div class="meta"><strong>${escapeHtml(modeLabel)}</strong>${selectedText ? "\n" + escapeHtml(selectedText) : ""}${status ? "\n" + escapeHtml(status) : ""}</div>
-  ${tableHtml}
-  <script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script>
-</body>
-</html>`);
-    win.document.close();
+    const popup = window.open("about:blank", "_blank");
+    if (!popup) {
+      setAdvancedStatus("Ouverture du PDF bloquée par le navigateur.");
+      return;
+    }
+
+    try {
+      popup.document.open();
+      popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Génération du PDF</title></head><body style="font-family:Arial,sans-serif;color:#111827;padding:24px;">Génération du PDF…</body></html>`);
+      popup.document.close();
+
+      setAdvancedStatus("Génération du PDF en cours…");
+      const input = byId("mapAdvancedSearchInput");
+      const q = (input?.value || "").trim();
+      const params = buildAdvancedSearchParams(_advancedMode, q, getFilters(), "200");
+      const url = `${portal.apiBase}/skills/cartographie/recherche_avancee_pdf/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
+      const blob = await mapApiPdfBlob(url);
+      mapRenderPdfBlobInWindow(popup, blob, "Recherche avancée - Cartographie des compétences");
+      setAdvancedStatus("PDF généré.");
+    } catch (e) {
+      try { popup.close(); } catch (_) {}
+      setAdvancedStatus(e?.message || "Erreur pendant la génération du PDF.");
+    }
   }
 
   function formatDateFr(value) {
@@ -829,9 +818,9 @@
       return;
     }
 
-    if (_advancedMode === "collaborateur" && !_advancedSelectedPerson && q.length < 2) {
-      renderAdvancedEmpty();
-      setAdvancedStatus("Sélectionnez un collaborateur, ou saisissez au moins 2 caractères.");
+    if (_advancedMode === "collaborateur" && !_advancedSelectedPerson) {
+      renderAdvancedEmpty("Sélectionnez un collaborateur dans les suggestions.");
+      setAdvancedStatus("La recherche par collaborateur est volontairement unique : sélectionnez une personne dans les suggestions.");
       return;
     }
 
@@ -1337,7 +1326,7 @@
     });
 
     if (btnAdvancedRun) btnAdvancedRun.addEventListener("click", () => runAdvancedSearch(portal));
-    if (btnAdvancedPrint) btnAdvancedPrint.addEventListener("click", () => printAdvancedCurrentTable());
+    if (btnAdvancedPrint) btnAdvancedPrint.addEventListener("click", () => openAdvancedCurrentPdf(portal));
     if (advancedInput) {
       advancedInput.addEventListener("keydown", (ev) => {
         if (ev.key !== "Enter") return;

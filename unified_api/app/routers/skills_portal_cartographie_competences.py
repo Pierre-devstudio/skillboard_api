@@ -1,14 +1,25 @@
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
-from datetime import date
+from datetime import date, datetime
 import unicodedata
 
 from psycopg.rows import dict_row
+from reportlab.lib.pagesizes import A4, landscape
 
 from app.routers.skills_portal_common import (
     get_conn,
     resolve_insights_id_ent_for_request,
+    skills_validate_enterprise,
+)
+
+from app.routers.skills_portal_pdf_common import (
+    PDF_BRAND_RED,
+    PDF_LINE,
+    PDF_MUTED,
+    PDF_TEXT,
+    build_pdf_document,
+    build_pdf_styles,
 )
 
 
@@ -121,6 +132,223 @@ def _serialize_advanced_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                     comp["date_derniere_eval"] = str(comp.get("date_derniere_eval"))
         items.append(item)
     return items
+
+
+def _advanced_text(value: Any, fallback: str = "—") -> str:
+    raw = "" if value is None else str(value).strip()
+    return raw or fallback
+
+
+def _advanced_pdf_escape(value: Any) -> str:
+    return (
+        _advanced_text(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\n", "<br/>")
+    )
+
+
+def _advanced_person_label(item: Dict[str, Any]) -> str:
+    full = f"{_advanced_text(item.get('prenom_effectif'), '')} {_advanced_text(item.get('nom_effectif'), '')}".strip()
+    return full or "—"
+
+
+def _advanced_poste_label(item: Dict[str, Any]) -> str:
+    code = _advanced_text(item.get("codif_client"), "") or _advanced_text(item.get("codif_poste"), "")
+    label = _advanced_text(item.get("intitule_poste"), "Poste non renseigné")
+    service = _advanced_text(item.get("nom_service"), "Service non renseigné")
+    main = f"<b>{_advanced_pdf_escape(code)}</b> — {_advanced_pdf_escape(label)}" if code else _advanced_pdf_escape(label)
+    return f"{main}<br/><font color='#667085'>{_advanced_pdf_escape(service)}</font>"
+
+
+def _advanced_comp_label(item: Dict[str, Any]) -> str:
+    code = _advanced_text(item.get("code"), "")
+    label = _advanced_text(item.get("intitule"), "Compétence")
+    return f"<b>{_advanced_pdf_escape(code)}</b> — {_advanced_pdf_escape(label)}" if code else _advanced_pdf_escape(label)
+
+
+def _advanced_level_label(value: Any) -> str:
+    raw = _advanced_text(value, "")
+    norm = _normalize_search_text(raw)
+    if not norm:
+        return "—"
+    if norm == "a" or "debutant" in norm or "initial" in norm:
+        return "Débutant"
+    if norm == "b" or "intermediaire" in norm or "interm" in norm:
+        return "Intermédiaire"
+    if norm == "c" or "avance" in norm:
+        return "Avancé"
+    if norm == "d" or "expert" in norm:
+        return "Expert"
+    return raw
+
+
+def _build_advanced_pdf_story(
+    enterprise_name: str,
+    data: Dict[str, Any],
+    mode_norm: str,
+    query: str,
+    op_norm: str,
+) -> List[Any]:
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+
+    styles = build_pdf_styles()
+    story: List[Any] = []
+
+    title_style = ParagraphStyle(
+        "MapAdvancedTitle",
+        parent=styles["title"],
+        fontSize=16,
+        leading=19,
+        spaceAfter=2,
+    )
+    subtitle_style = ParagraphStyle(
+        "MapAdvancedSubtitle",
+        parent=styles["subtitle"],
+        fontSize=8.8,
+        leading=11,
+    )
+    meta_label_style = ParagraphStyle(
+        "MapAdvancedMetaLabel",
+        parent=styles["meta_label"],
+        fontSize=7.2,
+        leading=8.5,
+    )
+    meta_value_style = ParagraphStyle(
+        "MapAdvancedMetaValue",
+        parent=styles["meta_value"],
+        fontSize=8.2,
+        leading=10,
+    )
+    cell_style = ParagraphStyle(
+        "MapAdvancedCell",
+        parent=styles["body"],
+        fontSize=7.8,
+        leading=9.4,
+    )
+    center_style = ParagraphStyle(
+        "MapAdvancedCenter",
+        parent=cell_style,
+        alignment=TA_CENTER,
+        fontName="Helvetica-Bold",
+    )
+    head_style = ParagraphStyle(
+        "MapAdvancedHead",
+        parent=styles["small"],
+        alignment=TA_CENTER,
+        fontName="Helvetica-Bold",
+        fontSize=7.8,
+        leading=9,
+        textColor=colors.white,
+    )
+
+    def p(value: Any, style=cell_style) -> Any:
+        return Paragraph(_advanced_pdf_escape(value), style)
+
+    def p_html(value: Any, style=cell_style) -> Any:
+        return Paragraph(str(value or "—"), style)
+
+    items = data.get("items") if isinstance(data, dict) else []
+    if not isinstance(items, list):
+        items = []
+
+    mode_label = "Par collaborateur" if mode_norm == "collaborateur" else "Par compétences"
+    generated = datetime.now().strftime("%d/%m/%Y %H:%M")
+    operator_label = "OU - au moins une compétence" if op_norm == "or" else "ET - toutes les compétences"
+    query_label = (query or "").strip() or "Sélection assistée"
+
+    story.append(Paragraph("Recherche avancée - Cartographie des compétences", title_style))
+    story.append(Paragraph("Extraction du tableau courant de la cartographie Novoskill Insights.", subtitle_style))
+    story.append(Spacer(1, 4))
+
+    meta_rows = [[
+        Paragraph("Entreprise", meta_label_style), Paragraph(_advanced_pdf_escape(enterprise_name), meta_value_style),
+        Paragraph("Mode", meta_label_style), Paragraph(_advanced_pdf_escape(mode_label), meta_value_style),
+        Paragraph("Logique", meta_label_style), Paragraph(_advanced_pdf_escape(operator_label if mode_norm == "competence" else "Recherche unique"), meta_value_style),
+        Paragraph("Résultats", meta_label_style), Paragraph(_advanced_pdf_escape(str(len(items))), meta_value_style),
+    ], [
+        Paragraph("Recherche", meta_label_style), Paragraph(_advanced_pdf_escape(query_label), meta_value_style),
+        Paragraph("Généré le", meta_label_style), Paragraph(_advanced_pdf_escape(generated), meta_value_style),
+        Paragraph("Périmètre", meta_label_style), Paragraph(_advanced_pdf_escape("Cartographie active"), meta_value_style),
+        Paragraph("Source", meta_label_style), Paragraph(_advanced_pdf_escape("Novoskill Insights"), meta_value_style),
+    ]]
+    meta_table = Table(meta_rows, colWidths=[20 * mm, 42 * mm, 18 * mm, 42 * mm, 18 * mm, 48 * mm, 18 * mm, 42 * mm])
+    meta_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.6, PDF_LINE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.4, PDF_LINE),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 7))
+
+    if mode_norm == "collaborateur":
+        table_rows: List[List[Any]] = [[
+            Paragraph("Compétence", head_style),
+            Paragraph("Domaine", head_style),
+            Paragraph("Niveau atteint", head_style),
+        ]]
+        for it in items:
+            table_rows.append([
+                p_html(_advanced_comp_label(it)),
+                p(_advanced_text(it.get("domaine_label"), "Domaine non renseigné")),
+                Paragraph(_advanced_pdf_escape(_advanced_level_label(it.get("niveau_actuel"))), center_style),
+            ])
+        col_widths = [155 * mm, 70 * mm, 36 * mm]
+    else:
+        table_rows = [[
+            Paragraph("Collaborateur", head_style),
+            Paragraph("Poste actuel", head_style),
+            Paragraph("Compétence", head_style),
+            Paragraph("Niveau atteint", head_style),
+        ]]
+        for it in items:
+            comps = it.get("competences")
+            if isinstance(comps, list) and comps:
+                for comp in comps:
+                    table_rows.append([
+                        p(_advanced_person_label(it)),
+                        p_html(_advanced_poste_label(it)),
+                        p_html(_advanced_comp_label(comp)),
+                        Paragraph(_advanced_pdf_escape(_advanced_level_label(comp.get("niveau_actuel"))), center_style),
+                    ])
+            else:
+                table_rows.append([
+                    p(_advanced_person_label(it)),
+                    p_html(_advanced_poste_label(it)),
+                    p_html(_advanced_comp_label(it)),
+                    Paragraph(_advanced_pdf_escape(_advanced_level_label(it.get("niveau_actuel"))), center_style),
+                ])
+        col_widths = [44 * mm, 76 * mm, 108 * mm, 33 * mm]
+
+    if len(table_rows) == 1:
+        table_rows.append([Paragraph("Aucun résultat", cell_style)] + [""] * (len(table_rows[0]) - 1))
+
+    result_table = Table(table_rows, colWidths=col_widths, repeatRows=1, hAlign="LEFT")
+    result_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), PDF_BRAND_RED),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("BOX", (0, 0), (-1, -1), 0.7, PDF_LINE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.45, PDF_LINE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fbfcfe")]),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(result_table)
+
+    return story
 
 
 def _fetch_service_label(cur, id_ent: str, id_service: Optional[str]) -> ServiceScope:
@@ -656,6 +884,7 @@ def get_cartographie_recherche_avancee(
                         c.intitule,
                         c.domaine AS id_domaine_competence,
                         COALESCE(d.titre_court, d.titre, '') AS domaine_label,
+                        d.couleur AS domaine_couleur,
                         ec.niveau_actuel,
                         ec.date_derniere_eval
                     FROM persons p
@@ -904,6 +1133,73 @@ def get_cartographie_recherche_avancee(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur recherche avancée cartographie: {str(e)}")
+
+
+@router.get("/skills/cartographie/recherche_avancee_pdf/{id_contact}")
+def get_cartographie_recherche_avancee_pdf(
+    id_contact: str,
+    request: Request,
+    mode: str = Query(default="competence"),
+    q: str = Query(default=""),
+    id_service: Optional[str] = Query(default=None),
+    limit: int = Query(default=200),
+    id_comps: Optional[str] = Query(default=None),
+    op: str = Query(default="and"),
+    id_effectif: Optional[str] = Query(default=None),
+):
+    mode_norm = "collaborateur" if (mode or "").strip().lower() == "collaborateur" else "competence"
+    op_norm = "or" if (op or "").strip().lower() == "or" else "and"
+
+    try:
+        data = get_cartographie_recherche_avancee(
+            id_contact=id_contact,
+            request=request,
+            mode=mode_norm,
+            q=q,
+            id_service=id_service,
+            limit=max(1, min(int(limit or 200), 200)),
+            id_comps=id_comps,
+            op=op_norm,
+            id_effectif=id_effectif,
+        )
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                ent = skills_validate_enterprise(cur, id_ent)
+
+        enterprise_name = (ent.get("nom_ent") or "Entreprise").strip()
+        story = _build_advanced_pdf_story(
+            enterprise_name=enterprise_name,
+            data=data,
+            mode_norm=mode_norm,
+            query=(q or "").strip(),
+            op_norm=op_norm,
+        )
+        pdf_bytes = build_pdf_document(
+            story,
+            meta={
+                "title": "Recherche avancée - Cartographie des compétences",
+                "doc_label": "Recherche avancée",
+                "header_right": enterprise_name,
+                "footer_left": "Novoskill Insights • Cartographie des compétences",
+            },
+            page_size=landscape(A4),
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": 'inline; filename="cartographie_recherche_avancee.pdf"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur génération PDF recherche avancée cartographie: {e}")
 
 
 @router.get("/skills/cartographie/cell/{id_contact}")

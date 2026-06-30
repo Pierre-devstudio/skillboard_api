@@ -26510,9 +26510,11 @@ body{
 }
 
 #modalMapAdvancedSearch .map-advanced-modal-card{
-  width:min(1320px, 97vw);
+  width:min(1320px, calc(100vw - 28px));
+  max-width:calc(100vw - 28px);
   margin-top:18px;
   max-height:calc(100vh - 36px);
+  overflow-x:hidden;
 }
 
 #modalMapAdvancedSearch .modal-header--top{
@@ -26523,6 +26525,7 @@ body{
 #modalMapAdvancedSearch .map-advanced-headstack{
   width:100%;
   min-width:0;
+  max-width:100%;
   display:flex;
   flex-direction:column;
   gap:10px;
@@ -26596,6 +26599,7 @@ body{
 
 #modalMapAdvancedSearch .modal-body{
   padding-top:16px;
+  overflow-x:hidden;
 }
 
 #modalMapAdvancedSearch .map-advanced-intro{
@@ -26605,6 +26609,9 @@ body{
 }
 
 #modalMapAdvancedSearch .map-advanced-panel{
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
   border:1px solid #e5e7eb;
   border-radius:16px;
   background:#ffffff;
@@ -26881,6 +26888,9 @@ body{
 }
 
 #modalMapAdvancedSearch .map-advanced-table-wrap{
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
   border:1px solid #e5e7eb;
   border-radius:14px;
   overflow-x:hidden;
@@ -26904,10 +26914,14 @@ body{
   vertical-align:middle;
 }
 
-#modalMapAdvancedSearch .map-advanced-table th:nth-child(1){ width:17%; }
-#modalMapAdvancedSearch .map-advanced-table th:nth-child(2){ width:30%; }
-#modalMapAdvancedSearch .map-advanced-table th:nth-child(3){ width:40%; }
-#modalMapAdvancedSearch .map-advanced-table th:nth-child(4){ width:13%; }
+#modalMapAdvancedSearch .map-advanced-table--competence th:nth-child(1){ width:18%; }
+#modalMapAdvancedSearch .map-advanced-table--competence th:nth-child(2){ width:31%; }
+#modalMapAdvancedSearch .map-advanced-table--competence th:nth-child(3){ width:38%; }
+#modalMapAdvancedSearch .map-advanced-table--competence th:nth-child(4){ width:13%; }
+
+#modalMapAdvancedSearch .map-advanced-table--collaborateur th:nth-child(1){ width:58%; }
+#modalMapAdvancedSearch .map-advanced-table--collaborateur th:nth-child(2){ width:26%; }
+#modalMapAdvancedSearch .map-advanced-table--collaborateur th:nth-child(3){ width:16%; }
 
 #modalMapAdvancedSearch .map-advanced-comp-line,
 #modalMapAdvancedSearch .map-advanced-poste-line{
@@ -26957,6 +26971,14 @@ body{
   justify-content:center;
 }
 
+#modalMapAdvancedSearch .map-advanced-subrow td{
+  border-top:1px solid #eef2f6;
+}
+
+#modalMapAdvancedSearch .map-advanced-domain-badge{
+  max-width:100%;
+}
+
 #modalMapAdvancedSearch .map-advanced-empty{
   padding:18px !important;
   color:#667085;
@@ -27004,6 +27026,7 @@ body{
 @media (max-width:640px){
   #modalMapAdvancedSearch .map-advanced-modal-card{
     width:calc(100vw - 16px);
+    max-width:calc(100vw - 16px);
     margin-top:8px;
   }
 }
