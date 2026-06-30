@@ -407,6 +407,240 @@ def get_cartographie_matrice(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+
+@router.get("/skills/cartographie/recherche_avancee/{id_contact}")
+def get_cartographie_recherche_avancee(
+    id_contact: str,
+    request: Request,
+    mode: str = Query(default="competence"),
+    q: str = Query(default=""),
+    id_service: Optional[str] = Query(default=None),
+    limit: int = Query(default=80),
+):
+    """
+    Recherche avancée de la cartographie :
+    - mode=competence : compétences requises du périmètre + collaborateurs détenteurs
+    - mode=collaborateur : collaborateurs du périmètre + compétences détenues requises dans la cartographie
+    """
+    try:
+        query = (q or "").strip()
+        if len(query) < 2:
+            return {"mode": mode, "q": query, "total": 0, "items": []}
+
+        safe_limit = max(1, min(int(limit or 80), 200))
+        mode_norm = "collaborateur" if (mode or "").strip().lower() == "collaborateur" else "competence"
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                cte_sql, _ = _build_postes_scope_cte(scope.id_service)
+
+                if not scope.id_service:
+                    scope_params: List[Any] = [id_ent]
+                    effectif_scope_sql = ""
+                    effectif_scope_params: List[Any] = []
+                elif scope.id_service == NON_LIE_ID:
+                    scope_params = [id_ent, id_ent]
+                    effectif_scope_sql = """
+                      AND (
+                            e.id_service IS NULL
+                            OR e.id_service = ''
+                            OR e.id_service NOT IN (
+                                SELECT o2.id_service
+                                FROM public.tbl_entreprise_organigramme o2
+                                WHERE o2.id_ent = %s
+                                  AND COALESCE(o2.archive, FALSE) = FALSE
+                            )
+                          )
+                    """
+                    effectif_scope_params = [id_ent]
+                else:
+                    scope_params = [id_ent, scope.id_service, id_ent, id_ent]
+                    effectif_scope_sql = " AND e.id_service IN (SELECT id_service FROM services_scope) "
+                    effectif_scope_params = []
+
+                like = f"%{query}%"
+
+                if mode_norm == "collaborateur":
+                    sql = f"""
+                    WITH
+                    {cte_sql},
+                    comp_required AS (
+                        SELECT DISTINCT c.id_comp
+                        FROM postes_scope ps
+                        JOIN public.tbl_fiche_poste_competence fpc
+                          ON fpc.id_poste = ps.id_poste
+                        JOIN public.tbl_competence c
+                          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                        WHERE c.etat = %s
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(fpc.masque, FALSE) = FALSE
+                    ),
+                    persons AS (
+                        SELECT
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND COALESCE(e.archive, FALSE) = FALSE
+                          AND COALESCE(e.statut_actif, TRUE) = TRUE
+                          AND (
+                                e.nom_effectif ILIKE %s
+                                OR e.prenom_effectif ILIKE %s
+                                OR CONCAT(COALESCE(e.prenom_effectif, ''), ' ', COALESCE(e.nom_effectif, '')) ILIKE %s
+                                OR CONCAT(COALESCE(e.nom_effectif, ''), ' ', COALESCE(e.prenom_effectif, '')) ILIKE %s
+                              )
+                          {effectif_scope_sql}
+                    )
+                    SELECT
+                        p.id_effectif,
+                        p.nom_effectif,
+                        p.prenom_effectif,
+                        p.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service,
+                        p.id_poste_actuel,
+                        COALESCE(fp.codif_poste, '') AS codif_poste,
+                        COALESCE(fp.codif_client, '') AS codif_client,
+                        COALESCE(fp.intitule_poste, '') AS intitule_poste,
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        ec.niveau_actuel,
+                        ec.date_derniere_eval
+                    FROM persons p
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_client = p.id_effectif
+                     AND COALESCE(ec.actif, TRUE) = TRUE
+                     AND COALESCE(ec.archive, FALSE) = FALSE
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = ec.id_comp
+                     AND c.id_comp IN (SELECT id_comp FROM comp_required)
+                     AND c.etat = %s
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = p.id_poste_actuel
+                     AND fp.id_ent = %s
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = p.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    ORDER BY lower(COALESCE(p.nom_effectif, '')), lower(COALESCE(p.prenom_effectif, '')), c.code, c.intitule
+                    LIMIT %s
+                    """
+                    params = (
+                        scope_params
+                        + [ETAT_ACTIVE, id_ent, like, like, like, like]
+                        + effectif_scope_params
+                        + [ETAT_ACTIVE, id_ent, id_ent, safe_limit]
+                    )
+                else:
+                    sql = f"""
+                    WITH
+                    {cte_sql},
+                    comp_scope AS (
+                        SELECT DISTINCT
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            c.description
+                        FROM postes_scope ps
+                        JOIN public.tbl_fiche_poste_competence fpc
+                          ON fpc.id_poste = ps.id_poste
+                        JOIN public.tbl_competence c
+                          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                        WHERE c.etat = %s
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(fpc.masque, FALSE) = FALSE
+                          AND (
+                                c.code ILIKE %s
+                                OR c.intitule ILIKE %s
+                                OR COALESCE(c.description, '') ILIKE %s
+                              )
+                    ),
+                    holders AS (
+                        SELECT
+                            ec.id_comp,
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel,
+                            ec.niveau_actuel,
+                            ec.date_derniere_eval
+                        FROM public.tbl_effectif_client_competence ec
+                        JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = ec.id_effectif_client
+                         AND e.id_ent = %s
+                         AND COALESCE(e.archive, FALSE) = FALSE
+                         AND COALESCE(e.statut_actif, TRUE) = TRUE
+                         {effectif_scope_sql}
+                        WHERE COALESCE(ec.actif, TRUE) = TRUE
+                          AND COALESCE(ec.archive, FALSE) = FALSE
+                    )
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        h.id_effectif,
+                        h.nom_effectif,
+                        h.prenom_effectif,
+                        h.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service,
+                        h.id_poste_actuel,
+                        COALESCE(fp.codif_poste, '') AS codif_poste,
+                        COALESCE(fp.codif_client, '') AS codif_client,
+                        COALESCE(fp.intitule_poste, '') AS intitule_poste,
+                        h.niveau_actuel,
+                        h.date_derniere_eval
+                    FROM comp_scope c
+                    LEFT JOIN holders h
+                      ON h.id_comp = c.id_comp
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = h.id_poste_actuel
+                     AND fp.id_ent = %s
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = h.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    ORDER BY c.code, c.intitule, lower(COALESCE(h.nom_effectif, '')), lower(COALESCE(h.prenom_effectif, ''))
+                    LIMIT %s
+                    """
+                    params = (
+                        scope_params
+                        + [ETAT_ACTIVE, like, like, like, id_ent]
+                        + effectif_scope_params
+                        + [id_ent, id_ent, safe_limit]
+                    )
+
+                cur.execute(sql, tuple(params))
+                rows = cur.fetchall() or []
+
+                items = []
+                for r in rows:
+                    item = dict(r)
+                    if item.get("date_derniere_eval") is not None:
+                        item["date_derniere_eval"] = str(item.get("date_derniere_eval"))
+                    items.append(item)
+
+                return {
+                    "mode": mode_norm,
+                    "q": query,
+                    "total": len(items),
+                    "items": items,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur recherche avancée cartographie: {str(e)}")
+
+
 @router.get("/skills/cartographie/cell/{id_contact}")
 def get_cartographie_cell_detail(
     id_contact: str,

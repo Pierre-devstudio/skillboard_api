@@ -26455,3 +26455,156 @@ body{
     grid-template-columns:1fr;
   }
 }
+
+/* ======================================================
+   Cartographie — recherche avancée
+   ====================================================== */
+#view-cartographie-competences .map-kpi-card--search{
+  border:1px solid var(--map-border-soft, #edf0f4);
+  text-align:left;
+  font-family:inherit;
+  cursor:pointer;
+  appearance:none;
+}
+
+#view-cartographie-competences .map-kpi-card--search:hover{
+  background:#f8fafc;
+  border-color:#cbd5e1;
+}
+
+#view-cartographie-competences .map-kpi-card--search:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(37,99,235,.14);
+}
+
+#view-cartographie-competences .map-kpi-card--search .map-kpi-card__icon{
+  background:#eff6ff;
+  color:#2563eb;
+}
+
+#view-cartographie-competences .map-kpi-card--search .map-kpi-card__value{
+  font-size:14px;
+  white-space:nowrap;
+}
+
+#view-cartographie-competences .map-kpi-card__hint{
+  margin-top:3px;
+  color:#64748b;
+  font-size:11.5px;
+  line-height:1.15;
+}
+
+#modalMapAdvancedSearch.modal.show{
+  align-items:flex-start;
+}
+
+#modalMapAdvancedSearch .map-advanced-modal-card{
+  margin-top:24px;
+  max-width:1120px;
+}
+
+#modalMapAdvancedSearch .map-advanced-intro{
+  margin:0 0 14px 0;
+}
+
+#modalMapAdvancedSearch .map-advanced-toolbar{
+  display:grid;
+  grid-template-columns:auto minmax(260px, 1fr) auto;
+  gap:10px;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+#modalMapAdvancedSearch .map-advanced-search-wrap{
+  position:relative;
+  min-width:0;
+}
+
+#modalMapAdvancedSearch .map-advanced-search-wrap input{
+  padding-right:38px;
+}
+
+#modalMapAdvancedSearch .map-advanced-search-icon{
+  position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#64748b;
+  pointer-events:none;
+}
+
+#modalMapAdvancedSearch .map-advanced-search-icon svg{
+  width:16px;
+  height:16px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalMapAdvancedSearch .map-advanced-status{
+  margin:0 0 10px 0;
+}
+
+#modalMapAdvancedSearch .map-advanced-table-wrap{
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  overflow:auto;
+  background:#ffffff;
+}
+
+#modalMapAdvancedSearch .map-advanced-table{
+  min-width:860px;
+  table-layout:fixed;
+}
+
+#modalMapAdvancedSearch .map-advanced-table thead th{
+  background:#fafafa;
+  font-size:12px;
+  font-weight:750;
+}
+
+#modalMapAdvancedSearch .map-advanced-table tbody td{
+  font-size:12.5px;
+}
+
+#modalMapAdvancedSearch .map-advanced-comp-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+#modalMapAdvancedSearch .map-advanced-comp-line .sb-badge-ref-comp-code{
+  flex:0 0 auto;
+}
+
+#modalMapAdvancedSearch .map-advanced-comp-line span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:normal;
+  line-height:1.25;
+}
+
+#modalMapAdvancedSearch .map-advanced-empty{
+  padding:18px !important;
+  color:#667085;
+  text-align:center;
+}
+
+@media (max-width:760px){
+  #modalMapAdvancedSearch .map-advanced-toolbar{
+    grid-template-columns:1fr;
+  }
+
+  #modalMapAdvancedSearch .map-advanced-tabs{
+    width:100%;
+  }
+
+  #modalMapAdvancedSearch .map-advanced-tabs .sb-seg{
+    flex:1 1 auto;
+  }
+}

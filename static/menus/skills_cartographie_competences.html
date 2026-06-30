@@ -46,6 +46,21 @@
           <div class="map-kpi-card__label">compétences</div>
         </div>
       </div>
+
+      <button type="button"
+              class="map-kpi-card map-kpi-card--search"
+              id="btnMapAdvancedSearch"
+              title="Recherche avancée"
+              aria-label="Ouvrir la recherche avancée">
+        <div class="map-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+        <div>
+          <div class="map-kpi-card__value">Recherche avancée</div>
+          <div class="map-kpi-card__label">Qui détient quoi ?</div>
+          <div class="map-kpi-card__hint">Compétence ou personne</div>
+        </div>
+      </button>
     </div>
   </div>
 
@@ -155,4 +170,50 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal recherche avancée -->
+  <div class="modal" id="modalMapAdvancedSearch" aria-hidden="true">
+    <div class="modal-card modal-card--xl map-advanced-modal-card">
+      <div class="modal-header">
+        <div class="card-title" id="mapAdvancedTitle">Recherche avancée</div>
+        <button type="button" class="modal-x" id="btnCloseMapAdvancedModal" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="map-advanced-intro card-sub">
+          Recherchez une compétence pour voir qui la détient, ou une personne pour voir ses compétences évaluées.
+        </div>
+
+        <div class="map-advanced-toolbar">
+          <div class="sb-segbar map-advanced-tabs" role="tablist" aria-label="Type de recherche">
+            <button type="button" class="sb-seg sb-seg--fill is-active" data-map-advanced-mode="competence">Compétence</button>
+            <button type="button" class="sb-seg sb-seg--fill" data-map-advanced-mode="collaborateur">Collaborateur</button>
+          </div>
+
+          <div class="map-advanced-search-wrap">
+            <input type="text" id="mapAdvancedSearchInput" class="sb-ctrl" placeholder="Code, intitulé de compétence..." />
+            <span class="map-advanced-search-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </span>
+          </div>
+
+          <button type="button" class="sb-btn sb-btn--accent" id="btnMapAdvancedRun">Rechercher</button>
+        </div>
+
+        <div class="card-sub map-advanced-status" id="mapAdvancedStatus">Saisissez au moins 2 caractères pour lancer la recherche.</div>
+
+        <div class="table-wrap map-advanced-table-wrap">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover map-advanced-table">
+            <thead id="mapAdvancedTableHead"></thead>
+            <tbody id="mapAdvancedTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="btnMapAdvancedClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+
 </section>

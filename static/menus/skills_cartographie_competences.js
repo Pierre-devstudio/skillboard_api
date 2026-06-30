@@ -12,6 +12,8 @@
   const _cache = new Map(); // key: service
   let _searchTimer = null;
   let _lastDomaines = [];
+  let _advancedMode = "competence";
+  let _advancedTimer = null;
 
   const STORE_SERVICE = "sb_map_service";
   const STORE_DOMAINES = "sb_map_domaines";
@@ -293,6 +295,198 @@
     return await portal.apiJson(url);
   }
 
+
+  async function fetchAdvancedSearch(portal, mode, query, filters) {
+    const params = new URLSearchParams();
+    params.set("mode", mode === "collaborateur" ? "collaborateur" : "competence");
+    params.set("q", query || "");
+    params.set("limit", "80");
+
+    const svc = filters?.id_service;
+    if (svc && svc !== window.portal.serviceFilter.ALL_ID) {
+      params.set("id_service", svc);
+    }
+
+    const url = `${portal.apiBase}/skills/cartographie/recherche_avancee/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
+    return await portal.apiJson(url);
+  }
+
+  function setAdvancedStatus(text) {
+    const el = byId("mapAdvancedStatus");
+    if (el) el.textContent = text || "";
+  }
+
+  function openAdvancedModal() {
+    const modal = byId("modalMapAdvancedSearch");
+    if (!modal) return;
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+    setAdvancedMode(_advancedMode || "competence");
+    setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
+    renderAdvancedEmpty();
+
+    const input = byId("mapAdvancedSearchInput");
+    if (input) {
+      input.value = "";
+      setTimeout(() => input.focus(), 30);
+    }
+  }
+
+  function closeAdvancedModal() {
+    const modal = byId("modalMapAdvancedSearch");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function setAdvancedMode(mode) {
+    _advancedMode = mode === "collaborateur" ? "collaborateur" : "competence";
+
+    document.querySelectorAll("[data-map-advanced-mode]").forEach(btn => {
+      const active = btn.getAttribute("data-map-advanced-mode") === _advancedMode;
+      btn.classList.toggle("is-active", active);
+    });
+
+    const input = byId("mapAdvancedSearchInput");
+    if (input) {
+      input.placeholder = _advancedMode === "collaborateur"
+        ? "Nom ou prénom du collaborateur..."
+        : "Code, intitulé de compétence...";
+    }
+
+    renderAdvancedEmpty();
+    setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
+  }
+
+  function renderAdvancedEmpty() {
+    const head = byId("mapAdvancedTableHead");
+    const body = byId("mapAdvancedTableBody");
+    if (head) head.innerHTML = "";
+    if (body) body.innerHTML = `<tr><td class="map-advanced-empty">Aucune recherche lancée.</td></tr>`;
+  }
+
+  function advancedLevelBadge(value) {
+    return window.NovoskillLevels
+      ? window.NovoskillLevels.badgeHtml(value || "—", "Niveau détenu")
+      : levelBadgeHtml4(value || "—", "Niveau détenu");
+  }
+
+  function renderAdvancedResults(data, mode) {
+    const head = byId("mapAdvancedTableHead");
+    const body = byId("mapAdvancedTableBody");
+    if (!head || !body) return;
+
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const total = Number(data?.total || items.length || 0);
+
+    if (mode === "collaborateur") {
+      head.innerHTML = `
+        <tr>
+          <th>Collaborateur</th>
+          <th>Compétence</th>
+          <th class="col-center">Niveau détenu</th>
+          <th>Poste actuel</th>
+          <th class="col-center">Dernière éval.</th>
+        </tr>
+      `;
+
+      if (!items.length) {
+        body.innerHTML = `<tr><td class="map-advanced-empty" colspan="5">Aucun résultat pour cette recherche.</td></tr>`;
+        setAdvancedStatus("Aucun résultat trouvé.");
+        return;
+      }
+
+      body.innerHTML = items.map(it => {
+        const person = `${safeTrim(it.prenom_effectif)} ${safeTrim(it.nom_effectif)}`.trim() || "—";
+        const code = safeTrim(it.code);
+        const comp = safeTrim(it.intitule) || "—";
+        return `
+          <tr>
+            <td><strong>${escapeHtml(person)}</strong></td>
+            <td>
+              <div class="map-advanced-comp-line">
+                ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+                <span>${escapeHtml(comp)}</span>
+              </div>
+            </td>
+            <td class="col-center">${advancedLevelBadge(it.niveau_actuel)}</td>
+            <td>${escapeHtml(safeTrim(it.intitule_poste) || "—")}</td>
+            <td class="col-center">${escapeHtml(formatDateFr(it.date_derniere_eval))}</td>
+          </tr>
+        `;
+      }).join("");
+      setAdvancedStatus(`${total} résultat(s).`);
+      return;
+    }
+
+    head.innerHTML = `
+      <tr>
+        <th>Compétence</th>
+        <th>Collaborateur</th>
+        <th>Poste actuel</th>
+        <th class="col-center">Niveau détenu</th>
+        <th class="col-center">Dernière éval.</th>
+      </tr>
+    `;
+
+    if (!items.length) {
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="5">Aucun résultat pour cette recherche.</td></tr>`;
+      setAdvancedStatus("Aucun résultat trouvé.");
+      return;
+    }
+
+    body.innerHTML = items.map(it => {
+      const code = safeTrim(it.code);
+      const comp = safeTrim(it.intitule) || "—";
+      const person = `${safeTrim(it.prenom_effectif)} ${safeTrim(it.nom_effectif)}`.trim();
+      return `
+        <tr>
+          <td>
+            <div class="map-advanced-comp-line">
+              ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+              <span>${escapeHtml(comp)}</span>
+            </div>
+          </td>
+          <td>${person ? escapeHtml(person) : `<span class="sb-muted">Aucun détenteur identifié</span>`}</td>
+          <td>${escapeHtml(safeTrim(it.intitule_poste) || "—")}</td>
+          <td class="col-center">${person ? advancedLevelBadge(it.niveau_actuel) : `<span class="sb-badge">—</span>`}</td>
+          <td class="col-center">${escapeHtml(formatDateFr(it.date_derniere_eval))}</td>
+        </tr>
+      `;
+    }).join("");
+    setAdvancedStatus(`${total} résultat(s).`);
+  }
+
+  function formatDateFr(value) {
+    const s = safeTrim(value);
+    if (!s) return "—";
+    const ymd = s.slice(0, 10);
+    const parts = ymd.split("-");
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return s;
+  }
+
+  async function runAdvancedSearch(portal) {
+    const input = byId("mapAdvancedSearchInput");
+    const q = (input?.value || "").trim();
+    if (q.length < 2) {
+      renderAdvancedEmpty();
+      setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
+      return;
+    }
+
+    try {
+      setAdvancedStatus("Recherche en cours…");
+      const data = await fetchAdvancedSearch(portal, _advancedMode, q, getFilters());
+      renderAdvancedResults(data, _advancedMode);
+    } catch (e) {
+      setAdvancedStatus("Erreur pendant la recherche.");
+      const body = byId("mapAdvancedTableBody");
+      if (body) body.innerHTML = `<tr><td class="map-advanced-empty">${escapeHtml(e.message || "Erreur inconnue")}</td></tr>`;
+    }
+  }
+
   function mapIconSvg(name) {
     const icons = {
       domain: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
@@ -300,7 +494,8 @@
       skills: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
       users: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
       section: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
-      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`
+      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`,
+      search: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>`
     };
     return icons[name] || "";
   }
@@ -717,6 +912,13 @@
     const btnReset = byId("btnMapReset");
     const btnApply = byId("btnMapApply");
 
+    const btnAdvanced = byId("btnMapAdvancedSearch");
+    const advancedInput = byId("mapAdvancedSearchInput");
+    const btnAdvancedRun = byId("btnMapAdvancedRun");
+    const btnAdvancedCloseX = byId("btnCloseMapAdvancedModal");
+    const btnAdvancedClose = byId("btnMapAdvancedClose");
+    const advancedModal = byId("modalMapAdvancedSearch");
+
     const btnX = byId("btnCloseMapModal");
     const btnClose = byId("btnMapModalClose");
     const modal = byId("modalMapDetail");
@@ -749,6 +951,38 @@
           } catch (_) {}
           portal.showAlert("error", (e && e.message) ? e.message : "Action indisponible.");
         }
+      });
+    }
+
+
+    if (btnAdvanced) {
+      btnAdvanced.addEventListener("click", () => openAdvancedModal());
+    }
+
+    document.querySelectorAll("[data-map-advanced-mode]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        setAdvancedMode(btn.getAttribute("data-map-advanced-mode"));
+        if (advancedInput) advancedInput.focus();
+      });
+    });
+
+    if (btnAdvancedRun) btnAdvancedRun.addEventListener("click", () => runAdvancedSearch(portal));
+    if (advancedInput) {
+      advancedInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") runAdvancedSearch(portal);
+      });
+      advancedInput.addEventListener("input", () => {
+        if (_advancedTimer) clearTimeout(_advancedTimer);
+        _advancedTimer = setTimeout(() => runAdvancedSearch(portal), 350);
+      });
+    }
+
+    const closeAdvanced = () => closeAdvancedModal();
+    if (btnAdvancedCloseX) btnAdvancedCloseX.addEventListener("click", closeAdvanced);
+    if (btnAdvancedClose) btnAdvancedClose.addEventListener("click", closeAdvanced);
+    if (advancedModal) {
+      advancedModal.addEventListener("click", (e) => {
+        if (e.target === advancedModal) closeAdvancedModal();
       });
     }
 
