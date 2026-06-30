@@ -957,45 +957,6 @@
   function buildCertifDetailView(data) {
     const c = data?.certification || {};
     const title = c.nom_certification || "Certification";
-
-    const badges = [];
-    if (c.categorie) badges.push(`<span class="sb-badge">${escapeHtml(c.categorie)}</span>`);
-    const base = (c.duree_validite === null || c.duree_validite === undefined) ? null : Number(c.duree_validite);
-    const postesList = Array.isArray(data?.postes_concernes) ? data.postes_concernes : [];
-
-    const overrides = postesList
-      .map(p => (p.validite_override === null || p.validite_override === undefined) ? null : Number(p.validite_override))
-      .filter(v => v !== null);
-
-    const distinct = Array.from(new Set(overrides));
-
-    let effective = base;
-    let differs = false;
-    let mixed = false;
-
-    if (distinct.length === 0) {
-      effective = base;
-      differs = false;
-    } else if (distinct.length === 1) {
-      effective = distinct[0];
-      differs = (base !== null && effective !== base);
-    } else {
-      mixed = true;
-      differs = true;
-      effective = null;
-    }
-
-    let label = "—";
-    if (mixed) label = "Variable";
-    else if (effective !== null) label = (effective === 0 ? "Permanent" : `${effective} mois`);
-
-    const styleOk = "border:1px solid rgba(34,197,94,.35); background:rgba(34,197,94,.12); color:#166534;";
-    const styleBad = "border:1px solid rgba(239,68,68,.35); background:rgba(239,68,68,.10); color:#991b1b;";
-    const badgeStyle = differs ? styleBad : styleOk;
-
-    if (label !== "—") badges.push(`<span class="sb-badge" style="${badgeStyle}">${escapeHtml(label)}</span>`);
-
-    const sub = badges.join(" ");
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
     const postes = renderPostesTable(data?.postes_concernes || [], true, c.duree_validite);
     const collaborateurs = renderCertifHoldersTable(data?.collaborateurs_detenteurs || []);
@@ -1011,7 +972,7 @@
       </div>
     `;
 
-    return { title, sub, body };
+    return { title, sub: "", body };
   }
 
   async function fetchReferentielCompetencePdfBlob(portal, id_contact, id_service, id_comp) {
