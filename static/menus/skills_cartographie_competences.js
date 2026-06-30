@@ -300,7 +300,6 @@
       skills: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
       users: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
       section: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
-      stats: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M9 19v-6"/><path d="M14 19V9"/><path d="M19 19V3"/></svg>`,
       doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`
     };
     return icons[name] || "";
@@ -423,38 +422,6 @@
     const blob = await mapApiPdfBlob(url);
     mapRenderPdfBlobInWindow(popupWin, blob, `Fiche compétence - ${mapSafeFilenamePart(title)}`);
   }
-
-  function openMapCompetenceAnalyse(portal, comp, filters) {
-    const compKey = safeTrim(comp?.id_comp) || safeTrim(comp?.code);
-    if (!compKey) throw new Error("Compétence introuvable.");
-
-    const payload = {
-      id_comp: compKey,
-      code: safeTrim(comp?.code),
-      intitule: safeTrim(comp?.intitule),
-      id_service: safeTrim(filters?.id_service),
-      source: "cartographie_competences",
-      ts: Date.now()
-    };
-
-    sessionStorage.setItem("sb_analyse_comp_focus_v1", JSON.stringify(payload));
-    localStorage.setItem("sb_analyse_mode", "risques");
-    if (payload.id_service) localStorage.setItem("sb_analyse_service", payload.id_service);
-    else localStorage.removeItem("sb_analyse_service");
-
-    closeModal();
-    const p = portal || window.portal;
-    if (p && typeof p.switchView === "function") {
-      p.switchView("analyse-competences");
-      return;
-    }
-    if (window.portal && typeof window.portal.switchView === "function") {
-      window.portal.switchView("analyse-competences");
-      return;
-    }
-    throw new Error("Navigation vers Analyse des compétences indisponible.");
-  }
-
 
   function buildMatrix(data) {
     const rawDomaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
@@ -757,24 +724,18 @@
 
     if (modal) {
       modal.addEventListener("click", async (ev) => {
-        const btnStat = ev.target?.closest?.("[data-map-comp-stat]");
         const btnPdf = ev.target?.closest?.("[data-map-comp-pdf]");
-        if (!btnStat && !btnPdf) return;
+        if (!btnPdf) return;
 
         ev.preventDefault();
         ev.stopPropagation();
 
-        const raw = (btnStat || btnPdf).getAttribute(btnStat ? "data-map-comp-stat" : "data-map-comp-pdf") || "{}";
+        const raw = btnPdf.getAttribute("data-map-comp-pdf") || "{}";
         let comp = {};
         try { comp = JSON.parse(raw); } catch (_) { comp = {}; }
 
         let popup = null;
         try {
-          if (btnStat) {
-            openMapCompetenceAnalyse(portal, comp, getFilters());
-            return;
-          }
-
           popup = window.open("about:blank", "_blank");
           if (popup) {
             popup.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du PDF…</p>");
@@ -1007,13 +968,6 @@
                               <td class="col-center map-detail-coverage-cell">${mapCoverageIndicatorHtml(c, cible, pauseActive)}</td>
                               <td class="col-center map-detail-actions-cell">
                                 <div class="sb-icon-actions map-detail-actions">
-                                  <button type="button"
-                                          class="sb-icon-btn"
-                                          data-map-comp-stat="${compJson}"
-                                          title="Voir l’analyse de la compétence"
-                                          aria-label="Voir l’analyse de la compétence">
-                                    ${mapIconSvg("stats")}
-                                  </button>
                                   <button type="button"
                                           class="sb-icon-btn sb-icon-btn--doc"
                                           data-map-comp-pdf="${compJson}"

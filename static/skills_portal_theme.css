@@ -26390,7 +26390,7 @@ body{
 #modalMapDetail .map-detail-table th:nth-child(2){ width:116px; }
 #modalMapDetail .map-detail-table th:nth-child(3){ width:76px; }
 #modalMapDetail .map-detail-table th:nth-child(4){ width:78px; }
-#modalMapDetail .map-detail-table th:nth-child(5){ width:70px; }
+#modalMapDetail .map-detail-table th:nth-child(5){ width:44px; }
 
 #modalMapDetail .map-detail-comp-cell{
   display:flex;
@@ -26433,7 +26433,7 @@ body{
 
 #modalMapDetail .map-detail-actions{
   justify-content:center;
-  gap:6px;
+  gap:0;
 }
 
 #modalMapDetail .map-detail-actions .sb-icon-btn svg{
