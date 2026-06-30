@@ -26510,20 +26510,113 @@ body{
 }
 
 #modalMapAdvancedSearch .map-advanced-modal-card{
-  margin-top:24px;
-  max-width:1120px;
+  width:min(1320px, 97vw);
+  margin-top:18px;
+  max-height:calc(100vh - 36px);
+}
+
+#modalMapAdvancedSearch .modal-header--top{
+  align-items:flex-start;
+  padding-bottom:0;
+}
+
+#modalMapAdvancedSearch .map-advanced-headstack{
+  width:100%;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+#modalMapAdvancedSearch .map-advanced-nav{
+  display:flex;
+  align-items:center;
+  gap:28px;
+  min-height:48px;
+  border-bottom:1px solid #e5e7eb;
+  margin:0;
+  padding:0;
+}
+
+#modalMapAdvancedSearch .map-advanced-nav-btn{
+  position:relative;
+  min-height:48px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:0;
+  background:transparent;
+  color:#0f2742;
+  padding:0 0 2px;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:750;
+  cursor:pointer;
+}
+
+#modalMapAdvancedSearch .map-advanced-nav-btn svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalMapAdvancedSearch .map-advanced-nav-btn::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:2px;
+  border-radius:999px;
+  background:transparent;
+}
+
+#modalMapAdvancedSearch .map-advanced-nav-btn:hover,
+#modalMapAdvancedSearch .map-advanced-nav-btn.is-active{
+  color:var(--accent);
+}
+
+#modalMapAdvancedSearch .map-advanced-nav-btn.is-active::after{
+  background:var(--accent);
+}
+
+#modalMapAdvancedSearch .map-advanced-nav-btn:focus{
+  outline:none;
+  color:var(--accent);
+}
+
+#modalMapAdvancedSearch .map-advanced-nav-btn:focus::after{
+  background:var(--accent);
+}
+
+#modalMapAdvancedSearch .modal-body{
+  padding-top:16px;
 }
 
 #modalMapAdvancedSearch .map-advanced-intro{
   margin:0 0 14px 0;
+  max-width:900px;
+  line-height:1.4;
+}
+
+#modalMapAdvancedSearch .map-advanced-panel{
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  background:#ffffff;
+  padding:14px;
+  margin-bottom:12px;
 }
 
 #modalMapAdvancedSearch .map-advanced-toolbar{
   display:grid;
-  grid-template-columns:auto minmax(260px, 1fr) auto;
+  grid-template-columns:minmax(320px, 1fr) auto;
   gap:10px;
-  align-items:center;
-  margin-bottom:10px;
+  align-items:start;
 }
 
 #modalMapAdvancedSearch .map-advanced-search-wrap{
@@ -26532,13 +26625,15 @@ body{
 }
 
 #modalMapAdvancedSearch .map-advanced-search-wrap input{
+  height:38px;
   padding-right:38px;
+  background:#ffffff;
 }
 
 #modalMapAdvancedSearch .map-advanced-search-icon{
   position:absolute;
   right:12px;
-  top:50%;
+  top:19px;
   transform:translateY(-50%);
   color:#64748b;
   pointer-events:none;
@@ -26555,6 +26650,205 @@ body{
   stroke-linejoin:round;
 }
 
+#modalMapAdvancedSearch .map-advanced-suggestions{
+  position:absolute;
+  left:0;
+  right:0;
+  top:44px;
+  z-index:20;
+  display:none;
+  max-height:300px;
+  overflow:auto;
+  padding:6px;
+  border:1px solid #d8dee8;
+  border-radius:14px;
+  background:#ffffff;
+  box-shadow:0 18px 42px rgba(15,23,42,.16);
+}
+
+#modalMapAdvancedSearch .map-advanced-suggest-row{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:4px;
+  min-height:48px;
+  padding:8px 10px;
+  border:0;
+  border-radius:10px;
+  background:#ffffff;
+  color:#111827;
+  font-family:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+
+#modalMapAdvancedSearch .map-advanced-suggest-row:hover{
+  background:#f8fafc;
+}
+
+#modalMapAdvancedSearch .map-advanced-suggest-main{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  max-width:100%;
+  color:#0f172a;
+  font-size:13px;
+  font-weight:750;
+}
+
+#modalMapAdvancedSearch .map-advanced-suggest-main > span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalMapAdvancedSearch .map-advanced-suggest-sub,
+#modalMapAdvancedSearch .map-advanced-suggest-empty{
+  color:#667085;
+  font-size:12px;
+  font-weight:500;
+}
+
+#modalMapAdvancedSearch .map-advanced-suggest-empty{
+  padding:12px;
+  text-align:center;
+}
+
+#modalMapAdvancedSearch .map-advanced-selected{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  min-height:34px;
+  margin-top:12px;
+}
+
+#modalMapAdvancedSearch .map-advanced-help{
+  color:#667085;
+  font-size:12.5px;
+}
+
+#modalMapAdvancedSearch .map-advanced-chip{
+  max-width:100%;
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:3px 8px 3px 10px;
+  border:1px solid color-mix(in srgb, var(--accent) 34%, #d8dee8);
+  border-radius:999px;
+  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
+  color:#0f172a;
+  font-size:12px;
+  font-weight:650;
+}
+
+#modalMapAdvancedSearch .map-advanced-chip strong{
+  color:var(--accent);
+  font-weight:800;
+}
+
+#modalMapAdvancedSearch .map-advanced-chip > span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalMapAdvancedSearch .map-advanced-chip button,
+#modalMapAdvancedSearch .map-advanced-chip-x{
+  width:20px;
+  height:20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#64748b;
+  font-size:16px;
+  line-height:1;
+  cursor:pointer;
+}
+
+#modalMapAdvancedSearch .map-advanced-chip button:hover,
+#modalMapAdvancedSearch .map-advanced-chip-x:hover{
+  background:#f1f5f9;
+  color:var(--accent);
+}
+
+#modalMapAdvancedSearch .map-advanced-selected-card{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid #d8dee8;
+  border-radius:12px;
+  background:#fbfcfe;
+}
+
+#modalMapAdvancedSearch .map-advanced-selected-title{
+  color:#0f172a;
+  font-size:13px;
+  font-weight:800;
+}
+
+#modalMapAdvancedSearch .map-advanced-selected-sub{
+  margin-top:3px;
+  color:#667085;
+  font-size:12px;
+}
+
+#modalMapAdvancedSearch .map-advanced-operator{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid #eef2f6;
+}
+
+#modalMapAdvancedSearch .map-advanced-operator > span{
+  color:#334155;
+  font-size:12px;
+  font-weight:800;
+}
+
+#modalMapAdvancedSearch .map-advanced-op-switch{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px;
+  border:1px solid #d8dee8;
+  border-radius:12px;
+  background:#f8fafc;
+}
+
+#modalMapAdvancedSearch .map-advanced-op-btn{
+  height:28px;
+  padding:0 12px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:#334155;
+  font-family:inherit;
+  font-size:12px;
+  font-weight:750;
+  cursor:pointer;
+}
+
+#modalMapAdvancedSearch .map-advanced-op-btn.is-active{
+  background:#ffffff;
+  color:var(--accent);
+  box-shadow:0 1px 3px rgba(15,23,42,.10);
+}
+
 #modalMapAdvancedSearch .map-advanced-status{
   margin:0 0 10px 0;
 }
@@ -26567,8 +26861,8 @@ body{
 }
 
 #modalMapAdvancedSearch .map-advanced-table{
-  min-width:860px;
-  table-layout:fixed;
+  width:100%;
+  table-layout:auto;
 }
 
 #modalMapAdvancedSearch .map-advanced-table thead th{
@@ -26606,16 +26900,39 @@ body{
   text-align:center;
 }
 
-@media (max-width:760px){
+#modalMapAdvancedSearch .map-advanced-mini-skills{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+#modalMapAdvancedSearch .map-advanced-mini-skill{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  line-height:1.2;
+}
+
+#modalMapAdvancedSearch .map-advanced-mini-skill strong{
+  color:var(--accent);
+  font-weight:800;
+}
+
+@media (max-width:900px){
+  #modalMapAdvancedSearch .map-advanced-nav{
+    gap:16px;
+    overflow:auto;
+  }
+
   #modalMapAdvancedSearch .map-advanced-toolbar{
     grid-template-columns:1fr;
   }
+}
 
-  #modalMapAdvancedSearch .map-advanced-tabs{
-    width:100%;
-  }
-
-  #modalMapAdvancedSearch .map-advanced-tabs .sb-seg{
-    flex:1 1 auto;
+@media (max-width:640px){
+  #modalMapAdvancedSearch .map-advanced-modal-card{
+    width:calc(100vw - 16px);
+    margin-top:8px;
   }
 }

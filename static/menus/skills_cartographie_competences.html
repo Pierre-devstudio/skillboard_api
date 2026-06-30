@@ -174,33 +174,53 @@
   <!-- Modal recherche avancée -->
   <div class="modal" id="modalMapAdvancedSearch" aria-hidden="true">
     <div class="modal-card modal-card--xl map-advanced-modal-card">
-      <div class="modal-header">
-        <div class="card-title" id="mapAdvancedTitle">Recherche avancée</div>
+      <div class="modal-header modal-header--top">
+        <div class="map-advanced-headstack">
+          <div class="card-title" id="mapAdvancedTitle">Recherche avancée</div>
+          <div class="map-advanced-nav" role="tablist" aria-label="Type de recherche">
+            <button type="button" class="map-advanced-nav-btn is-active" data-map-advanced-mode="competence" role="tab" aria-selected="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M7 12h10"/></svg>
+              <span>Par compétences</span>
+            </button>
+            <button type="button" class="map-advanced-nav-btn" data-map-advanced-mode="collaborateur" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Par collaborateur</span>
+            </button>
+          </div>
+        </div>
         <button type="button" class="modal-x" id="btnCloseMapAdvancedModal" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
-        <div class="map-advanced-intro card-sub">
-          Recherchez une compétence pour voir qui la détient, ou une personne pour voir ses compétences évaluées.
+        <div class="map-advanced-intro card-sub" id="mapAdvancedIntro">
+          Ajoutez une ou plusieurs compétences, choisissez ET ou OU, puis identifiez les collaborateurs qui couvrent le besoin.
         </div>
 
-        <div class="map-advanced-toolbar">
-          <div class="sb-segbar map-advanced-tabs" role="tablist" aria-label="Type de recherche">
-            <button type="button" class="sb-seg sb-seg--fill is-active" data-map-advanced-mode="competence">Compétence</button>
-            <button type="button" class="sb-seg sb-seg--fill" data-map-advanced-mode="collaborateur">Collaborateur</button>
+        <div class="map-advanced-panel">
+          <div class="map-advanced-toolbar">
+            <div class="map-advanced-search-wrap">
+              <input type="text" id="mapAdvancedSearchInput" class="sb-ctrl" placeholder="Code, intitulé, mot-clé de compétence..." autocomplete="off" />
+              <span class="map-advanced-search-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              </span>
+              <div class="map-advanced-suggestions" id="mapAdvancedSuggestions"></div>
+            </div>
+
+            <button type="button" class="sb-btn sb-btn--accent" id="btnMapAdvancedRun">Rechercher</button>
           </div>
 
-          <div class="map-advanced-search-wrap">
-            <input type="text" id="mapAdvancedSearchInput" class="sb-ctrl" placeholder="Code, intitulé de compétence..." />
-            <span class="map-advanced-search-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            </span>
-          </div>
+          <div class="map-advanced-selected" id="mapAdvancedSelected"></div>
 
-          <button type="button" class="sb-btn sb-btn--accent" id="btnMapAdvancedRun">Rechercher</button>
+          <div class="map-advanced-operator" id="mapAdvancedOperatorBox" style="display:none;">
+            <span>Correspondance</span>
+            <div class="map-advanced-op-switch" aria-label="Logique de recherche">
+              <button type="button" class="map-advanced-op-btn is-active" data-map-advanced-op="and">ET · toutes</button>
+              <button type="button" class="map-advanced-op-btn" data-map-advanced-op="or">OU · au moins une</button>
+            </div>
+          </div>
         </div>
 
-        <div class="card-sub map-advanced-status" id="mapAdvancedStatus">Saisissez au moins 2 caractères pour lancer la recherche.</div>
+        <div class="card-sub map-advanced-status" id="mapAdvancedStatus">Recherchez puis ajoutez une ou plusieurs compétences.</div>
 
         <div class="table-wrap map-advanced-table-wrap">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover map-advanced-table">

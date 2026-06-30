@@ -14,6 +14,10 @@
   let _lastDomaines = [];
   let _advancedMode = "competence";
   let _advancedTimer = null;
+  let _advancedSelectedSkills = [];
+  let _advancedSelectedPerson = null;
+  let _advancedOperator = "and";
+  let _advancedSuggestions = [];
 
   const STORE_SERVICE = "sb_map_service";
   const STORE_DOMAINES = "sb_map_domaines";
@@ -300,7 +304,34 @@
     const params = new URLSearchParams();
     params.set("mode", mode === "collaborateur" ? "collaborateur" : "competence");
     params.set("q", query || "");
-    params.set("limit", "80");
+    params.set("limit", "120");
+
+    if (mode === "competence" && _advancedSelectedSkills.length) {
+      params.set("id_comps", _advancedSelectedSkills.map(x => x.id_comp).filter(Boolean).join(","));
+      params.set("op", _advancedOperator === "or" ? "or" : "and");
+    }
+
+    if (mode === "collaborateur" && _advancedSelectedPerson?.id_effectif) {
+      params.set("id_effectif", _advancedSelectedPerson.id_effectif);
+    }
+
+    const svc = filters?.id_service;
+    if (svc && svc !== window.portal.serviceFilter.ALL_ID) {
+      params.set("id_service", svc);
+    }
+
+    const url = `${portal.apiBase}/skills/cartographie/recherche_avancee/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
+    return await portal.apiJson(url);
+  }
+
+  async function fetchAdvancedSuggestions(portal, mode, query, filters) {
+    const q = (query || "").trim();
+    if (q.length < 2) return { items: [] };
+
+    const params = new URLSearchParams();
+    params.set("mode", mode === "collaborateur" ? "suggest_collaborateur" : "suggest_competence");
+    params.set("q", q);
+    params.set("limit", "12");
 
     const svc = filters?.id_service;
     if (svc && svc !== window.portal.serviceFilter.ALL_ID) {
@@ -316,21 +347,38 @@
     if (el) el.textContent = text || "";
   }
 
+  function setAdvancedIntro() {
+    const el = byId("mapAdvancedIntro");
+    if (!el) return;
+    el.textContent = _advancedMode === "collaborateur"
+      ? "Sélectionnez un collaborateur pour afficher ses compétences détenues dans le périmètre de cartographie. La recherche tolère les saisies partielles et les accents."
+      : "Ajoutez une ou plusieurs compétences, choisissez ET ou OU, puis identifiez les collaborateurs qui couvrent le besoin.";
+  }
+
+  function resetAdvancedState() {
+    _advancedSelectedSkills = [];
+    _advancedSelectedPerson = null;
+    _advancedOperator = "and";
+    _advancedSuggestions = [];
+    const input = byId("mapAdvancedSearchInput");
+    if (input) input.value = "";
+    renderAdvancedSelection();
+    renderAdvancedEmpty();
+    hideAdvancedSuggestions();
+  }
+
   function openAdvancedModal() {
     const modal = byId("modalMapAdvancedSearch");
     if (!modal) return;
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
-    setAdvancedMode(_advancedMode || "competence");
-    setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
-    renderAdvancedEmpty();
+    setAdvancedMode(_advancedMode || "competence", true);
+    resetAdvancedState();
+    setAdvancedStatus(getAdvancedEmptyStatus());
 
     const input = byId("mapAdvancedSearchInput");
-    if (input) {
-      input.value = "";
-      setTimeout(() => input.focus(), 30);
-    }
+    if (input) setTimeout(() => input.focus(), 30);
   }
 
   function closeAdvancedModal() {
@@ -338,32 +386,50 @@
     if (!modal) return;
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
+    hideAdvancedSuggestions();
   }
 
-  function setAdvancedMode(mode) {
+  function setAdvancedMode(mode, keepState = false) {
     _advancedMode = mode === "collaborateur" ? "collaborateur" : "competence";
 
     document.querySelectorAll("[data-map-advanced-mode]").forEach(btn => {
       const active = btn.getAttribute("data-map-advanced-mode") === _advancedMode;
       btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
     });
 
     const input = byId("mapAdvancedSearchInput");
     if (input) {
       input.placeholder = _advancedMode === "collaborateur"
-        ? "Nom ou prénom du collaborateur..."
-        : "Code, intitulé de compétence...";
+        ? "Nom, prénom ou service..."
+        : "Code, intitulé, mot-clé de compétence...";
+      input.value = keepState ? input.value : "";
     }
 
+    if (!keepState) {
+      _advancedSuggestions = [];
+      if (_advancedMode === "competence") _advancedSelectedPerson = null;
+      if (_advancedMode === "collaborateur") _advancedSelectedSkills = [];
+    }
+
+    setAdvancedIntro();
+    renderAdvancedSelection();
     renderAdvancedEmpty();
-    setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
+    hideAdvancedSuggestions();
+    setAdvancedStatus(getAdvancedEmptyStatus());
   }
 
-  function renderAdvancedEmpty() {
+  function getAdvancedEmptyStatus() {
+    return _advancedMode === "collaborateur"
+      ? "Recherchez puis sélectionnez un collaborateur."
+      : "Recherchez puis ajoutez une ou plusieurs compétences.";
+  }
+
+  function renderAdvancedEmpty(message) {
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
     if (head) head.innerHTML = "";
-    if (body) body.innerHTML = `<tr><td class="map-advanced-empty">Aucune recherche lancée.</td></tr>`;
+    if (body) body.innerHTML = `<tr><td class="map-advanced-empty">${escapeHtml(message || "Aucune recherche lancée.")}</td></tr>`;
   }
 
   function advancedLevelBadge(value) {
@@ -372,53 +438,201 @@
       : levelBadgeHtml4(value || "—", "Niveau détenu");
   }
 
-  function renderAdvancedResults(data, mode) {
+  function advancedPersonName(it) {
+    return `${safeTrim(it?.prenom_effectif)} ${safeTrim(it?.nom_effectif)}`.trim() || "—";
+  }
+
+  function advancedPosteLabel(it) {
+    const code = safeTrim(it?.codif_client) || safeTrim(it?.codif_poste);
+    const label = safeTrim(it?.intitule_poste);
+    if (code && label) return `${code} — ${label}`;
+    return label || code || "—";
+  }
+
+  function advancedCompLabel(it) {
+    const code = safeTrim(it?.code);
+    const comp = safeTrim(it?.intitule) || "Compétence";
+    return { code, comp };
+  }
+
+  function renderAdvancedSelection() {
+    const host = byId("mapAdvancedSelected");
+    const operatorBox = byId("mapAdvancedOperatorBox");
+    if (!host) return;
+
+    if (_advancedMode === "collaborateur") {
+      if (operatorBox) operatorBox.style.display = "none";
+      if (_advancedSelectedPerson) {
+        host.innerHTML = `
+          <div class="map-advanced-selected-card">
+            <div>
+              <div class="map-advanced-selected-title">${escapeHtml(advancedPersonName(_advancedSelectedPerson))}</div>
+              <div class="map-advanced-selected-sub">${escapeHtml(safeTrim(_advancedSelectedPerson.nom_service) || "Service non renseigné")} · ${escapeHtml(advancedPosteLabel(_advancedSelectedPerson))}</div>
+            </div>
+            <button type="button" class="map-advanced-chip-x" data-map-advanced-clear-person aria-label="Retirer le collaborateur">×</button>
+          </div>
+        `;
+      } else {
+        host.innerHTML = `<div class="map-advanced-help">Aucun collaborateur sélectionné.</div>`;
+      }
+      return;
+    }
+
+    const chips = _advancedSelectedSkills.map(skill => {
+      const code = safeTrim(skill.code);
+      const label = safeTrim(skill.intitule) || "Compétence";
+      return `
+        <span class="map-advanced-chip" title="${escapeHtml(label)}">
+          ${code ? `<strong>${escapeHtml(code)}</strong>` : ``}
+          <span>${escapeHtml(label)}</span>
+          <button type="button" data-map-advanced-remove-skill="${escapeHtml(skill.id_comp)}" aria-label="Retirer">×</button>
+        </span>
+      `;
+    }).join("");
+
+    host.innerHTML = chips || `<div class="map-advanced-help">Aucune compétence sélectionnée. Ajoutez des compétences depuis les suggestions.</div>`;
+
+    if (operatorBox) {
+      operatorBox.style.display = _advancedSelectedSkills.length >= 2 ? "" : "none";
+      operatorBox.querySelectorAll("[data-map-advanced-op]").forEach(btn => {
+        const active = btn.getAttribute("data-map-advanced-op") === _advancedOperator;
+        btn.classList.toggle("is-active", active);
+      });
+    }
+  }
+
+  function hideAdvancedSuggestions() {
+    const host = byId("mapAdvancedSuggestions");
+    if (host) {
+      host.innerHTML = "";
+      host.style.display = "none";
+    }
+  }
+
+  function renderAdvancedSuggestions(items) {
+    const host = byId("mapAdvancedSuggestions");
+    if (!host) return;
+
+    _advancedSuggestions = Array.isArray(items) ? items : [];
+    if (!_advancedSuggestions.length) {
+      host.innerHTML = `<div class="map-advanced-suggest-empty">Aucune suggestion.</div>`;
+      host.style.display = "block";
+      return;
+    }
+
+    host.innerHTML = _advancedSuggestions.map((it, index) => {
+      if (_advancedMode === "collaborateur") {
+        return `
+          <button type="button" class="map-advanced-suggest-row" data-map-advanced-suggest-index="${index}">
+            <span class="map-advanced-suggest-main">${escapeHtml(advancedPersonName(it))}</span>
+            <span class="map-advanced-suggest-sub">${escapeHtml(safeTrim(it.nom_service) || "Service non renseigné")} · ${escapeHtml(advancedPosteLabel(it))}</span>
+          </button>
+        `;
+      }
+
+      const { code, comp } = advancedCompLabel(it);
+      return `
+        <button type="button" class="map-advanced-suggest-row" data-map-advanced-suggest-index="${index}">
+          <span class="map-advanced-suggest-main">
+            ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+            <span>${escapeHtml(comp)}</span>
+          </span>
+          <span class="map-advanced-suggest-sub">${escapeHtml(safeTrim(it.domaine_label) || "Domaine non renseigné")}</span>
+        </button>
+      `;
+    }).join("");
+    host.style.display = "block";
+  }
+
+  function addAdvancedSkill(skill) {
+    const id = safeTrim(skill?.id_comp);
+    if (!id) return;
+    if (!_advancedSelectedSkills.some(x => safeTrim(x.id_comp) === id)) {
+      _advancedSelectedSkills.push(skill);
+    }
+    const input = byId("mapAdvancedSearchInput");
+    if (input) input.value = "";
+    hideAdvancedSuggestions();
+    renderAdvancedSelection();
+    renderAdvancedEmpty("Lancez la recherche pour identifier les porteurs.");
+    setAdvancedStatus(_advancedSelectedSkills.length >= 2 ? "Choisissez ET ou OU, puis lancez la recherche." : "Lancez la recherche pour identifier les porteurs.");
+  }
+
+  function setAdvancedPerson(person) {
+    _advancedSelectedPerson = person || null;
+    const input = byId("mapAdvancedSearchInput");
+    if (input) input.value = _advancedSelectedPerson ? advancedPersonName(_advancedSelectedPerson) : "";
+    hideAdvancedSuggestions();
+    renderAdvancedSelection();
+    renderAdvancedEmpty("Lancez la recherche pour afficher ses compétences.");
+    setAdvancedStatus("Lancez la recherche pour afficher ses compétences détenues.");
+  }
+
+  function renderAdvancedCompetenceCrossResults(items) {
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
     if (!head || !body) return;
 
-    const items = Array.isArray(data?.items) ? data.items : [];
-    const total = Number(data?.total || items.length || 0);
+    head.innerHTML = `
+      <tr>
+        <th>Collaborateur</th>
+        <th>Service</th>
+        <th>Poste actuel</th>
+        <th class="col-center">Couverture</th>
+        <th>Compétences détenues</th>
+        <th class="col-center">Dernière éval.</th>
+      </tr>
+    `;
 
-    if (mode === "collaborateur") {
-      head.innerHTML = `
-        <tr>
-          <th>Collaborateur</th>
-          <th>Compétence</th>
-          <th class="col-center">Niveau détenu</th>
-          <th>Poste actuel</th>
-          <th class="col-center">Dernière éval.</th>
-        </tr>
-      `;
-
-      if (!items.length) {
-        body.innerHTML = `<tr><td class="map-advanced-empty" colspan="5">Aucun résultat pour cette recherche.</td></tr>`;
-        setAdvancedStatus("Aucun résultat trouvé.");
-        return;
-      }
-
-      body.innerHTML = items.map(it => {
-        const person = `${safeTrim(it.prenom_effectif)} ${safeTrim(it.nom_effectif)}`.trim() || "—";
-        const code = safeTrim(it.code);
-        const comp = safeTrim(it.intitule) || "—";
-        return `
-          <tr>
-            <td><strong>${escapeHtml(person)}</strong></td>
-            <td>
-              <div class="map-advanced-comp-line">
-                ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
-                <span>${escapeHtml(comp)}</span>
-              </div>
-            </td>
-            <td class="col-center">${advancedLevelBadge(it.niveau_actuel)}</td>
-            <td>${escapeHtml(safeTrim(it.intitule_poste) || "—")}</td>
-            <td class="col-center">${escapeHtml(formatDateFr(it.date_derniere_eval))}</td>
-          </tr>
-        `;
-      }).join("");
-      setAdvancedStatus(`${total} résultat(s).`);
+    if (!items.length) {
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="6">Aucun collaborateur ne correspond à cette combinaison.</td></tr>`;
+      setAdvancedStatus("Aucun résultat trouvé.");
       return;
     }
+
+    body.innerHTML = items.map(it => {
+      const comps = Array.isArray(it.competences) ? it.competences : [];
+      const matched = Number(it.matched_count || comps.length || 0);
+      const selected = Number(it.selected_count || _advancedSelectedSkills.length || 0);
+      const complete = selected > 0 && matched >= selected;
+      const lastEval = comps
+        .map(c => safeTrim(c.date_derniere_eval))
+        .filter(Boolean)
+        .sort()
+        .pop();
+
+      const compHtml = comps.map(c => {
+        const code = safeTrim(c.code);
+        const label = safeTrim(c.intitule) || "Compétence";
+        return `
+          <span class="map-advanced-mini-skill">
+            ${code ? `<strong>${escapeHtml(code)}</strong>` : ``}
+            <span>${escapeHtml(label)}</span>
+            ${advancedLevelBadge(c.niveau_actuel)}
+          </span>
+        `;
+      }).join("");
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(advancedPersonName(it))}</strong></td>
+          <td>${escapeHtml(safeTrim(it.nom_service) || "—")}</td>
+          <td>${escapeHtml(advancedPosteLabel(it))}</td>
+          <td class="col-center">
+            <span class="sb-badge ${complete ? "sb-badge--success" : "sb-badge--warning"}">${escapeHtml(String(matched))}/${escapeHtml(String(selected || matched))}</span>
+          </td>
+          <td><div class="map-advanced-mini-skills">${compHtml || "—"}</div></td>
+          <td class="col-center">${escapeHtml(formatDateFr(lastEval))}</td>
+        </tr>
+      `;
+    }).join("");
+    setAdvancedStatus(`${items.length} collaborateur(s) trouvé(s) · logique ${_advancedOperator === "or" ? "OU" : "ET"}.`);
+  }
+
+  function renderAdvancedCompetenceTextResults(items) {
+    const head = byId("mapAdvancedTableHead");
+    const body = byId("mapAdvancedTableBody");
+    if (!head || !body) return;
 
     head.innerHTML = `
       <tr>
@@ -439,7 +653,8 @@
     body.innerHTML = items.map(it => {
       const code = safeTrim(it.code);
       const comp = safeTrim(it.intitule) || "—";
-      const person = `${safeTrim(it.prenom_effectif)} ${safeTrim(it.nom_effectif)}`.trim();
+      const person = advancedPersonName(it);
+      const hasPerson = safeTrim(it.id_effectif) !== "";
       return `
         <tr>
           <td>
@@ -448,14 +663,72 @@
               <span>${escapeHtml(comp)}</span>
             </div>
           </td>
-          <td>${person ? escapeHtml(person) : `<span class="sb-muted">Aucun détenteur identifié</span>`}</td>
-          <td>${escapeHtml(safeTrim(it.intitule_poste) || "—")}</td>
-          <td class="col-center">${person ? advancedLevelBadge(it.niveau_actuel) : `<span class="sb-badge">—</span>`}</td>
+          <td>${hasPerson ? escapeHtml(person) : `<span class="sb-muted">Aucun détenteur identifié</span>`}</td>
+          <td>${escapeHtml(advancedPosteLabel(it))}</td>
+          <td class="col-center">${hasPerson ? advancedLevelBadge(it.niveau_actuel) : `<span class="sb-badge">—</span>`}</td>
           <td class="col-center">${escapeHtml(formatDateFr(it.date_derniere_eval))}</td>
         </tr>
       `;
     }).join("");
-    setAdvancedStatus(`${total} résultat(s).`);
+    setAdvancedStatus(`${items.length} résultat(s).`);
+  }
+
+  function renderAdvancedCollaborateurResults(items) {
+    const head = byId("mapAdvancedTableHead");
+    const body = byId("mapAdvancedTableBody");
+    if (!head || !body) return;
+
+    head.innerHTML = `
+      <tr>
+        <th>Collaborateur</th>
+        <th>Compétence</th>
+        <th>Domaine</th>
+        <th class="col-center">Niveau détenu</th>
+        <th>Poste actuel</th>
+        <th class="col-center">Dernière éval.</th>
+      </tr>
+    `;
+
+    if (!items.length) {
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="6">Aucune compétence évaluée dans le périmètre cartographié.</td></tr>`;
+      setAdvancedStatus("Aucun résultat trouvé.");
+      return;
+    }
+
+    body.innerHTML = items.map(it => {
+      const { code, comp } = advancedCompLabel(it);
+      return `
+        <tr>
+          <td><strong>${escapeHtml(advancedPersonName(it))}</strong></td>
+          <td>
+            <div class="map-advanced-comp-line">
+              ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+              <span>${escapeHtml(comp)}</span>
+            </div>
+          </td>
+          <td>${escapeHtml(safeTrim(it.domaine_label) || "—")}</td>
+          <td class="col-center">${advancedLevelBadge(it.niveau_actuel)}</td>
+          <td>${escapeHtml(advancedPosteLabel(it))}</td>
+          <td class="col-center">${escapeHtml(formatDateFr(it.date_derniere_eval))}</td>
+        </tr>
+      `;
+    }).join("");
+    setAdvancedStatus(`${items.length} compétence(s) détenue(s).`);
+  }
+
+  function renderAdvancedResults(data, mode) {
+    const items = Array.isArray(data?.items) ? data.items : [];
+    if (mode === "collaborateur") {
+      renderAdvancedCollaborateurResults(items);
+      return;
+    }
+
+    if (_advancedSelectedSkills.length) {
+      renderAdvancedCompetenceCrossResults(items);
+      return;
+    }
+
+    renderAdvancedCompetenceTextResults(items);
   }
 
   function formatDateFr(value) {
@@ -467,16 +740,40 @@
     return s;
   }
 
-  async function runAdvancedSearch(portal) {
+  async function runAdvancedSuggest(portal) {
     const input = byId("mapAdvancedSearchInput");
     const q = (input?.value || "").trim();
     if (q.length < 2) {
-      renderAdvancedEmpty();
-      setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
+      hideAdvancedSuggestions();
       return;
     }
 
     try {
+      const data = await fetchAdvancedSuggestions(portal, _advancedMode, q, getFilters());
+      renderAdvancedSuggestions(data?.items || []);
+    } catch (_) {
+      hideAdvancedSuggestions();
+    }
+  }
+
+  async function runAdvancedSearch(portal) {
+    const input = byId("mapAdvancedSearchInput");
+    const q = (input?.value || "").trim();
+
+    if (_advancedMode === "competence" && !_advancedSelectedSkills.length && q.length < 2) {
+      renderAdvancedEmpty();
+      setAdvancedStatus("Ajoutez au moins une compétence, ou saisissez au moins 2 caractères.");
+      return;
+    }
+
+    if (_advancedMode === "collaborateur" && !_advancedSelectedPerson && q.length < 2) {
+      renderAdvancedEmpty();
+      setAdvancedStatus("Sélectionnez un collaborateur, ou saisissez au moins 2 caractères.");
+      return;
+    }
+
+    try {
+      hideAdvancedSuggestions();
       setAdvancedStatus("Recherche en cours…");
       const data = await fetchAdvancedSearch(portal, _advancedMode, q, getFilters());
       renderAdvancedResults(data, _advancedMode);
@@ -966,14 +1263,32 @@
       });
     });
 
+    document.querySelectorAll("[data-map-advanced-op]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        _advancedOperator = btn.getAttribute("data-map-advanced-op") === "or" ? "or" : "and";
+        renderAdvancedSelection();
+        if (_advancedSelectedSkills.length) runAdvancedSearch(portal);
+      });
+    });
+
     if (btnAdvancedRun) btnAdvancedRun.addEventListener("click", () => runAdvancedSearch(portal));
     if (advancedInput) {
       advancedInput.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter") runAdvancedSearch(portal);
+        if (ev.key !== "Enter") return;
+        const first = byId("mapAdvancedSuggestions")?.querySelector?.("[data-map-advanced-suggest-index]");
+        if (first) {
+          ev.preventDefault();
+          first.click();
+          return;
+        }
+        runAdvancedSearch(portal);
       });
       advancedInput.addEventListener("input", () => {
         if (_advancedTimer) clearTimeout(_advancedTimer);
-        _advancedTimer = setTimeout(() => runAdvancedSearch(portal), 350);
+        _advancedTimer = setTimeout(() => runAdvancedSuggest(portal), 250);
+      });
+      advancedInput.addEventListener("focus", () => {
+        if ((advancedInput.value || "").trim().length >= 2) runAdvancedSuggest(portal);
       });
     }
 
@@ -982,6 +1297,35 @@
     if (btnAdvancedClose) btnAdvancedClose.addEventListener("click", closeAdvanced);
     if (advancedModal) {
       advancedModal.addEventListener("click", (e) => {
+        const suggestBtn = e.target?.closest?.("[data-map-advanced-suggest-index]");
+        if (suggestBtn) {
+          const idx = Number(suggestBtn.getAttribute("data-map-advanced-suggest-index"));
+          const item = _advancedSuggestions[idx];
+          if (!item) return;
+          if (_advancedMode === "collaborateur") setAdvancedPerson(item);
+          else addAdvancedSkill(item);
+          return;
+        }
+
+        const removeSkill = e.target?.closest?.("[data-map-advanced-remove-skill]");
+        if (removeSkill) {
+          const id = removeSkill.getAttribute("data-map-advanced-remove-skill") || "";
+          _advancedSelectedSkills = _advancedSelectedSkills.filter(x => safeTrim(x.id_comp) !== id);
+          renderAdvancedSelection();
+          renderAdvancedEmpty(_advancedSelectedSkills.length ? "Lancez la recherche pour identifier les porteurs." : "Aucune recherche lancée.");
+          setAdvancedStatus(getAdvancedEmptyStatus());
+          return;
+        }
+
+        if (e.target?.closest?.("[data-map-advanced-clear-person]")) {
+          setAdvancedPerson(null);
+          const input = byId("mapAdvancedSearchInput");
+          if (input) input.value = "";
+          renderAdvancedEmpty();
+          setAdvancedStatus(getAdvancedEmptyStatus());
+          return;
+        }
+
         if (e.target === advancedModal) closeAdvancedModal();
       });
     }

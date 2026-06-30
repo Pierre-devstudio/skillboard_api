@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import date
+import unicodedata
 
 from psycopg.rows import dict_row
 
@@ -87,6 +88,39 @@ def _normalize_etat(etat: Optional[str]) -> Optional[str]:
 
     # valeur inconnue => on ne filtre pas (évite de casser en prod)
     return None
+
+
+_SQL_ACCENT_FROM = "àâäáãåçéèêëíìîïñóòôöõúùûüýÿ"
+_SQL_ACCENT_TO = "aaaaaaceeeeiiiinooooouuuuyy"
+
+
+def _normalize_search_text(value: Optional[str]) -> str:
+    raw = (value or "").strip().lower()
+    if not raw:
+        return ""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", raw)
+        if unicodedata.category(c) != "Mn"
+    )
+
+
+def _sql_norm(expr: str) -> str:
+    return f"translate(lower(COALESCE({expr}, '')), '{_SQL_ACCENT_FROM}', '{_SQL_ACCENT_TO}')"
+
+
+def _serialize_advanced_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    items: List[Dict[str, Any]] = []
+    for r in rows or []:
+        item = dict(r)
+        if item.get("date_derniere_eval") is not None:
+            item["date_derniere_eval"] = str(item.get("date_derniere_eval"))
+        comps = item.get("competences")
+        if isinstance(comps, list):
+            for comp in comps:
+                if isinstance(comp, dict) and comp.get("date_derniere_eval") is not None:
+                    comp["date_derniere_eval"] = str(comp.get("date_derniere_eval"))
+        items.append(item)
+    return items
 
 
 def _fetch_service_label(cur, id_ent: str, id_service: Optional[str]) -> ServiceScope:
@@ -416,19 +450,40 @@ def get_cartographie_recherche_avancee(
     q: str = Query(default=""),
     id_service: Optional[str] = Query(default=None),
     limit: int = Query(default=80),
+    id_comps: Optional[str] = Query(default=None),
+    op: str = Query(default="and"),
+    id_effectif: Optional[str] = Query(default=None),
 ):
     """
     Recherche avancée de la cartographie :
-    - mode=competence : compétences requises du périmètre + collaborateurs détenteurs
-    - mode=collaborateur : collaborateurs du périmètre + compétences détenues requises dans la cartographie
+    - mode=suggest_competence : suggestions de compétences requises dans le périmètre
+    - mode=suggest_collaborateur : suggestions de collaborateurs dans le périmètre
+    - mode=competence : porteurs d'une ou plusieurs compétences sélectionnées
+    - mode=collaborateur : compétences détenues par un collaborateur sélectionné
     """
     try:
         query = (q or "").strip()
-        if len(query) < 2:
-            return {"mode": mode, "q": query, "total": 0, "items": []}
-
+        query_norm = _normalize_search_text(query)
         safe_limit = max(1, min(int(limit or 80), 200))
-        mode_norm = "collaborateur" if (mode or "").strip().lower() == "collaborateur" else "competence"
+        raw_mode = (mode or "competence").strip().lower()
+        op_norm = "or" if (op or "").strip().lower() == "or" else "and"
+        selected_comp_ids = [
+            x.strip() for x in (id_comps or "").split(",")
+            if x and x.strip()
+        ]
+        selected_effectif = (id_effectif or "").strip() or None
+
+        allowed_modes = {"competence", "collaborateur", "suggest_competence", "suggest_collaborateur"}
+        mode_norm = raw_mode if raw_mode in allowed_modes else "competence"
+
+        if mode_norm in ("suggest_competence", "suggest_collaborateur") and len(query_norm) < 2:
+            return {"mode": mode_norm, "q": query, "total": 0, "items": []}
+
+        if mode_norm == "competence" and not selected_comp_ids and len(query_norm) < 2:
+            return {"mode": mode_norm, "q": query, "total": 0, "items": []}
+
+        if mode_norm == "collaborateur" and not selected_effectif and len(query_norm) < 2:
+            return {"mode": mode_norm, "q": query, "total": 0, "items": []}
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -461,8 +516,103 @@ def get_cartographie_recherche_avancee(
                     effectif_scope_params = []
 
                 like = f"%{query}%"
+                norm_like = f"%{query_norm}%"
 
-                if mode_norm == "collaborateur":
+                if mode_norm == "suggest_competence":
+                    sql = f"""
+                    WITH
+                    {cte_sql}
+                    SELECT DISTINCT
+                        c.id_comp,
+                        COALESCE(c.code, '') AS code,
+                        COALESCE(c.intitule, '') AS intitule,
+                        COALESCE(c.description, '') AS description,
+                        c.domaine AS id_domaine_competence,
+                        COALESCE(d.titre_court, d.titre, '') AS domaine_label
+                    FROM postes_scope ps
+                    JOIN public.tbl_fiche_poste_competence fpc
+                      ON fpc.id_poste = ps.id_poste
+                    JOIN public.tbl_competence c
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
+                    WHERE c.etat = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(fpc.masque, FALSE) = FALSE
+                      AND (
+                            {_sql_norm("c.code")} LIKE %s
+                            OR {_sql_norm("c.intitule")} LIKE %s
+                            OR {_sql_norm("c.description")} LIKE %s
+                            OR c.code ILIKE %s
+                            OR c.intitule ILIKE %s
+                          )
+                    ORDER BY COALESCE(c.code, ''), COALESCE(c.intitule, '')
+                    LIMIT %s
+                    """
+                    params = scope_params + [ETAT_ACTIVE, norm_like, norm_like, norm_like, like, like, safe_limit]
+
+                elif mode_norm == "suggest_collaborateur":
+                    sql = f"""
+                    WITH
+                    {cte_sql}
+                    SELECT
+                        e.id_effectif,
+                        COALESCE(e.nom_effectif, '') AS nom_effectif,
+                        COALESCE(e.prenom_effectif, '') AS prenom_effectif,
+                        e.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service,
+                        e.id_poste_actuel,
+                        COALESCE(fp.codif_poste, '') AS codif_poste,
+                        COALESCE(fp.codif_client, '') AS codif_client,
+                        COALESCE(fp.intitule_poste, '') AS intitule_poste
+                    FROM public.tbl_effectif_client e
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = e.id_poste_actuel
+                     AND fp.id_ent = %s
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = e.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                      AND (
+                            {_sql_norm("e.nom_effectif")} LIKE %s
+                            OR {_sql_norm("e.prenom_effectif")} LIKE %s
+                            OR {_sql_norm("CONCAT(COALESCE(e.prenom_effectif, ''), ' ', COALESCE(e.nom_effectif, ''))")} LIKE %s
+                            OR {_sql_norm("CONCAT(COALESCE(e.nom_effectif, ''), ' ', COALESCE(e.prenom_effectif, ''))")} LIKE %s
+                            OR e.nom_effectif ILIKE %s
+                            OR e.prenom_effectif ILIKE %s
+                          )
+                      {effectif_scope_sql}
+                    ORDER BY lower(COALESCE(e.nom_effectif, '')), lower(COALESCE(e.prenom_effectif, ''))
+                    LIMIT %s
+                    """
+                    params = (
+                        scope_params
+                        + [id_ent, id_ent, id_ent, norm_like, norm_like, norm_like, norm_like, like, like]
+                        + effectif_scope_params
+                        + [safe_limit]
+                    )
+
+                elif mode_norm == "collaborateur":
+                    if selected_effectif:
+                        person_where = "e.id_effectif = %s"
+                        person_params: List[Any] = [selected_effectif]
+                    else:
+                        person_where = f"""
+                        (
+                            {_sql_norm("e.nom_effectif")} LIKE %s
+                            OR {_sql_norm("e.prenom_effectif")} LIKE %s
+                            OR {_sql_norm("CONCAT(COALESCE(e.prenom_effectif, ''), ' ', COALESCE(e.nom_effectif, ''))")} LIKE %s
+                            OR {_sql_norm("CONCAT(COALESCE(e.nom_effectif, ''), ' ', COALESCE(e.prenom_effectif, ''))")} LIKE %s
+                            OR e.nom_effectif ILIKE %s
+                            OR e.prenom_effectif ILIKE %s
+                        )
+                        """
+                        person_params = [norm_like, norm_like, norm_like, norm_like, like, like]
+
                     sql = f"""
                     WITH
                     {cte_sql},
@@ -488,12 +638,7 @@ def get_cartographie_recherche_avancee(
                         WHERE e.id_ent = %s
                           AND COALESCE(e.archive, FALSE) = FALSE
                           AND COALESCE(e.statut_actif, TRUE) = TRUE
-                          AND (
-                                e.nom_effectif ILIKE %s
-                                OR e.prenom_effectif ILIKE %s
-                                OR CONCAT(COALESCE(e.prenom_effectif, ''), ' ', COALESCE(e.nom_effectif, '')) ILIKE %s
-                                OR CONCAT(COALESCE(e.nom_effectif, ''), ' ', COALESCE(e.prenom_effectif, '')) ILIKE %s
-                              )
+                          AND {person_where}
                           {effectif_scope_sql}
                     )
                     SELECT
@@ -509,6 +654,8 @@ def get_cartographie_recherche_avancee(
                         c.id_comp,
                         c.code,
                         c.intitule,
+                        c.domaine AS id_domaine_competence,
+                        COALESCE(d.titre_court, d.titre, '') AS domaine_label,
                         ec.niveau_actuel,
                         ec.date_derniere_eval
                     FROM persons p
@@ -521,6 +668,8 @@ def get_cartographie_recherche_avancee(
                      AND c.id_comp IN (SELECT id_comp FROM comp_required)
                      AND c.etat = %s
                      AND COALESCE(c.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
                     LEFT JOIN public.tbl_fiche_poste fp
                       ON fp.id_poste = p.id_poste_actuel
                      AND fp.id_ent = %s
@@ -534,10 +683,128 @@ def get_cartographie_recherche_avancee(
                     """
                     params = (
                         scope_params
-                        + [ETAT_ACTIVE, id_ent, like, like, like, like]
+                        + [ETAT_ACTIVE, id_ent]
+                        + person_params
                         + effectif_scope_params
                         + [ETAT_ACTIVE, id_ent, id_ent, safe_limit]
                     )
+
+                elif selected_comp_ids:
+                    sql = f"""
+                    WITH
+                    {cte_sql},
+                    selected_ids AS (
+                        SELECT DISTINCT unnest(%s::text[]) AS id_comp
+                    ),
+                    comp_required AS (
+                        SELECT DISTINCT c.id_comp
+                        FROM postes_scope ps
+                        JOIN public.tbl_fiche_poste_competence fpc
+                          ON fpc.id_poste = ps.id_poste
+                        JOIN public.tbl_competence c
+                          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                        WHERE c.etat = %s
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(fpc.masque, FALSE) = FALSE
+                    ),
+                    selected_comp AS (
+                        SELECT DISTINCT
+                            c.id_comp,
+                            c.code,
+                            c.intitule
+                        FROM selected_ids si
+                        JOIN comp_required cr
+                          ON cr.id_comp = si.id_comp
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = cr.id_comp
+                        WHERE c.etat = %s
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                    ),
+                    selected_count AS (
+                        SELECT COUNT(*)::int AS nb FROM selected_comp
+                    ),
+                    holders_scope AS (
+                        SELECT
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND COALESCE(e.archive, FALSE) = FALSE
+                          AND COALESCE(e.statut_actif, TRUE) = TRUE
+                          {effectif_scope_sql}
+                    ),
+                    matches AS (
+                        SELECT
+                            e.id_effectif,
+                            sc.id_comp,
+                            sc.code,
+                            sc.intitule,
+                            ec.niveau_actuel,
+                            ec.date_derniere_eval
+                        FROM holders_scope e
+                        JOIN public.tbl_effectif_client_competence ec
+                          ON ec.id_effectif_client = e.id_effectif
+                         AND COALESCE(ec.actif, TRUE) = TRUE
+                         AND COALESCE(ec.archive, FALSE) = FALSE
+                        JOIN selected_comp sc
+                          ON sc.id_comp = ec.id_comp
+                    )
+                    SELECT
+                        e.id_effectif,
+                        e.nom_effectif,
+                        e.prenom_effectif,
+                        e.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service,
+                        e.id_poste_actuel,
+                        COALESCE(fp.codif_poste, '') AS codif_poste,
+                        COALESCE(fp.codif_client, '') AS codif_client,
+                        COALESCE(fp.intitule_poste, '') AS intitule_poste,
+                        COUNT(DISTINCT m.id_comp)::int AS matched_count,
+                        scount.nb::int AS selected_count,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'id_comp', m.id_comp,
+                                'code', m.code,
+                                'intitule', m.intitule,
+                                'niveau_actuel', m.niveau_actuel,
+                                'date_derniere_eval', m.date_derniere_eval
+                            )
+                            ORDER BY m.code, m.intitule
+                        ) AS competences
+                    FROM holders_scope e
+                    JOIN matches m
+                      ON m.id_effectif = e.id_effectif
+                    CROSS JOIN selected_count scount
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = e.id_poste_actuel
+                     AND fp.id_ent = %s
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = e.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    GROUP BY
+                        e.id_effectif, e.nom_effectif, e.prenom_effectif, e.id_service, e.id_poste_actuel,
+                        o.nom_service, fp.codif_poste, fp.codif_client, fp.intitule_poste, scount.nb
+                    HAVING (
+                        CASE
+                            WHEN %s = 'and' THEN COUNT(DISTINCT m.id_comp) = scount.nb
+                            ELSE COUNT(DISTINCT m.id_comp) >= 1
+                        END
+                    )
+                    ORDER BY COUNT(DISTINCT m.id_comp) DESC, lower(COALESCE(e.nom_effectif, '')), lower(COALESCE(e.prenom_effectif, ''))
+                    LIMIT %s
+                    """
+                    params = (
+                        scope_params
+                        + [selected_comp_ids, ETAT_ACTIVE, ETAT_ACTIVE, id_ent]
+                        + effectif_scope_params
+                        + [id_ent, id_ent, op_norm, safe_limit]
+                    )
+
                 else:
                     sql = f"""
                     WITH
@@ -557,9 +824,11 @@ def get_cartographie_recherche_avancee(
                           AND COALESCE(c.masque, FALSE) = FALSE
                           AND COALESCE(fpc.masque, FALSE) = FALSE
                           AND (
-                                c.code ILIKE %s
+                                {_sql_norm("c.code")} LIKE %s
+                                OR {_sql_norm("c.intitule")} LIKE %s
+                                OR {_sql_norm("c.description")} LIKE %s
+                                OR c.code ILIKE %s
                                 OR c.intitule ILIKE %s
-                                OR COALESCE(c.description, '') ILIKE %s
                               )
                     ),
                     holders AS (
@@ -613,24 +882,20 @@ def get_cartographie_recherche_avancee(
                     """
                     params = (
                         scope_params
-                        + [ETAT_ACTIVE, like, like, like, id_ent]
+                        + [ETAT_ACTIVE, norm_like, norm_like, norm_like, like, like, id_ent]
                         + effectif_scope_params
                         + [id_ent, id_ent, safe_limit]
                     )
 
                 cur.execute(sql, tuple(params))
                 rows = cur.fetchall() or []
-
-                items = []
-                for r in rows:
-                    item = dict(r)
-                    if item.get("date_derniere_eval") is not None:
-                        item["date_derniere_eval"] = str(item.get("date_derniere_eval"))
-                    items.append(item)
+                items = _serialize_advanced_rows(rows)
 
                 return {
                     "mode": mode_norm,
                     "q": query,
+                    "operator": op_norm,
+                    "selected_count": len(selected_comp_ids),
                     "total": len(items),
                     "items": items,
                 }
