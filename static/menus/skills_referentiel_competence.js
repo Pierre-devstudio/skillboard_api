@@ -280,11 +280,11 @@
     const normalized = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
     if (normalized === "requis") {
-      return `<span class="sb-badge sb-badge--danger">Requis</span>`;
+      return `<span class="sb-badge sb-badge-certif-requis">Requis</span>`;
     }
 
     if (normalized === "souhaite" || normalized === "souhaitee") {
-      return `<span class="sb-badge sb-badge--info">Souhaité</span>`;
+      return `<span class="sb-badge sb-badge-certif-souhaite">Souhaité</span>`;
     }
 
     return `<span class="sb-badge">${escapeHtml(raw || "—")}</span>`;
@@ -334,6 +334,7 @@
         <td style="white-space:nowrap;">${escapeHtml(validite)}</td>
         <td class="col-center" style="white-space:nowrap;">${certifRequirementBadge(it.niveau_exigence_max)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
+        <td class="col-center col-possedes">${it.nb_collaborateurs_possedant ?? 0}</td>
         <td class="col-center col-detail">
           <div class="sb-icon-actions ref-row-actions">
             <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">

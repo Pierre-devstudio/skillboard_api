@@ -788,6 +788,22 @@ textarea.sb-ctrl{
   color: #d97706;
 }
 
+
+/* Badges certification requis/souhaité : versions soft pour éviter les couleurs trop vives */
+.sb-badge.sb-badge-certif-requis{
+  border-color: color-mix(in srgb, var(--accent) 42%, #d8dee8);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: color-mix(in srgb, var(--accent) 82%, #111827);
+  font-weight: 700;
+}
+
+.sb-badge.sb-badge-certif-souhaite{
+  border-color: color-mix(in srgb, var(--sb-info) 34%, #d8dee8);
+  background: color-mix(in srgb, var(--sb-info) 8%, #ffffff);
+  color: color-mix(in srgb, var(--sb-info) 82%, #111827);
+  font-weight: 700;
+}
+
 /* Badge "Critère" (grille d'évaluation) */
 .sb-badge.sb-badge-critere{
   font-size: 11px;          /* police plus petite */
@@ -13435,6 +13451,22 @@ textarea.sb-ctrl{
   background: transparent;
   border-color: #d97706;
   color: #d97706;
+}
+
+
+/* Badges certification requis/souhaité : versions soft pour éviter les couleurs trop vives */
+.sb-badge.sb-badge-certif-requis{
+  border-color: color-mix(in srgb, var(--accent) 42%, #d8dee8);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: color-mix(in srgb, var(--accent) 82%, #111827);
+  font-weight: 700;
+}
+
+.sb-badge.sb-badge-certif-souhaite{
+  border-color: color-mix(in srgb, var(--sb-info) 34%, #d8dee8);
+  background: color-mix(in srgb, var(--sb-info) 8%, #ffffff);
+  color: color-mix(in srgb, var(--sb-info) 82%, #111827);
+  font-weight: 700;
 }
 
 /* Badge "Critère" (grille d'évaluation) */

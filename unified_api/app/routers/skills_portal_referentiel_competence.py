@@ -181,6 +181,7 @@ class CertificationListItem(BaseModel):
     duree_validite: Optional[int] = None
     masque: Optional[bool] = None
     nb_postes_concernes: int = 0
+    nb_collaborateurs_possedant: int = 0
     niveau_exigence_max: Optional[str] = None
     validite_mixed: bool = False
 
@@ -974,6 +975,13 @@ def get_referentiel_certifications_service(
 
                 where_sql = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
+                eff_scope_filter = _effectifs_scope_filter(id_service)
+                params_eff: List[Any] = [id_ent]
+                if id_service == NON_LIE_ID:
+                    params_eff.append(id_ent)
+                elif id_service != ALL_SERVICES_ID:
+                    params_eff.append(id_service)
+
                 sql = f"""
                     WITH
                     {postes_cte},
@@ -997,6 +1005,20 @@ def get_referentiel_certifications_service(
                         FROM public.tbl_fiche_poste_certification fpc
                         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                         GROUP BY fpc.id_certification
+                    ),
+                    cert_possedee AS (
+                        SELECT
+                            ecc.id_certification,
+                            COUNT(DISTINCT ecc.id_effectif)::int AS nb_collaborateurs_possedant
+                        FROM public.tbl_effectif_client_certification ecc
+                        JOIN public.tbl_effectif_client ec
+                          ON ec.id_effectif = ecc.id_effectif
+                         AND ec.id_ent = %s
+                        WHERE COALESCE(ecc.archive, FALSE) = FALSE
+                          AND COALESCE(ec.archive, FALSE) = FALSE
+                          AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                          {eff_scope_filter}
+                        GROUP BY ecc.id_certification
                     )
                     SELECT
                         c.id_certification,
@@ -1010,6 +1032,7 @@ def get_referentiel_certifications_service(
                         (a.nb_override_distinct > 1) AS validite_mixed,
                         c.masque,
                         a.nb_postes_concernes,
+                        COALESCE(cp.nb_collaborateurs_possedant, 0)::int AS nb_collaborateurs_possedant,
                         CASE
                             WHEN a.exigence_rank = 0 THEN 'requis'
                             WHEN a.exigence_rank = 1 THEN 'souhaite'
@@ -1018,12 +1041,13 @@ def get_referentiel_certifications_service(
                         a.exigence_rank
                     FROM agg_cert a
                     JOIN public.tbl_certification c ON c.id_certification = a.id_certification
+                    LEFT JOIN cert_possedee cp ON cp.id_certification = c.id_certification
                     {where_sql}
-                    ORDER BY a.exigence_rank, COALESCE(c.categorie, ''), c.nom_certification
+                    ORDER BY COALESCE(c.categorie, ''), a.exigence_rank, c.nom_certification
                 """
 
 
-                cur.execute(sql, tuple(params_cte + tuple(params_where)))
+                cur.execute(sql, tuple(params_cte + tuple(params_eff) + tuple(params_where)))
                 rows = cur.fetchall() or []
 
                 certifs = [
@@ -1034,6 +1058,7 @@ def get_referentiel_certifications_service(
                         duree_validite=r.get("duree_validite"),
                         masque=r.get("masque"),
                         nb_postes_concernes=int(r.get("nb_postes_concernes") or 0),
+                        nb_collaborateurs_possedant=int(r.get("nb_collaborateurs_possedant") or 0),
                         niveau_exigence_max=r.get("niveau_exigence_max"),
                         validite_mixed=bool(r.get("validite_mixed") or False),
                     )
