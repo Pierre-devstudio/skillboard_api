@@ -2024,7 +2024,7 @@
     }
   }
 
-  window.SkillsOrganisation = {
+  const orgPublicApi = {
     onShow: async (portal) => {
       window.__skillsPortalInstance = portal;
       bindOrgPosteModalOnce();
@@ -2044,10 +2044,30 @@
       await openOrgPosteModal(poste || {});
     },
 
+    openPosteModalById: async (id_poste) => {
+      const id = String(id_poste || "").trim();
+      if (!id) throw new Error("Poste manquant.");
+      const portal = window.__skillsPortalInstance || window.portal;
+      if (portal) window.__skillsPortalInstance = portal;
+      bindOrgPosteModalOnce();
+      await openOrgPosteModal({ id_poste: id });
+    },
+
     openPostePdf: async (poste) => {
       const portal = window.__skillsPortalInstance || window.portal;
       if (!portal) throw new Error("Portail indisponible.");
       await openPosteFichePdf(portal, poste || {});
+    },
+
+    openPostePdfById: async (id_poste) => {
+      const id = String(id_poste || "").trim();
+      if (!id) throw new Error("Poste manquant.");
+      const portal = window.__skillsPortalInstance || window.portal;
+      if (!portal) throw new Error("Portail indisponible.");
+      await openPosteFichePdf(portal, { id_poste: id });
     }
   };
+
+  window.SkillsOrganisation = orgPublicApi;
+  window.skillsOrganisation = orgPublicApi;
 })();

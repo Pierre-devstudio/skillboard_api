@@ -2344,9 +2344,9 @@
   }
 
   // Expose function for portal.onShow (optional)
-  window.skillsCollaborateurs = window.skillsCollaborateurs || {};
-  window.skillsCollaborateurs.onShow = initMenu;
-  window.skillsCollaborateurs.openCollaborateurModalById = async (id_effectif) => {
+  const collabPublicApi = window.skillsCollaborateurs || window.SkillsCollaborateurs || {};
+  collabPublicApi.onShow = initMenu;
+  collabPublicApi.openCollaborateurModalById = async (id_effectif) => {
     const id_contact = window.portal?.contactId;
     const id = (id_effectif || "").toString().trim();
     if (!id_contact) throw new Error("Contact introuvable.");
@@ -2354,4 +2354,7 @@
     const detail = await loadIdentification(id_contact, id);
     openCollaborateurModal(detail);
   };
+
+  window.skillsCollaborateurs = collabPublicApi;
+  window.SkillsCollaborateurs = collabPublicApi;
 })();

@@ -161,7 +161,7 @@
   }
 
   function sectionTitleHtml(icon, title) {
-    return `<div class="ref-modal-section-titleline"><span class="ref-modal-section-icon" aria-hidden="true">${iconSvg(icon)}</span><div class="card-title" style="margin:0;">${escapeHtml(title)}</div></div>`;
+    return `<div class="ref-modal-section-titleline"><span class="ref-modal-section-icon" aria-hidden="true">${iconSvg(icon)}</span><div class="card-title ref-modal-section-title">${escapeHtml(title)}</div></div>`;
   }
 
   function formatDateFR(iso) {
@@ -732,7 +732,6 @@
     if (isCertif) {
       let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
         ${sectionTitleHtml("postes", "Postes concernés")}
-        <div class="card-sub ref-modal-section-sub">${list.length} poste(s) impacté(s).</div>
         <div class="table-wrap ref-modal-table-wrap">
           <table class="sb-table sb-ref-postes-table">
             <thead><tr><th>Poste</th><th>Service</th><th class="col-center">Exigence</th><th class="col-center">Validité</th></tr></thead>
@@ -766,10 +765,9 @@
 
     let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
       ${sectionTitleHtml("postes", "Postes concernés")}
-      <div class="card-sub ref-modal-section-sub">${list.length} poste(s) impacté(s).</div>
       <div class="table-wrap ref-modal-table-wrap">
         <table class="sb-table sb-ref-postes-table sb-ref-postes-actions-table">
-          <thead><tr><th>Poste</th><th>Service</th><th class="col-center">Niveau requis</th><th class="col-center">Criticité</th><th class="col-center">Actions</th></tr></thead>
+          <thead><tr><th class="ref-col-poste">Poste</th><th class="ref-col-service">Service</th><th class="col-center ref-col-niveau">Niveau requis</th><th class="col-center ref-col-criticite">Criticité</th><th class="col-center ref-col-actions">Actions</th></tr></thead>
           <tbody>`;
 
     if (!list.length) {
@@ -784,11 +782,11 @@
         const crit = renderCritBadge(p.poids_criticite);
 
         html += `<tr data-ref-id-poste="${idPoste}">
-          <td><div class="ref-poste-titleline">${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}<span class="ref-poste-title">${escapeHtml(title)}</span></div></td>
-          <td>${service}</td>
-          <td class="col-center" style="white-space:nowrap;">${niv}</td>
-          <td class="col-center" style="white-space:nowrap;">${crit}</td>
-          <td class="col-center"><div class="sb-icon-actions ref-row-actions"><button type="button" class="sb-icon-btn" data-ref-poste-action="detail" data-id-poste="${idPoste}" title="Voir la fiche poste" aria-label="Voir la fiche poste">${iconSvg("eye")}</button><button type="button" class="sb-icon-btn sb-icon-btn--doc" data-ref-poste-action="pdf" data-id-poste="${idPoste}" title="Ouvrir la fiche poste PDF" aria-label="Ouvrir la fiche poste PDF">${iconSvg("doc")}</button></div></td>
+          <td class="ref-col-poste"><div class="ref-poste-titleline">${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}<span class="ref-poste-title">${escapeHtml(title)}</span></div></td>
+          <td class="ref-col-service">${service}</td>
+          <td class="col-center ref-col-niveau">${niv}</td>
+          <td class="col-center ref-col-criticite">${crit}</td>
+          <td class="col-center ref-col-actions"><div class="sb-icon-actions ref-row-actions"><button type="button" class="sb-icon-btn" data-ref-poste-action="detail" data-id-poste="${idPoste}" title="Voir la fiche poste" aria-label="Voir la fiche poste">${iconSvg("eye")}</button><button type="button" class="sb-icon-btn sb-icon-btn--doc" data-ref-poste-action="pdf" data-id-poste="${idPoste}" title="Ouvrir la fiche poste PDF" aria-label="Ouvrir la fiche poste PDF">${iconSvg("doc")}</button></div></td>
         </tr>`;
       });
     }
@@ -802,10 +800,9 @@
 
     let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
       ${sectionTitleHtml("collabs", "Collaborateurs concernés")}
-      <div class="card-sub ref-modal-section-sub">${list.length} salarié(s) possède(nt) cette compétence.</div>
       <div class="table-wrap ref-modal-table-wrap">
         <table class="sb-table sb-ref-collabs-table">
-          <thead><tr><th>Prénom et nom</th><th>Poste</th><th class="col-center">Niveau atteint</th><th class="col-center">Dernière éval.</th><th class="col-center">Actions</th></tr></thead>
+          <thead><tr><th class="ref-col-collab">Collaborateur</th><th class="ref-col-collab-poste">Poste</th><th class="col-center ref-col-niveau">Niveau atteint</th><th class="col-center ref-col-date">Dernière éval.</th><th class="col-center ref-col-actions">Actions</th></tr></thead>
           <tbody>`;
 
     if (!list.length) {
@@ -819,11 +816,11 @@
         const date = formatDateFR(c.date_derniere_eval);
 
         html += `<tr data-ref-id-effectif="${idEff}">
-          <td>${escapeHtml(fullName)}</td>
-          <td>${escapeHtml(poste)}</td>
-          <td class="col-center" style="white-space:nowrap;">${niv}</td>
-          <td class="col-center" style="white-space:nowrap;">${date}</td>
-          <td class="col-center"><div class="sb-icon-actions ref-row-actions"><button type="button" class="sb-icon-btn" data-ref-collab-action="detail" data-id-effectif="${idEff}" title="Voir la fiche collaborateur" aria-label="Voir la fiche collaborateur">${iconSvg("eye")}</button></div></td>
+          <td class="ref-col-collab"><strong>${escapeHtml(fullName)}</strong></td>
+          <td class="ref-col-collab-poste">${escapeHtml(poste)}</td>
+          <td class="col-center ref-col-niveau">${niv}</td>
+          <td class="col-center ref-col-date">${date}</td>
+          <td class="col-center ref-col-actions"><div class="sb-icon-actions ref-row-actions"><button type="button" class="sb-icon-btn" data-ref-collab-action="detail" data-id-effectif="${idEff}" title="Voir la fiche collaborateur" aria-label="Voir la fiche collaborateur">${iconSvg("eye")}</button></div></td>
         </tr>`;
       });
     }
@@ -1050,26 +1047,45 @@
 
   async function openPosteFromReferentiel(idPoste) {
     const row = findDetailPoste(idPoste) || { id_poste: idPoste };
-    if (window.SkillsOrganisation && typeof window.SkillsOrganisation.openPosteModal === "function") {
-      await window.SkillsOrganisation.openPosteModal(row);
+    const api = window.SkillsOrganisation || window.skillsOrganisation;
+
+    if (api && typeof api.openPosteModalById === "function") {
+      closeModal();
+      await api.openPosteModalById(row.id_poste || idPoste);
       return;
     }
+
+    if (api && typeof api.openPosteModal === "function") {
+      closeModal();
+      await api.openPosteModal(row);
+      return;
+    }
+
     throw new Error("Module Organisation indisponible.");
   }
 
   async function openPostePdfFromReferentiel(idPoste) {
     const row = findDetailPoste(idPoste) || { id_poste: idPoste };
-    if (window.SkillsOrganisation && typeof window.SkillsOrganisation.openPostePdf === "function") {
-      await window.SkillsOrganisation.openPostePdf(row);
+    const api = window.SkillsOrganisation || window.skillsOrganisation;
+
+    if (api && typeof api.openPostePdfById === "function") {
+      await api.openPostePdfById(row.id_poste || idPoste);
       return;
     }
+
+    if (api && typeof api.openPostePdf === "function") {
+      await api.openPostePdf(row);
+      return;
+    }
+
     throw new Error("Module Organisation indisponible pour le PDF poste.");
   }
 
   async function openCollaborateurFromReferentiel(idEffectif) {
     const row = findDetailCollaborateur(idEffectif) || { id_effectif: idEffectif };
-    const api = window.skillsCollaborateurs || window.SkillsCollaborateurs;
+    const api = window.SkillsCollaborateurs || window.skillsCollaborateurs;
     if (api && typeof api.openCollaborateurModalById === "function") {
+      closeModal();
       await api.openCollaborateurModalById(row.id_effectif);
       return;
     }

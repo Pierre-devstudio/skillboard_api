@@ -25322,19 +25322,28 @@ body{
 
 #modalRefDetail .modal-header{
   align-items:flex-start;
-  padding:18px 22px 14px;
+  padding:16px 22px 12px;
 }
 
 #modalRefDetail .modal-x{
-  color:#111827;
-  background:transparent;
+  width:auto;
+  height:auto;
+  padding:0;
+  margin:0;
   border:0;
+  border-radius:0;
+  background:transparent;
   box-shadow:none;
+  color:#111827;
+  font-size:18px;
+  font-weight:600;
+  line-height:1;
 }
 
 #modalRefDetail .modal-x:hover{
   color:#111827;
   background:transparent;
+  filter:none;
 }
 
 #modalRefDetail .modal-body{
@@ -25348,12 +25357,18 @@ body{
 }
 
 #modalRefDetail .sb-modal-titleline{
-  gap:12px;
+  gap:10px;
+  font-size:var(--sb-modal-title-size);
+  font-weight:var(--sb-modal-title-weight);
+  color:var(--sb-modal-title-color);
+  letter-spacing:var(--sb-modal-title-letterspacing);
 }
 
 #modalRefDetail .sb-ref-title-text{
-  font-size:16px;
-  font-weight:800;
+  font-size:var(--sb-modal-title-size);
+  font-weight:var(--sb-modal-title-weight);
+  color:var(--sb-modal-title-color);
+  line-height:1.25;
 }
 
 #modalRefDetail .ref-modal-stack{
@@ -25371,37 +25386,36 @@ body{
 
 #modalRefDetail .ref-modal-kpi-strip{
   display:grid;
-  grid-template-columns:repeat(4, minmax(150px, 1fr));
+  grid-template-columns:repeat(4, minmax(145px, 1fr));
   gap:10px;
 }
 
 #modalRefDetail .ref-modal-kpi-card{
-  min-height:58px;
+  min-height:54px;
   display:flex;
   align-items:center;
-  gap:12px;
-  padding:12px 14px;
+  gap:11px;
+  padding:11px 13px;
   border:1px solid #edf0f4;
   border-radius:14px;
   background:#ffffff;
 }
 
 #modalRefDetail .ref-modal-kpi-icon{
-  width:34px;
-  height:34px;
+  width:32px;
+  height:32px;
   border-radius:11px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 34px;
+  flex:0 0 32px;
   background:#f8fafc;
   color:#334155;
 }
 
-#modalRefDetail .ref-modal-kpi-icon svg,
-#modalRefDetail .ref-modal-section-icon svg{
-  width:18px;
-  height:18px;
+#modalRefDetail .ref-modal-kpi-icon svg{
+  width:17px;
+  height:17px;
   display:block;
   fill:none;
   stroke:currentColor;
@@ -25432,7 +25446,7 @@ body{
 
 #modalRefDetail .ref-modal-kpi-label{
   color:#667085;
-  font-size:11.5px;
+  font-size:11px;
   font-weight:500;
   line-height:1.15;
 }
@@ -25440,56 +25454,74 @@ body{
 #modalRefDetail .ref-modal-kpi-value{
   margin-top:3px;
   color:#111827;
-  font-size:16px;
-  font-weight:800;
+  font-size:13.5px;
+  font-weight:700;
   line-height:1;
 }
 
 #modalRefDetail .ref-modal-section-titleline{
   display:flex;
   align-items:center;
-  gap:9px;
+  gap:8px;
   margin-bottom:8px;
 }
 
+#modalRefDetail .ref-modal-section-title{
+  margin:0;
+  font-size:13px;
+  font-weight:700;
+  color:#111827;
+  line-height:1.2;
+}
+
 #modalRefDetail .ref-modal-section-icon{
-  width:26px;
-  height:26px;
-  border-radius:9px;
+  width:18px;
+  height:18px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 26px;
-  background:#f8fafc;
-  color:#64748b;
+  flex:0 0 18px;
+  background:transparent;
+  color:#334155;
 }
 
 #modalRefDetail .ref-modal-section-icon svg{
-  width:15px;
-  height:15px;
+  width:16px;
+  height:16px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 #modalRefDetail .ref-modal-section-sub{
-  margin:0 0 10px 35px;
+  display:none;
 }
 
 #modalRefDetail .ref-levels-table{
   display:flex;
   flex-direction:column;
-  gap:6px;
-  margin-top:4px;
+  gap:0;
+  margin-top:2px;
 }
 
 #modalRefDetail .ref-level-row{
   display:grid;
-  grid-template-columns:140px 1fr;
-  align-items:center;
+  grid-template-columns:130px 1fr;
+  align-items:start;
   gap:14px;
-  min-height:34px;
-  padding:6px 8px;
-  border:1px solid #edf0f4;
-  border-radius:10px;
-  background:#ffffff;
+  min-height:30px;
+  padding:7px 0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  border-bottom:1px solid #eef2f6;
+}
+
+#modalRefDetail .ref-level-row:last-child{
+  border-bottom:0;
 }
 
 #modalRefDetail .ref-level-row .sb-badge{
@@ -25501,6 +25533,7 @@ body{
   color:#111827;
   font-size:12.5px;
   line-height:1.35;
+  padding-top:3px;
 }
 
 #modalRefDetail .ref-criteria-list{
@@ -25519,8 +25552,8 @@ body{
 
 #modalRefDetail .ref-criteria-head{
   width:100%;
-  min-height:38px;
-  padding:9px 12px;
+  min-height:36px;
+  padding:8px 11px;
   border:0;
   background:#ffffff;
   color:#111827;
@@ -25533,7 +25566,7 @@ body{
 
 #modalRefDetail .ref-criteria-title{
   font-size:12.5px;
-  font-weight:800;
+  font-weight:700;
 }
 
 #modalRefDetail .ref-criteria-meta{
@@ -25544,7 +25577,7 @@ body{
 }
 
 #modalRefDetail .ref-criteria-body{
-  padding:10px 12px;
+  padding:9px 11px;
 }
 
 #modalRefDetail .ref-criteria-body ul{
@@ -25553,7 +25586,7 @@ body{
 }
 
 #modalRefDetail .ref-criteria-body li{
-  margin:5px 0;
+  margin:4px 0;
   line-height:1.42;
   font-size:12.5px;
   color:#111827;
@@ -25573,17 +25606,17 @@ body{
 #modalRefDetail .sb-ref-postes-table thead th,
 #modalRefDetail .sb-ref-collabs-table thead th{
   background:#f8fafc;
-  font-size:12px;
-  font-weight:800;
+  font-size:11.5px;
+  font-weight:700;
   color:#111827;
-  padding:9px 10px;
+  padding:8px 9px;
   border-bottom:1px solid #e5e7eb;
 }
 
 #modalRefDetail .sb-ref-postes-table tbody td,
 #modalRefDetail .sb-ref-collabs-table tbody td{
   font-size:12.5px;
-  padding:9px 10px;
+  padding:8px 9px;
   border-bottom:1px solid #f1f5f9;
   vertical-align:middle;
 }
@@ -25592,6 +25625,18 @@ body{
 #modalRefDetail .sb-ref-collabs-table tbody tr:nth-child(even){
   background:#fafafa;
 }
+
+#modalRefDetail .sb-ref-postes-actions-table .ref-col-poste{ width:auto; }
+#modalRefDetail .sb-ref-postes-actions-table .ref-col-service{ width:150px; }
+#modalRefDetail .sb-ref-postes-actions-table .ref-col-niveau{ width:104px; }
+#modalRefDetail .sb-ref-postes-actions-table .ref-col-criticite{ width:72px; }
+#modalRefDetail .sb-ref-postes-actions-table .ref-col-actions{ width:82px; }
+
+#modalRefDetail .sb-ref-collabs-table .ref-col-collab{ width:190px; }
+#modalRefDetail .sb-ref-collabs-table .ref-col-collab-poste{ width:auto; }
+#modalRefDetail .sb-ref-collabs-table .ref-col-niveau{ width:112px; }
+#modalRefDetail .sb-ref-collabs-table .ref-col-date{ width:104px; }
+#modalRefDetail .sb-ref-collabs-table .ref-col-actions{ width:64px; }
 
 #modalRefDetail .ref-poste-titleline{
   display:flex;
@@ -25609,8 +25654,14 @@ body{
   color:#111827;
 }
 
+#modalRefDetail .ref-col-collab strong{
+  font-weight:700;
+  color:#111827;
+}
+
 #modalRefDetail .ref-row-actions{
   justify-content:center;
+  gap:6px;
 }
 
 @media (max-width:900px){
