@@ -886,6 +886,48 @@ def _ensure_client_owner_scope(cur, id_ent: str) -> None:
     )
 
 
+
+def _sync_client_skills_eligibility(cur, id_ent: str) -> bool:
+    """
+    Synchronise l'éligibilité Skills historique de tbl_entreprise avec
+    l'abonnement commercial porté par le scope owner de la structure.
+
+    Le portail Insights filtre encore tbl_entreprise.contrat_skills.
+    Une offre Studio/Insights active doit donc ouvrir ce flag, sinon
+    l'utilisateur peut avoir ses droits applicatifs mais rester bloqué
+    au chargement du dashboard.
+    """
+    ent_id = _normalize_text(id_ent)
+    if not ent_id:
+        raise HTTPException(status_code=400, detail="Structure obligatoire.")
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_novoskill_owner_commercial oc
+        WHERE oc.id_owner = %s
+          AND COALESCE(oc.archive, FALSE) = FALSE
+          AND COALESCE(oc.statut_commercial, 'actif') = 'actif'
+          AND COALESCE(oc.insights_actif, FALSE) = TRUE
+          AND COALESCE(oc.date_debut, CURRENT_DATE) <= CURRENT_DATE
+          AND (oc.date_fin IS NULL OR oc.date_fin >= CURRENT_DATE)
+        LIMIT 1
+        """,
+        (ent_id,),
+    )
+    eligible = cur.fetchone() is not None
+
+    cur.execute(
+        """
+        UPDATE public.tbl_entreprise
+        SET contrat_skills = %s
+        WHERE id_ent = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        """,
+        (eligible, ent_id),
+    )
+    return eligible
+
 def _fetch_client_commercial(cur, id_ent: str) -> dict:
     cur.execute(
         """
@@ -1533,6 +1575,7 @@ def upsert_studio_client_commercial(id_owner: str, id_ent: str, payload: Commerc
                         ),
                     )
 
+                _sync_client_skills_eligibility(cur, id_ent)
                 conn.commit()
                 return _fetch_client_commercial(cur, id_ent)
 
@@ -1567,6 +1610,7 @@ def archive_studio_client_commercial(id_owner: str, id_ent: str, request: Reques
                     """,
                     (id_ent,),
                 )
+                _sync_client_skills_eligibility(cur, id_ent)
                 conn.commit()
                 return {"ok": True, "id_owner": id_ent}
 
