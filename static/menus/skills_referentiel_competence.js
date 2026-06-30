@@ -269,10 +269,32 @@
     });
   }
 
+  function ensureCertifsHeaderAlignment() {
+    const table = byId("tblRefCertifs");
+    const exigenceHeader = table?.querySelector("thead th:nth-child(4)");
+    if (exigenceHeader) exigenceHeader.classList.add("col-center");
+  }
+
+  function certifRequirementBadge(value) {
+    const raw = (value || "").toString().trim();
+    const normalized = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+    if (normalized === "requis") {
+      return `<span class="sb-badge sb-badge--danger">Requis</span>`;
+    }
+
+    if (normalized === "souhaite" || normalized === "souhaitee") {
+      return `<span class="sb-badge sb-badge--info">Souhaité</span>`;
+    }
+
+    return `<span class="sb-badge">${escapeHtml(raw || "—")}</span>`;
+  }
+
   function renderCertifs(list) {
     const body = byId("tblRefCertifsBody");
     if (!body) return;
 
+    ensureCertifsHeaderAlignment();
     body.innerHTML = "";
     const rank = (v) => {
       const s = (v || "").toString().toLowerCase();
@@ -281,14 +303,19 @@
       return 2;
     };
 
+    const categoryKey = (item) => {
+      const v = (item?.categorie || "").toString().trim();
+      return v || "zzzzzz";
+    };
+
     const items = Array.isArray(list) ? [...list] : [];
     items.sort((a, b) => {
+      const ca = categoryKey(a).localeCompare(categoryKey(b), "fr", { sensitivity: "base" });
+      if (ca !== 0) return ca;
       const ra = rank(a?.niveau_exigence_max);
       const rb = rank(b?.niveau_exigence_max);
       if (ra !== rb) return ra - rb;
-      const ca = (a?.categorie || "").toString().localeCompare((b?.categorie || "").toString(), "fr");
-      if (ca !== 0) return ca;
-      return (a?.nom_certification || "").toString().localeCompare((b?.nom_certification || "").toString(), "fr");
+      return (a?.nom_certification || "").toString().localeCompare((b?.nom_certification || "").toString(), "fr", { sensitivity: "base" });
     });
 
     items.forEach(it => {
@@ -305,7 +332,7 @@
         <td class="col-title" style="font-weight:600;">${escapeHtml(it.nom_certification)}</td>
         <td>${escapeHtml(it.categorie || "—")}</td>
         <td style="white-space:nowrap;">${escapeHtml(validite)}</td>
-        <td class="col-center" style="white-space:nowrap;">${escapeHtml(it.niveau_exigence_max || "—")}</td>
+        <td class="col-center" style="white-space:nowrap;">${certifRequirementBadge(it.niveau_exigence_max)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-detail">
           <div class="sb-icon-actions ref-row-actions">
