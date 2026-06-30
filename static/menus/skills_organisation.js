@@ -2024,6 +2024,34 @@
     }
   }
 
+  async function processReferentielPendingPosteAction(portal) {
+    let id = "";
+    let action = "";
+
+    try {
+      id = String(window.sessionStorage.getItem("skills_org_open_poste_id") || "").trim();
+      action = String(window.sessionStorage.getItem("skills_org_open_poste_action") || "detail").trim().toLowerCase();
+      if (id) {
+        window.sessionStorage.removeItem("skills_org_open_poste_id");
+        window.sessionStorage.removeItem("skills_org_open_poste_action");
+      }
+    } catch (_) {}
+
+    if (!id) return;
+
+    try {
+      if (action === "pdf") {
+        await openPosteFichePdf(portal, { id_poste: id });
+      } else {
+        bindOrgPosteModalOnce();
+        await openOrgPosteModal({ id_poste: id });
+      }
+    } catch (e) {
+      const prefix = action === "pdf" ? "Erreur PDF poste : " : "Erreur fiche poste : ";
+      portal.showAlert("error", prefix + (e?.message || String(e)));
+    }
+  }
+
   const orgPublicApi = {
     onShow: async (portal) => {
       window.__skillsPortalInstance = portal;
@@ -2032,6 +2060,7 @@
       try {
         bindOnce(portal);        
         if (!_servicesLoaded) await loadServices(portal);
+        await processReferentielPendingPosteAction(portal);
       } catch (e) {
         portal.showAlert("error", "Erreur organisation : " + e.message);
       }

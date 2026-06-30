@@ -2341,6 +2341,26 @@
 
     // Premier refresh complet
     await refreshAll(id_contact);
+    await processReferentielPendingCollaborateurAction();
+  }
+
+  async function processReferentielPendingCollaborateurAction() {
+    let id = "";
+    try {
+      id = String(window.sessionStorage.getItem("skills_collab_open_id_effectif") || "").trim();
+      if (id) window.sessionStorage.removeItem("skills_collab_open_id_effectif");
+    } catch (_) {}
+
+    if (!id) return;
+
+    try {
+      const id_contact = window.portal?.contactId;
+      if (!id_contact) throw new Error("Contact introuvable.");
+      const detail = await loadIdentification(id_contact, id);
+      openCollaborateurModal(detail);
+    } catch (e) {
+      window.portal?.showAlert?.("error", "Erreur fiche collaborateur : " + (e?.message || String(e)));
+    }
   }
 
   // Expose function for portal.onShow (optional)
