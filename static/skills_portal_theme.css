@@ -25757,3 +25757,29 @@ body{
     grid-template-columns:1fr;
   }
 }
+
+/* Référentiel certifications : donner le maximum de place au libellé certification */
+#view-referentiel-competences #tblRefCertifs th:nth-child(1){ width:auto; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(2){ width:130px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(3){ width:96px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(4){ width:104px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(5){ width:62px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(6){ width:70px; }
+#view-referentiel-competences #tblRefCertifs th:nth-child(7){ width:46px; }
+
+#view-referentiel-competences #tblRefCertifs th:nth-child(n+2),
+#view-referentiel-competences #tblRefCertifs td:nth-child(n+2){
+  padding-left:8px;
+  padding-right:8px;
+}
+
+#view-referentiel-competences #tblRefCertifs th:nth-child(1),
+#view-referentiel-competences #tblRefCertifs td:nth-child(1){
+  padding-right:20px;
+}
+
+#view-referentiel-competences #tblRefCertifs td:nth-child(1){
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
