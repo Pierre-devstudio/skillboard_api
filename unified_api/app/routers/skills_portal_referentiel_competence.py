@@ -174,6 +174,35 @@ class CompetenceDetailResponse(BaseModel):
     collaborateurs_concernes: List[CollaborateurCompetenceConcerned] = []
 
 
+class ReferentielAdvancedSearchItem(BaseModel):
+    id_comp: Optional[str] = None
+    code: Optional[str] = None
+    intitule: Optional[str] = None
+    domaine_titre_court: Optional[str] = None
+    domaine_couleur: Optional[str] = None
+
+    id_effectif: Optional[str] = None
+    nom_effectif: Optional[str] = None
+    prenom_effectif: Optional[str] = None
+    full_name: Optional[str] = None
+
+    id_poste: Optional[str] = None
+    codif_poste: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    nom_service: Optional[str] = None
+
+    niveau_actuel: Optional[str] = None
+    date_derniere_eval: Optional[str] = None
+    nb_postes_requis: int = 0
+
+
+class ReferentielAdvancedSearchResponse(BaseModel):
+    service: ServiceScope
+    mode: str
+    q: str
+    items: List[ReferentielAdvancedSearchItem]
+
+
 class CertificationListItem(BaseModel):
     id_certification: str
     nom_certification: str
@@ -396,9 +425,306 @@ def _count_postes_in_scope(cur, id_ent: str, id_service: str) -> int:
     return int(r["nb_postes"]) if r and r.get("nb_postes") is not None else 0
 
 
+def _advanced_effectif_join_filter(id_service: str) -> str:
+    if id_service == ALL_SERVICES_ID:
+        return ""
+
+    if id_service == NON_LIE_ID:
+        return """
+          AND (
+                ec.id_service IS NULL
+                OR ec.id_service NOT IN (
+                    SELECT o2.id_service
+                    FROM public.tbl_entreprise_organigramme o2
+                    WHERE o2.id_ent = %s
+                      AND COALESCE(o2.archive, FALSE) = FALSE
+                )
+              )
+        """
+
+    return " AND ec.id_service = %s "
+
+
+def _advanced_effectif_filter_params(id_ent: str, id_service: str) -> Tuple[Any, ...]:
+    if id_service == NON_LIE_ID:
+        return (id_ent,)
+    if id_service != ALL_SERVICES_ID:
+        return (id_service,)
+    return ()
+
+
+def _advanced_search_mode(value: Optional[str]) -> str:
+    raw = (value or "").strip().lower()
+    if raw in ("collaborateur", "personne", "collab", "user"):
+        return "collaborateur"
+    return "competence"
+
+
 # ======================================================
 # Endpoints - Compétences
 # ======================================================
+@router.get(
+    "/skills/referentiel/recherche_avancee/{id_contact}/{id_service}",
+    response_model=ReferentielAdvancedSearchResponse,
+)
+def get_referentiel_recherche_avancee(
+    id_contact: str,
+    request: Request,
+    id_service: str,
+    mode: Optional[str] = Query(default="competence"),
+    q: Optional[str] = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=300),
+):
+    """
+    Recherche croisée du référentiel :
+    - mode=competence : liste les collaborateurs qui détiennent une compétence recherchée ;
+    - mode=collaborateur : liste les compétences détenues par un collaborateur recherché.
+    """
+    try:
+        query = (q or "").strip()
+        safe_mode = _advanced_search_mode(mode)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                service_scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or ALL_SERVICES_ID)
+
+                if len(query) < 2:
+                    return ReferentielAdvancedSearchResponse(
+                        service=service_scope,
+                        mode=safe_mode,
+                        q=query,
+                        items=[],
+                    )
+
+                like = f"%{query}%"
+                postes_cte = _build_postes_scope_cte(service_scope.id_service)
+                postes_params = _postes_scope_params(id_ent, service_scope.id_service)
+                effectif_filter = _advanced_effectif_join_filter(service_scope.id_service)
+                effectif_params = _advanced_effectif_filter_params(id_ent, service_scope.id_service)
+
+                if safe_mode == "collaborateur":
+                    sql = f"""
+                        WITH
+                        {postes_cte},
+                        req_counts AS (
+                            SELECT
+                                c.id_comp,
+                                COUNT(DISTINCT fpc.id_poste)::int AS nb_postes_requis
+                            FROM public.tbl_fiche_poste_competence fpc
+                            JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                            JOIN public.tbl_competence c
+                              ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                            WHERE c.etat = %s
+                              AND COALESCE(c.masque, FALSE) = FALSE
+                              AND COALESCE(fpc.masque, FALSE) = FALSE
+                            GROUP BY c.id_comp
+                        ),
+                        effectifs_match AS (
+                            SELECT
+                                ec.id_effectif,
+                                ec.nom_effectif,
+                                ec.prenom_effectif,
+                                ec.id_poste_actuel,
+                                ec.id_service
+                            FROM public.tbl_effectif_client ec
+                            WHERE ec.id_ent = %s
+                              AND COALESCE(ec.archive, FALSE) = FALSE
+                              AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                              AND (
+                                    ec.nom_effectif ILIKE %s
+                                    OR ec.prenom_effectif ILIKE %s
+                                    OR (COALESCE(ec.prenom_effectif, '') || ' ' || COALESCE(ec.nom_effectif, '')) ILIKE %s
+                                    OR (COALESCE(ec.nom_effectif, '') || ' ' || COALESCE(ec.prenom_effectif, '')) ILIKE %s
+                                  )
+                              {effectif_filter}
+                        )
+                        SELECT
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            d.titre_court AS domaine_titre_court,
+                            d.couleur AS domaine_couleur,
+                            em.id_effectif,
+                            em.nom_effectif,
+                            em.prenom_effectif,
+                            em.id_poste_actuel AS id_poste,
+                            fp.codif_poste,
+                            fp.intitule_poste,
+                            o.nom_service,
+                            ecc.niveau_actuel,
+                            ecc.date_derniere_eval,
+                            COALESCE(rc.nb_postes_requis, 0)::int AS nb_postes_requis
+                        FROM effectifs_match em
+                        JOIN public.tbl_effectif_client_competence ecc
+                          ON ecc.id_effectif_client = em.id_effectif
+                         AND COALESCE(ecc.actif, TRUE) = TRUE
+                         AND COALESCE(ecc.archive, FALSE) = FALSE
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = ecc.id_comp
+                         AND c.etat = %s
+                         AND COALESCE(c.masque, FALSE) = FALSE
+                        LEFT JOIN public.tbl_domaine_competence d
+                          ON d.id_domaine_competence = c.domaine
+                        LEFT JOIN public.tbl_fiche_poste fp
+                          ON fp.id_poste = em.id_poste_actuel
+                         AND fp.id_ent = %s
+                         AND COALESCE(fp.actif, TRUE) = TRUE
+                        LEFT JOIN public.tbl_entreprise_organigramme o
+                          ON o.id_service = em.id_service
+                         AND o.id_ent = %s
+                         AND COALESCE(o.archive, FALSE) = FALSE
+                        LEFT JOIN req_counts rc ON rc.id_comp = c.id_comp
+                        ORDER BY
+                            lower(COALESCE(em.nom_effectif, '')),
+                            lower(COALESCE(em.prenom_effectif, '')),
+                            lower(COALESCE(c.intitule, ''))
+                        LIMIT %s
+                    """
+                    params = list(postes_params) + [
+                        ETAT_ACTIVE,
+                        id_ent, like, like, like, like,
+                    ] + list(effectif_params) + [
+                        ETAT_ACTIVE, id_ent, id_ent, limit,
+                    ]
+                else:
+                    sql = f"""
+                        WITH
+                        {postes_cte},
+                        req_counts AS (
+                            SELECT
+                                c.id_comp,
+                                COUNT(DISTINCT fpc.id_poste)::int AS nb_postes_requis
+                            FROM public.tbl_fiche_poste_competence fpc
+                            JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                            JOIN public.tbl_competence c
+                              ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                            WHERE c.etat = %s
+                              AND COALESCE(c.masque, FALSE) = FALSE
+                              AND COALESCE(fpc.masque, FALSE) = FALSE
+                            GROUP BY c.id_comp
+                        ),
+                        comps_match AS (
+                            SELECT
+                                c.id_comp,
+                                c.code,
+                                c.intitule,
+                                c.domaine
+                            FROM public.tbl_competence c
+                            WHERE c.etat = %s
+                              AND COALESCE(c.masque, FALSE) = FALSE
+                              AND (c.code ILIKE %s OR c.intitule ILIKE %s OR COALESCE(c.description, '') ILIKE %s)
+                        ),
+                        holders_scope AS (
+                            SELECT
+                                ecc.id_comp,
+                                ec.id_effectif,
+                                ec.nom_effectif,
+                                ec.prenom_effectif,
+                                ec.id_poste_actuel AS id_poste,
+                                ec.id_service,
+                                ecc.niveau_actuel,
+                                ecc.date_derniere_eval
+                            FROM public.tbl_effectif_client_competence ecc
+                            JOIN public.tbl_effectif_client ec
+                              ON ec.id_effectif = ecc.id_effectif_client
+                             AND ec.id_ent = %s
+                             AND COALESCE(ec.archive, FALSE) = FALSE
+                             AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                             {effectif_filter}
+                            WHERE COALESCE(ecc.actif, TRUE) = TRUE
+                              AND COALESCE(ecc.archive, FALSE) = FALSE
+                        )
+                        SELECT
+                            cm.id_comp,
+                            cm.code,
+                            cm.intitule,
+                            d.titre_court AS domaine_titre_court,
+                            d.couleur AS domaine_couleur,
+                            hs.id_effectif,
+                            hs.nom_effectif,
+                            hs.prenom_effectif,
+                            hs.id_poste,
+                            fp.codif_poste,
+                            fp.intitule_poste,
+                            o.nom_service,
+                            hs.niveau_actuel,
+                            hs.date_derniere_eval,
+                            COALESCE(rc.nb_postes_requis, 0)::int AS nb_postes_requis
+                        FROM comps_match cm
+                        LEFT JOIN public.tbl_domaine_competence d
+                          ON d.id_domaine_competence = cm.domaine
+                        LEFT JOIN holders_scope hs
+                          ON hs.id_comp = cm.id_comp
+                        LEFT JOIN public.tbl_fiche_poste fp
+                          ON fp.id_poste = hs.id_poste
+                         AND fp.id_ent = %s
+                         AND COALESCE(fp.actif, TRUE) = TRUE
+                        LEFT JOIN public.tbl_entreprise_organigramme o
+                          ON o.id_service = hs.id_service
+                         AND o.id_ent = %s
+                         AND COALESCE(o.archive, FALSE) = FALSE
+                        LEFT JOIN req_counts rc ON rc.id_comp = cm.id_comp
+                        ORDER BY
+                            lower(COALESCE(cm.intitule, '')),
+                            lower(COALESCE(hs.nom_effectif, '')),
+                            lower(COALESCE(hs.prenom_effectif, ''))
+                        LIMIT %s
+                    """
+                    params = list(postes_params) + [
+                        ETAT_ACTIVE,
+                        ETAT_ACTIVE, like, like, like,
+                        id_ent,
+                    ] + list(effectif_params) + [
+                        id_ent, id_ent, limit,
+                    ]
+
+                cur.execute(sql, tuple(params))
+                rows = cur.fetchall() or []
+
+                items: List[ReferentielAdvancedSearchItem] = []
+                for r in rows:
+                    prenom = (r.get("prenom_effectif") or "").strip()
+                    nom = (r.get("nom_effectif") or "").strip()
+                    full_name = (prenom + " " + nom).strip() or None
+                    dt = r.get("date_derniere_eval")
+                    if hasattr(dt, "isoformat"):
+                        dt = dt.isoformat()
+
+                    items.append(
+                        ReferentielAdvancedSearchItem(
+                            id_comp=r.get("id_comp"),
+                            code=r.get("code"),
+                            intitule=r.get("intitule"),
+                            domaine_titre_court=r.get("domaine_titre_court"),
+                            domaine_couleur=r.get("domaine_couleur"),
+                            id_effectif=r.get("id_effectif"),
+                            nom_effectif=nom or None,
+                            prenom_effectif=prenom or None,
+                            full_name=full_name,
+                            id_poste=r.get("id_poste"),
+                            codif_poste=r.get("codif_poste"),
+                            intitule_poste=r.get("intitule_poste"),
+                            nom_service=r.get("nom_service"),
+                            niveau_actuel=r.get("niveau_actuel"),
+                            date_derniere_eval=dt,
+                            nb_postes_requis=int(r.get("nb_postes_requis") or 0),
+                        )
+                    )
+
+                return ReferentielAdvancedSearchResponse(
+                    service=service_scope,
+                    mode=safe_mode,
+                    q=query,
+                    items=items,
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur recherche avancée : {e}")
+
+
 @router.get(
     "/skills/referentiel/competences/{id_contact}/{id_service}",
     response_model=ReferentielCompetencesResponse,
