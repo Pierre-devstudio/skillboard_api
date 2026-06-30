@@ -49,24 +49,6 @@
       </div>
 
       <button type="button"
-              class="ref-kpi-card ref-kpi-card--advanced"
-              id="btnRefAdvancedSearch"
-              title="Rechercher une compétence détenue ou les compétences d’un collaborateur"
-              aria-label="Ouvrir la recherche avancée">
-        <div class="ref-kpi-card__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </div>
-        <div class="ref-kpi-card__body">
-          <div class="ref-kpi-card__label">Recherche avancée</div>
-          <div class="ref-kpi-card__value">Qui détient quoi ?</div>
-          <div class="ref-kpi-card__hint">Compétence ou personne</div>
-        </div>
-        <span class="ref-kpi-card__cta" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-        </span>
-      </button>
-
-      <button type="button"
               class="ref-kpi-card ref-kpi-card--pareto"
               id="kpiRefParetoCard"
               title="Cliquez pour afficher les compétences comprises dans le Pareto"
@@ -223,51 +205,6 @@
         Aucun élément pour les filtres sélectionnés.
       </div>
     </main>
-  </div>
-
-  <div class="modal" id="modalRefAdvancedSearch" aria-hidden="true">
-    <div class="modal-card modal-card--xl">
-      <div class="modal-header">
-        <div id="refAdvancedTitle" class="sb-modal-title">Recherche avancée</div>
-        <button type="button" class="modal-x" id="btnCloseRefAdvancedModal" aria-label="Fermer">×</button>
-      </div>
-
-      <div class="modal-body">
-        <div class="ref-advanced-intro">
-          <div class="card-sub" style="margin:0;">Identifiez qui détient une compétence ou quelles compétences sont associées à un collaborateur.</div>
-        </div>
-
-        <div class="ref-advanced-controls">
-          <div class="ref-advanced-modebar" role="tablist" aria-label="Type de recherche">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnRefAdvancedModeCompetence" data-ref-advanced-mode="competence">Compétence</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnRefAdvancedModeCollaborateur" data-ref-advanced-mode="collaborateur">Collaborateur</button>
-          </div>
-
-          <div class="ref-advanced-searchline">
-            <div class="ref-search-wrap ref-advanced-searchwrap">
-              <input type="text" id="refAdvancedSearchInput" class="sb-ctrl" placeholder="Code ou intitulé de compétence..." />
-              <span class="ref-search-wrap__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              </span>
-            </div>
-            <button type="button" class="sb-btn sb-btn--accent" id="btnRefAdvancedSearchRun">Rechercher</button>
-          </div>
-        </div>
-
-        <div class="ref-advanced-status card-sub" id="refAdvancedStatus">Saisissez au moins 2 caractères pour lancer la recherche.</div>
-
-        <div class="table-wrap ref-advanced-table-wrap" id="refAdvancedResultsWrap" style="display:none;">
-          <table class="sb-table sb-table--airy sb-table--hover ref-advanced-table" id="tblRefAdvancedResults">
-            <thead id="tblRefAdvancedHead"></thead>
-            <tbody id="tblRefAdvancedBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="btnRefAdvancedModalClose">Fermer</button>
-      </div>
-    </div>
   </div>
 
   <div class="modal" id="modalRefDetail" aria-hidden="true">

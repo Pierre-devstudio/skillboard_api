@@ -6,8 +6,6 @@
   let _servicesLoaded = false;
   let _activeTab = "competences"; // competences | certifs
   let _searchTimer = null;
-  let _advancedSearchMode = "competence";
-  let _advancedSearchTimer = null;
   let _pageSize = 10;
   let _currentPageComp = 1;
   let _currentPageCert = 1;
@@ -156,7 +154,6 @@
       domain: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
       criteria: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
       users: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-      search: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>`,
       eye: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
       doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8.5 15.5h7"></path><path d="M8.5 18.5h5"></path></svg>`,
     };
@@ -389,165 +386,6 @@
     if (!modal) return;
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
-  }
-
-  function openAdvancedSearchModal() {
-    const modal = byId("modalRefAdvancedSearch");
-    if (!modal) return;
-
-    setAdvancedSearchMode(_advancedSearchMode || "competence");
-    setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
-    const input = byId("refAdvancedSearchInput");
-    if (input) input.value = "";
-    renderAdvancedResults([], _advancedSearchMode || "competence");
-
-    modal.classList.add("show");
-    modal.setAttribute("aria-hidden", "false");
-    const body = modal.querySelector(".modal-body");
-    if (body) body.scrollTop = 0;
-    setTimeout(() => input?.focus(), 30);
-  }
-
-  function closeAdvancedSearchModal() {
-    const modal = byId("modalRefAdvancedSearch");
-    if (!modal) return;
-    modal.classList.remove("show");
-    modal.setAttribute("aria-hidden", "true");
-  }
-
-  function setAdvancedStatus(text, kind = "") {
-    const st = byId("refAdvancedStatus");
-    if (!st) return;
-    st.textContent = text || "";
-    st.classList.toggle("is-error", kind === "error");
-    st.classList.toggle("is-success", kind === "success");
-  }
-
-  function setAdvancedSearchMode(mode) {
-    _advancedSearchMode = mode === "collaborateur" ? "collaborateur" : "competence";
-
-    const bComp = byId("btnRefAdvancedModeCompetence");
-    const bCollab = byId("btnRefAdvancedModeCollaborateur");
-    if (bComp) {
-      bComp.classList.toggle("sb-btn--accent", _advancedSearchMode === "competence");
-      bComp.classList.toggle("sb-btn--soft", _advancedSearchMode !== "competence");
-    }
-    if (bCollab) {
-      bCollab.classList.toggle("sb-btn--accent", _advancedSearchMode === "collaborateur");
-      bCollab.classList.toggle("sb-btn--soft", _advancedSearchMode !== "collaborateur");
-    }
-
-    const input = byId("refAdvancedSearchInput");
-    if (input) {
-      input.placeholder = _advancedSearchMode === "collaborateur"
-        ? "Nom ou prénom du collaborateur..."
-        : "Code ou intitulé de compétence...";
-      input.value = "";
-      input.focus();
-    }
-
-    setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
-    renderAdvancedResults([], _advancedSearchMode);
-  }
-
-  function advancedPersonCell(row) {
-    const full = row?.full_name || `${row?.prenom_effectif || ""} ${row?.nom_effectif || ""}`.trim();
-    if (!full) return `<span class="sb-muted">Aucun détenteur identifié</span>`;
-    const poste = [row?.codif_poste, row?.intitule_poste].map(x => (x || "").toString().trim()).filter(Boolean).join(" · ");
-    return `
-      <div class="ref-advanced-person">${escapeHtml(full)}</div>
-      <span class="ref-advanced-sub">${escapeHtml(poste || row?.nom_service || "Poste non renseigné")}</span>
-    `;
-  }
-
-  function advancedCompetenceCell(row) {
-    const code = (row?.code || "").toString().trim();
-    const title = (row?.intitule || "").toString().trim();
-    const dom = (row?.domaine_titre_court || "").toString().trim();
-    const req = Number(row?.nb_postes_requis || 0);
-    const sub = [dom || "Domaine non renseigné", req > 0 ? `${req} poste${req > 1 ? "s" : ""} requis` : "Non requise dans le périmètre"].join(" · ");
-    return `
-      <div class="ref-advanced-titleline">
-        ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
-        <span class="ref-advanced-title">${escapeHtml(title || "Compétence")}</span>
-      </div>
-      <span class="ref-advanced-sub">${escapeHtml(sub)}</span>
-    `;
-  }
-
-  function renderAdvancedResults(items, mode) {
-    const head = byId("tblRefAdvancedHead");
-    const body = byId("tblRefAdvancedBody");
-    const wrap = byId("refAdvancedResultsWrap");
-    if (!head || !body || !wrap) return;
-
-    const rows = Array.isArray(items) ? items : [];
-    wrap.style.display = rows.length ? "" : "none";
-
-    if (mode === "collaborateur") {
-      head.innerHTML = `
-        <tr>
-          <th style="width:260px;">Collaborateur</th>
-          <th>Compétence</th>
-          <th style="width:150px;" class="col-center">Niveau détenu</th>
-          <th style="width:130px;" class="col-center">Dernière éval.</th>
-        </tr>
-      `;
-      body.innerHTML = rows.map(row => `
-        <tr>
-          <td>${advancedPersonCell(row)}</td>
-          <td class="ref-advanced-maincell">${advancedCompetenceCell(row)}</td>
-          <td class="col-center">${refLevelBadge(row?.niveau_actuel)}</td>
-          <td class="col-center">${formatDateFR(row?.date_derniere_eval)}</td>
-        </tr>
-      `).join("");
-      return;
-    }
-
-    head.innerHTML = `
-      <tr>
-        <th>Compétence</th>
-        <th style="width:280px;">Collaborateur détenteur</th>
-        <th style="width:150px;" class="col-center">Niveau détenu</th>
-        <th style="width:130px;" class="col-center">Dernière éval.</th>
-      </tr>
-    `;
-    body.innerHTML = rows.map(row => `
-      <tr>
-        <td class="ref-advanced-maincell">${advancedCompetenceCell(row)}</td>
-        <td>${advancedPersonCell(row)}</td>
-        <td class="col-center">${row?.id_effectif ? refLevelBadge(row?.niveau_actuel) : `<span class="sb-badge">—</span>`}</td>
-        <td class="col-center">${row?.id_effectif ? formatDateFR(row?.date_derniere_eval) : "—"}</td>
-      </tr>
-    `).join("");
-  }
-
-  async function runAdvancedSearch(portal) {
-    const input = byId("refAdvancedSearchInput");
-    const q = (input?.value || "").trim();
-    const f = getFilters();
-    const idService = f.id_service || ALL_SERVICES_ID;
-
-    if (q.length < 2) {
-      setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
-      renderAdvancedResults([], _advancedSearchMode);
-      return;
-    }
-
-    try {
-      setAdvancedStatus("Recherche en cours…");
-      const params = new URLSearchParams();
-      params.set("mode", _advancedSearchMode);
-      params.set("q", q);
-      const url = `${portal.apiBase}/skills/referentiel/recherche_avancee/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(idService)}?${params.toString()}`;
-      const data = await portal.apiJson(url);
-      const rows = Array.isArray(data?.items) ? data.items : [];
-      renderAdvancedResults(rows, data?.mode || _advancedSearchMode);
-      setAdvancedStatus(rows.length ? `${rows.length} résultat(s) trouvé(s).` : "Aucun résultat pour cette recherche.", rows.length ? "success" : "");
-    } catch (e) {
-      renderAdvancedResults([], _advancedSearchMode);
-      setAdvancedStatus("Erreur recherche avancée : " + (e?.message || e), "error");
-    }
   }
   
   async function loadServices(portal) {
@@ -1344,7 +1182,6 @@
     const btnApply = byId("btnRefApply");
     const btnFiltersToggle = byId("btnRefFiltersToggle");
     const kpiParetoCard = byId("kpiRefParetoCard");
-    const btnAdvancedSearch = byId("btnRefAdvancedSearch");
     const pageSizeSelect = byId("refPageSizeSelect");
     const pagination = byId("refPagination");
 
@@ -1357,13 +1194,6 @@
     const btnX = byId("btnCloseRefModal");
     const btnClose = byId("btnRefModalClose");
     const modal = byId("modalRefDetail");
-    const modalAdvanced = byId("modalRefAdvancedSearch");
-    const btnAdvancedX = byId("btnCloseRefAdvancedModal");
-    const btnAdvancedClose = byId("btnRefAdvancedModalClose");
-    const btnAdvancedRun = byId("btnRefAdvancedSearchRun");
-    const advancedInput = byId("refAdvancedSearchInput");
-    const advancedModeComp = byId("btnRefAdvancedModeCompetence");
-    const advancedModeCollab = byId("btnRefAdvancedModeCollaborateur");
 
     if (pageSizeSelect) pageSizeSelect.value = String(_pageSize);
 
@@ -1497,30 +1327,6 @@
       });
     }
 
-    if (btnAdvancedSearch) btnAdvancedSearch.addEventListener("click", () => openAdvancedSearchModal());
-    if (advancedModeComp) advancedModeComp.addEventListener("click", () => setAdvancedSearchMode("competence"));
-    if (advancedModeCollab) advancedModeCollab.addEventListener("click", () => setAdvancedSearchMode("collaborateur"));
-    if (btnAdvancedRun) btnAdvancedRun.addEventListener("click", () => runAdvancedSearch(portal));
-    if (advancedInput) {
-      advancedInput.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter") {
-          ev.preventDefault();
-          runAdvancedSearch(portal);
-        }
-      });
-      advancedInput.addEventListener("input", () => {
-        clearTimeout(_advancedSearchTimer);
-        _advancedSearchTimer = setTimeout(() => {
-          const q = (advancedInput.value || "").trim();
-          if (q.length >= 2) runAdvancedSearch(portal);
-          else {
-            setAdvancedStatus("Saisissez au moins 2 caractères pour lancer la recherche.");
-            renderAdvancedResults([], _advancedSearchMode);
-          }
-        }, 350);
-      });
-    }
-
     if (tabComp) {
       tabComp.addEventListener("click", async () => {
         setActiveTab("competences");
@@ -1571,17 +1377,9 @@
     }
 
     const close = () => closeModal();
-    const closeAdvanced = () => closeAdvancedSearchModal();
 
     if (btnX) btnX.addEventListener("click", close);
     if (btnClose) btnClose.addEventListener("click", close);
-    if (btnAdvancedX) btnAdvancedX.addEventListener("click", closeAdvanced);
-    if (btnAdvancedClose) btnAdvancedClose.addEventListener("click", closeAdvanced);
-    if (modalAdvanced) {
-      modalAdvanced.addEventListener("click", (e) => {
-        if (e.target === modalAdvanced) closeAdvancedSearchModal();
-      });
-    }
 
     if (modal) {
       modal.addEventListener("click", (e) => {
