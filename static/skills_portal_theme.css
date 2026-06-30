@@ -25838,15 +25838,15 @@ body{
 }
 
 #view-cartographie-competences .map-page-hero__icon{
-  width:48px;
-  height:48px;
+  width:42px;
+  height:42px;
   border-radius:14px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 48px;
-  background:var(--map-red);
-  color:#ffffff;
+  flex:0 0 42px;
+  background:var(--map-red-soft);
+  color:var(--map-red);
 }
 
 #view-cartographie-competences .map-page-hero__icon svg,
@@ -26109,22 +26109,22 @@ body{
 
 #view-cartographie-competences .hb-table th,
 #view-cartographie-competences .hb-table td{
-  padding:9px 8px;
+  padding:8px 5px;
 }
 
 #view-cartographie-competences .hb-rowhead{
-  width:360px;
-  min-width:360px;
+  width:430px;
+  min-width:430px;
 }
 
 #view-cartographie-competences .hb-table th:not(.hb-rowhead):not(:last-child),
 #view-cartographie-competences .hb-table td:not(.hb-rowhead):not(:last-child){
-  width:42px;
+  width:34px;
 }
 
 #view-cartographie-competences .hb-table th:last-child,
 #view-cartographie-competences .hb-table td:last-child{
-  width:58px;
+  width:52px;
 }
 
 #view-cartographie-competences .hb-poste-line{
@@ -26160,8 +26160,27 @@ body{
   border-radius:7px 7px 4px 4px;
 }
 
+#view-cartographie-competences .hb-totalcell{
+  background:#f8fafc;
+  color:var(--map-text);
+  font-weight:800;
+}
+
+#view-cartographie-competences .hb-grandtotal{
+  background:#f1f5f9;
+  color:var(--map-text);
+  font-weight:900;
+}
+
 #view-cartographie-competences .hb-totalrow td{
   font-size:13px;
+  background:#f8fafc;
+  border-top:1px solid var(--map-border);
+}
+
+#view-cartographie-competences .hb-totalrow .hb-rowhead,
+#view-cartographie-competences .hb-totalrow .hb-grandtotal{
+  background:#f1f5f9;
 }
 
 @media (max-width:1100px){
