@@ -2346,4 +2346,12 @@
   // Expose function for portal.onShow (optional)
   window.skillsCollaborateurs = window.skillsCollaborateurs || {};
   window.skillsCollaborateurs.onShow = initMenu;
+  window.skillsCollaborateurs.openCollaborateurModalById = async (id_effectif) => {
+    const id_contact = window.portal?.contactId;
+    const id = (id_effectif || "").toString().trim();
+    if (!id_contact) throw new Error("Contact introuvable.");
+    if (!id) throw new Error("Collaborateur introuvable.");
+    const detail = await loadIdentification(id_contact, id);
+    openCollaborateurModal(detail);
+  };
 })();

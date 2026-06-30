@@ -11,6 +11,8 @@
   let _currentPageCert = 1;
   let _currentCompList = [];
   let _currentCertList = [];
+  let _lastDetailPostes = [];
+  let _lastDetailCollaborateurs = [];
 
   // Pareto (top 20%) sur les compétences, basé sur nb_postes_concernes
   let _paretoOnly = false;      // toggle filtre ON/OFF
@@ -141,6 +143,39 @@
     if (wrapCert) wrapCert.style.display = (tab === "certifs") ? "" : "none";
   }
 
+
+  function iconSvg(name) {
+    const icons = {
+      description: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>`,
+      levels: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M9 19v-6"/><path d="M14 19V9"/><path d="M19 19V3"/></svg>`,
+      grid: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+      postes: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M4 12h16"/></svg>`,
+      collabs: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      domain: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+      criteria: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+      users: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      eye: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
+      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8.5 15.5h7"></path><path d="M8.5 18.5h5"></path></svg>`,
+    };
+    return icons[name] || "";
+  }
+
+  function sectionTitleHtml(icon, title) {
+    return `<div class="ref-modal-section-titleline"><span class="ref-modal-section-icon" aria-hidden="true">${iconSvg(icon)}</span><div class="card-title" style="margin:0;">${escapeHtml(title)}</div></div>`;
+  }
+
+  function formatDateFR(iso) {
+    const s = (iso || "").toString().trim();
+    if (!s) return "—";
+    const ymd = s.slice(0, 10);
+    const parts = ymd.split("-");
+    if (parts.length !== 3) return escapeHtml(s);
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  function stripEvalLevelPrefix(value) {
+    return (value || "").toString().trim().replace(/^\s*(débutant|debutant|intermédiaire|intermediaire|avancé|avance|expert)\s*[:\-–—]\s*/i, "");
+  }
 
   function fillDomaineSelect(domaines) {
     const sel = byId("refDomaineSelect");
@@ -581,51 +616,66 @@
     }
   }
 
+  function countGridCriteria(grid) {
+    if (!grid || typeof grid !== "object") return 0;
+    let n = 0;
+    Object.keys(grid).forEach(k => {
+      const c = grid[k] || {};
+      const evalsRaw = Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : [];
+      const evals = (evalsRaw || []).map(x => (x ?? "").toString().trim()).filter(Boolean);
+      if (evals.length) n += 1;
+    });
+    return n;
+  }
+
   function renderGridEvaluation(grid) {
     if (!grid || typeof grid !== "object") return "";
 
     const keys = Object.keys(grid);
     if (!keys.length) return "";
 
-    let html = `<div class="card" style="padding:12px; margin:0;">
-      <div class="card-title" style="margin-bottom:6px;">Grille d’évaluation</div>
-      <div class="card-sub" style="margin:0;">Critères et niveaux d’évaluation.</div>
-      <div style="margin-top:10px;">`;
-
-    // On n'affiche que les critères réellement renseignés (sinon ça fait "Critere4" avec un tiret, très glamour).
-    let nbCriteres = 0;
-
+    const rows = [];
     keys.forEach(k => {
       const c = grid[k] || {};
-
       const nomRaw = (c.Nom ?? c.nom ?? "").toString().trim();
       const evalsRaw = Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : [];
-      const evals = (evalsRaw || []).map(x => (x ?? "").toString().trim()).filter(x => x.length);
+      const evals = (evalsRaw || [])
+        .map(x => stripEvalLevelPrefix(x))
+        .map(x => (x ?? "").toString().trim())
+        .filter(x => x.length);
 
-      if (!evals.length) return; // critère vide => ignoré
-
-      const nom = escapeHtml(nomRaw || k);
-      nbCriteres += 1;
-
-      html += `
-        <details class="sb-accordion">
-          <summary style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:600;">${nom}</span>
-            <span class="sb-badge sb-badge-critere">${escapeHtml(k)}</span>
-          </summary>
-          <div class="sb-acc-body">
-            <ul style="margin:0; padding-left:18px;">
-              ${evals.map(x => `<li>${escapeHtml(x)}</li>`).join("")}
-            </ul>
-          </div>
-        </details>
-      `;
+      if (!evals.length) return;
+      rows.push({ title: nomRaw || k, evals });
     });
 
-    if (nbCriteres === 0) return "";
+    if (!rows.length) return "";
 
-    html += `</div></div>`;
-    return html;
+    const items = rows.map((item, idx) => {
+      const isOpen = idx === 0;
+      return `
+        <div class="sb-accordion ref-criteria-accordion${isOpen ? " is-open" : ""}">
+          <button type="button" class="sb-acc-head ref-criteria-head${isOpen ? " is-open" : ""}" data-ref-criteria-toggle aria-expanded="${isOpen ? "true" : "false"}">
+            <span class="ref-criteria-title">${escapeHtml(item.title)}</span>
+            <span class="ref-criteria-meta">
+              <span class="sb-badge sb-badge-critere">Critère ${idx + 1}</span>
+              <span class="sb-acc-chevron">▾</span>
+            </span>
+          </button>
+          <div class="sb-acc-body ref-criteria-body"${isOpen ? "" : " style=\"display:none;\""}>
+            <ul>
+              ${item.evals.map(x => `<li>${escapeHtml(x)}</li>`).join("")}
+            </ul>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="card ref-modal-card" style="padding:12px; margin:0;">
+        ${sectionTitleHtml("grid", "Grille d’évaluation")}
+        <div class="ref-criteria-list">${items}</div>
+      </div>
+    `;
   }
 
   function critLevel(raw) {
@@ -666,7 +716,6 @@
   function renderPostesTable(postes, isCertif, baseValidite) {
     const list = Array.isArray(postes) ? [...postes] : [];
 
-    // Compétences: tri décroissant par criticité (puis libellé) pour cohérence UI
     if (!isCertif) {
       list.sort((a, b) => {
         const ca = (a?.poids_criticite === null || a?.poids_criticite === undefined) ? -1 : Number(a.poids_criticite);
@@ -680,40 +729,25 @@
       });
     }
 
-    const title = isCertif ? "Postes concernés" : "Postes concernés (niveau requis)";
-    const cols = isCertif
-      ? ["Poste", "Service", "Exigence", "Validité"]
-      : ["Poste", "Service", "Niveau", "Criticité"];
+    if (isCertif) {
+      let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
+        ${sectionTitleHtml("postes", "Postes concernés")}
+        <div class="card-sub ref-modal-section-sub">${list.length} poste(s) impacté(s).</div>
+        <div class="table-wrap ref-modal-table-wrap">
+          <table class="sb-table sb-ref-postes-table">
+            <thead><tr><th>Poste</th><th>Service</th><th class="col-center">Exigence</th><th class="col-center">Validité</th></tr></thead>
+            <tbody>`;
 
-    const ths = cols.map((c, idx) => {
-      const center = (idx === 2 || idx === 3);
-      return `<th${center ? ` class="col-center"` : ""}>${escapeHtml(c)}</th>`;
-    }).join("");
-
-    let html = `<div class="card" style="padding:12px; margin:0;">
-      <div class="card-title" style="margin-bottom:6px;">${escapeHtml(title)}</div>
-      <div class="card-sub" style="margin:0;">${list.length} poste(s) impacté(s).</div>
-      <div class="table-wrap" style="margin-top:10px;">
-        <table class="sb-table sb-ref-postes-table">
-          <thead><tr>${ths}</tr></thead>
-          <tbody>`;
-
-    if (!list.length) {
-      html += `<tr><td colspan="${cols.length}">—</td></tr>`;
-    } else {
-      list.forEach(p => {
-        // On enlève le “code poste” : on garde uniquement l’intitulé (fallback codif si absent)
-        const posteTitle = ((p.intitule_poste || "").toString().trim()) || ((p.codif_poste || "").toString().trim()) || "—";
-        const poste = escapeHtml(posteTitle);
-        const service = escapeHtml(p.nom_service || "—");
-
-        if (isCertif) {
+      if (!list.length) {
+        html += `<tr><td colspan="4">—</td></tr>`;
+      } else {
+        list.forEach(p => {
+          const poste = escapeHtml(((p.intitule_poste || "").toString().trim()) || ((p.codif_poste || "").toString().trim()) || "—");
+          const service = escapeHtml(p.nom_service || "—");
           const ex = escapeHtml(p.niveau_exigence || "—");
-
           const base = (baseValidite === null || baseValidite === undefined) ? null : Number(baseValidite);
           const ovRaw = (p.validite_override === null || p.validite_override === undefined) ? null : Number(p.validite_override);
           const eff = (ovRaw !== null) ? ovRaw : base;
-
           let vlabel = "—";
           if (eff !== null) vlabel = (eff === 0 ? "Permanent" : `${eff} mois`);
 
@@ -723,17 +757,39 @@
             <td class="col-center" style="white-space:nowrap;">${ex}</td>
             <td class="col-center" style="white-space:nowrap;">${escapeHtml(vlabel)}</td>
           </tr>`;
-        } else {
-          const niv = refLevelBadge(p.niveau_requis);
-          const crit = renderCritBadge(p.poids_criticite);
+        });
+      }
 
-          html += `<tr>
-            <td>${poste}</td>
-            <td>${service}</td>
-            <td class="col-center" style="white-space:nowrap;">${niv}</td>
-            <td class="col-center" style="white-space:nowrap;">${crit}</td>
-          </tr>`;
-        }
+      html += `</tbody></table></div></div>`;
+      return html;
+    }
+
+    let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
+      ${sectionTitleHtml("postes", "Postes concernés")}
+      <div class="card-sub ref-modal-section-sub">${list.length} poste(s) impacté(s).</div>
+      <div class="table-wrap ref-modal-table-wrap">
+        <table class="sb-table sb-ref-postes-table sb-ref-postes-actions-table">
+          <thead><tr><th>Poste</th><th>Service</th><th class="col-center">Niveau requis</th><th class="col-center">Criticité</th><th class="col-center">Actions</th></tr></thead>
+          <tbody>`;
+
+    if (!list.length) {
+      html += `<tr><td colspan="5">—</td></tr>`;
+    } else {
+      list.forEach(p => {
+        const idPoste = escapeHtml(p.id_poste || "");
+        const code = (p.codif_poste || "").toString().trim();
+        const title = ((p.intitule_poste || "").toString().trim()) || code || "—";
+        const service = escapeHtml(p.nom_service || "—");
+        const niv = refLevelBadge(p.niveau_requis);
+        const crit = renderCritBadge(p.poids_criticite);
+
+        html += `<tr data-ref-id-poste="${idPoste}">
+          <td><div class="ref-poste-titleline">${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}<span class="ref-poste-title">${escapeHtml(title)}</span></div></td>
+          <td>${service}</td>
+          <td class="col-center" style="white-space:nowrap;">${niv}</td>
+          <td class="col-center" style="white-space:nowrap;">${crit}</td>
+          <td class="col-center"><div class="sb-icon-actions ref-row-actions"><button type="button" class="sb-icon-btn" data-ref-poste-action="detail" data-id-poste="${idPoste}" title="Voir la fiche poste" aria-label="Voir la fiche poste">${iconSvg("eye")}</button><button type="button" class="sb-icon-btn sb-icon-btn--doc" data-ref-poste-action="pdf" data-id-poste="${idPoste}" title="Ouvrir la fiche poste PDF" aria-label="Ouvrir la fiche poste PDF">${iconSvg("doc")}</button></div></td>
+        </tr>`;
       });
     }
 
@@ -741,6 +797,40 @@
     return html;
   }
 
+  function renderCollaborateursTable(collaborateurs) {
+    const list = Array.isArray(collaborateurs) ? collaborateurs : [];
+
+    let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
+      ${sectionTitleHtml("collabs", "Collaborateurs concernés")}
+      <div class="card-sub ref-modal-section-sub">${list.length} salarié(s) possède(nt) cette compétence.</div>
+      <div class="table-wrap ref-modal-table-wrap">
+        <table class="sb-table sb-ref-collabs-table">
+          <thead><tr><th>Prénom et nom</th><th>Poste</th><th class="col-center">Niveau atteint</th><th class="col-center">Dernière éval.</th><th class="col-center">Actions</th></tr></thead>
+          <tbody>`;
+
+    if (!list.length) {
+      html += `<tr><td colspan="5">Aucun collaborateur évalué sur cette compétence.</td></tr>`;
+    } else {
+      list.forEach(c => {
+        const idEff = escapeHtml(c.id_effectif || "");
+        const fullName = `${c.prenom_effectif || ""} ${(c.nom_effectif || "").toString().toUpperCase()}`.trim() || "—";
+        const poste = ((c.intitule_poste || "").toString().trim()) || "—";
+        const niv = refLevelBadge(c.niveau_actuel);
+        const date = formatDateFR(c.date_derniere_eval);
+
+        html += `<tr data-ref-id-effectif="${idEff}">
+          <td>${escapeHtml(fullName)}</td>
+          <td>${escapeHtml(poste)}</td>
+          <td class="col-center" style="white-space:nowrap;">${niv}</td>
+          <td class="col-center" style="white-space:nowrap;">${date}</td>
+          <td class="col-center"><div class="sb-icon-actions ref-row-actions"><button type="button" class="sb-icon-btn" data-ref-collab-action="detail" data-id-effectif="${idEff}" title="Voir la fiche collaborateur" aria-label="Voir la fiche collaborateur">${iconSvg("eye")}</button></div></td>
+        </tr>`;
+      });
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
+  }
 
   function buildCompetenceDetailView(data) {
     const c = data?.competence || {};
@@ -748,59 +838,59 @@
 
     const code = (c.code || "").toString().trim();
     const label = (c.intitule || "Compétence").toString().trim();
+    const postesList = Array.isArray(data?.postes_concernes) ? data.postes_concernes : [];
+    const collabsList = Array.isArray(data?.collaborateurs_concernes) ? data.collaborateurs_concernes : [];
+    _lastDetailPostes = postesList;
+    _lastDetailCollaborateurs = collabsList;
 
     const title = code
       ? { html: `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span><span class="sb-ref-title-text">${escapeHtml(label)}</span>` }
       : label;
-    let sub = "";
-    if (dom) {
-      const domLabel = (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
-      const col = normalizeColor(dom.couleur) || "#e5e7eb";
-      sub = `<span class="domain-pill" title="${escapeHtml(domLabel)}"><span class="domain-dot" style="background:${escapeHtml(col)};"></span><span>${escapeHtml(domLabel)}</span></span>`;
-    }
+    const sub = "";
+
+    const domLabel = dom
+      ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString()
+      : "—";
+    const criteriaCount = countGridCriteria(c.grille_evaluation);
+
+    const summary = `
+      <div class="ref-modal-kpi-strip">
+        <div class="ref-modal-kpi-card ref-modal-kpi-card--domain"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("domain")}</div><div><div class="ref-modal-kpi-label">Domaine</div><div class="ref-modal-kpi-value">${escapeHtml(domLabel)}</div></div></div>
+        <div class="ref-modal-kpi-card ref-modal-kpi-card--postes"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("postes")}</div><div><div class="ref-modal-kpi-label">Postes concernés</div><div class="ref-modal-kpi-value">${postesList.length}</div></div></div>
+        <div class="ref-modal-kpi-card ref-modal-kpi-card--criteria"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("criteria")}</div><div><div class="ref-modal-kpi-label">Critères</div><div class="ref-modal-kpi-value">${criteriaCount}</div></div></div>
+        <div class="ref-modal-kpi-card ref-modal-kpi-card--collabs"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("users")}</div><div><div class="ref-modal-kpi-label">Salariés concernés</div><div class="ref-modal-kpi-value">${collabsList.length}</div></div></div>
+      </div>
+    `;
 
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
 
     const levels = `
-      <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:6px;">Niveaux</div>
-
+      <div class="card ref-modal-card" style="padding:12px; margin:0;">
+        ${sectionTitleHtml("levels", "Niveaux de maîtrise")}
         <div class="ref-levels-table">
-          <div class="ref-level-row">
-            ${levelBadgeHtml("A", "Débutant")}
-            <div class="ref-level-text">${escapeHtml(c.niveaua || "—")}</div>
-          </div>
-
-          <div class="ref-level-row">
-            ${levelBadgeHtml("B", "Intermédiaire")}
-            <div class="ref-level-text">${escapeHtml(c.niveaub || "—")}</div>
-          </div>
-
-          <div class="ref-level-row">
-            ${levelBadgeHtml("C", "Avancé")}
-            <div class="ref-level-text">${escapeHtml(c.niveauc || "—")}</div>
-          </div>
-
-          <div class="ref-level-row">
-            ${levelBadgeHtml("D", "Expert")}
-            <div class="ref-level-text">${escapeHtml(c.niveaud || "—")}</div>
-          </div>
+          <div class="ref-level-row">${levelBadgeHtml("A", "Débutant")}<div class="ref-level-text">${escapeHtml(c.niveaua || "—")}</div></div>
+          <div class="ref-level-row">${levelBadgeHtml("B", "Intermédiaire")}<div class="ref-level-text">${escapeHtml(c.niveaub || "—")}</div></div>
+          <div class="ref-level-row">${levelBadgeHtml("C", "Avancé")}<div class="ref-level-text">${escapeHtml(c.niveauc || "—")}</div></div>
+          <div class="ref-level-row">${levelBadgeHtml("D", "Expert")}<div class="ref-level-text">${escapeHtml(c.niveaud || "—")}</div></div>
         </div>
       </div>
     `;
 
     const grid = renderGridEvaluation(c.grille_evaluation);
-    const postes = renderPostesTable(data?.postes_concernes || [], false, null);
+    const postes = renderPostesTable(postesList, false, null);
+    const collaborateurs = renderCollaborateursTable(collabsList);
 
     const body = `
-      <div class="row" style="flex-direction:column; gap:12px;">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Description</div>
+      <div class="ref-modal-stack">
+        ${summary}
+        <div class="card ref-modal-card" style="padding:12px; margin:0;">
+          ${sectionTitleHtml("description", "Description")}
           ${desc}
         </div>
         ${levels}
         ${grid}
         ${postes}
+        ${collaborateurs}
       </div>
     `;
 
@@ -946,6 +1036,44 @@
       try { if (popupWin && !popupWin.closed) popupWin.close(); } catch (_) {}
       throw e;
     }
+  }
+
+  function findDetailPoste(idPoste) {
+    const id = String(idPoste || "").trim();
+    return _lastDetailPostes.find(x => String(x?.id_poste || "") === id) || null;
+  }
+
+  function findDetailCollaborateur(idEffectif) {
+    const id = String(idEffectif || "").trim();
+    return _lastDetailCollaborateurs.find(x => String(x?.id_effectif || "") === id) || null;
+  }
+
+  async function openPosteFromReferentiel(idPoste) {
+    const row = findDetailPoste(idPoste) || { id_poste: idPoste };
+    if (window.SkillsOrganisation && typeof window.SkillsOrganisation.openPosteModal === "function") {
+      await window.SkillsOrganisation.openPosteModal(row);
+      return;
+    }
+    throw new Error("Module Organisation indisponible.");
+  }
+
+  async function openPostePdfFromReferentiel(idPoste) {
+    const row = findDetailPoste(idPoste) || { id_poste: idPoste };
+    if (window.SkillsOrganisation && typeof window.SkillsOrganisation.openPostePdf === "function") {
+      await window.SkillsOrganisation.openPostePdf(row);
+      return;
+    }
+    throw new Error("Module Organisation indisponible pour le PDF poste.");
+  }
+
+  async function openCollaborateurFromReferentiel(idEffectif) {
+    const row = findDetailCollaborateur(idEffectif) || { id_effectif: idEffectif };
+    const api = window.skillsCollaborateurs || window.SkillsCollaborateurs;
+    if (api && typeof api.openCollaborateurModalById === "function") {
+      await api.openCollaborateurModalById(row.id_effectif);
+      return;
+    }
+    throw new Error("Module Collaborateurs indisponible.");
   }
 
   async function openCompetenceDetail(portal, id_comp) {
@@ -1187,7 +1315,42 @@
 
     if (modal) {
       modal.addEventListener("click", (e) => {
-        if (e.target === modal) closeModal();
+        if (e.target === modal) {
+          closeModal();
+          return;
+        }
+
+        const criteriaBtn = e.target.closest("[data-ref-criteria-toggle]");
+        if (criteriaBtn) {
+          const acc = criteriaBtn.closest(".ref-criteria-accordion");
+          const body = acc?.querySelector(".ref-criteria-body");
+          const isOpen = criteriaBtn.getAttribute("aria-expanded") === "true";
+          criteriaBtn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+          criteriaBtn.classList.toggle("is-open", !isOpen);
+          if (acc) acc.classList.toggle("is-open", !isOpen);
+          if (body) body.style.display = isOpen ? "none" : "";
+          return;
+        }
+
+        const posteBtn = e.target.closest("[data-ref-poste-action]");
+        if (posteBtn) {
+          const idPoste = posteBtn.getAttribute("data-id-poste") || "";
+          const action = posteBtn.getAttribute("data-ref-poste-action") || "detail";
+          if (!idPoste) return;
+          (async () => {
+            if (action === "pdf") await openPostePdfFromReferentiel(idPoste);
+            else await openPosteFromReferentiel(idPoste);
+          })().catch(err => portal.showAlert("error", (action === "pdf" ? "Erreur PDF poste : " : "Erreur fiche poste : ") + err.message));
+          return;
+        }
+
+        const collabBtn = e.target.closest("[data-ref-collab-action]");
+        if (collabBtn) {
+          const idEffectif = collabBtn.getAttribute("data-id-effectif") || "";
+          if (!idEffectif) return;
+          openCollaborateurFromReferentiel(idEffectif)
+            .catch(err => portal.showAlert("error", "Erreur fiche collaborateur : " + err.message));
+        }
       });
     }
   }

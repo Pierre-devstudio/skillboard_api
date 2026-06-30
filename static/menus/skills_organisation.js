@@ -2035,6 +2035,19 @@
       } catch (e) {
         portal.showAlert("error", "Erreur organisation : " + e.message);
       }
+    },
+
+    openPosteModal: async (poste) => {
+      const portal = window.__skillsPortalInstance || window.portal;
+      if (portal) window.__skillsPortalInstance = portal;
+      bindOrgPosteModalOnce();
+      await openOrgPosteModal(poste || {});
+    },
+
+    openPostePdf: async (poste) => {
+      const portal = window.__skillsPortalInstance || window.portal;
+      if (!portal) throw new Error("Portail indisponible.");
+      await openPosteFichePdf(portal, poste || {});
     }
   };
 })();

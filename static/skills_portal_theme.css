@@ -3043,114 +3043,6 @@ textarea.sb-ctrl{
   }
 }
 
-/* Modal Référentiel — Grille d’évaluation : lisibilité (espacement des bullets) */
-#modalRefDetail .sb-acc-body ul{
-  /* on ne touche pas à padding-left (déjà inline), on ajoute juste de l’air */
-  padding-top: 6px;
-  padding-bottom: 2px;
-}
-
-#modalRefDetail .sb-acc-body li{
-  line-height: 1.45;      /* lecture plus fluide */
-  margin: 6px 0;          /* espace entre items */
-  font-size: 13px;
-}
-
-#modalRefDetail .sb-acc-body li:last-child{
-  margin-bottom: 0;
-}
-
-
-/* Modal Référentiel — Niveaux en tableau (badge | texte) */
-#modalRefDetail .ref-levels-table {
-  display: flex;
-  flex-direction: column;
-  margin-top: 10px;
-  font-size: 14px;        /* police un peu plus petite */
-  line-height: 1.25;
-}
-
-/* Responsive : sur petit écran, on empile badge + texte */
-@media (max-width: 520px) {
-  #modalRefDetail .ref-level-row {
-    grid-template-columns: 1fr;
-    row-gap: 6px;
-  }
-
-  #modalRefDetail .ref-level-badge {
-    justify-self: start;
-    min-width: 0;
-  }
-}
-
-#modalRefDetail .ref-level-row {
-  display: grid;
-
-  /* Colonne badge fixe (alignement nickel) */
-  grid-template-columns: 150px 1fr;
-
-  /* Air entre badge et texte */
-  column-gap: 16px;
-
-  align-items: start;
-  padding: 8px 6px;
-  border-bottom: 1px solid rgba(209, 213, 219, 0.65);
-}
-
-/* micro feedback visuel sans “arc-en-ciel” */
-#modalRefDetail .ref-level-row:hover {
-  background: rgba(17, 24, 39, 0.03);
-  border-radius: 8px;
-}
-
-#modalRefDetail .ref-level-row:last-child {
-  border-bottom: 0;
-}
-
-#modalRefDetail .ref-level-badge {
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 500;
-
-  /* Badge = largeur de colonne (tous identiques) */
-  width: 100%;
-  box-sizing: border-box;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Compact mais lisible */
-  padding: 4px 8px;
-}
-
-#modalRefDetail .ref-level-text {
-  color: #111827;
-}
-
-/* Modal Référentiel — Postes concernés : compact + badge criticité */
-#modalRefDetail .sb-ref-postes-table thead th{
-  font-size: 12px;
-}
-
-#modalRefDetail .sb-ref-postes-table tbody td{
-  font-size: 12.5px; /* on baisse un poil la police sur toute la ligne */
-}
-
-#modalRefDetail .sb-ref-postes-table tbody tr{
-  line-height: 1.25;
-}
-
-/* Croix (header modal) */
-#modalRefDetail .modal-x {
-  color: var(--accent);
-}
-
-#modalRefDetail .modal-x:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border-radius: 8px;
-}
-
 /* =========================
    VUE: Cartographie des compétences
    (V2 uniquement)
@@ -14273,114 +14165,6 @@ textarea.sb-ctrl{
   min-width: 140px;
 }
 
-
-/* Modal Référentiel — Grille d’évaluation : lisibilité (espacement des bullets) */
-#modalRefDetail .sb-acc-body ul{
-  /* on ne touche pas à padding-left (déjà inline), on ajoute juste de l’air */
-  padding-top: 6px;
-  padding-bottom: 2px;
-}
-
-#modalRefDetail .sb-acc-body li{
-  line-height: 1.45;      /* lecture plus fluide */
-  margin: 6px 0;          /* espace entre items */
-  font-size: 13px;
-}
-
-#modalRefDetail .sb-acc-body li:last-child{
-  margin-bottom: 0;
-}
-
-
-/* Modal Référentiel — Niveaux en tableau (badge | texte) */
-#modalRefDetail .ref-levels-table {
-  display: flex;
-  flex-direction: column;
-  margin-top: 10px;
-  font-size: 14px;        /* police un peu plus petite */
-  line-height: 1.25;
-}
-
-/* Responsive : sur petit écran, on empile badge + texte */
-@media (max-width: 520px) {
-  #modalRefDetail .ref-level-row {
-    grid-template-columns: 1fr;
-    row-gap: 6px;
-  }
-
-  #modalRefDetail .ref-level-badge {
-    justify-self: start;
-    min-width: 0;
-  }
-}
-
-#modalRefDetail .ref-level-row {
-  display: grid;
-
-  /* Colonne badge fixe (alignement nickel) */
-  grid-template-columns: 150px 1fr;
-
-  /* Air entre badge et texte */
-  column-gap: 16px;
-
-  align-items: start;
-  padding: 8px 6px;
-  border-bottom: 1px solid rgba(209, 213, 219, 0.65);
-}
-
-/* micro feedback visuel sans “arc-en-ciel” */
-#modalRefDetail .ref-level-row:hover {
-  background: rgba(17, 24, 39, 0.03);
-  border-radius: 8px;
-}
-
-#modalRefDetail .ref-level-row:last-child {
-  border-bottom: 0;
-}
-
-#modalRefDetail .ref-level-badge {
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 500;
-
-  /* Badge = largeur de colonne (tous identiques) */
-  width: 100%;
-  box-sizing: border-box;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Compact mais lisible */
-  padding: 4px 8px;
-}
-
-#modalRefDetail .ref-level-text {
-  color: #111827;
-}
-
-/* Modal Référentiel — Postes concernés : compact + badge criticité */
-#modalRefDetail .sb-ref-postes-table thead th{
-  font-size: 12px;
-}
-
-#modalRefDetail .sb-ref-postes-table tbody td{
-  font-size: 12.5px; /* on baisse un poil la police sur toute la ligne */
-}
-
-#modalRefDetail .sb-ref-postes-table tbody tr{
-  line-height: 1.25;
-}
-
-/* Croix (header modal) */
-#modalRefDetail .modal-x {
-  color: var(--accent);
-}
-
-#modalRefDetail .modal-x:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border-radius: 8px;
-}
 
 /* =========================
    VUE: Cartographie des compétences
@@ -25529,14 +25313,327 @@ body{
 
 #modalRefDetail .modal-card{
   margin-top:24px;
+  width:min(1080px, calc(100vw - 48px));
   max-height:calc(100vh - 48px);
   display:flex;
   flex-direction:column;
+  border-radius:18px;
+}
+
+#modalRefDetail .modal-header{
+  align-items:flex-start;
+  padding:18px 22px 14px;
+}
+
+#modalRefDetail .modal-x{
+  color:#111827;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
+
+#modalRefDetail .modal-x:hover{
+  color:#111827;
+  background:transparent;
 }
 
 #modalRefDetail .modal-body{
   overflow:auto;
   flex:1 1 auto;
+  padding:14px 22px 18px;
+}
+
+#modalRefDetail .modal-footer{
+  padding:12px 22px 18px;
+}
+
+#modalRefDetail .sb-modal-titleline{
+  gap:12px;
+}
+
+#modalRefDetail .sb-ref-title-text{
+  font-size:16px;
+  font-weight:800;
+}
+
+#modalRefDetail .ref-modal-stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#modalRefDetail .ref-modal-card{
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  background:#ffffff;
+  box-shadow:none;
+}
+
+#modalRefDetail .ref-modal-kpi-strip{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(150px, 1fr));
+  gap:10px;
+}
+
+#modalRefDetail .ref-modal-kpi-card{
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid #edf0f4;
+  border-radius:14px;
+  background:#ffffff;
+}
+
+#modalRefDetail .ref-modal-kpi-icon{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 34px;
+  background:#f8fafc;
+  color:#334155;
+}
+
+#modalRefDetail .ref-modal-kpi-icon svg,
+#modalRefDetail .ref-modal-section-icon svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalRefDetail .ref-modal-kpi-card--domain .ref-modal-kpi-icon{
+  background:#eff6ff;
+  color:#2563eb;
+}
+
+#modalRefDetail .ref-modal-kpi-card--postes .ref-modal-kpi-icon{
+  background:#fff1f3;
+  color:#d81d30;
+}
+
+#modalRefDetail .ref-modal-kpi-card--criteria .ref-modal-kpi-icon{
+  background:rgba(124,58,237,.10);
+  color:#7c3aed;
+}
+
+#modalRefDetail .ref-modal-kpi-card--collabs .ref-modal-kpi-icon{
+  background:#ecfdf3;
+  color:#16a34a;
+}
+
+#modalRefDetail .ref-modal-kpi-label{
+  color:#667085;
+  font-size:11.5px;
+  font-weight:500;
+  line-height:1.15;
+}
+
+#modalRefDetail .ref-modal-kpi-value{
+  margin-top:3px;
+  color:#111827;
+  font-size:16px;
+  font-weight:800;
+  line-height:1;
+}
+
+#modalRefDetail .ref-modal-section-titleline{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-bottom:8px;
+}
+
+#modalRefDetail .ref-modal-section-icon{
+  width:26px;
+  height:26px;
+  border-radius:9px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 26px;
+  background:#f8fafc;
+  color:#64748b;
+}
+
+#modalRefDetail .ref-modal-section-icon svg{
+  width:15px;
+  height:15px;
+}
+
+#modalRefDetail .ref-modal-section-sub{
+  margin:0 0 10px 35px;
+}
+
+#modalRefDetail .ref-levels-table{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:4px;
+}
+
+#modalRefDetail .ref-level-row{
+  display:grid;
+  grid-template-columns:140px 1fr;
+  align-items:center;
+  gap:14px;
+  min-height:34px;
+  padding:6px 8px;
+  border:1px solid #edf0f4;
+  border-radius:10px;
+  background:#ffffff;
+}
+
+#modalRefDetail .ref-level-row .sb-badge{
+  width:100%;
+  justify-content:center;
+}
+
+#modalRefDetail .ref-level-text{
+  color:#111827;
+  font-size:12.5px;
+  line-height:1.35;
+}
+
+#modalRefDetail .ref-criteria-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:4px;
+}
+
+#modalRefDetail .ref-criteria-accordion{
+  margin:0;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  overflow:hidden;
+}
+
+#modalRefDetail .ref-criteria-head{
+  width:100%;
+  min-height:38px;
+  padding:9px 12px;
+  border:0;
+  background:#ffffff;
+  color:#111827;
+  cursor:pointer;
+}
+
+#modalRefDetail .ref-criteria-head.is-open{
+  background:#f8fafc;
+}
+
+#modalRefDetail .ref-criteria-title{
+  font-size:12.5px;
+  font-weight:800;
+}
+
+#modalRefDetail .ref-criteria-meta{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  flex:0 0 auto;
+}
+
+#modalRefDetail .ref-criteria-body{
+  padding:10px 12px;
+}
+
+#modalRefDetail .ref-criteria-body ul{
+  margin:0;
+  padding-left:18px;
+}
+
+#modalRefDetail .ref-criteria-body li{
+  margin:5px 0;
+  line-height:1.42;
+  font-size:12.5px;
+  color:#111827;
+}
+
+#modalRefDetail .ref-modal-table-wrap{
+  margin-top:8px;
+  overflow:auto;
+}
+
+#modalRefDetail .sb-ref-postes-table,
+#modalRefDetail .sb-ref-collabs-table{
+  table-layout:fixed;
+  min-width:760px;
+}
+
+#modalRefDetail .sb-ref-postes-table thead th,
+#modalRefDetail .sb-ref-collabs-table thead th{
+  background:#f8fafc;
+  font-size:12px;
+  font-weight:800;
+  color:#111827;
+  padding:9px 10px;
+  border-bottom:1px solid #e5e7eb;
+}
+
+#modalRefDetail .sb-ref-postes-table tbody td,
+#modalRefDetail .sb-ref-collabs-table tbody td{
+  font-size:12.5px;
+  padding:9px 10px;
+  border-bottom:1px solid #f1f5f9;
+  vertical-align:middle;
+}
+
+#modalRefDetail .sb-ref-postes-table tbody tr:nth-child(even),
+#modalRefDetail .sb-ref-collabs-table tbody tr:nth-child(even){
+  background:#fafafa;
+}
+
+#modalRefDetail .ref-poste-titleline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+#modalRefDetail .ref-poste-title{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:650;
+  color:#111827;
+}
+
+#modalRefDetail .ref-row-actions{
+  justify-content:center;
+}
+
+@media (max-width:900px){
+  #modalRefDetail .ref-modal-kpi-strip{
+    grid-template-columns:1fr 1fr;
+  }
+
+  #modalRefDetail .ref-level-row{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+}
+
+@media (max-width:620px){
+  #modalRefDetail .modal-card{
+    width:calc(100vw - 24px);
+    margin-top:12px;
+    max-height:calc(100vh - 24px);
+  }
+
+  #modalRefDetail .ref-modal-kpi-strip{
+    grid-template-columns:1fr;
+  }
 }
 
 @media (max-width:1320px){

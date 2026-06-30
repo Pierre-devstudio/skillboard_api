@@ -154,10 +154,24 @@ class PosteRequirement(BaseModel):
     date_valorisation: Optional[str] = None
 
 
+class CollaborateurCompetenceConcerned(BaseModel):
+    id_effectif: str
+    nom_effectif: str
+    prenom_effectif: str
+    id_poste: Optional[str] = None
+    codif_poste: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    id_service: Optional[str] = None
+    nom_service: Optional[str] = None
+    niveau_actuel: Optional[str] = None
+    date_derniere_eval: Optional[str] = None
+
+
 class CompetenceDetailResponse(BaseModel):
     service: ServiceScope
     competence: CompetenceDetail
     postes_concernes: List[PosteRequirement]
+    collaborateurs_concernes: List[CollaborateurCompetenceConcerned] = []
 
 
 class CertificationListItem(BaseModel):
@@ -320,6 +334,26 @@ def _postes_scope_params(id_ent: str, id_service: str) -> Tuple[Any, ...]:
         return (id_ent, id_ent)
     return (id_ent, id_service)
 
+
+def _effectifs_scope_filter(id_service: str) -> str:
+    """Filtre collaborateurs aligné sur le périmètre service du référentiel."""
+    if id_service == ALL_SERVICES_ID:
+        return ""
+
+    if id_service == NON_LIE_ID:
+        return """
+          AND (
+                ec.id_service IS NULL
+                OR ec.id_service NOT IN (
+                    SELECT o2.id_service
+                    FROM public.tbl_entreprise_organigramme o2
+                    WHERE o2.id_ent = %s
+                      AND COALESCE(o2.archive, FALSE) = FALSE
+                )
+              )
+        """
+
+    return " AND ec.id_service = %s "
 
 
 def _compute_comp_qual_flags(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -672,10 +706,71 @@ def get_referentiel_competence_detail(
                     for p in postes_rows
                 ]
 
+                eff_scope_filter = _effectifs_scope_filter(id_service)
+                eff_params: List[Any] = [id_ent, id_comp]
+                if id_service == NON_LIE_ID:
+                    eff_params.append(id_ent)
+                elif id_service != ALL_SERVICES_ID:
+                    eff_params.append(id_service)
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        ec.id_effectif,
+                        ec.nom_effectif,
+                        ec.prenom_effectif,
+                        ec.id_poste_actuel AS id_poste,
+                        fp.codif_poste,
+                        fp.intitule_poste,
+                        ec.id_service,
+                        o.nom_service,
+                        ecc.niveau_actuel,
+                        ecc.date_derniere_eval
+                    FROM public.tbl_effectif_client_competence ecc
+                    JOIN public.tbl_effectif_client ec
+                      ON ec.id_effectif = ecc.id_effectif_client
+                     AND ec.id_ent = %s
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = ec.id_poste_actuel
+                     AND fp.id_ent = ec.id_ent
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_service = ec.id_service
+                     AND o.id_ent = ec.id_ent
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    WHERE ecc.id_comp = %s
+                      AND COALESCE(ecc.actif, TRUE) = TRUE
+                      AND COALESCE(ecc.archive, FALSE) = FALSE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                      {eff_scope_filter}
+                    ORDER BY lower(COALESCE(ec.nom_effectif, '')), lower(COALESCE(ec.prenom_effectif, ''))
+                    """,
+                    tuple(eff_params),
+                )
+                collaborateurs_rows = cur.fetchall() or []
+
+                collaborateurs = [
+                    CollaborateurCompetenceConcerned(
+                        id_effectif=r.get("id_effectif"),
+                        nom_effectif=r.get("nom_effectif") or "",
+                        prenom_effectif=r.get("prenom_effectif") or "",
+                        id_poste=r.get("id_poste"),
+                        codif_poste=r.get("codif_poste"),
+                        intitule_poste=r.get("intitule_poste"),
+                        id_service=r.get("id_service"),
+                        nom_service=r.get("nom_service"),
+                        niveau_actuel=r.get("niveau_actuel"),
+                        date_derniere_eval=str(r.get("date_derniere_eval")) if r.get("date_derniere_eval") else None,
+                    )
+                    for r in collaborateurs_rows
+                ]
+
                 return CompetenceDetailResponse(
                     service=service_scope,
                     competence=competence,
                     postes_concernes=postes,
+                    collaborateurs_concernes=collaborateurs,
                 )
 
     except HTTPException:
