@@ -25835,6 +25835,7 @@ body{
   align-items:center;
   gap:16px;
   min-width:0;
+  flex:1 1 auto;
 }
 
 #view-cartographie-competences .map-page-hero__icon{
@@ -25874,12 +25875,15 @@ body{
 
 #view-cartographie-competences .map-kpi-strip{
   display:grid;
-  grid-template-columns:repeat(3, minmax(130px, 1fr));
+  grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:12px;
-  min-width:min(520px, 48%);
+  flex:0 1 860px;
+  width:min(860px, 58vw);
+  min-width:min(760px, 58vw);
 }
 
 #view-cartographie-competences .map-kpi-card{
+  min-width:0;
   min-height:58px;
   display:flex;
   align-items:center;
@@ -25888,6 +25892,10 @@ body{
   border:1px solid var(--map-border-soft);
   border-radius:14px;
   background:#ffffff;
+}
+
+#view-cartographie-competences .map-kpi-card > div:last-child{
+  min-width:0;
 }
 
 #view-cartographie-competences .map-kpi-card__icon{
@@ -26485,6 +26493,8 @@ body{
 #view-cartographie-competences .map-kpi-card--search .map-kpi-card__value{
   font-size:14px;
   white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 #view-cartographie-competences .map-kpi-card__hint{
