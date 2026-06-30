@@ -772,7 +772,8 @@
     try {
       const url = `${portal.apiBase}/skills/organisation/postes/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(pid)}/fiche_pdf`;
       const { blob, filename } = await fetchOrganisationPdfBlob(url, fallbackFilename);
-      renderPdfBlobInViewer(viewer, blob, filename || fallbackFilename);
+      const hasFriendlyName = !!(code || (title && title !== "Poste"));
+      renderPdfBlobInViewer(viewer, blob, hasFriendlyName ? fallbackFilename : (filename || fallbackFilename));
     } catch (err) {
       if (viewer && !viewer.closed) viewer.close();
       throw err;
@@ -2027,24 +2028,35 @@
   async function processReferentielPendingPosteAction(portal) {
     let id = "";
     let action = "";
+    let payload = null;
 
     try {
       id = String(window.sessionStorage.getItem("skills_org_open_poste_id") || "").trim();
       action = String(window.sessionStorage.getItem("skills_org_open_poste_action") || "detail").trim().toLowerCase();
-      if (id) {
+
+      const rawPayload = window.sessionStorage.getItem("skills_org_open_poste_payload") || "";
+      if (rawPayload) {
+        try { payload = JSON.parse(rawPayload); } catch (_) { payload = null; }
+      }
+
+      if (id || payload) {
         window.sessionStorage.removeItem("skills_org_open_poste_id");
         window.sessionStorage.removeItem("skills_org_open_poste_action");
+        window.sessionStorage.removeItem("skills_org_open_poste_payload");
       }
     } catch (_) {}
 
-    if (!id) return;
+    const poste = (payload && typeof payload === "object") ? payload : { id_poste: id };
+    poste.id_poste = String(poste?.id_poste || id || "").trim();
+
+    if (!poste.id_poste) return;
 
     try {
       if (action === "pdf") {
-        await openPosteFichePdf(portal, { id_poste: id });
+        await openPosteFichePdf(portal, poste);
       } else {
         bindOrgPosteModalOnce();
-        await openOrgPosteModal({ id_poste: id });
+        await openOrgPosteModal(poste);
       }
     } catch (e) {
       const prefix = action === "pdf" ? "Erreur PDF poste : " : "Erreur fiche poste : ";

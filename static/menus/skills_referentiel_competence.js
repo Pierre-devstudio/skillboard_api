@@ -1041,6 +1041,26 @@
     } catch (_) {}
   }
 
+  function setSessionJson(key, value) {
+    try {
+      window.sessionStorage.setItem(key, JSON.stringify(value || {}));
+    } catch (_) {}
+  }
+
+  function buildPostePayloadForOrganisation(row, idPoste) {
+    const src = row || {};
+    const id = String(src?.id_poste || idPoste || "").trim();
+    return {
+      id_poste: id,
+      codif_poste: String(src?.codif_poste || "").trim(),
+      codif_client: String(src?.codif_client || src?.code_poste || "").trim(),
+      intitule_poste: String(src?.intitule_poste || src?.intitule || "").trim(),
+      id_service: String(src?.id_service || "").trim(),
+      nom_service: String(src?.nom_service || "").trim(),
+      isresponsable: !!src?.isresponsable
+    };
+  }
+
   function portalSwitchView(viewName) {
     const name = String(viewName || "").trim();
     if (!name) return Promise.resolve(false);
@@ -1069,22 +1089,24 @@
 
   async function openPosteFromReferentiel(idPoste) {
     const row = findDetailPoste(idPoste) || { id_poste: idPoste };
-    const id = String(row?.id_poste || idPoste || "").trim();
-    if (!id) throw new Error("Poste manquant.");
+    const payload = buildPostePayloadForOrganisation(row, idPoste);
+    if (!payload.id_poste) throw new Error("Poste manquant.");
 
-    setSessionValue("skills_org_open_poste_id", id);
+    setSessionValue("skills_org_open_poste_id", payload.id_poste);
     setSessionValue("skills_org_open_poste_action", "detail");
+    setSessionJson("skills_org_open_poste_payload", payload);
     closeModal();
     await portalSwitchView("votre-organisation");
   }
 
   async function openPostePdfFromReferentiel(idPoste) {
     const row = findDetailPoste(idPoste) || { id_poste: idPoste };
-    const id = String(row?.id_poste || idPoste || "").trim();
-    if (!id) throw new Error("Poste manquant.");
+    const payload = buildPostePayloadForOrganisation(row, idPoste);
+    if (!payload.id_poste) throw new Error("Poste manquant.");
 
-    setSessionValue("skills_org_open_poste_id", id);
+    setSessionValue("skills_org_open_poste_id", payload.id_poste);
     setSessionValue("skills_org_open_poste_action", "pdf");
+    setSessionJson("skills_org_open_poste_payload", payload);
     closeModal();
     await portalSwitchView("votre-organisation");
   }
