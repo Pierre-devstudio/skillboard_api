@@ -2,17 +2,21 @@
    static/menus/skills_cartographie_competences.js
    - Menu "Cartographie des compétences"
    - Heatmap Poste × Domaine (WAOOOUUU)
-   - Filtres: Service + Domaine
+   - Filtres: Service + Recherche + Domaines multiples
    - Modal détail (V1: résumé cellule)
    ====================================================== */
 
 (function () {
   let _bound = false;
   let _servicesLoaded = false;
-  const _cache = new Map(); // key: service|domaine
+  const _cache = new Map(); // key: service
+  let _searchTimer = null;
+  let _lastDomaines = [];
 
   const STORE_SERVICE = "sb_map_service";
-  const STORE_DOMAINE = "sb_map_domaine";
+  const STORE_DOMAINES = "sb_map_domaines";
+  const STORE_FILTERS_OPEN = "sb_map_filters_open";
+  const STORE_DOMAINES_OPEN = "sb_map_domaines_open";
 
   function byId(id) { return document.getElementById(id); }
 
@@ -103,33 +107,82 @@
     if (ct) ct.textContent = text || "—";
   }
 
-  function fillDomaineSelect(domaines) {
-    const sel = byId("mapDomaineSelect");
-    if (!sel) return;
+  function parseStoredDomaines() {
+    try {
+      const raw = localStorage.getItem(STORE_DOMAINES) || "[]";
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.map(x => String(x || "").trim()).filter(Boolean) : [];
+    } catch (_) {
+      return [];
+    }
+  }
 
-    const stored = localStorage.getItem(STORE_DOMAINE) || "";
-    const current = (sel.value || stored || "").trim();
+  function getSelectedDomaines() {
+    return Array.from(document.querySelectorAll("#mapDomainesList input[data-id_domaine]:checked"))
+      .map(input => (input.getAttribute("data-id_domaine") || "").trim())
+      .filter(Boolean);
+  }
 
-    sel.innerHTML = `<option value="">Tous les domaines</option>`;
-
-    (domaines || []).forEach(d => {
-      const id = d?.id_domaine_competence;
-      if (!id) return;
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = d.titre_court || d.titre || id;
-      sel.appendChild(opt);
+  function setSelectedDomaines(ids) {
+    const set = new Set((ids || []).map(x => String(x || "").trim()).filter(Boolean));
+    document.querySelectorAll("#mapDomainesList input[data-id_domaine]").forEach(input => {
+      const id = (input.getAttribute("data-id_domaine") || "").trim();
+      input.checked = set.has(id);
     });
+  }
 
-    if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
-    else sel.value = "";
+  function renderDomainesChecklist(domaines) {
+    const host = byId("mapDomainesList");
+    if (!host) return;
+
+    const items = Array.isArray(domaines) ? domaines : [];
+    const previous = getSelectedDomaines();
+    const stored = parseStoredDomaines();
+    const current = previous.length ? previous : stored;
+    const selected = new Set(current);
+
+    host.innerHTML = items.map(d => {
+      const id = d?.id_domaine_competence;
+      if (!id) return "";
+      const label = (d.titre_court || d.titre || id || "Domaine").toString().trim();
+      const color = normalizeColor(d.couleur ?? d.domaine_couleur) || "#9ca3af";
+      const checked = selected.has(id) ? " checked" : "";
+      return `
+        <label class="map-domain-check" title="${escapeHtml(label)}">
+          <input type="checkbox" data-id_domaine="${escapeHtml(id)}"${checked} />
+          <span class="map-domain-dot" style="--dom-color:${escapeHtml(color)}" aria-hidden="true"></span>
+          <span class="map-domain-label">${escapeHtml(label)}</span>
+        </label>
+      `;
+    }).join("") || `<div class="card-sub" style="margin:0;">Aucun domaine disponible.</div>`;
+  }
+
+  function filterPostesBySearch(postes, q) {
+    const needle = (q || "").toString().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (!needle) return Array.isArray(postes) ? postes : [];
+
+    return (Array.isArray(postes) ? postes : []).filter(p => {
+      const hay = [
+        p?.codif_poste,
+        p?.codif_client,
+        getPosteCodeDisplay(p),
+        p?.intitule_poste,
+      ].map(v => (v || "").toString())
+        .join(" ")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+      return hay.includes(needle);
+    });
   }
 
   function getFilters() {
     const rawS = (byId("mapServiceSelect")?.value || "").trim();
     const id_service = window.portal.serviceFilter.toQueryId(rawS); // "__ALL__" => null
-    const id_domaine = (byId("mapDomaineSelect")?.value || "").trim();
-    return { id_service, id_domaine };
+    const q = (byId("mapSearch")?.value || "").trim();
+    const domaines = getSelectedDomaines();
+    return { id_service, q, domaines };
   }
 
 
@@ -189,15 +242,13 @@
   }
 
   async function fetchMatrice(portal, filters) {
-    const key = `${filters.id_service || ""}|${filters.id_domaine || ""}`;
+    const key = `${filters.id_service || ""}`;
     if (_cache.has(key)) return _cache.get(key);
 
     const svc = filters?.id_service;
     const qs = buildQuery({
-      id_service: (svc && svc !== window.portal.serviceFilter.ALL_ID) ? svc : null,
-      id_domaine: filters?.id_domaine || null
+      id_service: (svc && svc !== window.portal.serviceFilter.ALL_ID) ? svc : null
     });
-
 
     const url = `${portal.apiBase}/skills/cartographie/matrice/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
@@ -270,11 +321,10 @@
   }
 
     // ==============================
-  // V2: Histogrammes par ligne (Poste × Domaine)
+  // V2: Matrice Poste × Domaine
   // - 1 ligne par poste
-  // - 1 barre par domaine (ordre alphabétique)
-  // - légende des couleurs 1 seule fois en haut
-  // - clic sur une barre => on réutilise le modal cellule (point 3)
+  // - 1 barre par domaine visible
+  // - clic sur une barre => on réutilise le modal cellule
   // ==============================
 
   function renderHistogramBars(containerEl, domaines, postes, matrixMap) {
@@ -317,23 +367,6 @@
       return Math.max(2, h); // barre visible si v>0
     }
 
-    // Légende couleurs (1 seule fois)
-    const legend = `
-      <div class="hb-dom-legend">
-        ${doms.map(d => {
-          const fullLabel = (d.titre || d.titre_court || d.id_domaine_competence || "").toString().trim();
-          const shortLabel = (d.titre_court || d.titre || d.id_domaine_competence || "").toString().trim();
-          const col = normalizeColor(d.couleur ?? d.domaine_couleur) || "#e5e7eb";
-          return `
-            <span class="hb-leg-item" title="${escapeHtml(fullLabel)}">
-              <span class="hb-leg-dot" style="background:${escapeHtml(col)}; border-color:${escapeHtml(col)};"></span>
-              <span class="hb-leg-txt">${escapeHtml(shortLabel || "—")}</span>
-            </span>
-          `;
-        }).join("")}
-      </div>
-    `;
-
     // Header (dots only)
     let ths = `<th class="hb-sticky hb-rowhead">Poste</th>`;
     doms.forEach(d => {
@@ -353,8 +386,6 @@
       const r = map.get(p.id_poste);
       const cod = getPosteCodeDisplay(p);
       const intit = (p.intitule_poste || "").toString().trim();
-      const svc = (p.nom_service || "").toString().trim();
-
       let tds = "";
       doms.forEach(d => {
         const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
@@ -381,9 +412,10 @@
       trs += `
         <tr>
           <td class="hb-rowhead">
-            ${cod ? `<div class="hb-poste-code"><span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(cod)}</span></div>` : ``}
-            <div class="hb-poste-title">${escapeHtml(intit || "—")}</div>
-            <div class="hb-poste-sub">${escapeHtml(svc || "—")}</div>
+            <div class="hb-poste-line">
+              ${cod ? `<span class="sb-badge sb-badge-ref-poste-code hb-poste-code">${escapeHtml(cod)}</span>` : ``}
+              <span class="hb-poste-title">${escapeHtml(intit || "—")}</span>
+            </div>
           </td>
           ${tds}
           <td class="hb-totalcell hb-totalclick"
@@ -406,7 +438,6 @@
     totalRow += `<td class="hb-grandtotal">${grandTotal ? grandTotal : ""}</td>`;
 
     el.innerHTML = `
-      ${legend}
       <div class="hb-wrap">
         <table class="hb-table">
           <thead><tr>${ths}</tr></thead>
@@ -431,7 +462,6 @@
     const f = getFilters();
 
     localStorage.setItem(STORE_SERVICE, f.id_service || "");
-    localStorage.setItem(STORE_DOMAINE, f.id_domaine || "");
 
     try {
       portal.showAlert("", "");
@@ -439,55 +469,55 @@
       setCounts("—");
 
       const data = await fetchMatrice(portal, f);
-
       const rawDomaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
-      fillDomaineSelect(rawDomaines);
 
       const model = buildMatrix(data);
+      _lastDomaines = model.domaines || [];
+      renderDomainesChecklist(_lastDomaines);
+      if (f.domaines && f.domaines.length) setSelectedDomaines(f.domaines);
 
-      // filtre domaine côté UI (robuste même si API renvoie tout)
-      const domainesShown = f.id_domaine
-        ? (model.domaines || []).filter(d => d.id_domaine_competence === f.id_domaine)
+      const activeDomaines = getSelectedDomaines();
+      localStorage.setItem(STORE_DOMAINES, JSON.stringify(activeDomaines));
+
+      const selectedIds = new Set(activeDomaines || []);
+      const domainesShown = selectedIds.size
+        ? (model.domaines || []).filter(d => selectedIds.has(d.id_domaine_competence))
         : (model.domaines || []);
 
-      // rien à afficher
+      const postesShown = filterPostesBySearch(model.postes || [], f.q);
+
       const grid = byId("heatmapGrid");
-      if (!grid || !(model.postes || []).length || !domainesShown.length) {
+      if (!grid || !postesShown.length || !domainesShown.length) {
         if (grid) grid.innerHTML = "";
         setVisible("mapEmpty", true);
         setCounts("—");
-        setText("kpiMapPostes", (model.postes || []).length);
+        setText("kpiMapPostes", postesShown.length);
         setText("kpiMapDomaines", domainesShown.length);
         setText("kpiMapCompetences", 0);
         applyScopeLabels();
-        setStatus("");
+        setStatus("Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.");
         return;
       }
 
       setVisible("mapEmpty", false);
       applyScopeLabels();
 
-      // render V2: histogrammes par ligne
-      renderHistogramBars(grid, domainesShown, model.postes, model.matrixMap);
+      renderHistogramBars(grid, domainesShown, postesShown, model.matrixMap);
 
-      // KPI (sur domainesShown)
       let totalCompetences = 0;
-      (model.postes || []).forEach(p => {
+      postesShown.forEach(p => {
         const row = model.matrixMap.get(p.id_poste);
         if (!row) return;
-        (domainesShown || []).forEach(d => {
+        domainesShown.forEach(d => {
           totalCompetences += Number(row.get(d.id_domaine_competence) || 0);
         });
       });
 
-      setText("kpiMapPostes", (model.postes || []).length);
-      setText("kpiMapDomaines", (domainesShown || []).length);
+      setText("kpiMapPostes", postesShown.length);
+      setText("kpiMapDomaines", domainesShown.length);
       setText("kpiMapCompetences", totalCompetences);
-
-      setCounts(`${(model.postes || []).length} poste(s) · ${(domainesShown || []).length} domaine(s)`);
-
-      // FIN du "chargement"
-      setStatus("");
+      setCounts("—");
+      setStatus("Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.");
 
     } catch (e) {
       portal.showAlert("error", "Erreur cartographie : " + e.message);
@@ -506,39 +536,82 @@
     }
   }
 
+  function setCardCollapsed(cardId, toggleId, storageKey, collapsed) {
+    const card = byId(cardId);
+    const btn = byId(toggleId);
+    if (!card || !btn) return;
+
+    card.classList.toggle("is-collapsed", collapsed);
+    btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    btn.setAttribute("title", collapsed ? "Déplier" : "Replier");
+    btn.setAttribute("aria-label", collapsed ? "Déplier" : "Replier");
+    localStorage.setItem(storageKey, collapsed ? "0" : "1");
+  }
+
+  function initCollapsibleCard(cardId, toggleId, storageKey) {
+    const btn = byId(toggleId);
+    const stored = localStorage.getItem(storageKey);
+    const collapsed = stored === "0";
+    setCardCollapsed(cardId, toggleId, storageKey, collapsed);
+
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      const card = byId(cardId);
+      setCardCollapsed(cardId, toggleId, storageKey, !(card?.classList?.contains("is-collapsed")));
+    });
+  }
+
   function bindOnce(portal) {
     if (_bound) return;
     _bound = true;
 
     const selService = byId("mapServiceSelect");
-    const selDom = byId("mapDomaineSelect");
+    const search = byId("mapSearch");
+    const domainList = byId("mapDomainesList");
     const btnReset = byId("btnMapReset");
+    const btnApply = byId("btnMapApply");
 
     const btnX = byId("btnCloseMapModal");
     const btnClose = byId("btnMapModalClose");
     const modal = byId("modalMapDetail");
     const grid = byId("heatmapGrid");
 
+    initCollapsibleCard("mapFilterCard", "btnMapFiltersToggle", STORE_FILTERS_OPEN);
+    initCollapsibleCard("mapDomainCard", "btnMapDomainesToggle", STORE_DOMAINES_OPEN);
+
     if (selService) {
       selService.addEventListener("change", () => {
         _cache.clear();
-        // reset domaine au changement service pour éviter "filtre fantôme"
-        if (selDom) selDom.value = "";
         refreshAll(portal);
       });
     }
 
-    if (selDom) {
-      selDom.addEventListener("change", () => {
-        _cache.clear();
+    if (search) {
+      search.addEventListener("input", () => {
+        if (_searchTimer) clearTimeout(_searchTimer);
+        _searchTimer = setTimeout(() => refreshAll(portal), 180);
+      });
+    }
+
+    if (domainList) {
+      domainList.addEventListener("change", (ev) => {
+        const input = ev.target?.closest?.("input[data-id_domaine]");
+        if (!input) return;
+        localStorage.setItem(STORE_DOMAINES, JSON.stringify(getSelectedDomaines()));
         refreshAll(portal);
       });
+    }
+
+    if (btnApply) {
+      btnApply.addEventListener("click", () => refreshAll(portal));
     }
 
     if (btnReset) {
       btnReset.addEventListener("click", () => {
         if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
-        if (selDom) selDom.value = "";
+        if (search) search.value = "";
+        setSelectedDomaines([]);
+        localStorage.removeItem(STORE_DOMAINES);
         _cache.clear();
         refreshAll(portal);
       });

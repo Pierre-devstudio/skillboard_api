@@ -25800,3 +25800,392 @@ body{
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+
+/* ======================================================
+   VUE: Cartographie des compétences — refonte matrice
+   ====================================================== */
+#view-cartographie-competences{
+  --map-red:#d81d30;
+  --map-red-soft:#fff1f3;
+  --map-border:#e5e7eb;
+  --map-border-soft:#edf0f4;
+  --map-text:#111827;
+  --map-muted:#667085;
+}
+
+#view-cartographie-competences .map-page-hero,
+#view-cartographie-competences .map-filter-card,
+#view-cartographie-competences .map-domain-card,
+#view-cartographie-competences .map-matrix-card{
+  border:1px solid var(--map-border);
+  border-radius:18px;
+  background:#ffffff;
+}
+
+#view-cartographie-competences .map-page-hero{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:24px 28px;
+}
+
+#view-cartographie-competences .map-page-hero__main{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+}
+
+#view-cartographie-competences .map-page-hero__icon{
+  width:48px;
+  height:48px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 48px;
+  background:var(--map-red);
+  color:#ffffff;
+}
+
+#view-cartographie-competences .map-page-hero__icon svg,
+#view-cartographie-competences .map-kpi-card__icon svg,
+#view-cartographie-competences .map-card-head__icon svg,
+#view-cartographie-competences .map-search-wrap__icon svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-cartographie-competences .map-page-hero__title{
+  margin:0 0 4px 0;
+  color:var(--map-text);
+}
+
+#view-cartographie-competences .map-page-hero__sub{
+  margin:0;
+}
+
+#view-cartographie-competences .map-kpi-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(130px, 1fr));
+  gap:12px;
+  min-width:min(520px, 48%);
+}
+
+#view-cartographie-competences .map-kpi-card{
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid var(--map-border-soft);
+  border-radius:14px;
+  background:#ffffff;
+}
+
+#view-cartographie-competences .map-kpi-card__icon{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 34px;
+  background:#f8fafc;
+  color:#334155;
+}
+
+#view-cartographie-competences .map-kpi-card--postes .map-kpi-card__icon{
+  background:var(--map-red-soft);
+  color:var(--map-red);
+}
+
+#view-cartographie-competences .map-kpi-card--domaines .map-kpi-card__icon{
+  background:rgba(124,58,237,.08);
+  color:var(--sb-violet);
+}
+
+#view-cartographie-competences .map-kpi-card--competences .map-kpi-card__icon{
+  background:rgba(22,163,74,.10);
+  color:#16a34a;
+}
+
+#view-cartographie-competences .map-kpi-card__value{
+  color:var(--map-text);
+  font-size:17px;
+  font-weight:800;
+  line-height:1;
+}
+
+#view-cartographie-competences .map-kpi-card__label{
+  margin-top:4px;
+  color:var(--map-muted);
+  font-size:12px;
+  font-weight:500;
+  line-height:1.15;
+}
+
+#view-cartographie-competences .map-workspace{
+  display:grid;
+  grid-template-columns:300px minmax(620px, 1fr);
+  gap:16px;
+  align-items:start;
+  margin-top:18px;
+}
+
+#view-cartographie-competences .map-left-col{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+}
+
+#view-cartographie-competences .map-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+#view-cartographie-competences .map-card-head__icon{
+  width:28px;
+  height:28px;
+  border:0;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 28px;
+  padding:0;
+  background:#f8fafc;
+  color:#64748b;
+  cursor:pointer;
+}
+
+#view-cartographie-competences .map-card-head__icon svg{
+  width:16px;
+  height:16px;
+  transition:transform .12s ease;
+}
+
+#view-cartographie-competences .map-card-toggle:hover{
+  background:var(--map-red-soft);
+  color:var(--map-red);
+}
+
+#view-cartographie-competences .map-card-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-cartographie-competences .map-card-toggle[aria-expanded="false"] svg{
+  transform:rotate(90deg);
+}
+
+#view-cartographie-competences .map-filter-card.is-collapsed .map-card-head,
+#view-cartographie-competences .map-domain-card.is-collapsed .map-card-head{
+  margin-bottom:0;
+}
+
+#view-cartographie-competences .map-filter-card.is-collapsed .map-filter-body,
+#view-cartographie-competences .map-domain-card.is-collapsed .map-domain-body{
+  display:none;
+}
+
+#view-cartographie-competences .map-filter-body,
+#view-cartographie-competences .map-domain-body{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#view-cartographie-competences .map-search-wrap{
+  position:relative;
+}
+
+#view-cartographie-competences .map-search-wrap input{
+  padding-right:36px;
+}
+
+#view-cartographie-competences .map-search-wrap__icon{
+  position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#64748b;
+  pointer-events:none;
+}
+
+#view-cartographie-competences .map-search-wrap__icon svg{
+  width:16px;
+  height:16px;
+}
+
+#view-cartographie-competences .map-filter-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+#view-cartographie-competences .map-filter-actions .sb-btn{
+  width:100%;
+}
+
+#view-cartographie-competences .map-domain-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+#view-cartographie-competences .map-domain-check{
+  min-height:22px;
+  display:grid;
+  grid-template-columns:16px 10px minmax(0, 1fr);
+  align-items:center;
+  gap:9px;
+  color:var(--map-text);
+  font-size:12.5px;
+  cursor:pointer;
+}
+
+#view-cartographie-competences .map-domain-check input[type="checkbox"]{
+  width:14px;
+  height:14px;
+  margin:0;
+  accent-color:var(--accent);
+}
+
+#view-cartographie-competences .map-domain-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:var(--dom-color, #9ca3af);
+  box-shadow:0 0 0 2px #ffffff, 0 0 0 3px rgba(15,23,42,.08);
+}
+
+#view-cartographie-competences .map-domain-label{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#view-cartographie-competences .map-matrix-card{
+  min-width:0;
+}
+
+#view-cartographie-competences .map-matrix-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+#view-cartographie-competences .map-heatmap-wrap{
+  margin-top:0;
+}
+
+#view-cartographie-competences .map-table-wrap{
+  overflow:auto;
+}
+
+#view-cartographie-competences .hb-wrap{
+  margin-top:0;
+}
+
+#view-cartographie-competences .hb-table{
+  min-width:820px;
+  table-layout:fixed;
+}
+
+#view-cartographie-competences .hb-table th,
+#view-cartographie-competences .hb-table td{
+  padding:9px 8px;
+}
+
+#view-cartographie-competences .hb-rowhead{
+  width:360px;
+  min-width:360px;
+}
+
+#view-cartographie-competences .hb-table th:not(.hb-rowhead):not(:last-child),
+#view-cartographie-competences .hb-table td:not(.hb-rowhead):not(:last-child){
+  width:42px;
+}
+
+#view-cartographie-competences .hb-table th:last-child,
+#view-cartographie-competences .hb-table td:last-child{
+  width:58px;
+}
+
+#view-cartographie-competences .hb-poste-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+#view-cartographie-competences .hb-poste-line .hb-poste-code{
+  margin:0;
+  flex:0 0 auto;
+}
+
+#view-cartographie-competences .hb-poste-title{
+  min-width:0;
+  max-width:none;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12.5px;
+  font-weight:750;
+  color:var(--map-text);
+}
+
+#view-cartographie-competences .hb-barbox{
+  height:26px;
+  align-items:flex-end;
+}
+
+#view-cartographie-competences .hb-bar{
+  width:18px;
+  border-radius:7px 7px 4px 4px;
+}
+
+#view-cartographie-competences .hb-totalrow td{
+  font-size:13px;
+}
+
+@media (max-width:1100px){
+  #view-cartographie-competences .map-page-hero{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  #view-cartographie-competences .map-kpi-strip{
+    width:100%;
+    min-width:0;
+  }
+
+  #view-cartographie-competences .map-workspace{
+    grid-template-columns:280px minmax(560px, 1fr);
+  }
+}
+
+@media (max-width:900px){
+  #view-cartographie-competences .map-workspace{
+    grid-template-columns:1fr;
+  }
+
+  #view-cartographie-competences .map-kpi-strip{
+    grid-template-columns:1fr;
+  }
+}

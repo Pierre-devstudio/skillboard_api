@@ -1,101 +1,140 @@
 <section id="view-cartographie-competences" style="display:none;">
-  <div class="card">
-    <div class="card-title">Cartographie des compétences</div>
-    <div class="card-sub">
-      Visualisez la répartition des compétences requises par poste et par domaine, filtrée par service.
+  <div class="card map-page-hero">
+    <div class="map-page-hero__main">
+      <div class="map-page-hero__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M9 18 3 21V5l6-3 6 3 6-3v16l-6 3-6-3Z"/>
+          <path d="M9 2v16"/>
+          <path d="M15 5v16"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title map-page-hero__title">Cartographie des compétences</div>
+        <div class="card-sub map-page-hero__sub">
+          Visualisez la répartition des compétences requises par poste et par domaine, filtrée par service.
+        </div>
+      </div>
+    </div>
+
+    <div class="map-kpi-strip">
+      <div class="map-kpi-card map-kpi-card--postes">
+        <div class="map-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>
+        </div>
+        <div>
+          <div class="map-kpi-card__value" id="kpiMapPostes">–</div>
+          <div class="map-kpi-card__label">postes</div>
+        </div>
+      </div>
+
+      <div class="map-kpi-card map-kpi-card--domaines">
+        <div class="map-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h6v6h-6z"/></svg>
+        </div>
+        <div>
+          <div class="map-kpi-card__value" id="kpiMapDomaines">–</div>
+          <div class="map-kpi-card__label">domaines</div>
+        </div>
+      </div>
+
+      <div class="map-kpi-card map-kpi-card--competences">
+        <div class="map-kpi-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/></svg>
+        </div>
+        <div>
+          <div class="map-kpi-card__value" id="kpiMapCompetences">–</div>
+          <div class="map-kpi-card__label">compétences</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="sb-split">
-    <!-- Colonne filtres -->
-    <div class="sb-col">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Filtres</div>
-        <div class="card-sub" style="margin:0;">Lecture “macro” du périmètre. Cliquez sur une barre pour détailler.</div>
+  <div class="map-workspace">
+    <aside class="map-left-col">
+      <div class="card map-filter-card" id="mapFilterCard">
+        <div class="map-card-head">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Filtres</div>
+            <div class="card-sub" style="margin:0;">Filtrez le périmètre affiché.</div>
+          </div>
+          <button type="button"
+                  class="map-card-head__icon map-card-toggle"
+                  id="btnMapFiltersToggle"
+                  aria-expanded="true"
+                  aria-controls="mapFilterBody"
+                  title="Replier les filtres"
+                  aria-label="Replier les filtres">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </button>
+        </div>
 
-
-        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
-          <div class="info-item" style="min-width:0;">
-            <div class="label">Service</div>
+        <div class="map-filter-body" id="mapFilterBody">
+          <div class="info-item">
+            <label class="sb-label" for="mapServiceSelect">Service</label>
             <select id="mapServiceSelect" class="sb-select">
               <option value="__ALL__">Tous les services</option>
             </select>
           </div>
 
-          <div class="info-item" style="min-width:0;">
-            <div class="label">Domaine</div>
-            <select id="mapDomaineSelect" class="sb-select">
-              <option value="">Tous les domaines</option>
-            </select>
+          <div class="info-item">
+            <label class="sb-label" for="mapSearch">Recherche</label>
+            <div class="map-search-wrap">
+              <input type="text" id="mapSearch" class="sb-ctrl" placeholder="Code poste, intitulé..." />
+              <span class="map-search-wrap__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              </span>
+            </div>
           </div>
 
-          <div class="info-item" style="min-width:0;">
-            <button type="button" class="sb-btn sb-btn--init sb-btn--block" id="btnMapReset">
-              Réinitialiser les filtres
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- KPI -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Indicateurs</div>
-        <div class="card-sub" style="margin:0;">Synthèse du périmètre affiché.</div>
-
-        <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Postes</div>
-            <div class="value" id="kpiMapPostes">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Domaines</div>
-            <div class="value" id="kpiMapDomaines">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Compétences (total)</div>
-            <div class="value" id="kpiMapCompetences">–</div>
-          </div>
-
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-            <div class="label">Périmètre</div>
-            <div class="value" id="kpiMapScope">–</div>
+          <div class="map-filter-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnMapReset">Réinitialiser</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnMapApply">Appliquer</button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Colonne contenu -->
-    <div class="sb-col">
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+      <div class="card map-domain-card" id="mapDomainCard">
+        <div class="map-card-head">
           <div>
-            <div class="card-title" style="margin-bottom:6px;">Heatmap des compétences</div>
-            <div class="card-sub" id="hmStatus" style="margin:0;">Chargement…</div>
+            <div class="card-title" style="margin-bottom:4px;">Domaines</div>
           </div>
-
-          <div class="card-sub" id="mapCount" style="margin:0;">—</div>
+          <button type="button"
+                  class="map-card-head__icon map-card-toggle"
+                  id="btnMapDomainesToggle"
+                  aria-expanded="true"
+                  aria-controls="mapDomaineBody"
+                  title="Replier les domaines"
+                  aria-label="Replier les domaines">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </button>
         </div>
 
-        <!-- Heatmap -->
-        <div id="wrapHeatmap" style="margin-top:12px;">
-          <div class="card-sub" style="margin:0 0 10px 0;">
-            Plus la barre est haute, plus le poste mobilise de compétences dans ce domaine.
-          </div>
-
-
-          <div class="table-wrap" style="overflow:auto;">
-            <!-- On génère la grille en JS -->
-            <div id="heatmapGrid" class="map-heatmap"></div>
-          </div>
-        </div>
-
-        <div class="card-sub" id="mapEmpty" style="display:none; margin-top:10px;">
-          Aucun poste/compétence trouvé pour les filtres sélectionnés.
+        <div class="map-domain-body" id="mapDomaineBody">
+          <div class="map-domain-list" id="mapDomainesList"></div>
         </div>
       </div>
-    </div>
+    </aside>
+
+    <main class="card map-matrix-card">
+      <div class="map-matrix-head">
+        <div>
+          <div class="card-title" style="margin-bottom:6px;">Matrice des compétences par poste</div>
+          <div class="card-sub" id="hmStatus" style="margin:0;">
+            Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.
+          </div>
+        </div>
+      </div>
+
+      <div id="wrapHeatmap" class="map-heatmap-wrap">
+        <div class="table-wrap map-table-wrap">
+          <div id="heatmapGrid" class="map-heatmap"></div>
+        </div>
+      </div>
+
+      <div class="card-sub" id="mapEmpty" style="display:none; margin-top:10px;">
+        Aucun poste/compétence trouvé pour les filtres sélectionnés.
+      </div>
+    </main>
   </div>
 
   <!-- Modal détail (cellule ou poste/domaine) -->
