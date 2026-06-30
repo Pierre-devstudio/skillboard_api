@@ -1035,6 +1035,58 @@
     }
   }
 
+  function getPublicApi(primaryName, secondaryName) {
+    return window[primaryName] || window[secondaryName] || null;
+  }
+
+  function getStaticMenuScriptUrl(filename) {
+    const name = String(filename || "").trim();
+    return `/static/menus/${name}`;
+  }
+
+  function loadMenuScriptOnce(filename) {
+    const src = getStaticMenuScriptUrl(filename);
+    window.__novoskillRefModuleLoads = window.__novoskillRefModuleLoads || {};
+
+    if (window.__novoskillRefModuleLoads[src]) {
+      return window.__novoskillRefModuleLoads[src];
+    }
+
+    window.__novoskillRefModuleLoads[src] = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.dataset.novoskillRefModule = filename;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Impossible de charger ${filename}.`));
+      document.head.appendChild(script);
+    });
+
+    return window.__novoskillRefModuleLoads[src];
+  }
+
+  async function ensureOrganisationApi() {
+    let api = getPublicApi("SkillsOrganisation", "skillsOrganisation");
+    if (api) return api;
+
+    await loadMenuScriptOnce("skills_organisation.js");
+    api = getPublicApi("SkillsOrganisation", "skillsOrganisation");
+    if (api) return api;
+
+    throw new Error("Module Organisation indisponible.");
+  }
+
+  async function ensureCollaborateursApi() {
+    let api = getPublicApi("SkillsCollaborateurs", "skillsCollaborateurs");
+    if (api) return api;
+
+    await loadMenuScriptOnce("skills_collaborateurs.js");
+    api = getPublicApi("SkillsCollaborateurs", "skillsCollaborateurs");
+    if (api) return api;
+
+    throw new Error("Module Collaborateurs indisponible.");
+  }
+
   function findDetailPoste(idPoste) {
     const id = String(idPoste || "").trim();
     return _lastDetailPostes.find(x => String(x?.id_poste || "") === id) || null;
@@ -1047,49 +1099,51 @@
 
   async function openPosteFromReferentiel(idPoste) {
     const row = findDetailPoste(idPoste) || { id_poste: idPoste };
-    const api = window.SkillsOrganisation || window.skillsOrganisation;
+    const api = await ensureOrganisationApi();
 
-    if (api && typeof api.openPosteModalById === "function") {
+    if (typeof api.openPosteModalById === "function") {
       closeModal();
       await api.openPosteModalById(row.id_poste || idPoste);
       return;
     }
 
-    if (api && typeof api.openPosteModal === "function") {
+    if (typeof api.openPosteModal === "function") {
       closeModal();
       await api.openPosteModal(row);
       return;
     }
 
-    throw new Error("Module Organisation indisponible.");
+    throw new Error("Ouverture fiche poste non exposée par le module Organisation.");
   }
 
   async function openPostePdfFromReferentiel(idPoste) {
     const row = findDetailPoste(idPoste) || { id_poste: idPoste };
-    const api = window.SkillsOrganisation || window.skillsOrganisation;
+    const api = await ensureOrganisationApi();
 
-    if (api && typeof api.openPostePdfById === "function") {
+    if (typeof api.openPostePdfById === "function") {
       await api.openPostePdfById(row.id_poste || idPoste);
       return;
     }
 
-    if (api && typeof api.openPostePdf === "function") {
+    if (typeof api.openPostePdf === "function") {
       await api.openPostePdf(row);
       return;
     }
 
-    throw new Error("Module Organisation indisponible pour le PDF poste.");
+    throw new Error("Ouverture PDF poste non exposée par le module Organisation.");
   }
 
   async function openCollaborateurFromReferentiel(idEffectif) {
     const row = findDetailCollaborateur(idEffectif) || { id_effectif: idEffectif };
-    const api = window.SkillsCollaborateurs || window.skillsCollaborateurs;
-    if (api && typeof api.openCollaborateurModalById === "function") {
+    const api = await ensureCollaborateursApi();
+
+    if (typeof api.openCollaborateurModalById === "function") {
       closeModal();
       await api.openCollaborateurModalById(row.id_effectif);
       return;
     }
-    throw new Error("Module Collaborateurs indisponible.");
+
+    throw new Error("Ouverture fiche collaborateur non exposée par le module Collaborateurs.");
   }
 
   async function openCompetenceDetail(portal, id_comp) {
