@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
+import re
 from typing import Optional, List, Dict, Any, Tuple
 
 from psycopg.rows import dict_row
@@ -7,6 +8,10 @@ from psycopg.rows import dict_row
 from app.routers.skills_portal_common import (
     get_conn,
     resolve_insights_id_ent_for_request,
+)
+from app.routers.skills_portal_pdf_common import (
+    build_competence_pdf_story,
+    build_pdf_document,
 )
 
 
@@ -20,6 +25,51 @@ ALL_SERVICES_ID = "__ALL__"
 ETAT_ACTIVE = "active"
 ETAT_INACTIVE = "inactive"
 ETAT_A_VALIDER = "à valider"
+
+
+def _pdf_safe_filename_part(v: Any, max_len: int = 120) -> str:
+    s = str(v or "").strip()
+    s = re.sub(r"[\\/:*?\"<>|]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return (s[:max_len].strip() or "document")
+
+
+def _pdf_latin1_safe(v: Any) -> str:
+    s = str(v or "")
+    return s.encode("latin-1", "replace").decode("latin-1")
+
+
+def _filename_header_value(filename: str) -> str:
+    return _pdf_latin1_safe(filename).replace('"', "'")
+
+
+def _referentiel_pdf_logo_bytes_for_ent(cur, id_ent: str) -> Optional[bytes]:
+    ent = (id_ent or "").strip()
+    if not ent:
+        return None
+
+    try:
+        cur.execute(
+            """
+            SELECT logo_bytes
+            FROM public.tbl_studio_owner_logo
+            WHERE id_owner = %s
+              AND COALESCE(archive, FALSE) = FALSE
+            ORDER BY date_maj DESC, date_creation DESC
+            LIMIT 1
+            """,
+            (ent,),
+        )
+        row = cur.fetchone() or {}
+        raw = row.get("logo_bytes")
+        if raw is None:
+            return None
+        try:
+            return bytes(raw)
+        except Exception:
+            return raw
+    except Exception:
+        return None
 
 
 # ======================================================
@@ -632,6 +682,158 @@ def get_referentiel_competence_detail(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.get("/skills/referentiel/competences/fiche_pdf/{id_contact}/{id_service}/{id_comp}")
+def get_referentiel_competence_fiche_pdf(
+    id_contact: str,
+    request: Request,
+    id_service: str,
+    id_comp: str,
+):
+    """
+    PDF fiche compétence depuis Insights / Référentiel de compétences.
+    Réutilise la trame commune déjà utilisée côté collaborateurs.
+
+    Sécurité :
+    - id_contact résout le périmètre Insights via le token ;
+    - la compétence doit appartenir au référentiel visible ;
+    - la compétence doit être requise par au moins un poste du scope service sélectionné.
+    """
+    try:
+        comp_id = (id_comp or "").strip()
+        scope_service_id = (id_service or "").strip() or ALL_SERVICES_ID
+        if not comp_id:
+            raise HTTPException(status_code=400, detail="Compétence introuvable.")
+
+        logo_bytes = None
+        header_right = "Novoskill Insights"
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                logo_bytes = _referentiel_pdf_logo_bytes_for_ent(cur, id_ent)
+
+                _fetch_service_label(cur, id_ent, scope_service_id)
+
+                cur.execute(
+                    """
+                    SELECT COALESCE(e.nom_ent, me.nom_ent, 'Novoskill Insights') AS nom_ent
+                    FROM (SELECT %s::text AS id_ent) x
+                    LEFT JOIN public.tbl_entreprise e
+                      ON e.id_ent = x.id_ent
+                    LEFT JOIN public.tbl_mon_entreprise me
+                      ON me.id_mon_ent = x.id_ent
+                    LIMIT 1
+                    """,
+                    (id_ent,),
+                )
+                ent_row = cur.fetchone() or {}
+                header_right = (ent_row.get("nom_ent") or "Novoskill Insights").strip()
+
+                postes_cte = _build_postes_scope_cte(scope_service_id)
+                params_cte = _postes_scope_params(id_ent, scope_service_id)
+
+                cur.execute(
+                    f"""
+                    WITH
+                    {postes_cte},
+                    comp AS (
+                        SELECT
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            c.description,
+                            c.domaine,
+                            c.niveaua,
+                            c.niveaub,
+                            c.niveauc,
+                            c.niveaud,
+                            c.grille_evaluation,
+                            dc.titre_court AS domaine_titre_court,
+                            dc.titre AS domaine_titre
+                        FROM public.tbl_competence c
+                        LEFT JOIN public.tbl_domaine_competence dc
+                          ON dc.id_domaine_competence = c.domaine
+                         AND COALESCE(dc.masque, FALSE) = FALSE
+                        WHERE c.id_comp = %s
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                        LIMIT 1
+                    ),
+                    linked AS (
+                        SELECT 1
+                        FROM public.tbl_fiche_poste_competence fpc
+                        JOIN postes_scope ps
+                          ON ps.id_poste = fpc.id_poste
+                        JOIN comp c
+                          ON (fpc.id_competence = c.id_comp OR fpc.id_competence = c.code)
+                        WHERE COALESCE(fpc.masque, FALSE) = FALSE
+                        LIMIT 1
+                    )
+                    SELECT *
+                    FROM comp
+                    WHERE EXISTS (SELECT 1 FROM linked)
+                    LIMIT 1
+                    """,
+                    tuple(params_cte + (comp_id,)),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Compétence introuvable pour ce référentiel.",
+                    )
+
+        skill = {
+            "id_comp": row.get("id_comp"),
+            "code": (row.get("code") or "").strip(),
+            "intitule": (row.get("intitule") or "").strip(),
+            "description": row.get("description") or "",
+            "niveaua": row.get("niveaua") or "",
+            "niveaub": row.get("niveaub") or "",
+            "niveauc": row.get("niveauc") or "",
+            "niveaud": row.get("niveaud") or "",
+            "grille_evaluation": row.get("grille_evaluation"),
+            "domaine": row.get("domaine") or "",
+            "domaine_titre": (
+                (row.get("domaine_titre_court") or "").strip()
+                or (row.get("domaine_titre") or "").strip()
+            ),
+        }
+
+        code_label = skill.get("code") or "Compétence"
+        intitule_label = skill.get("intitule") or "Compétence"
+        filename = _filename_header_value(
+            f"Fiche compétence {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(intitule_label, 80)}.pdf"
+        )
+
+        pdf_bytes = build_pdf_document(
+            build_competence_pdf_story(skill),
+            meta={
+                "title": _pdf_latin1_safe(f"Fiche compétence - {code_label} - {intitule_label}"),
+                "doc_label": _pdf_latin1_safe("Fiche compétence"),
+                "footer_left": _pdf_latin1_safe("Novoskill Insights • Fiche compétence"),
+                "header_right": _pdf_latin1_safe(header_right),
+                "logo_bytes": logo_bytes,
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur génération fiche compétence : {e}")
 
 
 # ======================================================

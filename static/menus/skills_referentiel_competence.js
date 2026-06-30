@@ -866,10 +866,9 @@
   }
 
   async function fetchReferentielCompetencePdfBlob(portal, id_contact, id_service, id_comp) {
-    const paths = [
-      `/skills/referentiel/competences/fiche_pdf/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`,
-      `/skills/referentiel/competence/fiche_pdf/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`
-    ];
+    const url =
+      `${portal.apiBase}/skills/referentiel/competences/fiche_pdf/` +
+      `${encodeURIComponent(id_contact)}/${encodeURIComponent(id_service)}/${encodeURIComponent(id_comp)}`;
 
     const headers = new Headers();
     try {
@@ -880,27 +879,22 @@
       }
     } catch (_) {}
 
-    let lastError = "Erreur PDF compétence.";
-    for (const path of paths) {
-      const resp = await fetch(`${portal.apiBase}${path}`, { headers });
-      if (resp.ok) return await resp.blob();
-
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) {
+      let msg = `Erreur PDF (${resp.status})`;
       try {
         const ct = (resp.headers.get("content-type") || "").toLowerCase();
         if (ct.includes("application/json")) {
           const js = await resp.json();
-          lastError = js?.detail || js?.message || JSON.stringify(js);
+          msg = js?.detail || js?.message || JSON.stringify(js);
         } else {
-          lastError = await resp.text() || `Erreur PDF (${resp.status})`;
+          msg = await resp.text() || msg;
         }
-      } catch (_) {
-        lastError = `Erreur PDF (${resp.status})`;
-      }
-
-      if (resp.status !== 404) break;
+      } catch (_) {}
+      throw new Error(msg);
     }
 
-    throw new Error(lastError);
+    return await resp.blob();
   }
 
   function renderPdfBlobInWindow(popupWin, blob, title) {
