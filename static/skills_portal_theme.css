@@ -26380,11 +26380,17 @@ body{
   padding:8px 10px;
 }
 
+#modalMapDetail .map-detail-table th:nth-child(n+2),
+#modalMapDetail .map-detail-table td:nth-child(n+2){
+  padding-left:7px;
+  padding-right:7px;
+}
+
 #modalMapDetail .map-detail-table th:nth-child(1){ width:auto; }
-#modalMapDetail .map-detail-table th:nth-child(2){ width:128px; }
-#modalMapDetail .map-detail-table th:nth-child(3){ width:86px; }
-#modalMapDetail .map-detail-table th:nth-child(4){ width:96px; }
-#modalMapDetail .map-detail-table th:nth-child(5){ width:82px; }
+#modalMapDetail .map-detail-table th:nth-child(2){ width:116px; }
+#modalMapDetail .map-detail-table th:nth-child(3){ width:76px; }
+#modalMapDetail .map-detail-table th:nth-child(4){ width:78px; }
+#modalMapDetail .map-detail-table th:nth-child(5){ width:70px; }
 
 #modalMapDetail .map-detail-comp-cell{
   display:flex;
@@ -26395,9 +26401,6 @@ body{
 
 #modalMapDetail .map-detail-comp-cell .sb-badge-ref-comp-code{
   flex:0 0 auto;
-  background:#f1f5f9;
-  border-color:#eef2f7;
-  color:#0f172a;
 }
 
 #modalMapDetail .map-detail-comp-title{
