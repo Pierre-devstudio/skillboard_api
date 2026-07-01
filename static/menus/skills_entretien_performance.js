@@ -1770,7 +1770,29 @@ function renderCollaborateurs(list) {
       wrap.appendChild(item);
     });
 
-    applyPendingCollaborateurPreselect();
+    const pendingApplied = applyPendingCollaborateurPreselect();
+
+    if (!pendingApplied) {
+      const currentId = String(state.selectedCollaborateurId || "").trim();
+      const currentBtn = currentId
+        ? wrap.querySelector(`.ep-collab-card[data-id-effectif="${escapeCssValue(currentId)}"]`)
+        : null;
+      const btnToSelect = currentBtn || wrap.querySelector(".ep-collab-card");
+
+      if (btnToSelect) {
+        window.setTimeout(() => {
+          if (!document.body.contains(btnToSelect)) return;
+
+          // Si une présélection externe arrive entre-temps, elle reste prioritaire.
+          if (String(state.pendingPreselectCollaborateurId || "").trim()) return;
+
+          // Évite de relancer un chargement si une sélection a déjà été faite.
+          if (wrap.querySelector(".ep-collab-card.active")) return;
+
+          btnToSelect.click();
+        }, 0);
+      }
+    }
   }
 
   function getEpCritPctValue(value) {
