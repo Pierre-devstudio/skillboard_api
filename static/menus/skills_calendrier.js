@@ -64,6 +64,19 @@
     return x;
   }
 
+  function startOfDay(d) {
+    const x = parseDateLike(d) || new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  function diffDays(a, b) {
+    return Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / 86400000);
+  }
+
+  function minDate(a, b) { return a.getTime() <= b.getTime() ? a : b; }
+  function maxDate(a, b) { return a.getTime() >= b.getTime() ? a : b; }
+
   function addMonths(d, n) {
     return new Date(d.getFullYear(), d.getMonth() + n, 1);
   }
@@ -179,6 +192,10 @@
     return "cal-type-pill--default";
   }
 
+  function chipClass(x) {
+    return typeClass(x).replace("cal-type-pill", "cal-event-chip");
+  }
+
   function calIcon(name) {
     const icons = {
       calendar: '<svg viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M12 14v4"/><path d="M10 16h4"/></svg>',
@@ -187,7 +204,9 @@
       edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
       done: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>',
       report: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-      cancel: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>'
+      cancel: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>',
+      expand: '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/></svg>',
+      reduce: '<svg viewBox="0 0 24 24"><path d="M9 9H5V5"/><path d="m15 9 4-4"/><path d="M9 15H5v4"/><path d="m15 15 4 4"/></svg>'
     };
     return `<span class="sb-btn-icon" aria-hidden="true">${icons[name] || icons.eye}</span>`;
   }
@@ -349,16 +368,52 @@
     }).join("");
   }
 
-  function eventsByDay() {
-    const out = {};
-    (state.events || []).forEach(e => {
-      const d = parseDateLike(e.date_debut);
-      if (!d) return;
-      const key = toYmd(d);
-      if (!out[key]) out[key] = [];
-      out[key].push(e);
+  function buildEventSegments(gridStart, gridEnd) {
+    const visibleStart = startOfDay(gridStart);
+    const visibleEnd = startOfDay(gridEnd);
+    const segments = [];
+
+    (state.events || []).forEach(event => {
+      const rawStart = parseDateLike(event.date_debut);
+      if (!rawStart) return;
+      const rawEnd = parseDateLike(event.date_fin) || rawStart;
+      let start = startOfDay(rawStart);
+      let end = startOfDay(rawEnd);
+      if (end.getTime() < start.getTime()) [start, end] = [end, start];
+      if (end.getTime() < visibleStart.getTime() || start.getTime() > visibleEnd.getTime()) return;
+      start = maxDate(start, visibleStart);
+      end = minDate(end, visibleEnd);
+
+      let cursor = start;
+      while (cursor.getTime() <= end.getTime()) {
+        const weekIndex = Math.floor(diffDays(cursor, visibleStart) / 7);
+        const weekStart = addDays(visibleStart, weekIndex * 7);
+        const weekEnd = addDays(weekStart, 6);
+        const segStart = cursor;
+        const segEnd = minDate(end, weekEnd);
+        segments.push({
+          event,
+          weekIndex,
+          startCol: mondayIndex(segStart.getDay()),
+          endCol: mondayIndex(segEnd.getDay())
+        });
+        cursor = addDays(segEnd, 1);
+      }
     });
-    return out;
+
+    const lanesByWeek = {};
+    segments.sort((a, b) => (a.weekIndex - b.weekIndex) || (a.startCol - b.startCol) || (a.endCol - b.endCol));
+    segments.forEach(seg => {
+      const key = String(seg.weekIndex);
+      const laneEnds = lanesByWeek[key] || [];
+      let lane = 0;
+      while (lane < laneEnds.length && seg.startCol <= laneEnds[lane]) lane += 1;
+      laneEnds[lane] = seg.endCol;
+      lanesByWeek[key] = laneEnds;
+      seg.lane = lane;
+    });
+
+    return segments;
   }
 
   function renderCalendar() {
@@ -369,10 +424,10 @@
     if (!host) return;
 
     const weekdays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map(d => `<div>${d}</div>`).join("");
-    const { gridStart } = buildMonthGridRange(state.current);
+    const { gridStart, gridEnd } = buildMonthGridRange(state.current);
     const currentMonth = state.current.getMonth();
     const todayYmd = toYmd(new Date());
-    const byDay = eventsByDay();
+    const segments = buildEventSegments(gridStart, gridEnd);
     let cells = "";
     let d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate());
 
@@ -380,28 +435,34 @@
       const ymd = toYmd(d);
       const isOut = d.getMonth() !== currentMonth;
       const isToday = ymd === todayYmd;
-      const list = byDay[ymd] || [];
-      const chips = list.slice(0, 4).map(e => `
-        <button type="button"
-                class="cal-event-chip ${e.is_overdue ? "is-overdue" : ""}"
-                data-event-id="${escapeHtml(e.id_evenement || "")}" title="${escapeHtml(e.titre || "Événement")}">
-          <span>${escapeHtml(eventTypeIcon(e.type_evenement))}</span>
-          <strong>${escapeHtml(e.titre || "Événement")}</strong>
-        </button>
-      `).join("");
-      const more = list.length > 4 ? `<div class="cal-more">+${list.length - 4}</div>` : "";
       cells += `
         <div class="cal-day ${isOut ? "is-out" : ""} ${isToday ? "is-today" : ""}" data-cal-day="${escapeHtml(ymd)}">
           <div class="cal-daynum">${d.getDate()}</div>
-          <div class="cal-day-events">${chips}${more}</div>
+          <div class="cal-day-events"></div>
         </div>
       `;
       d = addDays(d, 1);
     }
 
+    const bars = segments.map(seg => {
+      const cls = `${chipClass(seg.event)} ${seg.event.is_overdue ? "is-overdue" : ""}`.trim();
+      return `
+        <button type="button"
+                class="cal-event-chip ${cls}"
+                style="grid-column:${seg.startCol + 1} / ${seg.endCol + 2}; grid-row:${seg.weekIndex + 1}; --lane:${seg.lane};"
+                data-event-id="${escapeHtml(seg.event.id_evenement || "")}" title="${escapeHtml(seg.event.titre || "Événement")}">
+          <span>${escapeHtml(eventTypeIcon(seg.event.type_evenement))}</span>
+          <strong>${escapeHtml(seg.event.titre || "Événement")}</strong>
+        </button>
+      `;
+    }).join("");
+
     host.innerHTML = `
       <div class="cal-weekdays">${weekdays}</div>
-      <div class="cal-grid">${cells}</div>
+      <div class="cal-grid-wrap">
+        <div class="cal-grid">${cells}</div>
+        <div class="cal-event-layer">${bars}</div>
+      </div>
     `;
   }
 
@@ -421,11 +482,11 @@
         <span class="cal-status-pill">${escapeHtml(event.statut || "planifie")}</span>
       </div>
       <div class="cal-detail-list">
-        <div><span>Date</span><strong>${escapeHtml(formatDateTimeFr(event.date_debut))}</strong></div>
+        <div><span>Début</span><strong>${escapeHtml(formatDateTimeFr(event.date_debut))}</strong></div>
         <div><span>Fin</span><strong>${escapeHtml(formatDateTimeFr(event.date_fin))}</strong></div>
         <div><span>Collaborateur</span><strong>${escapeHtml(event.collaborateur || "—")}</strong></div>
         <div><span>Service</span><strong>${escapeHtml(event.nom_service || "—")}</strong></div>
-        <div><span>Source</span><strong>${escapeHtml(event.source || "—")}</strong></div>
+        <div><span>Source</span><strong>${escapeHtml(event.source || "manuel")}</strong></div>
       </div>
       <div class="cal-detail-actions">
         <button type="button" class="sb-btn sb-btn--soft" data-cal-open-event="${escapeHtml(event.id_evenement || "")}">${calIcon("eye")}<span>Ouvrir</span></button>
@@ -509,7 +570,6 @@
     const card = document.querySelector("#view-calendrier .cal-calendar-card");
     const backdrop = byId("calCalendarFullscreenBackdrop");
     const btn = byId("btnCalExpand");
-    const label = btn?.querySelector(".cal-calendar-expand-btn__label");
 
     root?.classList.toggle("is-calendar-expanded", state.calendarExpanded);
     card?.classList.toggle("is-expanded", state.calendarExpanded);
@@ -520,8 +580,8 @@
       btn.setAttribute("title", state.calendarExpanded ? "Réduire le calendrier" : "Agrandir le calendrier");
       btn.setAttribute("aria-label", state.calendarExpanded ? "Réduire le calendrier" : "Agrandir le calendrier");
       btn.classList.toggle("is-active", state.calendarExpanded);
+      btn.innerHTML = calIcon(state.calendarExpanded ? "reduce" : "expand");
     }
-    if (label) label.textContent = state.calendarExpanded ? "Réduire" : "Agrandir";
   }
 
   function toggleCalendarExpanded() {
@@ -549,6 +609,7 @@
     renderSuggestions();
     renderCalendar();
     renderSelectedDetail();
+    setCalendarExpanded(state.calendarExpanded);
   }
 
   function setSelected(kind, id) {
