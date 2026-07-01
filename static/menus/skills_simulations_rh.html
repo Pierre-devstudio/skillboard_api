@@ -2,9 +2,16 @@
   <div class="card sim-workshop-hero">
     <div class="sim-workshop-hero__main">
       <div>
-        <div class="card-title">Simulation RH</div>
-        <div class="card-sub sim2-hero-sub">
-          Construisez une option d’organisation avec des briques simples : déplacer une personne, transférer une charge, ajouter un renfort ou projeter une compétence acquise.
+        <div class="sim-workshop-hero-titleline">
+          <span class="sim-workshop-hero-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9.5 3A4.5 4.5 0 0 0 5 7.5c0 1.74.99 3.25 2.44 4A5 5 0 0 0 4 16.2V18h5"/><path d="M14.5 3A4.5 4.5 0 0 1 19 7.5c0 1.74-.99 3.25-2.44 4A5 5 0 0 1 20 16.2V18h-5"/><path d="M9 14h6"/><path d="M12 11v6"/></svg>
+          </span>
+          <div>
+            <div class="card-title">Simulateur RH</div>
+            <div class="card-sub sim2-hero-sub">
+              Testez des hypothèses terrain et mesurez leurs impacts sur les postes, les compétences et les transmissions.
+            </div>
+          </div>
         </div>
       </div>
       <div class="sim-workshop-steps" aria-label="Étapes de simulation RH">
@@ -74,7 +81,10 @@
           <div id="simBrickPalette" class="sim-lego-palette"></div>
           <div id="simBrickEditor" class="sim-lego-editor"></div>
           <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddBrick">Ajouter au scénario</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddBrick">
+              <span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+              <span>Ajouter au scénario</span>
+            </button>
           </div>
         </div>
 
@@ -93,8 +103,14 @@
           </div>
           <div id="simScenarioBricks" class="sim-lego-scenario-list"></div>
           <div class="sb-actions sim-workshop-scenario-actions">
-            <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">Vider</button>
-            <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">Analyser l’impact</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">
+              <span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span>
+              <span>Vider</span>
+            </button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">
+              <span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-7"/></svg></span>
+              <span>Analyser l’impact</span>
+            </button>
           </div>
         </div>
 

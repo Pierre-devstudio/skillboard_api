@@ -682,15 +682,14 @@
       <div class="sim-lego-person-card ${idx === 0 ? "is-best" : ""}">
         <div class="sim-lego-person-main">
           <div class="sim-lego-person-title">${esc(r.nom_complet || "Collaborateur")}</div>
-          <div class="card-sub" style="margin-top:2px;">${esc(r.poste_actuel || "Poste actuel non renseigné")} · ${esc(r.nom_service || "")}</div>
-          <div class="sim-lego-person-gaps">
-            ${(r.competences_a_renforcer || []).slice(0, 3).map(c => `<span>${esc(c.code || c.intitule || "Compétence")}</span>`).join("")}
-          </div>
+          <div class="card-sub sim-lego-person-sub">${esc(r.poste_actuel || "Poste actuel non renseigné")} · ${esc(r.nom_service || "")}</div>
         </div>
         <div class="sim-lego-person-score">
           <span class="sb-badge ${idx === 0 ? "sb-badge--success" : ""}">${esc(r.score_pct || 0)}%</span>
-          <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-sim-add-move="${esc(r.id_effectif)}">Tester mobilité</button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-prepare-training="${esc(r.id_effectif)}">Projeter niveau</button>
+          <div class="sim-lego-person-actions">
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-sim-add-move="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg></span><span>Tester mobilité</span></button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-prepare-training="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/><path d="M4 20h16"/></svg></span><span>Projeter niveau</span></button>
+          </div>
         </div>
       </div>
     `).join("");

@@ -10556,11 +10556,12 @@ body{
 }
 .sim-lego-person-card{
   display:flex;
+  align-items:center;
   justify-content:space-between;
   gap:10px;
   border:1px solid var(--sb-gray-200);
   border-radius:12px;
-  padding:10px 11px;
+  padding:8px 10px;
   background:#fff;
 }
 .sim-lego-person-card.is-best{
@@ -10570,31 +10571,31 @@ body{
 .sim-lego-person-main{ min-width:0; }
 .sim-lego-person-title{
   color:var(--sb-gray-900);
-  font-weight:800;
+  font-weight:700;
   font-size:13px;
+  line-height:1.22;
+}
+.sim-lego-person-sub{
+  margin-top:2px;
   line-height:1.25;
 }
 .sim-lego-person-score{
   display:flex;
-  flex-direction:column;
-  gap:6px;
-  align-items:flex-end;
+  align-items:center;
+  gap:8px;
+  justify-content:flex-end;
   flex:0 0 auto;
 }
-.sim-lego-person-gaps{
+.sim-lego-person-actions{
   display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
   flex-wrap:wrap;
-  gap:5px;
-  margin-top:7px;
 }
-.sim-lego-person-gaps span{
-  display:inline-flex;
-  border:1px solid var(--sb-gray-200);
-  border-radius:999px;
-  padding:2px 7px;
-  color:var(--sb-gray-600);
-  font-size:11px;
-  background:#f8fafc;
+.sim-lego-person-actions .sb-btn{
+  gap:6px;
+  white-space:nowrap;
 }
 .sim-lego-scenario-list{
   display:flex;
@@ -10702,8 +10703,8 @@ body{
   .sim-lego-kpi-grid{ grid-template-columns:1fr; }
   .sim-lego-person-card,
   .sim-lego-scenario-brick,
-  .sim-lego-dev-row{ flex-direction:column; }
-  .sim-lego-person-score{ align-items:flex-start; }
+  .sim-lego-dev-row{ flex-direction:column; align-items:stretch; }
+  .sim-lego-person-score{ align-items:flex-start; justify-content:flex-start; flex-wrap:wrap; }
 }
 
 /* ======================================================
@@ -10719,6 +10720,50 @@ body{
   gap:16px;
   align-items:flex-start;
   flex-wrap:wrap;
+}
+
+.sim-workshop-hero-titleline{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+
+.sim-workshop-hero-icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 42px;
+  background:color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color:var(--accent);
+}
+
+.sim-workshop-hero-icon svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.sim-btn-icon,
+.sim-btn-icon svg{
+  width:14px;
+  height:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 .sim-workshop-steps{
@@ -21113,11 +21158,12 @@ body{
 }
 .sim-lego-person-card{
   display:flex;
+  align-items:center;
   justify-content:space-between;
   gap:10px;
   border:1px solid var(--sb-gray-200);
   border-radius:12px;
-  padding:10px 11px;
+  padding:8px 10px;
   background:#fff;
 }
 .sim-lego-person-card.is-best{
@@ -21127,31 +21173,31 @@ body{
 .sim-lego-person-main{ min-width:0; }
 .sim-lego-person-title{
   color:var(--sb-gray-900);
-  font-weight:800;
+  font-weight:700;
   font-size:13px;
+  line-height:1.22;
+}
+.sim-lego-person-sub{
+  margin-top:2px;
   line-height:1.25;
 }
 .sim-lego-person-score{
   display:flex;
-  flex-direction:column;
-  gap:6px;
-  align-items:flex-end;
+  align-items:center;
+  gap:8px;
+  justify-content:flex-end;
   flex:0 0 auto;
 }
-.sim-lego-person-gaps{
+.sim-lego-person-actions{
   display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
   flex-wrap:wrap;
-  gap:5px;
-  margin-top:7px;
 }
-.sim-lego-person-gaps span{
-  display:inline-flex;
-  border:1px solid var(--sb-gray-200);
-  border-radius:999px;
-  padding:2px 7px;
-  color:var(--sb-gray-600);
-  font-size:11px;
-  background:#f8fafc;
+.sim-lego-person-actions .sb-btn{
+  gap:6px;
+  white-space:nowrap;
 }
 .sim-lego-scenario-list{
   display:flex;
@@ -21259,8 +21305,8 @@ body{
   .sim-lego-kpi-grid{ grid-template-columns:1fr; }
   .sim-lego-person-card,
   .sim-lego-scenario-brick,
-  .sim-lego-dev-row{ flex-direction:column; }
-  .sim-lego-person-score{ align-items:flex-start; }
+  .sim-lego-dev-row{ flex-direction:column; align-items:stretch; }
+  .sim-lego-person-score{ align-items:flex-start; justify-content:flex-start; flex-wrap:wrap; }
 }
 
 /* ======================================================
@@ -21276,6 +21322,50 @@ body{
   gap:16px;
   align-items:flex-start;
   flex-wrap:wrap;
+}
+
+.sim-workshop-hero-titleline{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+
+.sim-workshop-hero-icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 42px;
+  background:color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color:var(--accent);
+}
+
+.sim-workshop-hero-icon svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.sim-btn-icon,
+.sim-btn-icon svg{
+  width:14px;
+  height:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 .sim-workshop-steps{
