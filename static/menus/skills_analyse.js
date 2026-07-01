@@ -6658,10 +6658,20 @@ function bindOnce(portal) {
 
   // Slider Prévisions (1..5 ans) - met à jour les KPI de la tuile en direct
   const prevSlider = byId("prevHorizonSlider");
+  function updatePrevSliderProgress() {
+    if (!prevSlider) return;
+    const min = Number(prevSlider.min || 1);
+    const max = Number(prevSlider.max || 5);
+    const val = Number(prevSlider.value || min);
+    const pct = max > min ? ((val - min) / (max - min)) * 100 : 0;
+    prevSlider.style.setProperty("--analyse-prev-progress", `${Math.max(0, Math.min(100, pct))}%`);
+  }
+
   if (prevSlider) {
     const initH = getPrevHorizon();
     prevSlider.value = String(initH);
     setPrevHorizonLabel(initH);
+    updatePrevSliderProgress();
 
     // Empêche de déclencher le click sur la tuile quand on manipule le slider
     const stop = (ev) => { ev.stopPropagation(); };
@@ -6672,6 +6682,7 @@ function bindOnce(portal) {
       const n = setPrevHorizon(prevSlider.value);
       prevSlider.value = String(n);
       setPrevHorizonLabel(n);
+      updatePrevSliderProgress();
 
       if (_prevData) applyPrevisionsKpis(_prevData);
 

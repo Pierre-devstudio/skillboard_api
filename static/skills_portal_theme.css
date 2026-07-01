@@ -3266,18 +3266,7 @@ textarea.sb-ctrl{
    ====================================================== */
 
 #view-analyse-competences{
-  --sb-tile-accent: var(--reading-accent);
-}
-
-/* Tuile sélectionnée (Analyse compétences) */
-#view-analyse-competences .analyse-tile.active{
-  outline: 2px solid color-mix(in srgb, var(--reading-accent) 65%, #ffffff) !important;
-}
-
-/* KPI sélectionné (tuiles) */
-#view-analyse-competences .mini-kpi.is-active{
-  border-color: color-mix(in srgb, var(--reading-accent) 55%, #d1d5db);
-  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+  --sb-tile-accent: var(--accent);
 }
 
 /* Choix de poste (matching) */
@@ -14405,18 +14394,7 @@ textarea.sb-ctrl{
    ====================================================== */
 
 #view-analyse-competences{
-  --sb-tile-accent: var(--reading-accent);
-}
-
-/* Tuile sélectionnée (Analyse compétences) */
-#view-analyse-competences .analyse-tile.active{
-  outline: 2px solid color-mix(in srgb, var(--reading-accent) 65%, #ffffff) !important;
-}
-
-/* KPI sélectionné (tuiles) */
-#view-analyse-competences .mini-kpi.is-active{
-  border-color: color-mix(in srgb, var(--reading-accent) 55%, #d1d5db);
-  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+  --sb-tile-accent: var(--accent);
 }
 
 /* Choix de poste (matching) */
@@ -27480,21 +27458,21 @@ body{
   transform:translateY(-1px);
 }
 
-#view-analyse-competences .analyse-tile .mini-kpi.is-active{
-  border-color:color-mix(in srgb, var(--analyse-tile-accent, var(--analyse-red)) 38%, #d8dee8);
-  background:color-mix(in srgb, var(--analyse-tile-accent, var(--analyse-red)) 5%, #ffffff);
-  box-shadow:inset 3px 0 0 color-mix(in srgb, var(--analyse-tile-accent, var(--analyse-red)) 70%, #ffffff);
+#view-analyse-competences .analyse-tile--risques .mini-kpi.is-active{
+  border-color:color-mix(in srgb, var(--analyse-red) 42%, #d8dee8);
+  background:color-mix(in srgb, var(--analyse-red) 6%, #ffffff);
+  box-shadow:inset 3px 0 0 color-mix(in srgb, var(--analyse-red) 68%, #ffffff);
 }
 
 #view-analyse-competences .analyse-tile--matching .mini-kpi.is-active{
-  border-color:color-mix(in srgb, var(--analyse-blue) 32%, #d8dee8);
-  background:color-mix(in srgb, var(--analyse-blue) 4%, #ffffff);
+  border-color:color-mix(in srgb, var(--analyse-blue) 34%, #d8dee8);
+  background:color-mix(in srgb, var(--analyse-blue) 5%, #ffffff);
   box-shadow:inset 3px 0 0 color-mix(in srgb, var(--analyse-blue) 58%, #ffffff);
 }
 
 #view-analyse-competences .analyse-tile--previsions .mini-kpi.is-active{
-  border-color:color-mix(in srgb, var(--analyse-indigo) 32%, #d8dee8);
-  background:color-mix(in srgb, var(--analyse-indigo) 4%, #ffffff);
+  border-color:color-mix(in srgb, var(--analyse-indigo) 34%, #d8dee8);
+  background:color-mix(in srgb, var(--analyse-indigo) 5%, #ffffff);
   box-shadow:inset 3px 0 0 color-mix(in srgb, var(--analyse-indigo) 58%, #ffffff);
 }
 
@@ -27518,22 +27496,6 @@ body{
   color:#0f172a;
 }
 
-
-/* États actifs par famille : supprime l'ancien vert d'eau global au profit de la couleur de la carte. */
-#view-analyse-competences .analyse-tile--risques.active,
-#view-analyse-competences .analyse-tile--risques .mini-kpi.is-active{
-  --sb-tile-accent:var(--analyse-red);
-}
-
-#view-analyse-competences .analyse-tile--matching.active,
-#view-analyse-competences .analyse-tile--matching .mini-kpi.is-active{
-  --sb-tile-accent:var(--analyse-blue);
-}
-
-#view-analyse-competences .analyse-tile--previsions.active,
-#view-analyse-competences .analyse-tile--previsions .mini-kpi.is-active{
-  --sb-tile-accent:var(--analyse-indigo);
-}
 
 #view-analyse-competences .analyse-tile .tile-hint{
   display:flex;
@@ -27568,13 +27530,25 @@ body{
 }
 
 #view-analyse-competences #prevHorizonSlider{
-  accent-color:var(--analyse-blue);
+  --analyse-prev-progress:0%;
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  height:18px;
+  margin-top:6px;
+  background:transparent;
+  accent-color:var(--analyse-indigo);
 }
 
 #view-analyse-competences #prevHorizonSlider::-webkit-slider-runnable-track{
   height:6px;
   border-radius:999px;
-  background:linear-gradient(90deg, var(--analyse-blue) 0%, var(--analyse-blue) 38%, #d1d5db 38%, #d1d5db 100%);
+  background:linear-gradient(90deg,
+    var(--analyse-indigo) 0%,
+    var(--analyse-indigo) var(--analyse-prev-progress),
+    #d1d5db var(--analyse-prev-progress),
+    #d1d5db 100%
+  );
 }
 
 #view-analyse-competences #prevHorizonSlider::-webkit-slider-thumb{
@@ -27583,9 +27557,9 @@ body{
   width:16px;
   height:16px;
   border-radius:999px;
-  background:var(--analyse-blue);
+  background:var(--analyse-indigo);
   border:2px solid #ffffff;
-  box-shadow:0 0 0 1px rgba(29,78,216,.22);
+  box-shadow:0 0 0 1px rgba(67,56,202,.22);
   margin-top:-5px;
 }
 
@@ -27598,7 +27572,7 @@ body{
 #view-analyse-competences #prevHorizonSlider::-moz-range-progress{
   height:6px;
   border-radius:999px;
-  background:var(--analyse-blue);
+  background:var(--analyse-indigo);
 }
 
 #view-analyse-competences #prevHorizonSlider::-moz-range-thumb{
@@ -27606,6 +27580,6 @@ body{
   height:16px;
   border:none;
   border-radius:999px;
-  background:var(--analyse-blue);
-  box-shadow:0 0 0 1px rgba(29,78,216,.22);
+  background:var(--analyse-indigo);
+  box-shadow:0 0 0 1px rgba(67,56,202,.22);
 }
