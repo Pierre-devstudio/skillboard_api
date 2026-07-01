@@ -2,13 +2,36 @@
 <section id="view-entretien-performance" style="display:none;">
 
   <div class="card ep-page-head">
-    <div style="min-width:0;">
-      <div class="card-title">Entretiens & évaluations</div>
-      <div class="card-sub">Piloter les entretiens, identifier les compétences à auditer et tracer les évaluations.</div>
+    <div class="ep-page-head__main">
+      <div class="ep-page-head__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M8 6h13"/>
+          <path d="M8 12h13"/>
+          <path d="M8 18h13"/>
+          <path d="M3 6h.01"/>
+          <path d="M3 12h.01"/>
+          <path d="M3 18h.01"/>
+        </svg>
+      </div>
+      <div style="min-width:0;">
+        <div class="card-title ep-page-head__title">Entretiens & évaluations</div>
+        <div class="card-sub ep-page-head__sub">Piloter les entretiens, identifier les compétences à auditer et tracer les évaluations.</div>
+      </div>
     </div>
 
     <div class="sb-actions ep-page-actions">
-      <button class="btn-secondary" id="ep_btnHelpScoring" type="button">Règles de scoring</button>      
+      <button class="sb-btn ep-scoring-btn" id="ep_btnHelpScoring" type="button">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 19V5"/>
+            <path d="M9 19v-6"/>
+            <path d="M14 19v-9"/>
+            <path d="M19 19v-3"/>
+            <path d="M3 19h18"/>
+          </svg>
+        </span>
+        <span>Règles de scoring</span>
+      </button>
     </div>
   </div>
 
@@ -16,22 +39,46 @@
 
   <div class="ep-main-layout">
     <div class="ep-left-col">
-      <div class="card ep-panel-card" id="ep_cardPerimetre">
-        <div class="card-title">Périmètre</div>
+      <div class="card ep-panel-card ep-filter-card" id="ep_cardPerimetre">
+        <div class="ep-card-head">
+          <div>
+            <div class="card-title ep-card-head__title">Filtres</div>
+            <div class="card-sub ep-card-head__sub">Le filtre s’applique aux indicateurs et aux listes.</div>
+          </div>
+          <button type="button"
+                  class="ep-card-head__icon ep-filter-toggle"
+                  id="ep_btnFiltersToggle"
+                  aria-expanded="true"
+                  aria-controls="epFilterBody"
+                  title="Replier les filtres"
+                  aria-label="Replier les filtres">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 21v-7"/>
+              <path d="M4 10V3"/>
+              <path d="M12 21v-9"/>
+              <path d="M12 8V3"/>
+              <path d="M20 21v-5"/>
+              <path d="M20 12V3"/>
+              <path d="M2 14h4"/>
+              <path d="M10 8h4"/>
+              <path d="M18 16h4"/>
+            </svg>
+          </button>
+        </div>
 
-        <div class="ep-filter-stack">
+        <div class="ep-filter-stack" id="epFilterBody">
           <!-- Mode embarqué Studio : alimenté par studio_client_space.js.
                En console Insights classique, ce bloc reste masqué. -->
           <div class="info-item ep-organisation-field" id="ep_orgWrap" style="min-width:0; display:none;">
-            <div class="label">Organisation analysée</div>
-            <select id="ep_selOrganisation">
+            <label class="sb-label" for="ep_selOrganisation">Organisation analysée</label>
+            <select id="ep_selOrganisation" class="sb-select">
               <option value="">Structure courante</option>
             </select>
           </div>
 
           <div class="info-item" style="min-width:0;">
-            <div class="label">Structure interne</div>
-            <select id="ep_selService">
+            <label class="sb-label" for="ep_selService">Service</label>
+            <select id="ep_selService" class="sb-select">
               <option value="">— Sélectionner —</option>
             </select>
           </div>
@@ -40,19 +87,30 @@
             <label class="sb-label" for="ep_rngCriticite">Criticité minimale</label>
             <input type="range" id="ep_rngCriticite" min="0" max="100" step="1" value="0" />
             <div class="ep-crit-slider-meta">
-              <span class="card-sub">Seuil : <b><span id="ep_rngCriticiteVal">0</span>%</b></span>
+              <span>Compétences analysées si criticité ≥</span>
+              <strong><span id="ep_rngCriticiteVal">0</span></strong>
             </div>
           </div>
 
-          <button type="button" class="sb-btn sb-btn--init sb-btn--block ep-reset-filters-btn" id="ep_btnScopeReset">
-            Réinitialiser les filtres
-          </button>
+          <div class="ep-filter-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="ep_btnScopeReset">
+              Réinitialiser
+            </button>
+            <button type="button" class="sb-btn sb-btn--accent" id="ep_btnScopeApply">
+              Appliquer
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="card ep-panel-card ep-collab-panel">
         <div class="card-header ep-collab-head">
-          <div class="card-title">Collaborateurs à évaluer</div>
+          <div class="ep-section-title">
+            <span class="ep-section-title__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </span>
+            <span class="card-title">Collaborateurs à évaluer</span>
+          </div>
 
           <div class="ep-priority-help-wrap">
             <button type="button" class="ep-priority-help" id="ep_btnPriorityHelp" aria-label="Légende des priorités">?</button>
@@ -85,6 +143,9 @@
         <div class="card-body">
           <div class="ep-search-field">
             <input id="ep_txtSearchCollab" class="ep-search-input" placeholder="Rechercher un collaborateur" autocomplete="off" />
+            <span class="ep-search-field__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </span>
           </div>
 
           <div class="sb-list ep-collab-list" id="ep_listCollaborateurs"></div>
@@ -97,7 +158,12 @@
       <div class="card ep-panel-card ep-summary-card" id="ep_cardCouverturePoste">
         <div class="card-header ep-summary-head">
           <div>
-            <div class="card-title">Synthèse collaborateur</div>
+            <div class="ep-section-title">
+              <span class="ep-section-title__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M20 8a3 3 0 0 1 0 6"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/></svg>
+              </span>
+              <span class="card-title">Synthèse collaborateur</span>
+            </div>
           </div>
 
           <div class="ep-summary-help-wrap">
@@ -127,15 +193,24 @@
 
               <div class="ep-summary-actions">
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnHistoryGlobal">
-                  Historique des entretiens
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  </span>
+                  <span>Historique des entretiens</span>
                 </button>
 
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnEntretienIndividuel">
-                  Préparer un entretien individuel
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                  </span>
+                  <span>Préparer un entretien individuel</span>
                 </button>
 
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnReportPdf">
-                  Générer un rapport PDF
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+                  </span>
+                  <span>Générer un rapport PDF</span>
                 </button>
               </div>
 
@@ -168,7 +243,12 @@
 
       <div class="card ep-panel-card ep-competence-panel">
         <div class="card-header ep-competence-head">
-          <div class="card-title">Compétences à auditer</div>
+          <div class="ep-section-title">
+            <span class="ep-section-title__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+            </span>
+            <span class="card-title">Compétences à auditer</span>
+          </div>
           <div id="ep_compCount" style="display:none;">0</div>
         </div>
 

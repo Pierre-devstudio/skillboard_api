@@ -5152,34 +5152,85 @@ body{
    ====================================================== */
 
 #view-entretien-performance .ep-crit-slider{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
 
 #view-entretien-performance #ep_cardPerimetre .ep-crit-slider--perimetre{
   margin-top:2px;
 }
 
-#view-entretien-performance #ep_cardPerimetre .ep-crit-slider--perimetre input[type="range"]{
+#view-entretien-performance .ep-crit-slider input[type="range"]{
   width:100%;
+  height:6px;
+  border-radius:999px;
+  outline:none;
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  background:linear-gradient(90deg, #06b6d4 0%, #22c55e 36%, #eab308 58%, #f97316 76%, #dc2626 100%);
 }
 
-#view-entretien-performance .ep-crit-slider input[type="range"]{
-  width: 100%;
+#view-entretien-performance .ep-crit-slider input[type="range"]::-webkit-slider-runnable-track{
+  height:6px;
+  border-radius:999px;
+  background:linear-gradient(90deg, #06b6d4 0%, #22c55e 36%, #eab308 58%, #f97316 76%, #dc2626 100%);
+}
+
+#view-entretien-performance .ep-crit-slider input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  width:18px;
+  height:18px;
+  margin-top:-6px;
+  border-radius:999px;
+  border:2px solid #ffffff;
+  background:var(--accent);
+  box-shadow:0 0 0 1px rgba(var(--sb-accent-rgb), .22), 0 4px 10px rgba(15,23,42,.16);
+}
+
+#view-entretien-performance .ep-crit-slider input[type="range"]::-moz-range-track{
+  height:6px;
+  border-radius:999px;
+  background:linear-gradient(90deg, #06b6d4 0%, #22c55e 36%, #eab308 58%, #f97316 76%, #dc2626 100%);
+}
+
+#view-entretien-performance .ep-crit-slider input[type="range"]::-moz-range-thumb{
+  width:18px;
+  height:18px;
+  border:2px solid #ffffff;
+  border-radius:999px;
+  background:var(--accent);
+  box-shadow:0 0 0 1px rgba(var(--sb-accent-rgb), .22), 0 4px 10px rgba(15,23,42,.16);
+}
+
+#view-entretien-performance .ep-crit-slider input[type="range"]:disabled{
+  opacity:.65;
+  cursor:not-allowed;
 }
 
 #view-entretien-performance .ep-crit-slider-meta{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  font-size:12px;
+  color:var(--sb-gray-500);
+}
+
+#view-entretien-performance .ep-crit-slider-meta strong{
+  display:inline-flex;
+  min-width:28px;
+  justify-content:flex-end;
+  color:var(--reading-accent);
+  font-weight:800;
 }
 
 #view-entretien-performance #ep_rngCriticiteVal{
-  display: inline-block;
-  min-width: 28px;
-  text-align: right;
+  display:inline-block;
+  min-width:24px;
+  text-align:right;
 }
 
 /* ======================================================
@@ -6729,19 +6780,94 @@ body{
    ====================================================== */
 
 #view-entretien-performance{
+  --ep-red:#d81d30;
+  --ep-red-soft:#fff1f3;
+  --ep-border:#e5e7eb;
+  --ep-border-soft:#edf0f4;
+  --ep-text:#111827;
+  --ep-muted:#667085;
   --ep-priority-high:#7c3aed;
 }
 
 #view-entretien-performance .ep-page-head{
   display:flex;
-  align-items:flex-start;
+  align-items:center;
   justify-content:space-between;
-  gap:14px;
+  gap:18px;
+  padding:24px 28px;
+  border:1px solid var(--ep-border);
+  border-radius:18px;
+  background:#ffffff;
+}
+
+#view-entretien-performance .ep-page-head__main{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+}
+
+#view-entretien-performance .ep-page-head__icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 42px;
+  background:var(--ep-red-soft);
+  color:var(--ep-red);
+}
+
+#view-entretien-performance .ep-page-head__icon svg,
+#view-entretien-performance .ep-card-head__icon svg,
+#view-entretien-performance .ep-section-title__icon svg,
+#view-entretien-performance .ep-search-field__icon svg,
+#view-entretien-performance .ep-scoring-btn svg,
+#view-entretien-performance .ep-summary-actions .sb-btn svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-entretien-performance .ep-page-head__title{
+  margin:0 0 4px 0;
+  color:var(--ep-text);
+}
+
+#view-entretien-performance .ep-page-head__sub{
+  margin:0;
 }
 
 #view-entretien-performance .ep-page-actions{
   flex:0 0 auto;
   justify-content:flex-end;
+}
+
+#view-entretien-performance .ep-scoring-btn{
+  height:36px;
+  border-color:color-mix(in srgb, var(--accent) 36%, var(--ep-border));
+  background:#ffffff;
+  color:var(--ep-text);
+  font-weight:700;
+}
+
+#view-entretien-performance .ep-scoring-btn:hover{
+  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
+  border-color:color-mix(in srgb, var(--accent) 58%, var(--ep-border));
+  color:var(--accent);
+  filter:none;
+}
+
+#view-entretien-performance .ep-scoring-btn .sb-btn-icon svg,
+#view-entretien-performance .ep-summary-actions .sb-btn .sb-btn-icon svg{
+  width:16px;
+  height:16px;
 }
 
 #view-entretien-performance .ep-context-card{
@@ -6815,10 +6941,10 @@ body{
 }
 
 #view-entretien-performance .ep-main-layout{
-  margin-top:12px;
+  margin-top:16px;
   display:grid;
   grid-template-columns:360px minmax(0, 1fr);
-  gap:12px;
+  gap:14px;
   align-items:start;
 }
 
@@ -6831,18 +6957,127 @@ body{
 }
 
 #view-entretien-performance .ep-filter-stack{
-  margin-top:10px;
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:12px;
 }
 
 #view-entretien-performance .ep-panel-card{
   margin:0;
+  border:1px solid var(--ep-border);
+  border-radius:18px;
+  background:#ffffff;
+}
+
+#view-entretien-performance .ep-filter-card{
+  padding:16px 18px;
+}
+
+#view-entretien-performance .ep-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+#view-entretien-performance .ep-card-head__title{
+  margin:0 0 4px 0;
+  color:var(--ep-text);
+}
+
+#view-entretien-performance .ep-card-head__sub{
+  margin:0;
+}
+
+#view-entretien-performance .ep-card-head__icon{
+  width:28px;
+  height:28px;
+  border:0;
+  padding:0;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 28px;
+  background:#f8fafc;
+  color:#64748b;
+  cursor:pointer;
+  transition:background-color .15s ease, color .15s ease;
+}
+
+#view-entretien-performance .ep-card-head__icon svg{
+  width:16px;
+  height:16px;
+  transition:transform .12s ease;
+}
+
+#view-entretien-performance .ep-filter-toggle:hover{
+  background:var(--ep-red-soft);
+  color:var(--ep-red);
+}
+
+#view-entretien-performance .ep-filter-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-entretien-performance .ep-filter-toggle[aria-expanded="false"] svg{
+  transform:rotate(90deg);
+}
+
+#view-entretien-performance .ep-filter-card.is-collapsed .ep-card-head{
+  margin-bottom:0;
+}
+
+#view-entretien-performance .ep-filter-card.is-collapsed .ep-filter-stack{
+  display:none;
+}
+
+#view-entretien-performance .ep-filter-stack .info-item{
+  min-width:0;
+}
+
+#view-entretien-performance .ep-filter-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+#view-entretien-performance .ep-filter-actions .sb-btn{
+  width:100%;
 }
 
 #view-entretien-performance .ep-collab-panel{
   position:relative;
+}
+
+#view-entretien-performance .ep-section-title{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+
+#view-entretien-performance .ep-section-title .card-title{
+  margin:0;
+}
+
+#view-entretien-performance .ep-section-title__icon{
+  width:26px;
+  height:26px;
+  border-radius:9px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 26px;
+  background:#f8fafc;
+  color:#334155;
+}
+
+#view-entretien-performance .ep-section-title__icon svg{
+  width:15px;
+  height:15px;
 }
 
 #view-entretien-performance .ep-collab-panel .ep-collab-head{
@@ -6930,6 +7165,7 @@ body{
 #view-entretien-performance .ep-priority-line--none{ background:var(--sb-gray-300); }
 
 #view-entretien-performance .ep-search-field{
+  position:relative;
   margin-top:2px;
 }
 
@@ -6943,8 +7179,22 @@ body{
   color:var(--sb-gray-900);
   font-family:inherit;
   font-size:13px;
-  padding:0 12px;
+  padding:0 36px 0 12px;
   outline:none;
+}
+
+#view-entretien-performance .ep-search-field__icon{
+  position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#64748b;
+  pointer-events:none;
+}
+
+#view-entretien-performance .ep-search-field__icon svg{
+  width:16px;
+  height:16px;
 }
 
 #view-entretien-performance .ep-search-input::placeholder{
@@ -6978,12 +7228,13 @@ body{
   min-height:52px;
   padding:8px 10px 8px 12px;
   border:1px solid var(--sb-gray-200);
-  border-left:5px solid var(--sb-gray-300);
+  border-left:4px solid var(--sb-gray-300);
   border-radius:12px;
   background:#fff;
   cursor:pointer;
   font-family:inherit;
   box-sizing:border-box;
+  transition:background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
 }
 
 #view-entretien-performance .ep-collab-card:hover{
@@ -7009,8 +7260,8 @@ body{
 
 #view-entretien-performance .ep-collab-card-name{
   color:var(--sb-gray-900);
-  font-size:14px;
-  font-weight:700;
+  font-size:13px;
+  font-weight:650;
   line-height:1.2;
   white-space:nowrap;
   overflow:hidden;
@@ -7105,7 +7356,7 @@ body{
 #view-entretien-performance .ep-leg--ok{ background:var(--sb-success); }
 
 #view-entretien-performance .ep-competence-head{
-  align-items:flex-start;
+  align-items:center;
 }
 
 #view-entretien-performance .ep-competence-toolbar{
@@ -7159,10 +7410,11 @@ body{
   flex-direction:column;
   padding:10px 12px;
   border:1px solid var(--sb-gray-200);
-  border-left:5px solid var(--sb-gray-300);
+  border-left:4px solid var(--sb-gray-300);
   border-radius:13px;
   background:#fff;
   min-width:0;
+  transition:background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
 }
 
 #view-entretien-performance .ep-comp-card--never{
@@ -7188,8 +7440,8 @@ body{
   min-width:0;
   flex:1 1 auto;
   color:var(--sb-gray-900);
-  font-size:14px;
-  font-weight:700;
+  font-size:13px;
+  font-weight:650;
   line-height:1.25;
   white-space:nowrap;
   overflow:hidden;
@@ -7650,6 +7902,113 @@ body{
 #view-entretien-performance .ep-reset-filters-btn{
   margin-top:4px;
 }
+
+
+/* ======================================================
+   Entretien performance — alignement visuel Insights 2026
+   ====================================================== */
+
+#view-entretien-performance .ep-page-head,
+#view-entretien-performance .ep-filter-card,
+#view-entretien-performance .ep-collab-panel,
+#view-entretien-performance .ep-summary-card,
+#view-entretien-performance .ep-competence-panel{
+  box-shadow:none;
+}
+
+#view-entretien-performance .ep-summary-actions .sb-btn{
+  min-height:30px;
+  border-color:color-mix(in srgb, var(--accent) 35%, var(--sb-gray-300));
+  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
+  color:color-mix(in srgb, var(--accent) 82%, var(--sb-gray-900));
+  font-weight:700;
+}
+
+#view-entretien-performance .ep-summary-actions .sb-btn:hover{
+  background:color-mix(in srgb, var(--accent) 9%, #ffffff);
+  border-color:color-mix(in srgb, var(--accent) 52%, var(--sb-gray-300));
+  filter:none;
+}
+
+#view-entretien-performance #ep_btnReportPdf{
+  border-color:var(--sb-gray-300);
+  background:#ffffff;
+  color:var(--sb-gray-700);
+}
+
+#view-entretien-performance #ep_btnReportPdf:hover{
+  border-color:#94a3b8;
+  background:#f8fafc;
+  color:var(--sb-gray-900);
+}
+
+#view-entretien-performance .ep-summary-score{
+  border-radius:14px;
+  box-shadow:0 8px 18px rgba(15,23,42,.04);
+}
+
+#view-entretien-performance .ep-summary-score-value{
+  letter-spacing:-.03em;
+}
+
+#view-entretien-performance .ep-coverage-legend .ep-leg{
+  box-shadow:0 0 0 2px #ffffff, 0 0 0 3px rgba(15,23,42,.04);
+}
+
+#view-entretien-performance .ep-priority-help{
+  width:28px;
+  height:28px;
+  background:#ffffff;
+  color:#0f172a;
+}
+
+#view-entretien-performance .ep-competence-panel .card-body{
+  padding-top:6px;
+}
+
+#view-entretien-performance .ep-comp-edit-btn{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+}
+
+#view-entretien-performance .ep-comp-level-badge{
+  min-width:90px;
+}
+
+#view-entretien-performance .ep-comp-card--never{
+  border-left-color:var(--ep-priority-high);
+}
+
+#view-entretien-performance #ep_tblCompetences tbody tr.active .ep-comp-card{
+  border-color:color-mix(in srgb, var(--accent) 50%, var(--sb-gray-300));
+  border-left-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
+}
+
+#view-entretien-performance .ep-collab-card.active{
+  border-color:color-mix(in srgb, var(--accent) 50%, var(--sb-gray-300));
+  border-left-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
+}
+
+#view-entretien-performance .ep-filter-actions .sb-btn{
+  height:34px;
+  border-radius:10px;
+  font-weight:750;
+}
+
+@media (max-width:1050px){
+  #view-entretien-performance .ep-page-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  #view-entretien-performance .ep-page-actions{
+    justify-content:flex-start;
+  }
+}
+
 
 /* ======================================================
    Entretien performance — Modal historique des entretiens

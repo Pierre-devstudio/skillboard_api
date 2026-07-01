@@ -13,6 +13,7 @@
 
   const VIEW = "entretien-performance";
   const LS_KEY_SERVICE = "sb_ep_service";
+  const LS_KEY_FILTERS_OPEN = "sb_ep_filters_open";
 
   let _bound = false;
   let _portal = null;
@@ -969,6 +970,7 @@
       if (rngCritVal) rngCritVal.textContent = "0";
     }
 
+    updateCriticiteSliderVisual();
 
     for (let i = 1; i <= 4; i++) {
       setDisabled(`ep_critNote${i}`, true);
@@ -1750,6 +1752,7 @@ function renderCollaborateurs(list) {
             rngCritVal.textContent = String(Number(rngCrit?.value || 0));
           }
 
+          updateCriticiteSliderVisual();
           applyChecklistCriticiteFilter();
 
 
@@ -1796,6 +1799,7 @@ function renderCollaborateurs(list) {
     state._critBound = true;
 
     rng.addEventListener("input", () => {
+      updateCriticiteSliderVisual();
       applyChecklistCriticiteFilter();
       scheduleCouverturePosteRefresh();
 
@@ -1817,6 +1821,7 @@ function renderCollaborateurs(list) {
     const seuil = Math.max(0, Math.min(100, Number(rng.value || 0)));
     state._critSeuil = seuil;
     if (valEl) valEl.textContent = String(seuil);
+    updateCriticiteSliderVisual();
 
     const EPS = 0.0001;
 
@@ -1904,6 +1909,48 @@ function renderCollaborateurs(list) {
     if (state.serviceId) {
       await loadCollaborateurs();
     }
+  }
+
+
+  function bindFiltersToggleOnce() {
+    const card = $("ep_cardPerimetre");
+    const btn = $("ep_btnFiltersToggle");
+    const body = $("epFilterBody");
+
+    if (!card || !btn || !body || state._filtersToggleBound) return;
+
+    state._filtersToggleBound = true;
+
+    const stored = (() => {
+      try { return localStorage.getItem(LS_KEY_FILTERS_OPEN); } catch (_) { return null; }
+    })();
+
+    const apply = (opened) => {
+      card.classList.toggle("is-collapsed", !opened);
+      btn.setAttribute("aria-expanded", opened ? "true" : "false");
+      btn.setAttribute("title", opened ? "Replier les filtres" : "Déplier les filtres");
+      btn.setAttribute("aria-label", opened ? "Replier les filtres" : "Déplier les filtres");
+      try { localStorage.setItem(LS_KEY_FILTERS_OPEN, opened ? "1" : "0"); } catch (_) {}
+    };
+
+    apply(stored === "0" ? false : true);
+
+    btn.addEventListener("click", () => {
+      const opened = btn.getAttribute("aria-expanded") !== "true";
+      apply(opened);
+    });
+  }
+
+  function updateCriticiteSliderVisual() {
+    const rng = $("ep_rngCriticite");
+    if (!rng) return;
+
+    const min = Number(rng.min || 0);
+    const max = Number(rng.max || 100);
+    const raw = Number(rng.value || 0);
+    const pct = max > min ? ((raw - min) / (max - min)) * 100 : 0;
+
+    rng.style.setProperty("--ep-crit-pos", `${Math.max(0, Math.min(100, pct))}%`);
   }
 
   function bindPriorityHelpOnce() {
@@ -3729,6 +3776,9 @@ function renderCollaborateurs(list) {
         if (_bound) return;
         _bound = true;
 
+        bindFiltersToggleOnce();
+        updateCriticiteSliderVisual();
+
         if (!state._preselectListenersBound) {
           state._preselectListenersBound = true;
 
@@ -4477,17 +4527,23 @@ function renderCollaborateurs(list) {
         // Scope
         const selService = $("ep_selService");
         if (selService) {
-        selService.addEventListener("change", async () => {
+        selService.addEventListener("change", () => {
             state.serviceId = window.portal.serviceFilter.normalizeId(selService.value || "");
-            await onScopeChanged();
         });
         }
 
         const selPop = $("ep_selPopulation");
         if (selPop) {
-        selPop.addEventListener("change", async () => {
+        selPop.addEventListener("change", () => {
             state.population = selPop.value || "team";
-            // Pour l’instant on ne l’utilise pas côté API, mais on déclenche pareil un refresh.
+        });
+        }
+
+        const btnApply = $("ep_btnScopeApply");
+        if (btnApply) {
+        btnApply.addEventListener("click", async () => {
+            const sel = $("ep_selService");
+            if (sel) state.serviceId = window.portal.serviceFilter.normalizeId(sel.value || "");
             await onScopeChanged();
         });
         }
