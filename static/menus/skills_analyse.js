@@ -1289,8 +1289,7 @@
     tiles.forEach(t => {
       const kpis = t.querySelectorAll(".mini-kpi");
       kpis.forEach(kpi => {
-        kpi.style.borderColor = "#e5e7eb";
-        kpi.style.background = "#ffffff";
+        kpi.classList.remove("is-active");
       });
     });
 
@@ -1357,14 +1356,7 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-risk-kpi") || "").trim();
       const isActive = !!filter && k === filter;
-
-      el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
-        : "#e5e7eb";
-
-      el.style.background = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
-        : "#ffffff";
+      el.classList.toggle("is-active", isActive);
     });
   }
 
@@ -1400,14 +1392,7 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-match-view") || "").trim().toLowerCase();
       const isActive = tileIsActive && !!view && k === view;
-
-      el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
-        : "#e5e7eb";
-
-      el.style.background = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
-        : "#ffffff";
+      el.classList.toggle("is-active", isActive);
     });
   }
 
@@ -1422,14 +1407,7 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-prev-kpi") || "").trim().toLowerCase();
       const isActive = tileIsActive && !!key && k === String(key).trim().toLowerCase();
-
-      el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
-        : "#e5e7eb";
-
-      el.style.background = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
-        : "#ffffff";
+      el.classList.toggle("is-active", isActive);
     });
   }
 
