@@ -6579,18 +6579,6 @@ function renderDetail(mode) {
       setText("kpiRiskCritFragiles", compFragTxt);
       updateAnalyseHeaderSynthesis(data);
 
-      const alertN = Number(r.comp_critiques_tombent_zero_auj || 0);
-      const alertEl = byId("kpiRiskCritAlert");
-      if (alertEl) {
-        if (Number.isFinite(alertN) && alertN > 0) {
-          alertEl.textContent = `+${alertN} tombent à 0 aujourd’hui`;
-          alertEl.style.display = "inline-flex";
-        } else {
-          alertEl.textContent = "";
-          alertEl.style.display = "none";
-        }
-      }
-
       setText("kpiRiskEvol3m", "…");
       (async () => {
         try {
