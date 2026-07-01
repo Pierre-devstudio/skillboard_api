@@ -14,6 +14,7 @@ from app.routers import (
     skills_portal_simulations,
     skills_portal_besoins_formations,
     skills_portal_entretien_performance,
+    skills_portal_calendrier,
     skills_portal_pdf,
     validations_electroniques,
 )
@@ -166,6 +167,9 @@ for route in skills_portal_besoins_formations.router.routes:
      app_local.router.routes.append(route)
 
 for route in skills_portal_entretien_performance.router.routes:
+     app_local.router.routes.append(route)
+
+for route in skills_portal_calendrier.router.routes:
      app_local.router.routes.append(route)
 
 for route in skills_portal_pdf.router.routes:

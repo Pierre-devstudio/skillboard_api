@@ -152,6 +152,12 @@
     jsUrl: "/menus/skills_simulations_rh.js",
     onShow: (p) => window.SkillsSimulationsRH?.onShow?.(p),
   });
+  portal.registerMenu({
+    view: "calendrier",
+    htmlUrl: "/menus/skills_calendrier.html",
+    jsUrl: "/menus/skills_calendrier.js",
+    onShow: (p) => window.SkillsCalendrier?.onShow?.(p),
+  });
   portal.registerMenu({ view: "plan-actions", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "abonnement-facturation", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });

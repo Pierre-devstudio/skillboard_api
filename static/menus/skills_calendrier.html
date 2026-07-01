@@ -1,0 +1,206 @@
+<section id="view-calendrier" style="display:none;">
+  <div class="card cal-page-hero">
+    <div class="cal-page-hero__main">
+      <div class="cal-page-hero__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <path d="M16 2v4"/>
+          <path d="M8 2v4"/>
+          <path d="M3 10h18"/>
+          <path d="M8 14h.01"/>
+          <path d="M12 14h.01"/>
+          <path d="M16 14h.01"/>
+          <path d="M8 18h.01"/>
+          <path d="M12 18h.01"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title cal-page-hero__title">Calendrier</div>
+        <div class="card-sub cal-page-hero__sub">Planifiez et suivez les échéances RH de votre périmètre.</div>
+      </div>
+    </div>
+
+    <div class="cal-page-hero__actions">
+      <button type="button" class="sb-btn sb-btn--soft" id="btnCalRefresh">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M16 8h5V3"/></svg>
+        </span>
+        <span>Actualiser</span>
+      </button>
+      <button type="button" class="sb-btn sb-btn--accent" id="btnCalNewEvent">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </span>
+        <span>Nouvel événement</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="cal-kpi-strip" aria-label="Indicateurs calendrier RH">
+    <div class="cal-kpi-card">
+      <span class="cal-kpi-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span>
+      <div><div class="cal-kpi-card__label">À planifier</div><div class="cal-kpi-card__value" id="calKpiSuggestions">–</div></div>
+    </div>
+    <div class="cal-kpi-card">
+      <span class="cal-kpi-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-5"/></svg></span>
+      <div><div class="cal-kpi-card__label">Cette semaine</div><div class="cal-kpi-card__value" id="calKpiWeek">–</div></div>
+    </div>
+    <div class="cal-kpi-card">
+      <span class="cal-kpi-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><path d="M12 17h.01"/></svg></span>
+      <div><div class="cal-kpi-card__label">En retard</div><div class="cal-kpi-card__value" id="calKpiLate">–</div></div>
+    </div>
+    <div class="cal-kpi-card">
+      <span class="cal-kpi-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 15l2 2 4-4"/></svg></span>
+      <div><div class="cal-kpi-card__label">Signatures en attente</div><div class="cal-kpi-card__value" id="calKpiSignatures">–</div></div>
+    </div>
+  </div>
+
+  <div id="calActionMsg" class="sb-inline-msg cal-action-msg" aria-live="polite"></div>
+
+  <div class="card cal-filter-card is-collapsed">
+    <div class="cal-card-head">
+      <div>
+        <div class="card-title" style="margin-bottom:4px;">Filtres</div>
+        <div class="card-sub" style="margin:0;">Le service filtre les briques proposées et les événements affichés.</div>
+      </div>
+      <button type="button" class="cal-card-head__icon cal-filter-toggle" id="btnCalFiltersToggle" aria-expanded="false" aria-controls="calFilterBody" title="Déplier les filtres" aria-label="Déplier les filtres">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+      </button>
+    </div>
+
+    <div class="cal-filter-body" id="calFilterBody">
+      <div class="cal-filter-grid">
+        <div class="info-item">
+          <label class="sb-label" for="calServiceSelect">Service</label>
+          <select id="calServiceSelect" class="sb-select">
+            <option value="__ALL__">Tous les services</option>
+          </select>
+        </div>
+        <div class="info-item">
+          <label class="sb-label" for="calTypeSelect">Type</label>
+          <select id="calTypeSelect" class="sb-select">
+            <option value="">Tous les types</option>
+            <option value="entretien_annuel">Entretien annuel</option>
+            <option value="preparation_entretien">Préparation entretien</option>
+            <option value="evaluation_competence">Évaluation compétence</option>
+            <option value="signature">Signature / validation</option>
+            <option value="suivi_post_formation">Suivi post-formation</option>
+            <option value="campagne_rh">Campagne RH</option>
+            <option value="action_rh">Action RH</option>
+            <option value="evenement_rh">Événement RH</option>
+          </select>
+        </div>
+        <div class="info-item">
+          <label class="sb-label" for="calStatutSelect">Statut</label>
+          <select id="calStatutSelect" class="sb-select">
+            <option value="">Tous les statuts</option>
+            <option value="planifie">Planifié</option>
+            <option value="en_cours">En cours</option>
+            <option value="réalisé">Réalisé</option>
+            <option value="reporté">Reporté</option>
+            <option value="annulé">Annulé</option>
+          </select>
+        </div>
+      </div>
+      <div class="cal-filter-actions">
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCalResetFilters">Réinitialiser</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCalApplyFilters">Appliquer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cal-workspace">
+    <aside class="card cal-suggestions-card">
+      <div class="cal-panel-head">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">Briques proposées</div>
+          <div class="card-sub" id="calSuggestionsSub" style="margin:0;">Actions RH détectées mais non planifiées.</div>
+        </div>
+      </div>
+      <div class="cal-suggestion-hint">Glissez une brique sur une date, ou utilisez Planifier pour créer un événement calendrier.</div>
+      <div id="calSuggestionsList" class="cal-suggestions-list"></div>
+    </aside>
+
+    <main class="card cal-calendar-card">
+      <div class="cal-calendar-head">
+        <div>
+          <div class="card-title" id="calMonthLabel" style="margin:0;">—</div>
+          <div class="card-sub" id="calScopeLabel" style="margin:4px 0 0;">—</div>
+        </div>
+        <div class="cal-calendar-actions">
+          <button type="button" class="sb-btn sb-btn--soft" id="btnCalPrev" aria-label="Mois précédent">‹</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnCalToday">Aujourd’hui</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnCalNext" aria-label="Mois suivant">›</button>
+        </div>
+      </div>
+      <div id="calCalendar" class="cal-calendar"></div>
+    </main>
+
+    <aside class="card cal-detail-card">
+      <div class="cal-panel-head">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">Détail</div>
+          <div class="card-sub" id="calDetailSub" style="margin:0;">Sélectionnez un événement ou une brique.</div>
+        </div>
+      </div>
+      <div id="calDetailContent" class="cal-detail-content">
+        <div class="cal-empty-state">Aucun élément sélectionné.</div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="modal" id="modalCalEvent" aria-hidden="true">
+    <div class="modal-card modal-card--medium cal-event-modal">
+      <div class="modal-header">
+        <div class="sb-modal-title" id="calEventModalTitle">Nouvel événement</div>
+        <button type="button" class="modal-x" id="btnCloseCalEvent" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="calModalIntro" class="card-sub cal-modal-intro">Créez un événement RH planifié dans le calendrier.</div>
+
+        <div class="cal-form-grid">
+          <div class="info-item cal-form-field--wide">
+            <label class="sb-label" for="calEventTitle">Titre</label>
+            <input type="text" id="calEventTitle" class="sb-ctrl" placeholder="Ex. Entretien annuel · Prénom NOM">
+          </div>
+          <div class="info-item">
+            <label class="sb-label" for="calEventType">Type</label>
+            <select id="calEventType" class="sb-select">
+              <option value="evenement_rh">Événement RH</option>
+              <option value="entretien_annuel">Entretien annuel</option>
+              <option value="preparation_entretien">Préparation entretien</option>
+              <option value="evaluation_competence">Évaluation compétence</option>
+              <option value="signature">Signature / validation</option>
+              <option value="suivi_post_formation">Suivi post-formation</option>
+              <option value="campagne_rh">Campagne RH</option>
+              <option value="action_rh">Action RH</option>
+            </select>
+          </div>
+          <div class="info-item">
+            <label class="sb-label" for="calEventStatus">Statut</label>
+            <select id="calEventStatus" class="sb-select">
+              <option value="planifie">Planifié</option>
+              <option value="en_cours">En cours</option>
+              <option value="réalisé">Réalisé</option>
+              <option value="reporté">Reporté</option>
+              <option value="annulé">Annulé</option>
+            </select>
+          </div>
+          <div class="info-item">
+            <label class="sb-label" for="calEventStart">Début</label>
+            <input type="datetime-local" id="calEventStart" class="sb-ctrl">
+          </div>
+          <div class="info-item">
+            <label class="sb-label" for="calEventEnd">Fin</label>
+            <input type="datetime-local" id="calEventEnd" class="sb-ctrl">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer cal-modal-footer">
+        <span id="calEventModalMsg" class="sb-inline-msg" aria-live="polite"></span>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCalEventCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCalEventSave">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</section>
