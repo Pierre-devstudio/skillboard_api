@@ -6639,6 +6639,7 @@ function bindOnce(portal) {
 
   const selService = byId("analyseServiceSelect");
   const btnReset = byId("btnAnalyseReset");
+  const btnApply = byId("btnAnalyseApply");
   const btnFiltersToggle = byId("btnAnalyseFiltersToggle");
 
   function setAnalyseFiltersOpen(open) {
@@ -6832,15 +6833,25 @@ function bindOnce(portal) {
     });
   }
 
+  async function applyAnalyseFilters() {
+    setPostesScopeExpanded(false);
+    invalidateAnalyseCaches();
+    await refreshSummary(portal);
+    renderDetail(localStorage.getItem(STORE_MODE) || "risques");
+  }
+
   if (btnReset) {
     btnReset.addEventListener("click", async () => {
       setAnalyseServiceRawValue(window.portal.serviceFilter.ALL_ID || "");
       setCriticiteMinValue(CRITICITE_MIN_DEFAULT, true);
       setRiskFilter("");
-      setPostesScopeExpanded(false);
-      invalidateAnalyseCaches();
-      await refreshSummary(portal);
-      renderDetail(localStorage.getItem(STORE_MODE) || "risques");
+      await applyAnalyseFilters();
+    });
+  }
+
+  if (btnApply) {
+    btnApply.addEventListener("click", async () => {
+      await applyAnalyseFilters();
     });
   }
 
