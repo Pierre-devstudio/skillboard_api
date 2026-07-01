@@ -27305,3 +27305,255 @@ body{
 #view-analyse-competences .analyse-criticite-slider .sb-filter-slider__meta strong{
   color:#0f766e;
 }
+
+/* ======================================================
+   Analyse compétences — tuiles principales visuelles
+   ====================================================== */
+#view-analyse-competences{
+  --analyse-red:#d81d30;
+  --analyse-red-dark:#9f1d25;
+  --analyse-red-soft:#fff1f3;
+  --analyse-blue:#1d4ed8;
+  --analyse-blue-soft:#eff6ff;
+  --analyse-slate:#475569;
+}
+
+#view-analyse-competences .analyse-tiles{
+  align-items:stretch;
+}
+
+#view-analyse-competences .analyse-tile{
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  background:#ffffff;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+}
+
+#view-analyse-competences .analyse-tile.active{
+  outline:2px solid color-mix(in srgb, var(--analyse-red) 76%, #ffffff) !important;
+  border-color:color-mix(in srgb, var(--analyse-red) 30%, #e5e7eb);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--analyse-red) 3%, #ffffff), #ffffff 52%);
+  box-shadow:0 8px 18px rgba(17,24,39,.06);
+}
+
+#view-analyse-competences .analyse-card-head{
+  align-items:flex-start;
+  gap:12px;
+}
+
+#view-analyse-competences .analyse-card-titleline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+#view-analyse-competences .analyse-card-titleline .card-title{
+  min-width:0;
+}
+
+#view-analyse-competences .analyse-card-icon,
+#view-analyse-competences .analyse-mini-kpi-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  border-radius:999px;
+}
+
+#view-analyse-competences .analyse-card-icon{
+  width:34px;
+  height:34px;
+}
+
+#view-analyse-competences .analyse-card-icon svg,
+#view-analyse-competences .analyse-mini-kpi-icon svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-analyse-competences .analyse-card-icon--risques,
+#view-analyse-competences .analyse-mini-kpi-icon--risques,
+#view-analyse-competences .analyse-tile--risques .analyse-tile-hint-icon{
+  background:var(--analyse-red-soft);
+  color:var(--analyse-red);
+}
+
+#view-analyse-competences .analyse-card-icon--matching,
+#view-analyse-competences .analyse-mini-kpi-icon--matching,
+#view-analyse-competences .analyse-tile--matching .analyse-tile-hint-icon,
+#view-analyse-competences .analyse-card-icon--previsions,
+#view-analyse-competences .analyse-mini-kpi-icon--previsions,
+#view-analyse-competences .analyse-tile--previsions .analyse-tile-hint-icon{
+  background:#eef2ff;
+  color:#1e40af;
+}
+
+#view-analyse-competences .analyse-help-dot{
+  flex:0 0 auto;
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  border:1px solid #cbd5e1;
+  background:#ffffff;
+  color:#0f172a;
+  font-size:13px;
+  font-weight:800;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+}
+
+#view-analyse-competences .analyse-help-dot:hover{
+  border-color:color-mix(in srgb, var(--accent) 38%, #cbd5e1);
+  color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 4%, #ffffff);
+}
+
+#view-analyse-competences .analyse-tile .sb-tile-sub{
+  margin-top:12px;
+  color:#475569;
+}
+
+#view-analyse-competences .analyse-tile .sb-mini-kpis{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:14px;
+}
+
+#view-analyse-competences .analyse-tile .mini-kpi{
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#ffffff;
+  cursor:pointer;
+  transition:background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .06s ease;
+}
+
+#view-analyse-competences .analyse-tile .mini-kpi:hover{
+  background:#f8fafc;
+  border-color:#d8dee8;
+  transform:translateY(-1px);
+}
+
+#view-analyse-competences .analyse-tile .mini-kpi.is-active{
+  border-color:color-mix(in srgb, var(--analyse-red) 46%, #d8dee8);
+  background:color-mix(in srgb, var(--analyse-red) 5%, #ffffff);
+  box-shadow:inset 3px 0 0 color-mix(in srgb, var(--analyse-red) 80%, #ffffff);
+}
+
+#view-analyse-competences .analyse-tile--matching .mini-kpi.is-active,
+#view-analyse-competences .analyse-tile--previsions .mini-kpi.is-active{
+  border-color:color-mix(in srgb, var(--analyse-blue) 38%, #d8dee8);
+  background:color-mix(in srgb, var(--analyse-blue) 4%, #ffffff);
+  box-shadow:inset 3px 0 0 color-mix(in srgb, var(--analyse-blue) 65%, #ffffff);
+}
+
+#view-analyse-competences .analyse-mini-kpi-icon{
+  width:38px;
+  height:38px;
+}
+
+#view-analyse-competences .analyse-mini-kpi-body{
+  min-width:0;
+}
+
+#view-analyse-competences .analyse-tile .mini-kpi .label{
+  margin:0;
+  color:#64748b;
+  font-weight:500;
+}
+
+#view-analyse-competences .analyse-tile .mini-kpi .value{
+  margin-top:4px;
+  color:#0f172a;
+}
+
+#view-analyse-competences .analyse-tile .tile-hint{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin-top:16px;
+  padding-top:12px;
+  border-top:1px solid #e5e7eb;
+  color:#64748b;
+}
+
+#view-analyse-competences .analyse-tile-hint-icon{
+  width:18px;
+  height:18px;
+  border:1px solid currentColor;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 18px;
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  background:#ffffff;
+}
+
+#view-analyse-competences .sb-prev-horizon-control{
+  padding:11px 12px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#ffffff;
+}
+
+#view-analyse-competences #prevHorizonSlider{
+  accent-color:var(--analyse-blue);
+}
+
+#view-analyse-competences #prevHorizonSlider::-webkit-slider-runnable-track{
+  height:6px;
+  border-radius:999px;
+  background:linear-gradient(90deg, var(--analyse-blue) 0%, var(--analyse-blue) 38%, #d1d5db 38%, #d1d5db 100%);
+}
+
+#view-analyse-competences #prevHorizonSlider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  width:16px;
+  height:16px;
+  border-radius:999px;
+  background:var(--analyse-blue);
+  border:2px solid #ffffff;
+  box-shadow:0 0 0 1px rgba(29,78,216,.22);
+  margin-top:-5px;
+}
+
+#view-analyse-competences #prevHorizonSlider::-moz-range-track{
+  height:6px;
+  border-radius:999px;
+  background:#d1d5db;
+}
+
+#view-analyse-competences #prevHorizonSlider::-moz-range-progress{
+  height:6px;
+  border-radius:999px;
+  background:var(--analyse-blue);
+}
+
+#view-analyse-competences #prevHorizonSlider::-moz-range-thumb{
+  width:16px;
+  height:16px;
+  border:none;
+  border-radius:999px;
+  background:var(--analyse-blue);
+  box-shadow:0 0 0 1px rgba(29,78,216,.22);
+}
