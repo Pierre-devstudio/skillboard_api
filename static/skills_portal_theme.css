@@ -27494,6 +27494,8 @@ body{
 #view-analyse-competences .analyse-tile .mini-kpi .value{
   margin-top:4px;
   color:#0f172a;
+  font-size:14px;
+  line-height:1.15;
 }
 
 
