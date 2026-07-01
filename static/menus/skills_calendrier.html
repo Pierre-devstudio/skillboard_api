@@ -128,6 +128,12 @@
           <div class="card-sub" id="calScopeLabel" style="margin:4px 0 0;">—</div>
         </div>
         <div class="cal-calendar-actions">
+          <button type="button" class="sb-btn sb-btn--soft cal-calendar-expand-btn" id="btnCalExpand" title="Agrandir le calendrier" aria-label="Agrandir le calendrier">
+            <span class="sb-btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+            </span>
+            <span class="cal-calendar-expand-btn__label">Agrandir</span>
+          </button>
           <button type="button" class="sb-btn sb-btn--soft" id="btnCalPrev" aria-label="Mois précédent">‹</button>
           <button type="button" class="sb-btn sb-btn--soft" id="btnCalToday">Aujourd’hui</button>
           <button type="button" class="sb-btn sb-btn--soft" id="btnCalNext" aria-label="Mois suivant">›</button>
@@ -136,18 +142,25 @@
       <div id="calCalendar" class="cal-calendar"></div>
     </main>
 
-    <aside class="card cal-detail-card">
-      <div class="cal-panel-head">
-        <div>
-          <div class="card-title" style="margin-bottom:4px;">Détail</div>
-          <div class="card-sub" id="calDetailSub" style="margin:0;">Sélectionnez un événement ou une brique.</div>
-        </div>
-      </div>
-      <div id="calDetailContent" class="cal-detail-content">
-        <div class="cal-empty-state">Aucun élément sélectionné.</div>
-      </div>
-    </aside>
   </div>
+
+  <div class="cal-calendar-fullscreen-backdrop" id="calCalendarFullscreenBackdrop" aria-hidden="true"></div>
+
+  <div class="cal-detail-backdrop" id="calDetailBackdrop" aria-hidden="true"></div>
+  <aside class="card cal-detail-drawer" id="calDetailDrawer" aria-hidden="true" role="dialog" aria-label="Détail calendrier">
+    <div class="cal-panel-head">
+      <div>
+        <div class="card-title" style="margin-bottom:4px;">Détail</div>
+        <div class="card-sub" id="calDetailSub" style="margin:0;">Sélectionnez un événement ou une brique.</div>
+      </div>
+      <button type="button" class="cal-card-head__icon cal-detail-close" id="btnCalDetailClose" title="Fermer le détail" aria-label="Fermer le détail">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div id="calDetailContent" class="cal-detail-content">
+      <div class="cal-empty-state">Aucun élément sélectionné.</div>
+    </div>
+  </aside>
 
   <div class="modal" id="modalCalEvent" aria-hidden="true">
     <div class="modal-card modal-card--medium cal-event-modal">

@@ -25,7 +25,8 @@
     modalSuggestion: null,
     modalEvent: null,
     modalDropDate: "",
-    loading: false
+    loading: false,
+    calendarExpanded: false
   };
 
   function byId(id) { return document.getElementById(id); }
@@ -380,10 +381,7 @@
   }
 
   function renderDetailEmpty() {
-    const host = byId("calDetailContent");
-    const sub = byId("calDetailSub");
-    if (sub) sub.textContent = "Sélectionnez un événement ou une brique.";
-    if (host) host.innerHTML = `<div class="cal-empty-state">Aucun élément sélectionné.</div>`;
+    closeDetailDrawer(false);
   }
 
   function renderEventDetail(event) {
@@ -412,6 +410,7 @@
         <button type="button" class="sb-btn sb-btn--soft" data-cal-cancel-event="${escapeHtml(event.id_evenement || "")}">Annuler</button>
       </div>
     `;
+    syncDetailDrawer(true);
   }
 
   function renderSuggestionDetail(s) {
@@ -438,6 +437,7 @@
         <button type="button" class="sb-btn sb-btn--soft" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">Ignorer</button>
       </div>
     `;
+    syncDetailDrawer(true);
   }
 
   function renderSuggestionPayload(s) {
@@ -451,9 +451,71 @@
     return `<div class="cal-detail-list cal-detail-list--payload">${rows.map(r => `<div><span>${escapeHtml(r[0])}</span><strong>${escapeHtml(r[1])}</strong></div>`).join("")}</div>`;
   }
 
+  function syncDetailDrawer(open) {
+    const drawer = byId("calDetailDrawer");
+    const backdrop = byId("calDetailBackdrop");
+    if (drawer) {
+      drawer.classList.toggle("is-open", !!open);
+      drawer.setAttribute("aria-hidden", open ? "false" : "true");
+    }
+    if (backdrop) {
+      backdrop.classList.toggle("is-open", !!open);
+      backdrop.setAttribute("aria-hidden", open ? "false" : "true");
+    }
+  }
+
+  function closeDetailDrawer(clearSelection) {
+    if (clearSelection) {
+      state.selectedKind = "";
+      state.selectedId = "";
+      renderSuggestions();
+      renderCalendar();
+    }
+    const sub = byId("calDetailSub");
+    const host = byId("calDetailContent");
+    if (sub) sub.textContent = "Sélectionnez un événement ou une brique.";
+    if (host) host.innerHTML = `<div class="cal-empty-state">Aucun élément sélectionné.</div>`;
+    syncDetailDrawer(false);
+  }
+
+  function setCalendarExpanded(open) {
+    state.calendarExpanded = !!open;
+    const root = byId("view-calendrier");
+    const card = document.querySelector("#view-calendrier .cal-calendar-card");
+    const backdrop = byId("calCalendarFullscreenBackdrop");
+    const btn = byId("btnCalExpand");
+    const label = btn?.querySelector(".cal-calendar-expand-btn__label");
+
+    root?.classList.toggle("is-calendar-expanded", state.calendarExpanded);
+    card?.classList.toggle("is-expanded", state.calendarExpanded);
+    backdrop?.classList.toggle("is-open", state.calendarExpanded);
+    backdrop?.setAttribute("aria-hidden", state.calendarExpanded ? "false" : "true");
+
+    if (btn) {
+      btn.setAttribute("title", state.calendarExpanded ? "Réduire le calendrier" : "Agrandir le calendrier");
+      btn.setAttribute("aria-label", state.calendarExpanded ? "Réduire le calendrier" : "Agrandir le calendrier");
+      btn.classList.toggle("is-active", state.calendarExpanded);
+    }
+    if (label) label.textContent = state.calendarExpanded ? "Réduire" : "Agrandir";
+  }
+
+  function toggleCalendarExpanded() {
+    setCalendarExpanded(!state.calendarExpanded);
+  }
+
   function renderSelectedDetail() {
-    if (state.selectedKind === "event") return renderEventDetail(eventById(state.selectedId));
-    if (state.selectedKind === "suggestion") return renderSuggestionDetail(suggestionById(state.selectedId));
+    if (state.selectedKind === "event") {
+      const event = eventById(state.selectedId);
+      if (event) return renderEventDetail(event);
+      state.selectedKind = "";
+      state.selectedId = "";
+    }
+    if (state.selectedKind === "suggestion") {
+      const suggestion = suggestionById(state.selectedId);
+      if (suggestion) return renderSuggestionDetail(suggestion);
+      state.selectedKind = "";
+      state.selectedId = "";
+    }
     renderDetailEmpty();
   }
 
@@ -713,6 +775,10 @@
 
     byId("btnCalRefresh")?.addEventListener("click", reloadAll);
     byId("btnCalNewEvent")?.addEventListener("click", () => openEventModalCreate());
+    byId("btnCalExpand")?.addEventListener("click", toggleCalendarExpanded);
+    byId("calCalendarFullscreenBackdrop")?.addEventListener("click", () => setCalendarExpanded(false));
+    byId("btnCalDetailClose")?.addEventListener("click", () => closeDetailDrawer(true));
+    byId("calDetailBackdrop")?.addEventListener("click", () => closeDetailDrawer(true));
     byId("btnCalPrev")?.addEventListener("click", async () => { state.current = addMonths(state.current, -1); await reloadAll(); });
     byId("btnCalToday")?.addEventListener("click", async () => { state.current = new Date(); await reloadAll(); });
     byId("btnCalNext")?.addEventListener("click", async () => { state.current = addMonths(state.current, 1); await reloadAll(); });
@@ -721,6 +787,15 @@
     byId("btnCalEventCancel")?.addEventListener("click", closeModal);
     byId("btnCalEventSave")?.addEventListener("click", saveEventModal);
     byId("modalCalEvent")?.addEventListener("click", e => { if (e.target === byId("modalCalEvent")) closeModal(); });
+
+    document.addEventListener("keydown", e => {
+      if (e.key !== "Escape" || !document.getElementById("view-calendrier")?.contains(document.activeElement)) return;
+      if (state.calendarExpanded) {
+        setCalendarExpanded(false);
+        return;
+      }
+      if (byId("calDetailDrawer")?.classList.contains("is-open")) closeDetailDrawer(true);
+    });
 
     document.addEventListener("click", async (e) => {
       const target = e.target.closest("[data-event-id], [data-cal-day], [data-cal-plan], [data-cal-detail-suggestion], [data-cal-ignore], [data-cal-open-event], [data-cal-edit-event], [data-cal-done-event], [data-cal-report-event], [data-cal-cancel-event]");
