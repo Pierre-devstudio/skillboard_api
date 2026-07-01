@@ -28179,6 +28179,17 @@ body{
   stroke-linejoin:round;
 }
 
+#view-calendrier .card-title{
+  font-size:15px;
+  font-weight:650;
+  line-height:1.25;
+}
+
+#view-calendrier .card-sub{
+  font-size:12px;
+  line-height:1.35;
+}
+
 #view-calendrier .cal-page-hero,
 #view-calendrier .cal-filter-card,
 #view-calendrier .cal-suggestions-card,
@@ -28194,11 +28205,18 @@ body{
 
 #view-calendrier .cal-page-hero{
   display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:14px;
+  margin-bottom:14px;
+  padding:18px;
+}
+
+#view-calendrier .cal-page-hero__top{
+  display:flex;
   align-items:center;
   justify-content:space-between;
   gap:16px;
-  margin-bottom:14px;
-  padding:18px;
 }
 
 #view-calendrier .cal-page-hero__main,
@@ -28237,28 +28255,31 @@ body{
 #view-calendrier .cal-page-hero__title{
   margin:0;
   color:var(--cal-text);
-  font-size:22px;
+  font-size:20px;
+  font-weight:650;
   line-height:1.15;
 }
 
 #view-calendrier .cal-page-hero__sub{
   margin-top:5px;
   color:var(--cal-muted);
+  font-size:12px;
 }
 
 #view-calendrier .cal-kpi-strip{
   display:grid;
-  grid-template-columns:repeat(4, minmax(160px, 1fr));
-  gap:12px;
-  margin:0 0 14px;
+  grid-template-columns:repeat(4, minmax(150px, 1fr));
+  gap:10px;
+  margin:0;
 }
 
 #view-calendrier .cal-kpi-card{
   display:flex;
   align-items:center;
-  gap:12px;
-  min-height:74px;
-  padding:14px;
+  gap:10px;
+  min-height:60px;
+  padding:12px;
+  box-shadow:none;
 }
 
 #view-calendrier .cal-kpi-card__icon,
@@ -28273,20 +28294,40 @@ body{
   color:var(--cal-red);
 }
 
+#view-calendrier .cal-kpi-card--todo .cal-kpi-card__icon{
+  background:#eef2ff;
+  color:#4f46e5;
+}
+
+#view-calendrier .cal-kpi-card--week .cal-kpi-card__icon{
+  background:#ecfdf3;
+  color:#039855;
+}
+
+#view-calendrier .cal-kpi-card--late .cal-kpi-card__icon{
+  background:#fffbeb;
+  color:#d97706;
+}
+
+#view-calendrier .cal-kpi-card--signature .cal-kpi-card__icon{
+  background:#f5f3ff;
+  color:#7c3aed;
+}
+
 #view-calendrier .cal-kpi-card__label{
   color:var(--cal-muted);
-  font-size:12px;
-  font-weight:700;
+  font-size:11px;
+  font-weight:600;
   text-transform:uppercase;
-  letter-spacing:.05em;
+  letter-spacing:.045em;
 }
 
 #view-calendrier .cal-kpi-card__value{
   color:var(--cal-text);
-  font-size:24px;
-  font-weight:800;
+  font-size:21px;
+  font-weight:700;
   line-height:1.1;
-  margin-top:3px;
+  margin-top:2px;
 }
 
 #view-calendrier .cal-action-msg{
@@ -28345,7 +28386,7 @@ body{
 
 #view-calendrier .cal-workspace{
   display:grid;
-  grid-template-columns:minmax(250px, 320px) minmax(520px, 1fr);
+  grid-template-columns:minmax(360px, 430px) minmax(460px, 1fr);
   gap:14px;
   align-items:start;
 }
@@ -28410,21 +28451,63 @@ body{
 #view-calendrier .cal-priority{
   display:inline-flex;
   align-items:center;
-  min-height:22px;
+  min-height:21px;
   padding:3px 8px;
   border-radius:999px;
   border:1px solid var(--cal-border-soft);
   background:#fff;
   color:#475467;
-  font-size:11px;
-  font-weight:800;
+  font-size:10.5px;
+  font-weight:650;
   line-height:1;
 }
 
 #view-calendrier .cal-type-pill{
-  background:var(--cal-red-soft);
-  border-color:color-mix(in srgb, var(--cal-red) 18%, #ffffff);
-  color:var(--cal-red);
+  background:#f8fafc;
+  border-color:#e2e8f0;
+  color:#475569;
+}
+
+#view-calendrier .cal-type-pill--entretien{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1d4ed8;
+}
+
+#view-calendrier .cal-type-pill--preparation{
+  background:#ecfeff;
+  border-color:#a5f3fc;
+  color:#0e7490;
+}
+
+#view-calendrier .cal-type-pill--evaluation{
+  background:#f5f3ff;
+  border-color:#ddd6fe;
+  color:#6d28d9;
+}
+
+#view-calendrier .cal-type-pill--signature{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+
+#view-calendrier .cal-type-pill--suivi{
+  background:#ecfdf3;
+  border-color:#bbf7d0;
+  color:#15803d;
+}
+
+#view-calendrier .cal-type-pill--campagne{
+  background:#eef2ff;
+  border-color:#c7d2fe;
+  color:#4338ca;
+}
+
+#view-calendrier .cal-type-pill--action{
+  background:#f1f5f9;
+  border-color:#cbd5e1;
+  color:#334155;
 }
 
 #view-calendrier .cal-status-pill{
@@ -28433,9 +28516,9 @@ body{
 }
 
 #view-calendrier .cal-priority.is-urgent{
-  background:#fee2e2;
-  border-color:#fecaca;
-  color:#b91c1c;
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
 }
 
 #view-calendrier .cal-priority.is-high{
@@ -28459,8 +28542,9 @@ body{
 #view-calendrier .cal-suggestion-title{
   margin-top:9px;
   color:var(--cal-text);
-  font-weight:800;
-  line-height:1.25;
+  font-size:14px;
+  font-weight:650;
+  line-height:1.28;
 }
 
 #view-calendrier .cal-suggestion-extra{
@@ -28506,8 +28590,8 @@ body{
   background:#f8fafc;
   border-right:1px solid var(--cal-border-soft);
   color:var(--cal-muted);
-  font-size:12px;
-  font-weight:800;
+  font-size:11px;
+  font-weight:650;
   text-align:center;
 }
 
@@ -28553,8 +28637,8 @@ body{
   display:grid;
   place-items:center;
   color:var(--cal-text);
-  font-size:12px;
-  font-weight:900;
+  font-size:11px;
+  font-weight:700;
 }
 
 #view-calendrier .cal-day-events{
@@ -28589,7 +28673,7 @@ body{
 #view-calendrier .cal-event-chip span{
   flex:0 0 auto;
   min-width:18px;
-  font-weight:900;
+  font-weight:700;
   color:var(--cal-red);
 }
 
@@ -28598,7 +28682,7 @@ body{
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-weight:800;
+  font-weight:650;
 }
 
 #view-calendrier .cal-event-chip.is-overdue{
@@ -28609,7 +28693,7 @@ body{
 #view-calendrier .cal-more{
   color:var(--cal-muted);
   font-size:11px;
-  font-weight:800;
+  font-weight:650;
   padding-left:4px;
 }
 
@@ -28629,9 +28713,9 @@ body{
 
 #view-calendrier .cal-detail-title{
   color:var(--cal-text);
-  font-size:16px;
-  font-weight:850;
-  line-height:1.25;
+  font-size:15px;
+  font-weight:650;
+  line-height:1.28;
   margin-bottom:10px;
 }
 
@@ -28797,7 +28881,7 @@ body{
 
 @media (max-width:1280px){
   #view-calendrier .cal-workspace{
-    grid-template-columns:minmax(240px, 320px) minmax(420px, 1fr);
+    grid-template-columns:minmax(330px, 380px) minmax(420px, 1fr);
   }
 }
 
@@ -28813,7 +28897,7 @@ body{
     width:min(440px, calc(100vw - 20px));
   }
 
-  #view-calendrier .cal-page-hero{
+  #view-calendrier .cal-page-hero__top{
     align-items:flex-start;
     flex-direction:column;
   }

@@ -1,6 +1,6 @@
 /* ======================================================
    static/menus/skills_calendrier.js
-   Calendrier RH Insights : événements planifiés + briques intelligentes
+   Calendrier RH Insights : événements planifiés + propositions intelligentes
    ====================================================== */
 (function () {
   "use strict";
@@ -167,6 +167,31 @@
     return "•";
   }
 
+  function typeClass(x) {
+    const t = String(x?.type_evenement || x?.type_suggestion || x?.type || "").toLowerCase();
+    if (t === "entretien_annuel") return "cal-type-pill--entretien";
+    if (t === "preparation_entretien") return "cal-type-pill--preparation";
+    if (t === "evaluation_competence") return "cal-type-pill--evaluation";
+    if (t === "signature") return "cal-type-pill--signature";
+    if (t === "suivi_post_formation") return "cal-type-pill--suivi";
+    if (t === "campagne_rh") return "cal-type-pill--campagne";
+    if (t === "action_rh") return "cal-type-pill--action";
+    return "cal-type-pill--default";
+  }
+
+  function calIcon(name) {
+    const icons = {
+      calendar: '<svg viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M12 14v4"/><path d="M10 16h4"/></svg>',
+      eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+      ignore: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
+      edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      done: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>',
+      report: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+      cancel: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>'
+    };
+    return `<span class="sb-btn-icon" aria-hidden="true">${icons[name] || icons.eye}</span>`;
+  }
+
   function typeLabel(x) {
     return x?.type_label || x?.type || x?.type_evenement || x?.type_suggestion || "Événement RH";
   }
@@ -288,10 +313,10 @@
     const sub = byId("calSuggestionsSub");
     if (!host) return;
     const list = state.suggestions || [];
-    if (sub) sub.textContent = `${list.length} action(s) RH détectée(s) mais non planifiée(s).`;
+    if (sub) sub.textContent = `${list.length} évènement(s) RH proposé(s) mais non planifié(s).`;
 
     if (!list.length) {
-      host.innerHTML = `<div class="cal-empty-state">Aucune brique proposée pour ces filtres.</div>`;
+      host.innerHTML = `<div class="cal-empty-state">Aucun évènement proposé pour ces filtres.</div>`;
       return;
     }
 
@@ -304,7 +329,7 @@
              draggable="true"
              data-suggestion-id="${escapeHtml(s.id_suggestion || "")}">
           <div class="cal-suggestion-top">
-            <span class="cal-type-pill">${escapeHtml(typeLabel(s))}</span>
+            <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
             <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
           </div>
           <div class="cal-suggestion-title">${escapeHtml(s.titre || "Action à planifier")}</div>
@@ -315,9 +340,9 @@
             <span>Source : ${escapeHtml(s.source || "moteur")}</span>
           </div>
           <div class="cal-suggestion-actions">
-            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-cal-plan="${escapeHtml(s.id_suggestion || "")}">Planifier</button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-detail-suggestion="${escapeHtml(s.id_suggestion || "")}">Voir détail</button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">Ignorer</button>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-cal-plan="${escapeHtml(s.id_suggestion || "")}">${calIcon("calendar")}<span>Planifier</span></button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-detail-suggestion="${escapeHtml(s.id_suggestion || "")}">${calIcon("eye")}<span>Voir détail</span></button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">${calIcon("ignore")}<span>Ignorer</span></button>
           </div>
         </div>
       `;
@@ -392,7 +417,7 @@
     host.innerHTML = `
       <div class="cal-detail-title">${escapeHtml(event.titre || "Événement RH")}</div>
       <div class="cal-detail-badges">
-        <span class="cal-type-pill">${escapeHtml(typeLabel(event))}</span>
+        <span class="cal-type-pill ${typeClass(event)}">${escapeHtml(typeLabel(event))}</span>
         <span class="cal-status-pill">${escapeHtml(event.statut || "planifie")}</span>
       </div>
       <div class="cal-detail-list">
@@ -403,11 +428,11 @@
         <div><span>Source</span><strong>${escapeHtml(event.source || "—")}</strong></div>
       </div>
       <div class="cal-detail-actions">
-        <button type="button" class="sb-btn sb-btn--soft" data-cal-open-event="${escapeHtml(event.id_evenement || "")}">Ouvrir</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-cal-edit-event="${escapeHtml(event.id_evenement || "")}">Modifier</button>
-        <button type="button" class="sb-btn sb-btn--accent" data-cal-done-event="${escapeHtml(event.id_evenement || "")}">Marquer réalisé</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-cal-report-event="${escapeHtml(event.id_evenement || "")}">Reporter</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-cal-cancel-event="${escapeHtml(event.id_evenement || "")}">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-open-event="${escapeHtml(event.id_evenement || "")}">${calIcon("eye")}<span>Ouvrir</span></button>
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-edit-event="${escapeHtml(event.id_evenement || "")}">${calIcon("edit")}<span>Modifier</span></button>
+        <button type="button" class="sb-btn sb-btn--accent" data-cal-done-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>Marquer réalisé</span></button>
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-report-event="${escapeHtml(event.id_evenement || "")}">${calIcon("report")}<span>Reporter</span></button>
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-cancel-event="${escapeHtml(event.id_evenement || "")}">${calIcon("cancel")}<span>Annuler</span></button>
       </div>
     `;
     syncDetailDrawer(true);
@@ -418,11 +443,11 @@
     const sub = byId("calDetailSub");
     if (!host || !s) return;
     const pr = normalizePriority(s.priorite);
-    if (sub) sub.textContent = "Brique proposée par Novoskill.";
+    if (sub) sub.textContent = "Évènement proposé par Novoskill.";
     host.innerHTML = `
       <div class="cal-detail-title">${escapeHtml(s.titre || "Action RH à planifier")}</div>
       <div class="cal-detail-badges">
-        <span class="cal-type-pill">${escapeHtml(typeLabel(s))}</span>
+        <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
         <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
       </div>
       <div class="cal-detail-list">
@@ -433,8 +458,8 @@
       </div>
       ${renderSuggestionPayload(s)}
       <div class="cal-detail-actions">
-        <button type="button" class="sb-btn sb-btn--accent" data-cal-plan="${escapeHtml(s.id_suggestion || "")}">Planifier</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">Ignorer</button>
+        <button type="button" class="sb-btn sb-btn--accent" data-cal-plan="${escapeHtml(s.id_suggestion || "")}">${calIcon("calendar")}<span>Planifier</span></button>
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">${calIcon("ignore")}<span>Ignorer</span></button>
       </div>
     `;
     syncDetailDrawer(true);
@@ -473,7 +498,7 @@
     }
     const sub = byId("calDetailSub");
     const host = byId("calDetailContent");
-    if (sub) sub.textContent = "Sélectionnez un événement ou une brique.";
+    if (sub) sub.textContent = "Sélectionnez un évènement proposé ou planifié.";
     if (host) host.innerHTML = `<div class="cal-empty-state">Aucun élément sélectionné.</div>`;
     syncDetailDrawer(false);
   }
@@ -570,7 +595,7 @@
     state.modalDropDate = ymd || "";
     const start = defaultStartForDate(ymd || suggestion.date_echeance);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
-    byId("calEventModalTitle").textContent = "Planifier une brique";
+    byId("calEventModalTitle").textContent = "Planifier un évènement";
     byId("calModalIntro").textContent = suggestion.titre || "Planifiez cette action dans le calendrier.";
     byId("calEventTitle").value = suggestion.titre || "";
     byId("calEventType").value = suggestion.type_suggestion || "evenement_rh";
@@ -682,12 +707,12 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({})
       });
-      showMsg("Brique ignorée.", "success");
+      showMsg("Évènement ignoré.", "success");
       state.selectedKind = "";
       state.selectedId = "";
       await reloadAll();
     } catch (e) {
-      showMsg(e?.message || "Impossible d’ignorer cette brique.", "error");
+      showMsg(e?.message || "Impossible d’ignorer cet évènement.", "error");
     }
   }
 
