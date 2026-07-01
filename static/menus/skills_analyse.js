@@ -35,6 +35,7 @@
   const STORE_CRITICITE_MIN = "sb_analyse_criticite_min";
   const STORE_POSTES_SCOPE_EXPANDED = "sb_analyse_postes_scope_expanded";
   const STORE_RISK_DETAIL_EXPANDED = "sb_analyse_risk_detail_expanded";
+  const STORE_FILTERS_OPEN = "sb_analyse_filters_open";
   const STORE_SIM_ORG_CONTEXT = "sb_simulations_rh_context_v1";
   const STORE_BF_FOCUS = "sb_bf_focus_v1";
   const CRITICITE_MIN_DEFAULT = 70;
@@ -6638,6 +6639,33 @@ function bindOnce(portal) {
 
   const selService = byId("analyseServiceSelect");
   const btnReset = byId("btnAnalyseReset");
+  const btnFiltersToggle = byId("btnAnalyseFiltersToggle");
+
+  function setAnalyseFiltersOpen(open) {
+    const card = byId("analyseFilterCard");
+    const body = byId("analyseFilterBody");
+    const isOpen = !!open;
+    if (card) card.classList.toggle("is-collapsed", !isOpen);
+    if (body) body.style.display = isOpen ? "" : "none";
+    if (btnFiltersToggle) {
+      btnFiltersToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      btnFiltersToggle.title = isOpen ? "Replier les filtres" : "Déplier les filtres";
+      btnFiltersToggle.setAttribute("aria-label", isOpen ? "Replier les filtres" : "Déplier les filtres");
+    }
+    try { localStorage.setItem(STORE_FILTERS_OPEN, isOpen ? "1" : "0"); } catch (_) {}
+  }
+
+  const filtersStoredOpen = (() => {
+    try { return localStorage.getItem(STORE_FILTERS_OPEN); } catch (_) { return null; }
+  })();
+  setAnalyseFiltersOpen(filtersStoredOpen === "0" ? false : true);
+
+  if (btnFiltersToggle) {
+    btnFiltersToggle.addEventListener("click", () => {
+      const card = byId("analyseFilterCard");
+      setAnalyseFiltersOpen(card ? card.classList.contains("is-collapsed") : true);
+    });
+  }
 
   // Slider Prévisions (1..5 ans) - met à jour les KPI de la tuile en direct
   const prevSlider = byId("prevHorizonSlider");

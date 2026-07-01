@@ -69,11 +69,24 @@
 <div class="sb-split">
   <!-- Colonne gauche: filtres -->
   <div class="sb-col">
-    <div class="card">
-      <div class="card-title" style="margin-bottom:6px;">Filtres</div>
-      <div class="card-sub" style="margin:0;">Le filtre s’applique aux indicateurs et aux listes.</div>
+    <div class="card analyse-filter-card" id="analyseFilterCard">
+      <div class="analyse-filter-head">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">Filtres</div>
+          <div class="card-sub" style="margin:0;">Le filtre s’applique aux indicateurs et aux listes.</div>
+        </div>
+        <button type="button"
+                class="analyse-filter-head__icon analyse-filter-toggle"
+                id="btnAnalyseFiltersToggle"
+                aria-expanded="true"
+                aria-controls="analyseFilterBody"
+                title="Replier les filtres"
+                aria-label="Replier les filtres">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+        </button>
+      </div>
 
-      <div class="sb-stack" style="margin-top:12px;">
+      <div class="analyse-filter-stack sb-stack" id="analyseFilterBody">
         <div class="info-item">
           <div class="label">Service</div>
           <select id="analyseServiceSelect" class="sb-select">
@@ -83,7 +96,7 @@
 
         <div class="info-item">
           <div class="label">Criticité minimale</div>
-          <div class="sb-filter-slider">
+          <div class="sb-filter-slider analyse-criticite-slider">
             <input type="range" id="analyseCriticiteMinRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
             <div class="sb-filter-slider__meta">
               <span>Compétences analysées si criticité ≥</span>
