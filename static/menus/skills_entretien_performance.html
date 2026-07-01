@@ -155,9 +155,13 @@
     </div>
 
     <div class="ep-work-col">
-      <div class="card ep-panel-card ep-summary-card" id="ep_cardCouverturePoste">
-        <div class="card-header ep-summary-head">
-          <div>
+      <div class="card ep-panel-card ep-summary-empty-card" id="ep_covHint">
+        La synthèse apparaîtra après sélection d'un collaborateur
+      </div>
+
+      <div id="ep_covWrap" class="ep-summary-split" style="display:none;">
+        <div class="card ep-panel-card ep-summary-card" id="ep_cardSyntheseCollaborateur">
+          <div class="card-header ep-summary-head">
             <div class="ep-section-title">
               <span class="ep-section-title__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M20 8a3 3 0 0 1 0 6"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/></svg>
@@ -166,26 +170,7 @@
             </div>
           </div>
 
-          <div class="ep-summary-help-wrap">
-            <button type="button" class="ep-priority-help ep-summary-help" id="ep_btnSummaryHelp" aria-label="Comprendre la jauge">?</button>
-
-            <div class="ep-summary-help-pop" aria-hidden="true">
-              <div class="ep-priority-pop-title">Maîtrise du poste</div>
-              <div class="ep-summary-help-text">
-                Cette jauge montre dans quelle mesure le collaborateur maîtrise les compétences attendues de son poste, en donnant plus de poids aux compétences les plus critiques.
-                <br><br>
-                Les compétences sous le seuil de criticité défini ne sont pas prises en compte.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card-body ep-summary-body">
-          <div class="ep-summary-empty" id="ep_covHint">
-            La synthèse apparaîtra après sélection d'un collaborateur
-          </div>
-
-          <div id="ep_covWrap" class="ep-summary-wrap" style="display:none;">
+          <div class="card-body ep-summary-body">
             <div class="ep-summary-person">
               <div class="ep-summary-label">Collaborateur</div>
               <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
@@ -221,7 +206,33 @@
               <div id="ep_ctxDate" style="display:none;">—</div>
               <div id="ep_kpiToDo" style="display:none;">0</div>
             </div>
+          </div>
+        </div>
 
+        <div class="card ep-panel-card ep-gauge-card" id="ep_cardCouverturePoste">
+          <div class="card-header ep-summary-head ep-gauge-head">
+            <div class="ep-section-title">
+              <span class="ep-section-title__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-18 0"/><path d="M12 12 8 8"/><path d="M12 3v3"/><path d="M3.6 8.5l2.6 1.5"/><path d="M20.4 8.5 17.8 10"/></svg>
+              </span>
+              <span class="card-title">Maîtrise du poste</span>
+            </div>
+
+            <div class="ep-summary-help-wrap">
+              <button type="button" class="ep-priority-help ep-summary-help" id="ep_btnSummaryHelp" aria-label="Comprendre la jauge">?</button>
+
+              <div class="ep-summary-help-pop" aria-hidden="true">
+                <div class="ep-priority-pop-title">Maîtrise du poste</div>
+                <div class="ep-summary-help-text">
+                  Cette jauge montre dans quelle mesure le collaborateur maîtrise les compétences attendues de son poste, en donnant plus de poids aux compétences les plus critiques.
+                  <br><br>
+                  Les compétences sous le seuil de criticité défini ne sont pas prises en compte.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body ep-gauge-body">
             <div class="ep-summary-gauge">
               <svg id="ep_svgGauge" viewBox="0 0 240 150" aria-label="Couverture du poste actuel"></svg>
               <div class="ep-coverage-legend">

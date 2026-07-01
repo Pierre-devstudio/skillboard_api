@@ -7456,6 +7456,107 @@ body{
   flex:0 0 auto;
 }
 
+/* ======================================================
+   Entretien performance — séparation synthèse / jauge
+   ====================================================== */
+
+#view-entretien-performance .ep-summary-empty-card{
+  min-height:260px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:var(--sb-gray-500);
+  font-size:13px;
+  font-weight:600;
+  line-height:1.3;
+}
+
+#view-entretien-performance .ep-summary-split{
+  display:grid;
+  grid-template-columns:minmax(320px, .92fr) minmax(440px, 1.28fr);
+  gap:12px;
+  align-items:stretch;
+}
+
+#view-entretien-performance .ep-summary-split[style*="display:none"],
+#view-entretien-performance .ep-summary-split[style*="display: none"]{
+  display:none !important;
+}
+
+#view-entretien-performance .ep-summary-split .ep-summary-card,
+#view-entretien-performance .ep-summary-split .ep-gauge-card{
+  min-width:0;
+}
+
+#view-entretien-performance .ep-summary-split .ep-summary-body{
+  min-height:0;
+  padding-top:10px;
+}
+
+#view-entretien-performance .ep-summary-split .ep-summary-person{
+  align-self:auto;
+  padding-top:8px;
+}
+
+#view-entretien-performance .ep-gauge-card{
+  position:relative;
+}
+
+#view-entretien-performance .ep-gauge-head{
+  position:relative;
+  padding-right:38px;
+}
+
+#view-entretien-performance .ep-gauge-card .ep-summary-help-wrap{
+  top:6px;
+  right:10px;
+}
+
+#view-entretien-performance .ep-gauge-body{
+  min-height:190px;
+  display:grid;
+  grid-template-columns:minmax(260px, 1fr) 150px;
+  gap:14px;
+  align-items:center;
+}
+
+#view-entretien-performance .ep-gauge-body .ep-summary-gauge svg{
+  max-width:320px;
+}
+
+#view-entretien-performance .ep-gauge-body .ep-summary-score{
+  justify-self:end;
+  width:150px;
+  box-sizing:border-box;
+}
+
+#view-entretien-performance .ep-gauge-card .ep-summary-help-pop{
+  right:0;
+}
+
+@media (max-width:1180px){
+  #view-entretien-performance .ep-summary-split{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-gauge-body{
+    grid-template-columns:minmax(260px, 1fr) 150px;
+  }
+}
+
+@media (max-width:760px){
+  #view-entretien-performance .ep-gauge-body{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-gauge-body .ep-summary-score{
+    justify-self:center;
+    width:min(220px, 100%);
+  }
+}
+
+
 #modalEpEvaluation .ep-eval-modal-card{
   width:min(1000px, calc(100vw - 36px));
 }
