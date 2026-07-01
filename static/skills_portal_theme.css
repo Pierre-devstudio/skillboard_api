@@ -27539,3 +27539,67 @@ body{
   accent-color:var(--analyse-indigo);
   cursor:pointer;
 }
+
+
+/* Analyse compétences — détail tables : titres et bouton PDF */
+#view-analyse-competences .analyse-detail-titleline{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  color:inherit;
+}
+
+#view-analyse-competences .analyse-detail-title-icon{
+  width:16px;
+  height:16px;
+  flex:0 0 16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#111827;
+}
+
+#view-analyse-competences .analyse-detail-title-icon svg{
+  width:16px;
+  height:16px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-analyse-competences .analyse-detail-print-btn{
+  width:32px;
+  height:32px;
+  border-radius:9px;
+  flex:0 0 auto;
+  background:#ffffff;
+  border-color:#cbd5e1;
+  color:#334155;
+}
+
+#view-analyse-competences .analyse-detail-print-btn:hover:not(:disabled){
+  background:#f8fafc;
+  border-color:#94a3b8;
+  color:#111827;
+  filter:none;
+}
+
+#view-analyse-competences .analyse-detail-print-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+#view-analyse-competences .analyse-detail-print-btn svg{
+  width:15px;
+  height:15px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}

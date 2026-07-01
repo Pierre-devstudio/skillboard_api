@@ -625,6 +625,38 @@
     return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
   }
 
+  function analysePrintIconSvg() {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/><path d="M8 18h8"/></svg>`;
+  }
+
+  function analyseDetailIconSvg(kind) {
+    const icons = {
+      risques: `<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+      matching: `<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>`,
+      previsions: `<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V8"/><path d="M17 16V5"/></svg>`,
+      postes: `<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>`,
+      competences: `<svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>`,
+      evol3m: `<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>`,
+      matchingPostes: `<svg viewBox="0 0 24 24"><path d="M19 13.5V19H5v-5.5"/><path d="M9 10.5V5h6v5.5"/><path d="M8 13h8"/><path d="M12 9v8"/><path d="M4 13h4v4H4z"/><path d="M16 13h4v4h-4z"/></svg>`,
+      candidats: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
+      sortiesConfirmees: `<svg viewBox="0 0 24 24"><path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>`,
+      sortiesPotentielles: `<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-2a6 6 0 0 1 12 0v2"/><path d="M4 8a8 8 0 0 0-1 4"/><path d="M20 8a8 8 0 0 1 1 4"/></svg>`,
+      transmissions: `<svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`
+    };
+    return icons[kind] || icons.risques;
+  }
+
+  function analyseDetailTitleHtml(text, iconKind) {
+    return `<span class="analyse-detail-titleline"><span class="analyse-detail-title-icon" aria-hidden="true">${analyseDetailIconSvg(iconKind)}</span><span>${escapeHtml(text || "—")}</span></span>`;
+  }
+
+  function setAnalyseDetailTitle(text, iconKind) {
+    const el = byId("analyseDetailTitle");
+    if (!el) return;
+    el.innerHTML = analyseDetailTitleHtml(text, iconKind);
+    el.style.marginBottom = "0";
+  }
+
   function buildAnalysePosteAnalysisPdfUrl(idPoste) {
     const ctx = getPortalContext(_portalref);
     const posteId = String(idPoste || "").trim();
@@ -813,8 +845,8 @@
           ${expanded ? "Afficher les 10 premiers" : "Afficher tout"}
         </button>
       ` : ""}
-      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPrevisionDetailPrint">
-        Imprimer
+      <button type="button" class="sb-icon-btn analyse-detail-print-btn" id="btnPrevisionDetailPrint" title="Imprimer" aria-label="Imprimer">
+        ${analysePrintIconSvg()}
       </button>
     `;
 
@@ -2684,9 +2716,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       ` : ""}
       <button type="button"
               id="btnAnalyseMatchingPrint"
-              class="sb-btn sb-btn--accent sb-btn--xs"
+              class="sb-icon-btn analyse-detail-print-btn"
+              title="Imprimer"
+              aria-label="Imprimer"
               ${String(_matchSelectedPoste || "").trim() ? "" : "disabled"}>
-        Imprimer
+        ${analysePrintIconSvg()}
       </button>
     `;
 
@@ -3582,12 +3616,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return `
         <div style="display:flex; gap:12px; align-items:stretch; min-height:360px;">
           <div class="card" style="padding:12px; margin:0; width:360px; flex:0 0 auto;">
-            <div class="card-title" style="margin-bottom:0;">Postes</div>
+            <div class="card-title" style="margin-bottom:0;">${analyseDetailTitleHtml("Postes", "matchingPostes")}</div>
             <div id="matchPosteList" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div>
           </div>
 
           <div class="card" style="padding:12px; margin:0; flex:1;">
-            <div class="card-title" style="margin-bottom:6px;">Candidats</div>
+            <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("Candidats", "candidats")}</div>
             <div id="matchResult" style="margin-top:10px;">
               <div class="card-sub" style="margin:0; color:#6b7280;">Sélectionne un poste.</div>
             </div>
@@ -5003,10 +5037,7 @@ function renderDetail(mode) {
   // MATCHING (MVP)
   // -----------------------
   if (mode === "matching") {
-    if (title) {
-      title.textContent = "Correspondances profils/postes";
-      title.style.marginBottom = "0";
-    }
+    setAnalyseDetailTitle("Correspondances profils/postes", "matching");
     if (sub) {
       sub.textContent = "";
       sub.style.display = "none";
@@ -5067,10 +5098,7 @@ function renderDetail(mode) {
   if (mode === "previsions") {
     const horizon = getPrevHorizon();
     const horizonLabel = analyseHorizonLabel(horizon);
-    if (title) {
-      title.textContent = `Prévisions à ${horizonLabel}`;
-      title.style.marginBottom = "0";
-    }
+    setAnalyseDetailTitle(`Prévisions à ${horizonLabel}`, "previsions");
     if (sub) {
       sub.textContent = "";
       sub.style.display = "none";
@@ -5090,10 +5118,13 @@ function renderDetail(mode) {
     const detailTitle = selectedKpi === "sorties-potentielles"
       ? "Sorties potentielles"
       : (selectedKpi === "transmissions" ? "Transmissions à préparer" : "Sorties confirmées");
+    const detailIcon = selectedKpi === "sorties-potentielles"
+      ? "sortiesPotentielles"
+      : (selectedKpi === "transmissions" ? "transmissions" : "sortiesConfirmees");
 
     body.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:10px;">${escapeHtml(detailTitle)} à ${escapeHtml(horizonLabel)}</div>
+        <div class="card-title" style="margin-bottom:10px;">${analyseDetailTitleHtml(`${detailTitle} à ${horizonLabel}`, detailIcon)}</div>
         <div id="prevTransitionDetailBox" style="margin-top:0;">Chargement…</div>
       </div>
     `;
@@ -5167,7 +5198,7 @@ function renderDetail(mode) {
   const rf = getRiskFilter(); // "", "postes-scope", "critiques-fragiles", "evol-3m"
   if (typeof setActiveRiskKpi === "function") setActiveRiskKpi(rf);
 
-  if (title) title.textContent = "Risques actuels";
+  setAnalyseDetailTitle("Risques actuels", "risques");
   if (sub) {
     sub.textContent = "";
     sub.style.display = "none";
@@ -6310,8 +6341,8 @@ function renderDetail(mode) {
       <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskDetailToggle">
         ${expanded ? "Afficher les 10 premiers" : "Afficher tout"}
       </button>
-      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnRiskDetailPrint">
-        Imprimer
+      <button type="button" class="sb-icon-btn analyse-detail-print-btn" id="btnRiskDetailPrint" title="Imprimer" aria-label="Imprimer">
+        ${analysePrintIconSvg()}
       </button>
     `;
 
@@ -6427,7 +6458,7 @@ function renderDetail(mode) {
         const content = `
           <div class="card" style="padding:12px; margin:0;">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
-              <div class="card-title" style="margin:0;">${escapeHtml(filterLabel)}</div>
+              <div class="card-title" style="margin:0;">${analyseDetailTitleHtml(filterLabel, "evol3m")}</div>
               <button type="button"
                       class="analyse-help-dot"
                       data-analyse-help="risques_evol3m_table"
@@ -6475,7 +6506,7 @@ function renderDetail(mode) {
 
         const content = `
           <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
+            <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml(filterLabel, (rf === "postes-scope" || rf === "postes-fragiles") ? "postes" : (rf === "evol-3m" ? "evol3m" : "competences"))}</div>
             ${(rf === "postes-scope" || rf === "postes-fragiles") ? renderTablePostes(items) : renderTableCompetences(items)}
           </div>
         `;
@@ -6501,12 +6532,12 @@ function renderDetail(mode) {
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Fragilité des postes</div>
+          <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("Fragilité des postes", "postes")}</div>
           ${renderTablePostes(itemsA)}
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Fragilités par compétence</div>
+          <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("Fragilités par compétence", "competences")}</div>
           ${renderTableCompetences(itemsB)}
         </div>
       `;
