@@ -27030,3 +27030,143 @@ body{
     margin-top:8px;
   }
 }
+
+
+/* ======================================================
+   Analyse compétences — header synthèse visuel
+   ====================================================== */
+#view-analyse-competences .analyse-hero-card{
+  padding:24px 28px;
+}
+
+#view-analyse-competences .analyse-hero-top{
+  align-items:center;
+}
+
+#view-analyse-competences .analyse-hero-titleline{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+}
+
+#view-analyse-competences .analyse-hero-icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 42px;
+  background:#fff1f3;
+  color:#d81d30;
+}
+
+#view-analyse-competences .analyse-hero-icon svg,
+#view-analyse-competences .analyse-summary-chip__icon svg,
+#view-analyse-competences .analyse-summary-btn svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-analyse-competences .analyse-summary-grid{
+  gap:12px;
+  margin-top:22px;
+}
+
+#view-analyse-competences .analyse-summary-chip{
+  min-height:58px;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+  padding:12px 14px;
+  border-color:#edf0f4;
+  border-radius:14px;
+}
+
+#view-analyse-competences .analyse-summary-chip__icon{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 34px;
+  background:#f8fafc;
+  color:#334155;
+}
+
+#view-analyse-competences .analyse-summary-chip__body{
+  min-width:0;
+}
+
+#view-analyse-competences .analyse-summary-chip--postes .analyse-summary-chip__icon{
+  background:#fff1f3;
+  color:#d81d30;
+}
+
+#view-analyse-competences .analyse-summary-chip--competences .analyse-summary-chip__icon{
+  background:rgba(124,58,237,.08);
+  color:var(--sb-violet);
+}
+
+#view-analyse-competences .analyse-summary-chip--effets .analyse-summary-chip__icon{
+  background:rgba(245,158,11,.12);
+  color:#d97706;
+}
+
+#view-analyse-competences .analyse-summary-chip--risque .analyse-summary-chip__icon{
+  background:rgba(13,148,136,.10);
+  color:var(--reading-accent);
+}
+
+#view-analyse-competences .analyse-summary-btn{
+  min-height:36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  padding:0 14px;
+  border:1px solid color-mix(in srgb, var(--accent) 34%, #d8dee8);
+  border-radius:12px;
+  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
+  color:#9f1d25;
+  font-family:inherit;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+#view-analyse-competences .analyse-summary-btn:hover{
+  background:color-mix(in srgb, var(--accent) 8%, #ffffff);
+  border-color:color-mix(in srgb, var(--accent) 52%, #d8dee8);
+  filter:none;
+}
+
+#view-analyse-competences .analyse-summary-btn:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .12);
+}
+
+#view-analyse-competences .analyse-summary-btn__chev{
+  font-size:18px;
+  font-weight:800;
+  line-height:1;
+}
+
+@media (max-width:720px){
+  #view-analyse-competences .analyse-hero-card{
+    padding:18px;
+  }
+
+  #view-analyse-competences .analyse-hero-top{
+    align-items:flex-start;
+  }
+}
