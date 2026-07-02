@@ -947,27 +947,88 @@
     return `<span class="sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(txt)}</span>`;
   }
 
-  function epOpenCompetencePdfFromPunctual(item) {
+  async function epFetchCompetencePdfBlobFromPunctual(item) {
     const idEffectif = (state.selectedCollaborateurId || "").toString().trim();
     const idComp = (item?.id_comp || "").toString().trim();
 
-    if (!_portal || !idEffectif || !idComp) {
-      _portal?.showAlert?.("warning", "Sélectionne un collaborateur et une compétence avant d’ouvrir la fiche PDF.");
-      return;
+    if (!_portal?.apiBase || !_portal?.contactId || !idEffectif || !idComp) {
+      throw new Error("Collaborateur ou compétence introuvable pour la fiche PDF.");
     }
 
-    const popup = window.open("", "_blank");
     const url = `${_portal.apiBase}/skills/collaborateurs/competences/fiche_pdf/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEffectif)}/${encodeURIComponent(idComp)}?_=${Date.now()}`;
+    const headers = new Headers();
 
-    if (popup) {
-      try {
-        popup.location = url;
-      } catch (_) {
-        window.open(url, "_blank");
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token ? String(session.access_token) : "";
+        if (token) headers.set("Authorization", `Bearer ${token}`);
       }
-    } else {
-      const opened = window.open(url, "_blank");
-      if (!opened) _portal.showAlert?.("warning", "Le navigateur a bloqué l’ouverture du PDF.");
+    } catch (_) {}
+
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) {
+      let msg = `Erreur PDF (${resp.status})`;
+      try {
+        const ct = (resp.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) {
+          const body = await resp.json();
+          msg = body?.detail || body?.message || JSON.stringify(body);
+        } else {
+          msg = await resp.text() || msg;
+        }
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    return await resp.blob();
+  }
+
+  function epRenderPdfBlobInWindow(popupWin, blob, title) {
+    const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
+    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+
+    const blobUrl = URL.createObjectURL(blob);
+    const safeTitle = epEsc(title || "Fiche compétence");
+
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${safeTitle}</title>
+  <style>
+    html,body{height:100%;margin:0;background:#f3f4f6;}
+    iframe{width:100%;height:100%;border:0;background:#fff;}
+  </style>
+</head>
+<body>
+  <iframe src="${blobUrl}" title="${safeTitle}"></iframe>
+</body>
+</html>`);
+    win.document.close();
+
+    const revoke = () => {
+      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+    };
+    try { win.addEventListener("beforeunload", revoke, { once:true }); } catch (_) {}
+    setTimeout(revoke, 5 * 60 * 1000);
+  }
+
+  async function epOpenCompetencePdfFromPunctual(item) {
+    const popup = window.open("about:blank", "_blank");
+    if (popup) {
+      try { popup.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
+    }
+
+    try {
+      const blob = await epFetchCompetencePdfBlobFromPunctual(item);
+      const code = (item?.code || "").toString().trim();
+      const title = `Fiche compétence - ${code ? `${code} - ` : ""}${(item?.intitule || "Compétence").toString().trim()}`;
+      epRenderPdfBlobInWindow(popup, blob, title);
+    } catch (e) {
+      try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+      _portal?.showAlert?.("warning", String(e?.message || e || "Impossible d’ouvrir le PDF."));
     }
   }
 
@@ -1135,9 +1196,9 @@
     btn.setAttribute("aria-expanded", state._punctualShowAllCompetences ? "true" : "false");
 
     if (state._punctualShowAllCompetences) {
-      label.textContent = "Moins de compétences";
+      label.textContent = "Voir moins de compétences";
     } else {
-      label.textContent = `Plus de compétences (${hiddenCount})`;
+      label.textContent = `Voir plus de compétences (${hiddenCount})`;
     }
   }
 

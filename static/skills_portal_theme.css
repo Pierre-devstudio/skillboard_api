@@ -29383,6 +29383,7 @@ body{
   border:1px solid var(--sb-gray-200);
   border-radius:14px;
   background:#fff;
+  min-height:0;
 }
 
 #view-entretien-performance .ep-punctual-table{
@@ -29392,7 +29393,8 @@ body{
   border-spacing:0;
 }
 
-#view-entretien-performance .ep-punctual-table thead{
+#view-entretien-performance .ep-punctual-table thead,
+#view-entretien-performance #ep_tblCompetences.ep-punctual-table thead{
   display:table-header-group;
 }
 
@@ -29411,32 +29413,33 @@ body{
 
 #view-entretien-performance .ep-punctual-table th:nth-child(1),
 #view-entretien-performance .ep-punctual-table td:nth-child(1){
-  width:92px;
+  width:98px;
 }
 
 #view-entretien-performance .ep-punctual-table th:nth-child(3),
 #view-entretien-performance .ep-punctual-table td:nth-child(3){
-  width:150px;
+  width:118px;
 }
 
 #view-entretien-performance .ep-punctual-table th:nth-child(4),
 #view-entretien-performance .ep-punctual-table td:nth-child(4){
-  width:150px;
+  width:132px;
 }
 
 #view-entretien-performance .ep-punctual-table th:nth-child(5),
 #view-entretien-performance .ep-punctual-table td:nth-child(5){
-  width:150px;
+  width:132px;
 }
 
 #view-entretien-performance .ep-punctual-table th:nth-child(6),
 #view-entretien-performance .ep-punctual-table td:nth-child(6){
-  width:86px;
+  width:76px;
   text-align:center;
 }
 
-#view-entretien-performance .ep-punctual-table tbody td{
-  padding:9px 10px;
+#view-entretien-performance .ep-punctual-table tbody td,
+#view-entretien-performance #ep_tblCompetences.ep-punctual-table tbody td{
+  padding:8px 9px;
   border-bottom:1px solid var(--sb-gray-100);
   font-size:12px;
   color:var(--sb-gray-700);
@@ -29454,14 +29457,14 @@ body{
 #view-entretien-performance .ep-punctual-date-cell,
 #view-entretien-performance .ep-punctual-level-cell,
 #view-entretien-performance .ep-punctual-status-cell{
-  padding-left:14px !important;
-  padding-right:14px !important;
+  padding-left:10px !important;
+  padding-right:10px !important;
   white-space:nowrap;
 }
 
 #view-entretien-performance .ep-punctual-actions-cell{
-  padding-left:8px !important;
-  padding-right:12px !important;
+  padding-left:6px !important;
+  padding-right:10px !important;
   text-align:right;
 }
 
@@ -29529,7 +29532,7 @@ body{
   font-size:13px;
   font-weight:650;
   line-height:1.25;
-  max-width:360px;
+  max-width:none;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -29567,26 +29570,35 @@ body{
 
 #view-entretien-performance .ep-more-competences{
   width:100%;
-  min-height:42px;
-  margin-top:10px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:13px;
-  background:linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-  color:var(--sb-gray-700);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 14px;
+  min-height:38px;
+  margin:0;
+  border:0;
+  border-top:1px solid var(--sb-gray-200);
+  background:#fff;
+  color:var(--sb-gray-900);
   font-family:inherit;
   font-size:13px;
   font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
   cursor:pointer;
 }
 
 #view-entretien-performance .ep-more-competences:hover{
-  border-color:color-mix(in srgb, var(--accent) 35%, var(--sb-gray-300));
+  background:color-mix(in srgb, var(--accent) 3%, #fff);
   color:var(--accent);
-  background:color-mix(in srgb, var(--accent) 4%, #fff);
+}
+
+#view-entretien-performance .ep-more-competences__chevron{
+  font-size:14px;
+  line-height:1;
+  transform:translateY(-1px);
+}
+
+#view-entretien-performance .ep-more-competences[aria-expanded="true"] .ep-more-competences__chevron{
+  transform:rotate(180deg) translateY(1px);
 }
 
 #view-entretien-performance .ep-suggestions-list{
