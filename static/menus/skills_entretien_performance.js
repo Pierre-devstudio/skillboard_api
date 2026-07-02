@@ -543,9 +543,7 @@
     setText("ep_ctxService", "—");
     setText("ep_ctxServiceBadge", "Service non renseigné");
     setText("ep_ctxDate", "—");
-    setText("ep_punctualCollaborateur", "—");
     epRenderAnnualCompetenceSummary([]);
-    epRenderSuggestions([]);
     epRenderEntretienOverview([]);
   }
 
@@ -706,10 +704,8 @@
     setText("ep_ctxService", "—");
     setText("ep_ctxServiceBadge", "Service non renseigné");
     setText("ep_ctxDate", "—");
-    setText("ep_punctualCollaborateur", "—");
 
     epRenderAnnualCompetenceSummary([]);
-    epRenderSuggestions([]);
     epRenderEntretienOverview([]);
 
     setText("ep_kpiToDo", "0");
@@ -1146,46 +1142,6 @@
     epApplyPunctualFilters();
   }
 
-  function epRenderSuggestions(list) {
-    const wrap = $("ep_suggestionsList");
-    if (!wrap) return;
-
-    const arr = (Array.isArray(list) ? list : [])
-      .filter(x => epCompetenceStatusKey(x) !== "ok")
-      .sort((a, b) => {
-        const sa = epCompetenceStatusKey(a) === "never" ? 0 : 1;
-        const sb = epCompetenceStatusKey(b) === "never" ? 0 : 1;
-        if (sa !== sb) return sa - sb;
-        return String(a.intitule || "").localeCompare(String(b.intitule || ""), "fr", { sensitivity: "base" });
-      })
-      .slice(0, 4);
-
-    if (!arr.length) {
-      wrap.innerHTML = `<div class="ep-history-empty">Aucune suggestion prioritaire.</div>`;
-      return;
-    }
-
-    wrap.innerHTML = "";
-    arr.forEach(x => {
-      const key = epCompetenceStatusKey(x);
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "ep-suggestion-row";
-      btn.innerHTML = `
-        <span class="ep-suggestion-main">
-          <span class="ep-suggestion-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          </span>
-          <span>${epEsc(x.intitule || "Compétence")}</span>
-        </span>
-        <span class="${epCompetenceStatusBadgeClass(key)}">${epEsc(epCompetenceStatusLabel(key))}</span>
-        <span aria-hidden="true">›</span>
-      `;
-      btn.addEventListener("click", () => epOpenEvaluationStandalone(x));
-      wrap.appendChild(btn);
-    });
-  }
-
   function epUpdatePunctualMoreButton(visibleTotal, hiddenCount) {
     const btn = $("ep_btnMoreCompetences");
     const label = $("ep_moreCompetencesLabel");
@@ -1248,6 +1204,31 @@
     epUpdatePunctualMoreButton(matchingRows.length, Math.max(0, matchingRows.length - 5));
   }
 
+  function epSetPunctualInnerTab(tab) {
+    const target = tab === "historique" ? "historique" : "competences";
+
+    document.querySelectorAll("#view-entretien-performance .ep-punctual-inner-tab").forEach(btn => {
+      const active = btn.dataset.epPunctualTab === target;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    document.querySelectorAll("#view-entretien-performance .ep-punctual-inner-panel").forEach(panel => {
+      panel.classList.toggle("is-active", panel.dataset.epPunctualPanel === target);
+    });
+
+    if (target === "historique") epLoadPunctualHistorySummary();
+  }
+
+  function bindPunctualInnerTabsOnce() {
+    if (state._punctualInnerTabsBound) return;
+    state._punctualInnerTabsBound = true;
+
+    document.querySelectorAll("#view-entretien-performance .ep-punctual-inner-tab").forEach(btn => {
+      btn.addEventListener("click", () => epSetPunctualInnerTab(btn.dataset.epPunctualTab || "competences"));
+    });
+  }
+
   function epSetPageTab(tab) {
     const target = ["annuel", "ponctuel", "formation"].includes(tab) ? tab : "annuel";
 
@@ -1270,7 +1251,12 @@
       btn.addEventListener("click", () => epSetPageTab(btn.dataset.epTab || "annuel"));
     });
 
-    $("ep_btnAnnualSeeCompetences")?.addEventListener("click", () => epSetPageTab("ponctuel"));
+    bindPunctualInnerTabsOnce();
+
+    $("ep_btnAnnualSeeCompetences")?.addEventListener("click", () => {
+      epSetPageTab("ponctuel");
+      epSetPunctualInnerTab("competences");
+    });
     $("ep_btnAnnualPrepare")?.addEventListener("click", () => epOpenAnnualEntretien("preparation"));
     $("ep_btnAnnualRealize")?.addEventListener("click", () => epOpenAnnualEntretien("realisation"));
     $("ep_btnAnnualReport")?.addEventListener("click", () => {
@@ -1466,11 +1452,15 @@
       const tr = document.createElement("tr");
       const level = _epLevelFromScore24(row.resultat_eval);
       tr.innerHTML = `
-        <td>${epEsc(epFormatDateFR(row.date_audit) || "—")}</td>
-        <td>${epEsc(row.intitule || "—")}</td>
-        <td>${epEsc(row.nom_evaluateur || "—")}</td>
+        <td class="ep-history-date-cell">${epEsc(epFormatDateFR(row.date_audit) || "—")}</td>
+        <td><div class="ep-punctual-history-title" title="${epEsc(row.intitule || "")}">${epEsc(row.intitule || "—")}</div></td>
+        <td><div class="ep-punctual-history-evaluator">${epEsc(row.nom_evaluateur || "—")}</div></td>
         <td><span class="sb-badge ${getEpLevelBadgeClass(level)}">${epEsc(level || "—")}</span></td>
-        <td><button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="history">Voir</button></td>
+        <td class="ep-punctual-history-actions">
+          <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--pdf" data-act="history" title="Voir le détail" aria-label="Voir le détail">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/></svg>
+          </button>
+        </td>
       `;
       tr.querySelector('[data-act="history"]')?.addEventListener("click", () => $("ep_btnHistoryGlobal")?.click());
       tbody.appendChild(tr);
@@ -1531,7 +1521,6 @@
     // 4) KPI “à faire” (jamais auditées)
     _recalcKpiToDoPreferState();
     epRenderAnnualCompetenceSummary(state._checklistAll || []);
-    epRenderSuggestions(state._checklistAll || []);
     epApplyPunctualFilters();
 
     // 5) Réappliquer filtres éventuels (recherche / slider selon ta version)
@@ -2151,10 +2140,7 @@ function getCollaborateurInitials(c) {
           setText("ep_kpiReview", "0");
 
           epRenderAnnualCompetenceSummary(list);
-          epRenderSuggestions(list);
           epRenderPunctualCompetenceRows(list);
-
-          setText("ep_punctualCollaborateur", $("ep_ctxCollaborateur")?.textContent || "—");
 
           try {
             await loadEntretiensIndividuels();

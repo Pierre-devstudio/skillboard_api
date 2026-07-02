@@ -29256,17 +29256,14 @@ body{
   margin-top:auto;
 }
 
-#view-entretien-performance .ep-annual-bottom-grid,
-#view-entretien-performance .ep-punctual-bottom-grid{
+#view-entretien-performance .ep-annual-bottom-grid{
   display:grid;
   grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
   gap:12px;
 }
 
 #view-entretien-performance .ep-annual-comp-card,
-#view-entretien-performance .ep-annual-history-card,
-#view-entretien-performance .ep-punctual-history-card,
-#view-entretien-performance .ep-suggestions-card{
+#view-entretien-performance .ep-annual-history-card{
   padding:16px 18px;
 }
 
@@ -29337,6 +29334,141 @@ body{
   font-size:12px;
   text-align:center;
   padding:14px !important;
+}
+
+#view-entretien-performance .ep-punctual-main-body{
+  padding-top:0;
+}
+
+#view-entretien-performance .ep-punctual-inner-tabs{
+  display:flex;
+  align-items:center;
+  gap:24px;
+  border-bottom:1px solid var(--sb-gray-200);
+  margin:0 0 14px;
+  padding:0 2px;
+}
+
+#view-entretien-performance .ep-punctual-inner-tab{
+  position:relative;
+  min-height:42px;
+  border:0;
+  background:transparent;
+  color:var(--sb-gray-700);
+  font-family:inherit;
+  font-size:14px;
+  font-weight:700;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:0 0 12px;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-punctual-inner-tab::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:2px;
+  border-radius:999px;
+  background:transparent;
+}
+
+#view-entretien-performance .ep-punctual-inner-tab:hover,
+#view-entretien-performance .ep-punctual-inner-tab.is-active{
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-punctual-inner-tab.is-active::after{
+  background:var(--accent);
+}
+
+#view-entretien-performance .ep-punctual-inner-tab__icon{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#view-entretien-performance .ep-punctual-inner-tab__icon svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-entretien-performance .ep-punctual-inner-panel{
+  display:none;
+}
+
+#view-entretien-performance .ep-punctual-inner-panel.is-active{
+  display:block;
+}
+
+#view-entretien-performance .ep-punctual-history-wrap{
+  overflow:hidden;
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  background:#fff;
+}
+
+#view-entretien-performance .ep-punctual-history-table{
+  width:100%;
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+
+#view-entretien-performance .ep-punctual-history-table thead th{
+  background:#fff;
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:700;
+  border-bottom:1px solid var(--sb-gray-200);
+  padding:9px 10px;
+  text-align:left;
+}
+
+#view-entretien-performance .ep-punctual-history-table tbody td{
+  padding:9px 10px;
+  border-bottom:1px solid var(--sb-gray-100);
+  color:var(--sb-gray-700);
+  font-size:12px;
+  vertical-align:middle;
+}
+
+#view-entretien-performance .ep-punctual-history-table th:nth-child(1),
+#view-entretien-performance .ep-punctual-history-table td:nth-child(1){ width:110px; }
+#view-entretien-performance .ep-punctual-history-table th:nth-child(3),
+#view-entretien-performance .ep-punctual-history-table td:nth-child(3){ width:155px; }
+#view-entretien-performance .ep-punctual-history-table th:nth-child(4),
+#view-entretien-performance .ep-punctual-history-table td:nth-child(4){ width:130px; }
+#view-entretien-performance .ep-punctual-history-table th:nth-child(5),
+#view-entretien-performance .ep-punctual-history-table td:nth-child(5){ width:74px; text-align:center; }
+
+#view-entretien-performance .ep-punctual-history-title{
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:650;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-punctual-history-evaluator{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-punctual-history-actions{
+  text-align:center;
 }
 
 #view-entretien-performance .ep-punctual-toolbar{
@@ -29605,61 +29737,6 @@ body{
   transform:rotate(180deg) translateY(1px);
 }
 
-#view-entretien-performance .ep-suggestions-list{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-#view-entretien-performance .ep-suggestion-row{
-  width:100%;
-  min-height:38px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  background:#fff;
-  padding:0 10px;
-  display:grid;
-  grid-template-columns:minmax(0, 1fr) auto auto;
-  gap:10px;
-  align-items:center;
-  color:var(--sb-gray-700);
-  font-family:inherit;
-  font-size:12px;
-  font-weight:650;
-  cursor:pointer;
-}
-
-#view-entretien-performance .ep-suggestion-row:hover{
-  border-color:color-mix(in srgb, var(--accent) 28%, var(--sb-gray-200));
-  background:color-mix(in srgb, var(--accent) 4%, #fff);
-}
-
-#view-entretien-performance .ep-suggestion-main{
-  min-width:0;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-#view-entretien-performance .ep-suggestion-icon{
-  width:22px;
-  height:22px;
-  border-radius:999px;
-  flex:0 0 auto;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background:color-mix(in srgb, var(--accent) 7%, #fff);
-  color:var(--accent);
-}
-
-#view-entretien-performance .ep-suggestion-icon svg{
-  width:14px;
-  height:14px;
-}
 
 #view-entretien-performance .ep-formation-empty-card{
   min-height:230px;
@@ -29715,6 +29792,11 @@ body{
     grid-template-columns:1fr;
   }
 
+  #view-entretien-performance .ep-punctual-inner-tabs{
+    gap:18px;
+    overflow-x:auto;
+  }
+
   #view-entretien-performance .ep-status-filter{
     justify-content:flex-start;
   }
@@ -29726,8 +29808,7 @@ body{
 
 @media (max-width:760px){
   #view-entretien-performance .ep-collab-summary-grid,
-  #view-entretien-performance .ep-annual-bottom-grid,
-  #view-entretien-performance .ep-punctual-bottom-grid{
+  #view-entretien-performance .ep-annual-bottom-grid{
     grid-template-columns:1fr;
   }
 

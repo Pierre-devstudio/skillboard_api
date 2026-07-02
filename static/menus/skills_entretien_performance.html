@@ -314,87 +314,85 @@
             </div>
           </div>
 
-          <div class="card ep-panel-card ep-competence-panel">
-            <div class="card-header ep-competence-head">
+          <div class="card ep-panel-card ep-competence-panel ep-punctual-main-card">
+            <div class="card-header ep-competence-head ep-punctual-main-head">
               <div class="ep-section-title">
                 <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
-                <span class="card-title">Rechercher une compétence</span>
+                <span class="card-title">Évaluations ponctuelles</span>
               </div>
             </div>
 
-            <div class="card-body">
-              <div class="ep-punctual-toolbar">
-                <div class="ep-search-field ep-punctual-search">
-                  <input id="ep_txtSearchCompetence" class="ep-search-input" placeholder="Rechercher une compétence" autocomplete="off" />
-                  <span class="ep-search-field__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
-                </div>
-                <div class="ep-status-filter" role="group" aria-label="Filtrer les compétences">
-                  <button type="button" class="ep-status-filter-btn" data-ep-status="never">Jamais évaluée</button>
-                  <button type="button" class="ep-status-filter-btn" data-ep-status="review">À revoir</button>
-                  <button type="button" class="ep-status-filter-btn is-active" data-ep-status="all">Toutes</button>
-                </div>
-              </div>
-
-              <div class="table-wrap ep-comp-table-wrap">
-                <table class="sb-table ep-punctual-table" id="ep_tblCompetences">
-                  <thead>
-                    <tr>
-                      <th>Code</th>
-                      <th>Compétence</th>
-                      <th>Dernière évaluation</th>
-                      <th>Niveau actuel</th>
-                      <th>État d’évaluation</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
-                <button type="button" class="ep-more-competences" id="ep_btnMoreCompetences" style="display:none;">
-                  <span id="ep_moreCompetencesLabel">Plus de compétences</span>
-                  <span class="ep-more-competences__chevron" aria-hidden="true">⌄</span>
+            <div class="card-body ep-punctual-main-body">
+              <div class="ep-punctual-inner-tabs" role="tablist" aria-label="Évaluations ponctuelles">
+                <button type="button" class="ep-punctual-inner-tab is-active" data-ep-punctual-tab="competences" role="tab" aria-selected="true">
+                  <span class="ep-punctual-inner-tab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 12h18"/><path d="m6 6 12 12"/><path d="m18 6-12 12"/></svg>
+                  </span>
+                  <span>Compétences à évaluer</span>
+                </button>
+                <button type="button" class="ep-punctual-inner-tab" data-ep-punctual-tab="historique" role="tab" aria-selected="false">
+                  <span class="ep-punctual-inner-tab__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+                  </span>
+                  <span>Historique</span>
                 </button>
               </div>
+
+              <div class="ep-punctual-inner-panel is-active" data-ep-punctual-panel="competences">
+                <div class="ep-punctual-toolbar">
+                  <div class="ep-search-field ep-punctual-search">
+                    <input id="ep_txtSearchCompetence" class="ep-search-input" placeholder="Rechercher une compétence" autocomplete="off" />
+                    <span class="ep-search-field__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                  </div>
+                  <div class="ep-status-filter" role="group" aria-label="Filtrer les compétences">
+                    <button type="button" class="ep-status-filter-btn" data-ep-status="never">Jamais évaluée</button>
+                    <button type="button" class="ep-status-filter-btn" data-ep-status="review">À revoir</button>
+                    <button type="button" class="ep-status-filter-btn is-active" data-ep-status="all">Toutes</button>
+                  </div>
+                </div>
+
+                <div class="table-wrap ep-comp-table-wrap">
+                  <table class="sb-table ep-punctual-table" id="ep_tblCompetences">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Compétence</th>
+                        <th>Dernière évaluation</th>
+                        <th>Niveau actuel</th>
+                        <th>État d’évaluation</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                  <button type="button" class="ep-more-competences" id="ep_btnMoreCompetences" style="display:none;">
+                    <span id="ep_moreCompetencesLabel">Plus de compétences</span>
+                    <span class="ep-more-competences__chevron" aria-hidden="true">⌄</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="ep-punctual-inner-panel" data-ep-punctual-panel="historique">
+                <div class="table-wrap ep-punctual-history-wrap">
+                  <table class="sb-table ep-punctual-history-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Compétence</th>
+                        <th>Évaluateur</th>
+                        <th>Résultat</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ep_punctualHistoryBody">
+                      <tr><td colspan="5" class="ep-empty-cell">Aucun historique chargé.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="ep-punctual-bottom-grid">
-            <div class="card ep-panel-card ep-punctual-history-card">
-              <div class="ep-panel-title-row">
-                <div class="ep-section-title">
-                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-                  <span class="card-title">Historique des évaluations ponctuelles</span>
-                </div>
-              </div>
-              <div class="table-wrap">
-                <table class="sb-table ep-punctual-history-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Compétence</th>
-                      <th>Évaluateur</th>
-                      <th>Résultat</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody id="ep_punctualHistoryBody">
-                    <tr><td colspan="5" class="ep-empty-cell">Aucun historique chargé.</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="card ep-panel-card ep-suggestions-card">
-              <div class="ep-panel-title-row">
-                <div class="ep-section-title">
-                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12c.7.6 1 1.4 1 2h6c0-.6.3-1.4 1-2a7 7 0 0 0-4-12Z"/></svg></span>
-                  <span class="card-title">Suggestions du moment</span>
-                </div>
-              </div>
-              <div class="ep-suggestions-list" id="ep_suggestionsList">
-                <div class="ep-history-empty">Sélectionne un collaborateur.</div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div class="ep-tab-panel" id="ep_panelFormation" data-ep-panel="formation">
