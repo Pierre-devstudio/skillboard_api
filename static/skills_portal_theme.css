@@ -28422,6 +28422,76 @@ body{
   padding-right:2px;
 }
 
+#view-calendrier .cal-suggestion-group{
+  border:1px solid var(--cal-border-soft);
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+}
+
+#view-calendrier .cal-suggestion-group__toggle{
+  width:100%;
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 10px;
+  border:0;
+  background:#f8fafc;
+  color:#344054;
+  cursor:pointer;
+  text-align:left;
+  transition:background .12s ease, color .12s ease;
+}
+
+#view-calendrier .cal-suggestion-group__toggle:hover{
+  background:#f1f5f9;
+  color:#111827;
+}
+
+#view-calendrier .cal-suggestion-group__label{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+  font-weight:600;
+}
+
+#view-calendrier .cal-suggestion-group__label strong{
+  font-weight:650;
+}
+
+#view-calendrier .cal-suggestion-group__chevron{
+  width:22px;
+  height:22px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  color:#667085;
+  transform:rotate(0deg);
+  transition:transform .12s ease, background .12s ease;
+}
+
+#view-calendrier .cal-suggestion-group.is-open .cal-suggestion-group__chevron{
+  transform:rotate(90deg);
+  background:#eef2f7;
+}
+
+#view-calendrier .cal-suggestion-group__body{
+  display:none;
+  flex-direction:column;
+  gap:10px;
+  padding:10px;
+  border-top:1px solid var(--cal-border-soft);
+}
+
+#view-calendrier .cal-suggestion-group.is-open .cal-suggestion-group__body{
+  display:flex;
+}
+
 #view-calendrier .cal-suggestion-card{
   border:1px solid var(--cal-border-soft);
   border-radius:16px;

@@ -26,7 +26,8 @@
     modalEvent: null,
     modalDropDate: "",
     loading: false,
-    calendarExpanded: false
+    calendarExpanded: false,
+    openSuggestionGroups: new Set()
   };
 
   function byId(id) { return document.getElementById(id); }
@@ -215,6 +216,31 @@
     return x?.type_label || x?.type || x?.type_evenement || x?.type_suggestion || "Événement RH";
   }
 
+  function suggestionGroupKey(s) {
+    return String(s?.type_suggestion || s?.type_evenement || s?.type || "evenement_rh").trim() || "evenement_rh";
+  }
+
+  function suggestionGroupLabel(key, sample) {
+    if (sample) return typeLabel(sample);
+    const labels = {
+      entretien_annuel: "Entretien annuel",
+      preparation_entretien: "Préparation entretien",
+      evaluation_competence: "Évaluation compétence",
+      signature: "Signature / validation",
+      suivi_post_formation: "Suivi post-formation",
+      campagne_rh: "Campagne RH",
+      action_rh: "Action RH",
+      evenement_rh: "Événement RH"
+    };
+    return labels[key] || "Événement RH";
+  }
+
+  function suggestionGroupRank(key) {
+    const order = ["signature", "entretien_annuel", "preparation_entretien", "evaluation_competence", "suivi_post_formation", "campagne_rh", "action_rh", "evenement_rh"];
+    const idx = order.indexOf(String(key || ""));
+    return idx >= 0 ? idx : 99;
+  }
+
   function eventById(id) {
     return (state.events || []).find(e => String(e.id_evenement || "") === String(id || "")) || null;
   }
@@ -327,6 +353,34 @@
     set("calKpiSignatures", signatures);
   }
 
+  function renderSuggestionCard(s) {
+    const pr = normalizePriority(s.priorite);
+    const active = state.selectedKind === "suggestion" && state.selectedId === String(s.id_suggestion || "");
+    const comp = s.payload_json?.intitule_competence ? `<div class="cal-suggestion-extra">${escapeHtml(s.payload_json.intitule_competence)}</div>` : "";
+    return `
+      <div class="cal-suggestion-card ${active ? "is-active" : ""}"
+           draggable="true"
+           data-suggestion-id="${escapeHtml(s.id_suggestion || "")}">
+        <div class="cal-suggestion-top">
+          <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
+          <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
+        </div>
+        <div class="cal-suggestion-title">${escapeHtml(s.titre || "Action à planifier")}</div>
+        ${comp}
+        <div class="cal-suggestion-meta">
+          <span>${escapeHtml(s.collaborateur || "Périmètre")}</span>
+          <span>Échéance : ${escapeHtml(formatDateFr(s.date_echeance))}</span>
+          <span>Source : ${escapeHtml(s.source || "moteur")}</span>
+        </div>
+        <div class="cal-suggestion-actions">
+          <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-cal-plan="${escapeHtml(s.id_suggestion || "")}">${calIcon("calendar")}<span>Planifier</span></button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-detail-suggestion="${escapeHtml(s.id_suggestion || "")}">${calIcon("eye")}<span>Voir détail</span></button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">${calIcon("ignore")}<span>Ignorer</span></button>
+        </div>
+      </div>
+    `;
+  }
+
   function renderSuggestions() {
     const host = byId("calSuggestionsList");
     const sub = byId("calSuggestionsSub");
@@ -339,31 +393,35 @@
       return;
     }
 
-    host.innerHTML = list.map(s => {
-      const pr = normalizePriority(s.priorite);
-      const active = state.selectedKind === "suggestion" && state.selectedId === String(s.id_suggestion || "");
-      const comp = s.payload_json?.intitule_competence ? `<div class="cal-suggestion-extra">${escapeHtml(s.payload_json.intitule_competence)}</div>` : "";
+    const groups = new Map();
+    list.forEach(s => {
+      const key = suggestionGroupKey(s);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(s);
+    });
+
+    const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+      const rank = suggestionGroupRank(a[0]) - suggestionGroupRank(b[0]);
+      if (rank !== 0) return rank;
+      return suggestionGroupLabel(a[0], a[1][0]).localeCompare(suggestionGroupLabel(b[0], b[1][0]), "fr");
+    });
+
+    host.innerHTML = sortedGroups.map(([key, items]) => {
+      const open = state.openSuggestionGroups.has(key);
+      const label = suggestionGroupLabel(key, items[0]);
       return `
-        <div class="cal-suggestion-card ${active ? "is-active" : ""}"
-             draggable="true"
-             data-suggestion-id="${escapeHtml(s.id_suggestion || "")}">
-          <div class="cal-suggestion-top">
-            <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
-            <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
+        <section class="cal-suggestion-group ${open ? "is-open" : ""}" data-suggestion-group="${escapeHtml(key)}">
+          <button type="button"
+                  class="cal-suggestion-group__toggle"
+                  data-cal-suggestion-group-toggle="${escapeHtml(key)}"
+                  aria-expanded="${open ? "true" : "false"}">
+            <span class="cal-suggestion-group__label">${escapeHtml(label)} <strong>(${items.length})</strong></span>
+            <span class="cal-suggestion-group__chevron" aria-hidden="true">›</span>
+          </button>
+          <div class="cal-suggestion-group__body">
+            ${items.map(renderSuggestionCard).join("")}
           </div>
-          <div class="cal-suggestion-title">${escapeHtml(s.titre || "Action à planifier")}</div>
-          ${comp}
-          <div class="cal-suggestion-meta">
-            <span>${escapeHtml(s.collaborateur || "Périmètre")}</span>
-            <span>Échéance : ${escapeHtml(formatDateFr(s.date_echeance))}</span>
-            <span>Source : ${escapeHtml(s.source || "moteur")}</span>
-          </div>
-          <div class="cal-suggestion-actions">
-            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-cal-plan="${escapeHtml(s.id_suggestion || "")}">${calIcon("calendar")}<span>Planifier</span></button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-detail-suggestion="${escapeHtml(s.id_suggestion || "")}">${calIcon("eye")}<span>Voir détail</span></button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">${calIcon("ignore")}<span>Ignorer</span></button>
-          </div>
-        </div>
+        </section>
       `;
     }).join("");
   }
@@ -884,8 +942,16 @@
     });
 
     document.addEventListener("click", async (e) => {
-      const target = e.target.closest("[data-event-id], [data-cal-day], [data-cal-plan], [data-cal-detail-suggestion], [data-cal-ignore], [data-cal-open-event], [data-cal-edit-event], [data-cal-done-event], [data-cal-report-event], [data-cal-cancel-event]");
+      const target = e.target.closest("[data-cal-suggestion-group-toggle], [data-event-id], [data-cal-day], [data-cal-plan], [data-cal-detail-suggestion], [data-cal-ignore], [data-cal-open-event], [data-cal-edit-event], [data-cal-done-event], [data-cal-report-event], [data-cal-cancel-event]");
       if (!target || !document.getElementById("view-calendrier")?.contains(target)) return;
+
+      const groupKey = target.getAttribute("data-cal-suggestion-group-toggle");
+      if (groupKey) {
+        if (state.openSuggestionGroups.has(groupKey)) state.openSuggestionGroups.delete(groupKey);
+        else state.openSuggestionGroups.add(groupKey);
+        renderSuggestions();
+        return;
+      }
 
       const eventId = target.getAttribute("data-event-id");
       if (eventId) {
@@ -980,6 +1046,7 @@
 
   async function onShow(portal) {
     _portal = portal || window.portal;
+    state.openSuggestionGroups = new Set();
     restoreFilters();
     bindOnce();
     await reloadAll();
