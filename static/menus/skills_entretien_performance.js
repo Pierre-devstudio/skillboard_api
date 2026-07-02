@@ -1620,7 +1620,7 @@
                 <span class="ep-punctual-history-date">${epEsc(epFormatDateFR(audit.date_audit) || "—")}</span>
                 <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "—")}</span>
                 <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
-                <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "Non affecté")}">Évalué par : ${epEsc(audit.nom_evaluateur || "Non affecté")}</span>
+                <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "Non affecté")}">${epEsc(audit.nom_evaluateur || "Non affecté")}</span>
               </div>
             `).join("")}
             ${group.audits.length > 4 ? `
