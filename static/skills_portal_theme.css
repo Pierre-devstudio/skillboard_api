@@ -29267,6 +29267,76 @@ body{
   padding:16px 18px;
 }
 
+#view-entretien-performance .ep-annual-history-wrap{
+  overflow:visible;
+}
+
+#view-entretien-performance .ep-annual-history-table{
+  font-size:12px;
+}
+
+#view-entretien-performance .ep-annual-history-table thead th{
+  color:var(--sb-gray-500);
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.01em;
+  padding-top:8px;
+  padding-bottom:8px;
+}
+
+#view-entretien-performance .ep-annual-history-table tbody td{
+  color:var(--sb-gray-700);
+  font-size:11.5px;
+  font-weight:500;
+  padding-top:8px;
+  padding-bottom:8px;
+}
+
+#view-entretien-performance .ep-annual-history-table thead th:nth-child(3),
+#view-entretien-performance .ep-annual-history-table thead th:nth-child(4),
+#view-entretien-performance .ep-annual-history-status-cell,
+#view-entretien-performance .ep-annual-history-actions{
+  text-align:center;
+}
+
+#view-entretien-performance .ep-annual-history-actions{
+  white-space:nowrap;
+}
+
+#view-entretien-performance .ep-square-action-btn{
+  width:30px;
+  height:30px;
+  min-width:30px;
+  border-radius:9px;
+  border:1px solid var(--sb-gray-200);
+  background:#fff;
+  color:var(--sb-gray-600);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  vertical-align:middle;
+}
+
+#view-entretien-performance .ep-square-action-btn + .ep-square-action-btn{
+  margin-left:5px;
+}
+
+#view-entretien-performance .ep-square-action-btn svg{
+  width:15px;
+  height:15px;
+}
+
+#view-entretien-performance .ep-square-action-btn:hover{
+  border-color:color-mix(in srgb, var(--accent) 32%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--accent) 4%, #fff);
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-more-annual-history{
+  border-top:1px solid var(--sb-gray-100);
+}
+
 #view-entretien-performance .ep-annual-metrics{
   display:grid;
   grid-template-columns:repeat(3, minmax(0, 1fr));
@@ -29532,7 +29602,7 @@ body{
 #view-entretien-performance .ep-punctual-history-eval-head,
 #view-entretien-performance .ep-punctual-history-eval-row{
   display:grid;
-  grid-template-columns:105px minmax(150px, 1fr) 128px minmax(170px, 1fr);
+  grid-template-columns:105px minmax(150px, 1fr) 128px minmax(170px, 1fr) 36px;
   gap:10px;
   align-items:center;
 }
@@ -29546,7 +29616,8 @@ body{
   letter-spacing:.01em;
 }
 
-#view-entretien-performance .ep-punctual-history-eval-head span:nth-child(3){
+#view-entretien-performance .ep-punctual-history-eval-head span:nth-child(3),
+#view-entretien-performance .ep-punctual-history-eval-head span:nth-child(5){
   text-align:center;
 }
 
@@ -29585,6 +29656,10 @@ body{
 
 #view-entretien-performance .ep-punctual-history-evaluator{
   color:var(--sb-gray-500);
+}
+
+#view-entretien-performance .ep-punctual-history-view{
+  justify-self:center;
 }
 
 #view-entretien-performance .ep-punctual-history-more-audits{
@@ -30177,6 +30252,10 @@ body{
   #view-entretien-performance .ep-punctual-history-eval-row{
     grid-template-columns:1fr;
     gap:5px;
+  }
+
+  #view-entretien-performance .ep-punctual-history-view{
+    justify-self:flex-start;
   }
 
   #view-entretien-performance .ep-punctual-history-acc-body.is-audits-expanded .ep-punctual-history-eval-row.ep-punctual-history-eval-extra{

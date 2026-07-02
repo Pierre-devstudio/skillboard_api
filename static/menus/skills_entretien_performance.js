@@ -37,6 +37,7 @@
     _collaborateursAll: [],
     _punctualShowAllCompetences: false,
     _punctualHistoryShowAllCompetences: false,
+    _annualHistoryShowAll: false,
     selectedCompetenceId: null,
     selectedEffectifCompetenceId: null,
     scoring: null,
@@ -545,6 +546,7 @@
     setText("ep_ctxService", "—");
     setText("ep_ctxServiceBadge", "Service non renseigné");
     setText("ep_ctxDate", "—");
+    state._annualHistoryShowAll = false;
     epRenderAnnualCompetenceSummary([]);
     epRenderEntretienOverview([]);
   }
@@ -558,6 +560,7 @@
     state.selectedEffectifCompetenceId = null;
     state._punctualShowAllCompetences = false;
     state._punctualHistoryShowAllCompetences = false;
+    state._annualHistoryShowAll = false;
     state._checklistAll = [];
     state._historyAll = [];
     epRenderPunctualHistorySummary([]);
@@ -812,6 +815,244 @@
     setDisabled("ep_btnSave", true);
 
     clearSaveInlineMsg();
+  }
+
+  function epHistoryEvaluatorName(row) {
+    return (row?.nom_evaluateur || row?.id_evaluateur || "Non affecté").toString().trim() || "Non affecté";
+  }
+
+  function epHistoryMethodName(row) {
+    return (row?.methode_eval || row?.source_eval || "Entretien de performance").toString().trim() || "Entretien de performance";
+  }
+
+  function epExtractHistoryCriteres(row) {
+    let detail = row?.detail_eval;
+    if (typeof detail === "string") {
+      try { detail = JSON.parse(detail); } catch (_) { detail = {}; }
+    }
+    if (!detail || typeof detail !== "object") detail = {};
+
+    const criteres = Array.isArray(detail.criteres) ? detail.criteres : [];
+    return criteres
+      .map(c => ({
+        code_critere: (c?.code_critere || "").toString().trim(),
+        niveau: c?.niveau ?? c?.note,
+        commentaire: (c?.commentaire || "").toString()
+      }))
+      .filter(c => c.code_critere && c.niveau !== null && c.niveau !== undefined);
+  }
+
+  async function epLoadEvaluationReferentielData(idComp) {
+    const fallback = {
+      labels: {
+        Critere1: "Critère 1",
+        Critere2: "Critère 2",
+        Critere3: "Critère 3",
+        Critere4: "Critère 4"
+      },
+      evals: {
+        Critere1: [],
+        Critere2: [],
+        Critere3: [],
+        Critere4: []
+      },
+      domaine: {
+        label: "",
+        couleur: ""
+      }
+    };
+
+    if (!idComp || !_portal) return fallback;
+
+    const idService = (state.selectedCollaborateurServiceId || state.serviceId || "").toString().trim();
+    if (!idService || idService === "__ALL__") return fallback;
+
+    try {
+      state._compDetailCache = state._compDetailCache || {};
+      let detail = state._compDetailCache[idComp];
+
+      if (!detail) {
+        const url = `${_portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idService)}/${encodeURIComponent(idComp)}`;
+        detail = await _portal.apiJson(url);
+        state._compDetailCache[idComp] = detail;
+      }
+
+      const comp = detail?.competence || {};
+      const grid = comp?.grille_evaluation || null;
+
+      const dom = comp?.domaine || null;
+      const domLabel = dom
+        ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "")
+        : "";
+
+      const domColorRaw = dom?.couleur || "";
+      const domColor = (typeof epNormalizeColor === "function")
+        ? epNormalizeColor(domColorRaw)
+        : (domColorRaw || "").toString().trim();
+
+      fallback.domaine = {
+        label: (domLabel || "").toString().trim(),
+        couleur: domColor
+      };
+
+      if (!grid || typeof grid !== "object") return fallback;
+
+      const keys = Object.keys(grid).sort((a, b) => {
+        const ma = String(a).match(/(\d+)/);
+        const mb = String(b).match(/(\d+)/);
+        const na = ma ? parseInt(ma[1], 10) : 999;
+        const nb = mb ? parseInt(mb[1], 10) : 999;
+        return na - nb;
+      });
+
+      keys.slice(0, 4).forEach((k, idx) => {
+        const crit = grid[k] || {};
+        const codeCrit = `Critere${idx + 1}`;
+
+        const label = (crit.Nom ?? crit.nom ?? "").toString().trim();
+        if (label) fallback.labels[codeCrit] = label;
+
+        const evalsRaw = Array.isArray(crit.Eval || crit.eval) ? (crit.Eval || crit.eval) : [];
+        fallback.evals[codeCrit] = evalsRaw.map(v => (v ?? "").toString().trim());
+      });
+
+      return fallback;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function epSetSelectValueOrAdd(selectId, value) {
+    const sel = $(selectId);
+    if (!sel) return;
+
+    const v = (value || "").toString().trim();
+    if (!v) return;
+
+    const exists = Array.from(sel.options).some(o => o.value === v);
+    if (!exists) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      sel.appendChild(opt);
+    }
+
+    sel.value = v;
+  }
+
+  async function epOpenHistoryEvaluationDetail(row, context) {
+    if (!row) return;
+
+    const code = (row.code || "").toString().trim();
+    const intitule = (row.intitule || "").toString().trim();
+    const scoreInfo = _epScoreInfoFromAudit(row);
+    const niveau = scoreInfo.levelLabel;
+    const lastDate = epFormatDateFR(row.date_audit) || "—";
+    const method = epHistoryMethodName(row);
+    const obs = (row.observation || "").toString();
+    const evaluatorName = (context?.evaluatorName || epHistoryEvaluatorName(row)).toString().trim() || "Non affecté";
+
+    resetEvaluationPanel();
+
+    const canEditHistoryAudit = row.modifiable === true;
+
+    state._historyAuditEditing = {
+      id_audit_competence: (row.id_audit_competence || "").toString().trim(),
+      id_effectif_competence: (row.id_effectif_competence || "").toString().trim(),
+      id_comp: (row.id_comp || "").toString().trim(),
+      canEdit: !!canEditHistoryAudit,
+      row,
+    };
+
+    state.selectedEffectifCompetenceId = state._historyAuditEditing.id_effectif_competence;
+    state.selectedCompetenceId = state._historyAuditEditing.id_comp;
+
+    const evalModal = $("modalEpEvaluation");
+    if (evalModal) {
+      evalModal.classList.add("is-history-readonly");
+      evalModal.classList.toggle("is-history-editable", !!canEditHistoryAudit);
+    }
+
+    setText("ep_evalHint", `Historique du ${lastDate} · évaluateur : ${evaluatorName}${canEditHistoryAudit ? "" : " · consultation seule"}`);
+
+    const refData = await epLoadEvaluationReferentielData(row.id_comp);
+
+    renderEvalCompetenceTitle(code, intitule);
+    renderEvalDomainBadge(refData?.domaine?.label || "", refData?.domaine?.couleur || "");
+
+    setText("ep_compCurrent", niveau);
+    setText("ep_compLastEval", lastDate ? `Dernière éval : ${lastDate}` : "");
+    setText("ep_levelABC", niveau);
+    setText("ep_scoreRaw", scoreInfo.sum === null ? "—" : String(scoreInfo.sum));
+    setText("ep_scorePct", scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
+
+    epSetSelectValueOrAdd("ep_selEvalMethod", method);
+    setDisabled("ep_selEvalMethod", !canEditHistoryAudit);
+
+    const obsEl = $("ep_txtObservation");
+    if (obsEl) obsEl.value = obs || "";
+    setDisabled("ep_txtObservation", !canEditHistoryAudit);
+
+    const criteres = epExtractHistoryCriteres(row);
+
+    for (let i = 1; i <= 4; i++) {
+      const labelEl = $(`ep_critLabel${i}`);
+      const tr = labelEl ? labelEl.closest("tr") : null;
+      const note = $(`ep_critNote${i}`);
+      const com = $(`ep_critCom${i}`);
+
+      const codeCrit = `Critere${i}`;
+      const crit = criteres.find(c => c.code_critere === codeCrit);
+
+      if (!crit) {
+        if (tr) tr.style.display = "none";
+        if (labelEl) labelEl.textContent = "";
+        if (note) note.value = "";
+        if (com) com.value = "";
+        setDisabled(`ep_critNote${i}`, true);
+        setDisabled(`ep_critCom${i}`, true);
+        continue;
+      }
+
+      if (tr) tr.style.display = "";
+      if (labelEl) {
+        labelEl.innerHTML = "";
+
+        const labelText = refData?.labels?.[codeCrit] || `Critère ${i}`;
+        const evalsAll = Array.isArray(refData?.evals?.[codeCrit]) ? refData.evals[codeCrit] : [];
+
+        const spanTxt = document.createElement("span");
+        spanTxt.textContent = labelText;
+        labelEl.appendChild(spanTxt);
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "ep-crit-help";
+        btn.textContent = "i";
+        btn.title = "Guide de notation";
+        btn.setAttribute("aria-label", "Guide de notation");
+
+        btn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          const selectedNote = crit?.niveau ? String(crit.niveau) : "";
+          openGuidePopover(btn, i, labelText, evalsAll, selectedNote);
+        });
+
+        labelEl.appendChild(btn);
+      }
+
+      if (note) note.value = String(crit.niveau || "");
+      if (com) com.value = crit.commentaire || "";
+
+      setDisabled(`ep_critNote${i}`, !canEditHistoryAudit);
+      setDisabled(`ep_critCom${i}`, !canEditHistoryAudit);
+    }
+
+    setDisabled("ep_btnSave", !canEditHistoryAudit);
+    clearSaveInlineMsg();
+    openModal("modalEpEvaluation");
   }
 
     // ======================================================
@@ -1272,6 +1513,11 @@
       if (e?.id_entretien) openEntretienPdf(e.id_entretien);
     });
 
+    $("ep_btnMoreAnnualHistory")?.addEventListener("click", () => {
+      state._annualHistoryShowAll = !state._annualHistoryShowAll;
+      epRenderAnnualHistory(state._annualHistoryAll || []);
+    });
+
     $("ep_annualLastDate")?.addEventListener("click", () => {
       const e = state._annualLastEntretien || null;
       if (e?.id_entretien) openEntretienModal(e, "realisation");
@@ -1398,11 +1644,53 @@
     epRenderAnnualHistory(annuals);
   }
 
+  function epUpdateAnnualHistoryMoreButton(totalCount, hiddenCount) {
+    const btn = $("ep_btnMoreAnnualHistory");
+    const label = $("ep_moreAnnualHistoryLabel");
+    if (!btn || !label) return;
+
+    const hidden = Math.max(0, Number(hiddenCount || 0));
+    const expanded = !!state._annualHistoryShowAll;
+
+    btn.style.display = (hidden > 0 || expanded) ? "" : "none";
+    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    label.textContent = expanded ? "Voir moins d’historique" : `Plus d’historique (${hidden})`;
+  }
+
+  function epIconEyeSvg() {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+    `;
+  }
+
+  function epIconPdfSvg() {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <path d="M14 2v6h6"></path>
+        <path d="M8 13h2.2a1.8 1.8 0 0 1 0 3.6H8V11"></path>
+        <path d="M14 11v6"></path>
+        <path d="M14 11h2a2 2 0 0 1 0 4h-2"></path>
+      </svg>
+    `;
+  }
+
   function epRenderAnnualHistory(annuals) {
     const tbody = $("ep_annualHistoryBody");
     if (!tbody) return;
 
-    const rows = (Array.isArray(annuals) ? annuals : []).slice(0, 4);
+    const allRows = Array.isArray(annuals) ? annuals : [];
+    state._annualHistoryAll = allRows;
+
+    const expanded = !!state._annualHistoryShowAll;
+    const rows = expanded ? allRows : allRows.slice(0, 5);
+    const hidden = Math.max(0, allRows.length - 5);
+
+    epUpdateAnnualHistoryMoreButton(allRows.length, hidden);
+
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="4" class="ep-empty-cell">Aucun entretien annuel enregistré.</td></tr>`;
       return;
@@ -1416,10 +1704,10 @@
       tr.innerHTML = `
         <td>${epEsc(year)}</td>
         <td>${epEsc(epFormatDateFR(epEntretienDateValue(e)) || "—")}</td>
-        <td><span class="sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(e.statut)}">${epEsc(e.statut || "—")}</span></td>
+        <td class="ep-annual-history-status-cell"><span class="sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(e.statut)}">${epEsc(e.statut || "—")}</span></td>
         <td class="ep-annual-history-actions">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="open">Voir</button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="pdf">PDF</button>
+          <button type="button" class="sb-icon-btn ep-square-action-btn" data-act="open" title="Voir l’entretien" aria-label="Voir l’entretien">${epIconEyeSvg()}</button>
+          <button type="button" class="sb-icon-btn ep-square-action-btn" data-act="pdf" title="Rapport PDF" aria-label="Rapport PDF">${epIconPdfSvg()}</button>
         </td>
       `;
       tr.querySelector('[data-act="open"]')?.addEventListener("click", () => openEntretienModal(e, "realisation"));
@@ -1614,6 +1902,7 @@
               <span>Type d’évaluation</span>
               <span>Niveau atteint</span>
               <span>Évaluateur</span>
+              <span></span>
             </div>
             ${group.audits.map((audit, auditIndex) => `
               <div class="ep-punctual-history-eval-row${auditIndex >= 4 ? " ep-punctual-history-eval-extra" : ""}">
@@ -1621,6 +1910,7 @@
                 <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "—")}</span>
                 <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
                 <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "Non affecté")}">${epEsc(audit.nom_evaluateur || "Non affecté")}</span>
+                <button type="button" class="sb-icon-btn ep-square-action-btn ep-punctual-history-view" data-ep-history-view="${auditIndex}" title="Voir l’évaluation" aria-label="Voir l’évaluation">${epIconEyeSvg()}</button>
               </div>
             `).join("")}
             ${group.audits.length > 4 ? `
@@ -1639,6 +1929,16 @@
         const isOpen = head.classList.toggle("is-open");
         head.setAttribute("aria-expanded", isOpen ? "true" : "false");
         body?.classList.toggle("is-open", isOpen);
+      });
+
+      acc.querySelectorAll('[data-ep-history-view]').forEach(btn => {
+        btn.addEventListener("click", async (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const idx = Number(btn.getAttribute("data-ep-history-view"));
+          const audit = Number.isFinite(idx) ? group.audits[idx] : null;
+          await epOpenHistoryEvaluationDetail(audit, { evaluatorName: audit?.nom_evaluateur || "Non affecté" });
+        });
       });
 
       const moreAuditsBtn = acc.querySelector('[data-ep-more-audits="1"]');
@@ -2248,6 +2548,7 @@ function getCollaborateurInitials(c) {
 
         clearCompetences();
         state._punctualHistoryShowAllCompetences = false;
+        state._annualHistoryShowAll = false;
         resetEvaluationPanel();
 
         if (!state.selectedCollaborateurId || !_portal) return;
@@ -3201,7 +3502,37 @@ function getCollaborateurInitials(c) {
     }
   }
 
-  function openEntretienPdf(idEntretien) {
+  async function epFetchApiPdfBlob(url) {
+    const headers = new Headers();
+    headers.set("Accept", "application/pdf");
+
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token ? String(session.access_token) : "";
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+      }
+    } catch (_) {}
+
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) {
+      let msg = `Erreur PDF (${resp.status})`;
+      try {
+        const ct = (resp.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) {
+          const body = await resp.json();
+          msg = body?.detail || body?.message || JSON.stringify(body);
+        } else {
+          msg = await resp.text() || msg;
+        }
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    return await resp.blob();
+  }
+
+  async function openEntretienPdf(idEntretien) {
     const id = (idEntretien || epGetValue("ep_entretienId") || "").toString().trim();
 
     if (!id || !_portal) {
@@ -3209,20 +3540,23 @@ function getCollaborateurInitials(c) {
       return;
     }
 
-    const url = `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/rapport-pdf`;
-
-    if (typeof _portal.openApiPdf === "function") {
-      _portal.openApiPdf(url).catch(e => {
-        epSetInlineMsg("ep_entretienMsg", "danger", String(e?.message || e || "Impossible d'ouvrir le PDF."));
-      });
-      return;
+    const popup = window.open("about:blank", "_blank");
+    if (popup) {
+      try { popup.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
     }
 
-    const finalUrl = typeof _portal.decorateApiUrl === "function" ? _portal.decorateApiUrl(url) : url;
-    const win = window.open(finalUrl, "_blank", "noopener");
-
-    if (!win) {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Le navigateur a bloqué l'ouverture du PDF.");
+    try {
+      const url = `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/rapport-pdf?_=${Date.now()}`;
+      const blob = await epFetchApiPdfBlob(url);
+      epRenderPdfBlobInWindow(popup, blob, "Rapport entretien annuel");
+    } catch (e) {
+      try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+      const msg = String(e?.message || e || "Impossible d'ouvrir le PDF.");
+      if ($("modalEpEntretien")?.classList.contains("show")) {
+        epSetInlineMsg("ep_entretienMsg", "danger", msg);
+      } else {
+        _portal?.showAlert?.("warning", msg);
+      }
     }
   }
 
@@ -4773,9 +5107,7 @@ function getCollaborateurInitials(c) {
 
               resetEvaluationPanel();
 
-              const canEditHistoryAudit =
-                !!x.modifiable ||
-                String(x.id_evaluateur || "").trim() === String(_portal?.contactId || "").trim();
+              const canEditHistoryAudit = x.modifiable === true;
 
               state._historyAuditEditing = {
                 id_audit_competence: (x.id_audit_competence || "").toString().trim(),
