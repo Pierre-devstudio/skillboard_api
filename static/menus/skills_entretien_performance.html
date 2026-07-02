@@ -320,7 +320,6 @@
                 <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
                 <span class="card-title">Rechercher une compétence</span>
               </div>
-              <div class="card-sub">Collaborateur : <strong id="ep_punctualCollaborateur">—</strong></div>
             </div>
 
             <div class="card-body">
@@ -329,9 +328,6 @@
                   <input id="ep_txtSearchCompetence" class="ep-search-input" placeholder="Rechercher une compétence" autocomplete="off" />
                   <span class="ep-search-field__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
                 </div>
-                <select id="ep_selCompetenceDomain" class="sb-select ep-punctual-domain">
-                  <option value="">Domaine : Tous</option>
-                </select>
                 <div class="ep-status-filter" role="group" aria-label="Filtrer les compétences">
                   <button type="button" class="ep-status-filter-btn" data-ep-status="never">Jamais évaluée</button>
                   <button type="button" class="ep-status-filter-btn" data-ep-status="review">À revoir</button>
@@ -345,16 +341,19 @@
                     <tr>
                       <th>Code</th>
                       <th>Compétence</th>
-                      <th>Domaine</th>
                       <th>Dernière évaluation</th>
                       <th>Niveau actuel</th>
-                      <th>Statut</th>
-                      <th>Action</th>
+                      <th>État d’évaluation</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
                 </table>
               </div>
+              <button type="button" class="ep-more-competences" id="ep_btnMoreCompetences" style="display:none;">
+                <span id="ep_moreCompetencesLabel">Plus de compétences</span>
+                <span aria-hidden="true">›</span>
+              </button>
             </div>
           </div>
 

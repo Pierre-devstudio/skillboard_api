@@ -35,6 +35,7 @@
     _collabLoadingKey: "",
     collabExpanded: false,
     _collaborateursAll: [],
+    _punctualShowAllCompetences: false,
     selectedCompetenceId: null,
     scoring: null,
     selectedEntretienId: null,
@@ -946,6 +947,30 @@
     return `<span class="sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(txt)}</span>`;
   }
 
+  function epOpenCompetencePdfFromPunctual(item) {
+    const idEffectif = (state.selectedCollaborateurId || "").toString().trim();
+    const idComp = (item?.id_comp || "").toString().trim();
+
+    if (!_portal || !idEffectif || !idComp) {
+      _portal?.showAlert?.("warning", "Sélectionne un collaborateur et une compétence avant d’ouvrir la fiche PDF.");
+      return;
+    }
+
+    const popup = window.open("", "_blank");
+    const url = `${_portal.apiBase}/skills/collaborateurs/competences/fiche_pdf/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEffectif)}/${encodeURIComponent(idComp)}?_=${Date.now()}`;
+
+    if (popup) {
+      try {
+        popup.location = url;
+      } catch (_) {
+        window.open(url, "_blank");
+      }
+    } else {
+      const opened = window.open(url, "_blank");
+      if (!opened) _portal.showAlert?.("warning", "Le navigateur a bloqué l’ouverture du PDF.");
+    }
+  }
+
   function epSetBadgeText(id, textValue) {
     const el = $(id);
     if (!el) return;
@@ -991,67 +1016,47 @@
     setText("ep_annualMetricCritical", String(critical));
   }
 
-  function epFillCompetenceDomainFilter(list) {
-    const sel = $("ep_selCompetenceDomain");
-    if (!sel) return;
-
-    const current = (sel.value || "").toString();
-    const domains = Array.from(new Set((Array.isArray(list) ? list : [])
-      .map(x => (x.domaine || "Sans domaine").toString().trim() || "Sans domaine")))
-      .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
-
-    sel.innerHTML = `<option value="">Domaine : Tous</option>`;
-    domains.forEach(d => {
-      const opt = document.createElement("option");
-      opt.value = d;
-      opt.textContent = `Domaine : ${d}`;
-      sel.appendChild(opt);
-    });
-
-    if (domains.includes(current)) sel.value = current;
-  }
-
-
   function epRenderPunctualCompetenceRows(list) {
     const tbody = $("ep_tblCompetences")?.querySelector("tbody");
     if (!tbody) return;
 
     tbody.innerHTML = "";
+    state._punctualShowAllCompetences = false;
 
     const arr = Array.isArray(list) ? list : [];
     if (!arr.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="ep-empty-cell">Aucune compétence disponible pour ce collaborateur.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="ep-empty-cell">Aucune compétence disponible pour ce collaborateur.</td></tr>`;
+      epUpdatePunctualMoreButton(0, 0);
       return;
     }
 
     arr.forEach(x => {
       const tr = document.createElement("tr");
       const statusKey = epCompetenceStatusKey(x);
-      const domaine = (x.domaine || "Sans domaine").toString().trim() || "Sans domaine";
       const critPct = getEpCritPctValue(x?.poids_criticite_pct);
 
       tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
       tr.dataset.idComp = x.id_comp || "";
       tr.dataset.critPct = String(critPct);
       tr.dataset.neverAudited = x._neverAudited ? "1" : "0";
-      tr.dataset.domain = domaine;
       tr.dataset.status = statusKey;
-      tr.dataset.searchText = `${x.code || ""} ${x.intitule || ""} ${domaine}`;
+      tr.dataset.searchText = `${x.code || ""} ${x.intitule || ""}`;
 
       tr.innerHTML = `
-        <td><span class="sb-badge sb-badge-ref-comp-code ep-comp-code">${epEsc(x.code || "—")}</span></td>
+        <td class="ep-punctual-code-cell"><span class="sb-badge sb-badge-ref-comp-code ep-comp-code">${epEsc(x.code || "—")}</span></td>
         <td><div class="ep-punctual-comp-title" title="${epEsc(x.intitule || "")}">${epEsc(x.intitule || "—")}</div></td>
-        <td><span class="ep-domain-text">${epEsc(domaine)}</span></td>
-        <td>${epEsc(epFormatDateFR(x.date_derniere_eval) || "—")}</td>
-        <td>${epBadgeLevelHtml(x.niveau_actuel || "—")}</td>
-        <td><span class="${epCompetenceStatusBadgeClass(statusKey)}">${epEsc(epCompetenceStatusLabel(statusKey))}</span></td>
-        <td>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs ep-punctual-eval-btn" data-eval="1">
-            <span class="sb-btn-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-            </span>
-            <span>Évaluer</span>
-          </button>
+        <td class="ep-punctual-date-cell">${epEsc(epFormatDateFR(x.date_derniere_eval) || "—")}</td>
+        <td class="ep-punctual-level-cell">${epBadgeLevelHtml(x.niveau_actuel || "—")}</td>
+        <td class="ep-punctual-status-cell"><span class="${epCompetenceStatusBadgeClass(statusKey)}">${epEsc(epCompetenceStatusLabel(statusKey))}</span></td>
+        <td class="ep-punctual-actions-cell">
+          <div class="ep-punctual-actions">
+            <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--eval" data-eval="1" title="Évaluer" aria-label="Évaluer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            </button>
+            <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--pdf" data-pdf="1" title="Fiche compétence PDF" aria-label="Fiche compétence PDF">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+            </button>
+          </div>
         </td>
       `;
 
@@ -1066,6 +1071,12 @@
         ev.preventDefault();
         ev.stopPropagation();
         tr.click();
+      });
+
+      tr.querySelector('[data-pdf="1"]')?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        epOpenCompetencePdfFromPunctual(x);
       });
 
       tbody.appendChild(tr);
@@ -1114,34 +1125,59 @@
     });
   }
 
+  function epUpdatePunctualMoreButton(visibleTotal, hiddenCount) {
+    const btn = $("ep_btnMoreCompetences");
+    const label = $("ep_moreCompetencesLabel");
+    if (!btn || !label) return;
+
+    const hasMore = Number(hiddenCount || 0) > 0;
+    btn.style.display = hasMore || state._punctualShowAllCompetences ? "" : "none";
+    btn.setAttribute("aria-expanded", state._punctualShowAllCompetences ? "true" : "false");
+
+    if (state._punctualShowAllCompetences) {
+      label.textContent = "Moins de compétences";
+    } else {
+      label.textContent = `Plus de compétences (${hiddenCount})`;
+    }
+  }
+
   function epApplyPunctualFilters() {
     const tbody = $("ep_tblCompetences")?.querySelector("tbody");
     if (!tbody) return;
 
     const q = epNormText($("ep_txtSearchCompetence")?.value || "");
-    const domain = ($("ep_selCompetenceDomain")?.value || "").toString().trim();
     const statusBtn = document.querySelector(".ep-status-filter-btn.is-active");
     const status = statusBtn?.dataset?.epStatus || "all";
     const seuil = getEpCriticiteSeuil();
 
-    let visible = 0;
+    const matchingRows = [];
     Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      if (tr.querySelector(".ep-empty-cell")) {
+        tr.style.display = "";
+        return;
+      }
+
       const hay = epNormText(tr.dataset.searchText || tr.textContent || "");
-      const rowDomain = (tr.dataset.domain || "").toString().trim();
       const rowStatus = (tr.dataset.status || "").toString().trim();
       const crit = getEpCritPctValue(tr.dataset.critPct || 0);
 
       const okSearch = !q || hay.includes(q);
-      const okDomain = !domain || rowDomain === domain;
       const okStatus = status === "all" || rowStatus === status;
       const okCrit = crit + 0.0001 >= seuil;
 
-      const ok = okSearch && okDomain && okStatus && okCrit;
-      tr.style.display = ok ? "" : "none";
-      if (ok) visible += 1;
+      const ok = okSearch && okStatus && okCrit;
+      tr.dataset.punctualMatch = ok ? "1" : "0";
+      if (ok) matchingRows.push(tr);
+      tr.style.display = "none";
     });
 
-    setText("ep_compCount", String(visible));
+    const limit = state._punctualShowAllCompetences ? matchingRows.length : 5;
+    matchingRows.forEach((tr, index) => {
+      tr.style.display = index < limit ? "" : "none";
+    });
+
+    setText("ep_compCount", String(matchingRows.length));
+    epUpdatePunctualMoreButton(matchingRows.length, Math.max(0, matchingRows.length - 5));
   }
 
   function epSetPageTab(tab) {
@@ -1182,13 +1218,21 @@
     $("ep_annualNextDate")?.addEventListener("click", () => epOpenCalendarForAnnualContext());
 
     $("ep_btnNewPonctuel")?.addEventListener("click", () => epOpenNewPunctualEvaluation());
-    $("ep_txtSearchCompetence")?.addEventListener("input", epApplyPunctualFilters);
-    $("ep_selCompetenceDomain")?.addEventListener("change", epApplyPunctualFilters);
+    $("ep_txtSearchCompetence")?.addEventListener("input", () => {
+      state._punctualShowAllCompetences = false;
+      epApplyPunctualFilters();
+    });
+
+    $("ep_btnMoreCompetences")?.addEventListener("click", () => {
+      state._punctualShowAllCompetences = !state._punctualShowAllCompetences;
+      epApplyPunctualFilters();
+    });
 
     document.querySelectorAll("#view-entretien-performance .ep-status-filter-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("#view-entretien-performance .ep-status-filter-btn").forEach(x => x.classList.remove("is-active"));
         btn.classList.add("is-active");
+        state._punctualShowAllCompetences = false;
         epApplyPunctualFilters();
       });
     });
@@ -2038,7 +2082,6 @@ function getCollaborateurInitials(c) {
           setText("ep_kpiChanged", "0");
           setText("ep_kpiReview", "0");
 
-          epFillCompetenceDomainFilter(list);
           epRenderAnnualCompetenceSummary(list);
           epRenderSuggestions(list);
           epRenderPunctualCompetenceRows(list);
