@@ -535,6 +535,7 @@
     setText("ep_collabCount", "0");
     state.selectedCollaborateurId = null;
     setText("ep_ctxCollaborateur", "—");
+    setText("ep_ctxInitials", "—");
     setText("ep_ctxMatricule", "—");
     setText("ep_ctxPoste", "—");
     setText("ep_ctxService", "—");
@@ -684,6 +685,7 @@
   function resetContextPanel() {
     setText("ep_ctxStatus", "Brouillon");
     setText("ep_ctxCollaborateur", "—");
+    setText("ep_ctxInitials", "—");
     setText("ep_ctxMatricule", "—");
     setText("ep_ctxPoste", "—");
     setText("ep_ctxService", "—");
@@ -961,7 +963,7 @@
 
   function epCurrentAnnualEntretien(list) {
     const annuals = (Array.isArray(list) ? list : []).filter(epIsAnnualEntretien).sort(epSortEntretienDesc);
-    return annuals.find(e => !epIsEntretienClosed(e)) || annuals[0] || null;
+    return annuals.find(e => !epIsEntretienClosed(e)) || null;
   }
 
   function epRenderAnnualCompetenceSummary(list) {
@@ -1158,6 +1160,13 @@
       if (e?.id_entretien) openEntretienPdf(e.id_entretien);
     });
 
+    $("ep_annualLastDate")?.addEventListener("click", () => {
+      const e = state._annualLastEntretien || null;
+      if (e?.id_entretien) openEntretienModal(e, "realisation");
+    });
+
+    $("ep_annualNextDate")?.addEventListener("click", () => epOpenCalendarForAnnualContext());
+
     $("ep_btnNewPonctuel")?.addEventListener("click", () => epOpenNewPunctualEvaluation());
     $("ep_txtSearchCompetence")?.addEventListener("input", epApplyPunctualFilters);
     $("ep_selCompetenceDomain")?.addEventListener("change", epApplyPunctualFilters);
@@ -1197,44 +1206,46 @@
     const arr = Array.isArray(list) ? list : [];
     const annuals = arr.filter(epIsAnnualEntretien).sort(epSortEntretienDesc);
     const current = epCurrentAnnualEntretien(arr);
-    const last = annuals.find(e => e.date_realisee || epIsEntretienClosed(e)) || annuals[0] || null;
+    const last = annuals.find(e => e.date_realisee || epIsEntretienClosed(e)) || null;
 
     state._annualCurrentEntretien = current || null;
+    state._annualLastEntretien = last || null;
 
     if (last) {
-      setText("ep_annualLastDate", epFormatDateFR(epEntretienDateValue(last)) || "—");
+      epSetSummaryLink("ep_annualLastDate", epFormatDateFR(epEntretienDateValue(last)) || "—", false, "Ouvrir le dernier entretien annuel");
       setText("ep_annualLastSub", epIsEntretienClosed(last) ? "Entretien signé ou terminé" : (last.statut || "—"));
     } else {
-      setText("ep_annualLastDate", "—");
+      epSetSummaryLink("ep_annualLastDate", "—", true, "Aucun entretien annuel enregistré");
       setText("ep_annualLastSub", "Aucun historique annuel");
     }
 
     if (current?.date_prevue) {
-      setText("ep_annualNextDate", epFormatDateFR(current.date_prevue));
-      setText("ep_annualNextSub", current.date_realisee ? "Réalisé" : "À venir");
+      epSetSummaryLink("ep_annualNextDate", epFormatDateFR(current.date_prevue), false, "Ouvrir le calendrier");
+      setText("ep_annualNextSub", current.date_realisee ? "Réalisé" : "Voir au calendrier");
     } else {
-      setText("ep_annualNextDate", "À planifier");
-      setText("ep_annualNextSub", "Aucune date prévue");
+      epSetSummaryLink("ep_annualNextDate", "À planifier", false, "Planifier dans le calendrier");
+      setText("ep_annualNextSub", "Ouvrir le calendrier");
     }
 
-    epSetBadgeText("ep_annualCurrentStatus", current?.statut || "À préparer");
-    setText("ep_annualCurrentSub", current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucun entretien annuel ouvert");
+    const currentItem = $("ep_annualCurrentItem");
+    if (currentItem) currentItem.style.display = current ? "" : "none";
+
+    const currentStatus = epSignatureStatusFromEntretien(current);
+    epSetBadgeText("ep_annualCurrentStatus", currentStatus || "À préparer");
+    setText("ep_annualCurrentSub", current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "");
 
     const st = epNormText(current?.statut || "");
     let signTxt = "Non engagé";
-    let signSub = "Collaborateur";
-    if (st.includes("signer")) signTxt = "Signature en attente";
+    if (st.includes("signer")) signTxt = currentStatus;
     if (st.includes("termine") || st.includes("signe")) signTxt = "Signé";
-    epSetBadgeText("ep_annualSignatureStatus", signTxt);
-    setText("ep_annualSignatureSub", signSub);
 
     const hasCurrent = !!current;
     setText("ep_stepPreparationBadge", hasCurrent ? "Préparé" : "À préparer");
-    setText("ep_stepPreparationSub", hasCurrent?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucune préparation ouverte");
+    setText("ep_stepPreparationSub", current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucune préparation ouverte");
     setText("ep_stepRealisationBadge", current?.date_realisee ? "Réalisé" : "À réaliser");
     setText("ep_stepRealisationSub", current?.date_realisee ? `Réalisé le ${epFormatDateFR(current.date_realisee)}` : "Planifier et conduire l’entretien");
     setText("ep_stepSignaturesBadge", signTxt);
-    setText("ep_stepSignaturesSub", signTxt === "Signature en attente" ? "Validation collaborateur attendue" : "Validation électronique");
+    setText("ep_stepSignaturesSub", st.includes("signer") ? "Validation électronique en attente" : "Validation électronique");
     setText("ep_stepRapportBadge", current?.id_entretien ? "Disponible" : "À générer");
     setText("ep_stepRapportSub", current?.id_entretien ? "Rapport PDF accessible" : "Enregistre l’entretien avant le rapport");
 
@@ -1748,6 +1759,43 @@ function getCollaborateurInitials(c) {
     return `${p}${n}`.toUpperCase() || "—";
   }
 
+  function getInitialsFromNameParts(prenom, nom) {
+    const p = (prenom || "").toString().trim();
+    const n = (nom || "").toString().trim();
+    return `${p ? p.charAt(0) : ""}${n ? n.charAt(0) : ""}`.toUpperCase() || "—";
+  }
+
+  function epSetSummaryLink(id, label, disabled, title) {
+    const btn = $(id);
+    if (!btn) return;
+    btn.textContent = (label || "—").toString().trim() || "—";
+    btn.disabled = !!disabled;
+    btn.classList.toggle("is-disabled", !!disabled);
+    if (title) btn.title = title;
+    else btn.removeAttribute("title");
+  }
+
+  function epSignatureStatusFromEntretien(entretien) {
+    const raw = (entretien?.statut || "").toString().trim();
+    const norm = epNormText(raw);
+    if (!norm.includes("signer")) return raw || "À réaliser";
+
+    const match = raw.match(/(\d+)\s*\/\s*2/);
+    if (match) return `À signer ${match[1]}/2`;
+    return "À signer 2/2";
+  }
+
+  function epOpenCalendarForAnnualContext() {
+    if (!_portal?.switchView) return;
+    try {
+      window.sessionStorage.setItem("skills_cal_source", "entretien-performance");
+      window.sessionStorage.setItem("skills_cal_preselect_id_effectif", state.selectedCollaborateurId || "");
+      window.sessionStorage.setItem("skills_cal_preselect_id_service", state.selectedCollaborateurServiceId || state.serviceId || "");
+      window.sessionStorage.setItem("skills_cal_preselect_nom", ($("ep_ctxCollaborateur")?.textContent || "").toString().trim());
+    } catch (_) {}
+    _portal.switchView("calendrier");
+  }
+
   function getCollaborateurEntretienStatus(c) {
     const raw = (c?.statut_entretien_suivi || "").toString().trim().toLowerCase();
     const label = (c?.libelle_entretien_suivi || "").toString().trim();
@@ -1905,6 +1953,7 @@ function getCollaborateurInitials(c) {
             const prenom = (eff.prenom_effectif || "").toString().trim();
             const nom = (eff.nom_effectif || "").toString().trim();
             setText("ep_ctxCollaborateur", `${prenom} ${nom}`.trim() || "—");
+            setText("ep_ctxInitials", getInitialsFromNameParts(prenom, nom));
 
             setText("ep_ctxMatricule", (eff.matricule_interne || "").toString().trim() || "—");
             setText("ep_ctxPoste", (eff.intitule_poste || "").toString().trim() || "—");
@@ -1917,6 +1966,7 @@ function getCollaborateurInitials(c) {
 
             // fallback si jamais l’API ne renvoie pas le contexte
             setText("ep_ctxCollaborateur", name || "—");
+            setText("ep_ctxInitials", getCollaborateurInitials(c));
             setText("ep_ctxMatricule", "—");
             setText("ep_ctxPoste", "—");
             setText("ep_ctxService", "—");
@@ -4039,21 +4089,6 @@ function getCollaborateurInitials(c) {
             if (e.target === modalEval) closeEval();
           });
         }
-
-        // Modal Scoring (standard)
-        const modalScoring = $("modalEpScoring");
-        const btnXScoring = $("btnCloseEpScoringModalX");
-        const btnCloseScoring = $("btnEpScoringModalClose");
-        const closeScoring = () => closeModal("modalEpScoring");
-
-        if (btnXScoring) btnXScoring.addEventListener("click", closeScoring);
-        if (btnCloseScoring) btnCloseScoring.addEventListener("click", closeScoring);
-        if (modalScoring) {
-        modalScoring.addEventListener("click", (e) => {
-            if (e.target === modalScoring) closeScoring();
-        });
-        }
-
         // Modal History (standard)
         const modalHistory = $("modalEpHistory");
         const btnXHistory = $("btnCloseEpHistoryModalX");
@@ -4069,9 +4104,6 @@ function getCollaborateurInitials(c) {
         }
 
         // Header actions
-        const btnHelp = $("ep_btnHelpScoring");
-        if (btnHelp) btnHelp.addEventListener("click", () => openModal("modalEpScoring"));
-
         const btnEntretien = $("ep_btnEntretienIndividuel");
         if (btnEntretien) {
           btnEntretien.addEventListener("click", () => {

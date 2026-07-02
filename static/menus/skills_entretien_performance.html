@@ -19,20 +19,6 @@
       </div>
     </div>
 
-    <div class="sb-actions ep-page-actions">
-      <button class="sb-btn ep-scoring-btn" id="ep_btnHelpScoring" type="button">
-        <span class="sb-btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M4 19V5"/>
-            <path d="M9 19v-6"/>
-            <path d="M14 19v-9"/>
-            <path d="M19 19v-3"/>
-            <path d="M3 19h18"/>
-          </svg>
-        </span>
-        <span>Règles de scoring</span>
-      </button>
-    </div>
   </div>
 
   <!-- Synthèse collaborateur intégrée à la carte Couverture du poste actuel -->
@@ -137,8 +123,8 @@
         <div class="card ep-panel-card ep-collab-summary-card" id="ep_cardSyntheseCollaborateur">
           <div class="card-body ep-collab-summary-body">
             <div class="ep-collab-summary-main">
-              <div class="ep-collab-avatar" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M18 21a6 6 0 0 0-12 0"/><circle cx="12" cy="8" r="4"/><path d="M22 21a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <div class="ep-collab-avatar ep-collab-avatar--initials" aria-hidden="true">
+                <span id="ep_ctxInitials">—</span>
               </div>
               <div class="ep-collab-identity">
                 <div class="ep-summary-label">Collaborateur</div>
@@ -151,23 +137,18 @@
             <div class="ep-collab-summary-grid">
               <div class="ep-collab-summary-item">
                 <span>Dernier entretien annuel</span>
-                <strong id="ep_annualLastDate">—</strong>
+                <button type="button" class="ep-collab-summary-link" id="ep_annualLastDate">—</button>
                 <em id="ep_annualLastSub">—</em>
               </div>
               <div class="ep-collab-summary-item">
                 <span>Prochaine échéance</span>
-                <strong id="ep_annualNextDate">—</strong>
+                <button type="button" class="ep-collab-summary-link" id="ep_annualNextDate">—</button>
                 <em id="ep_annualNextSub">—</em>
               </div>
-              <div class="ep-collab-summary-item">
+              <div class="ep-collab-summary-item" id="ep_annualCurrentItem" style="display:none;">
                 <span>Entretien en cours</span>
                 <strong><span class="sb-badge ep-entretien-status" id="ep_annualCurrentStatus">—</span></strong>
                 <em id="ep_annualCurrentSub">—</em>
-              </div>
-              <div class="ep-collab-summary-item">
-                <span>Signatures</span>
-                <strong><span class="sb-badge ep-entretien-status" id="ep_annualSignatureStatus">—</span></strong>
-                <em id="ep_annualSignatureSub">—</em>
               </div>
             </div>
 
@@ -558,64 +539,6 @@
         <div id="ep_saveMsg" class="sb-inline-msg" aria-live="polite"></div>
         <button type="button" class="sb-btn sb-btn--soft" id="btnEpEvaluationModalClose">Annuler</button>
         <button class="sb-btn sb-btn--accent" id="ep_btnSave" type="button" disabled>Enregistrer</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: règles de scoring -->
-  <div class="modal" id="modalEpScoring" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div style="font-weight:600;">Règles de scoring</div>
-        <button type="button" class="modal-x" id="btnCloseEpScoringModalX" aria-label="Fermer">×</button>
-      </div>
-
-      <div class="modal-body">
-        <div class="card-sub" style="margin-top:0;">
-          Chaque compétence peut avoir entre 1 et 4 critères notés de 1 à 4. Le calcul interne reste normalisé sur 24, puis affiché en maîtrise : 24/24 = 100%.
-        </div>
-
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th>Nb critères</th>
-                <th>Somme minimale</th>
-                <th>Somme maximale</th>
-                <th>Maîtrise maximale</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>4</td><td>4</td><td>16</td><td>100%</td></tr>
-              <tr><td>3</td><td>3</td><td>12</td><td>100%</td></tr>
-              <tr><td>2</td><td>2</td><td>8</td><td>100%</td></tr>
-              <tr><td>1</td><td>1</td><td>4</td><td>100%</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="table-wrap" style="margin-top:12px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th>Niveau</th>
-                <th>Libellé</th>
-                <th>Plage interne</th>
-                <th>Lecture maîtrise</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>A</td><td>Débutant</td><td>0 à 6</td><td>0% à 25%</td></tr>
-              <tr><td>B</td><td>Intermédiaire</td><td>&gt;6 à 12</td><td>&gt;25% à 50%</td></tr>
-              <tr><td>C</td><td>Avancé</td><td>&gt;12 à 18</td><td>&gt;50% à 75%</td></tr>
-              <tr><td>D</td><td>Expert</td><td>&gt;18 à 24</td><td>&gt;75% à 100%</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="btnEpScoringModalClose">Fermer</button>
       </div>
     </div>
   </div>

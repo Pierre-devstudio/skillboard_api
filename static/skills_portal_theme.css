@@ -6822,7 +6822,6 @@ body{
 #view-entretien-performance .ep-card-head__icon svg,
 #view-entretien-performance .ep-section-title__icon svg,
 #view-entretien-performance .ep-search-field__icon svg,
-#view-entretien-performance .ep-scoring-btn svg,
 #view-entretien-performance .ep-summary-actions .sb-btn svg{
   width:20px;
   height:20px;
@@ -6848,22 +6847,7 @@ body{
   justify-content:flex-end;
 }
 
-#view-entretien-performance .ep-scoring-btn{
-  height:36px;
-  border-color:color-mix(in srgb, var(--accent) 36%, var(--ep-border));
-  background:#ffffff;
-  color:var(--ep-text);
-  font-weight:700;
-}
 
-#view-entretien-performance .ep-scoring-btn:hover{
-  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
-  border-color:color-mix(in srgb, var(--accent) 58%, var(--ep-border));
-  color:var(--accent);
-  filter:none;
-}
-
-#view-entretien-performance .ep-scoring-btn .sb-btn-icon svg,
 #view-entretien-performance .ep-summary-actions .sb-btn .sb-btn-icon svg{
   width:16px;
   height:16px;
@@ -28968,19 +28952,18 @@ body{
   align-items:center;
   justify-content:center;
   flex:0 0 auto;
-  background:color-mix(in srgb, var(--accent) 8%, #fff);
-  border:1px solid color-mix(in srgb, var(--accent) 14%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--accent) 10%, #fff);
   color:var(--accent);
+  font-size:16px;
+  font-weight:750;
+  letter-spacing:.03em;
 }
 
-#view-entretien-performance .ep-collab-avatar svg{
-  width:26px;
-  height:26px;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.9;
-  stroke-linecap:round;
-  stroke-linejoin:round;
+#view-entretien-performance .ep-collab-avatar span{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
 }
 
 #view-entretien-performance .ep-collab-identity{
@@ -29005,7 +28988,7 @@ body{
 
 #view-entretien-performance .ep-collab-summary-grid{
   display:grid;
-  grid-template-columns:repeat(4, minmax(0, 1fr));
+  grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
   gap:0;
   border-left:1px solid var(--sb-gray-200);
 }
@@ -29035,6 +29018,38 @@ body{
   font-size:13px;
   font-weight:700;
   line-height:1.2;
+}
+
+#view-entretien-performance .ep-collab-summary-link{
+  display:inline-flex;
+  align-items:center;
+  max-width:100%;
+  margin-top:8px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--sb-gray-900);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.2;
+  text-align:left;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-collab-summary-link:hover,
+#view-entretien-performance .ep-collab-summary-link:focus{
+  color:var(--accent);
+  text-decoration:underline;
+  text-underline-offset:3px;
+  outline:none;
+}
+
+#view-entretien-performance .ep-collab-summary-link.is-disabled,
+#view-entretien-performance .ep-collab-summary-link:disabled{
+  color:var(--sb-gray-900);
+  text-decoration:none;
+  cursor:default;
 }
 
 #view-entretien-performance .ep-collab-summary-item em{
