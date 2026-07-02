@@ -532,7 +532,12 @@
     const host = byId("calDetailContent");
     const sub = byId("calDetailSub");
     if (!host || !event) return;
-    if (sub) sub.textContent = "Événement planifié.";
+    const isAnnualInterview = String(event.type_evenement || "") === "entretien_annuel";
+    const doneAction = isAnnualInterview
+      ? `<button type="button" class="sb-btn sb-btn--accent" data-cal-open-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>Réaliser l’entretien</span></button>`
+      : `<button type="button" class="sb-btn sb-btn--accent" data-cal-done-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>Marquer réalisé</span></button>`;
+
+    if (sub) sub.textContent = isAnnualInterview ? "Entretien annuel planifié." : "Événement planifié.";
     host.innerHTML = `
       <div class="cal-detail-title">${escapeHtml(event.titre || "Événement RH")}</div>
       <div class="cal-detail-badges">
@@ -549,7 +554,7 @@
       <div class="cal-detail-actions">
         <button type="button" class="sb-btn sb-btn--soft" data-cal-open-event="${escapeHtml(event.id_evenement || "")}">${calIcon("eye")}<span>Ouvrir</span></button>
         <button type="button" class="sb-btn sb-btn--soft" data-cal-edit-event="${escapeHtml(event.id_evenement || "")}">${calIcon("edit")}<span>Modifier</span></button>
-        <button type="button" class="sb-btn sb-btn--accent" data-cal-done-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>Marquer réalisé</span></button>
+        ${doneAction}
         <button type="button" class="sb-btn sb-btn--soft" data-cal-report-event="${escapeHtml(event.id_evenement || "")}">${calIcon("report")}<span>Reporter</span></button>
         <button type="button" class="sb-btn sb-btn--soft" data-cal-cancel-event="${escapeHtml(event.id_evenement || "")}">${calIcon("cancel")}<span>Annuler</span></button>
       </div>
@@ -853,13 +858,22 @@
   function openLinkedEvent(event) {
     if (!event) return;
     if (event.id_effectif && String(event.type_evenement || "").includes("entretien")) {
+      const idEntretien = String(event.id_entretien || event.payload_json?.id_entretien || "").trim();
       try {
         window.sessionStorage.setItem("skills_ep_preselect_id_effectif", event.id_effectif || "");
         window.sessionStorage.setItem("skills_ep_preselect_id_service", event.id_service || "");
         window.sessionStorage.setItem("skills_ep_preselect_nom", event.collaborateur || "");
+        if (idEntretien) window.sessionStorage.setItem("skills_ep_preselect_id_entretien", idEntretien);
       } catch (_) {}
       window.portal.switchView("entretien-performance");
-      window.dispatchEvent(new CustomEvent("skills:entretien-preselect", { detail: { id_effectif: event.id_effectif, id_service: event.id_service || "" } }));
+      window.dispatchEvent(new CustomEvent("skills:entretien-preselect", {
+        detail: {
+          id_effectif: event.id_effectif,
+          id_service: event.id_service || "",
+          id_entretien: idEntretien,
+          id_evenement: event.id_evenement || "",
+        }
+      }));
       return;
     }
     showMsg("Aucun écran métier direct n’est encore relié à cet événement.", "info");

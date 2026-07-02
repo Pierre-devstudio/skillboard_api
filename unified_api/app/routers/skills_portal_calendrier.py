@@ -312,6 +312,274 @@ def _validate_effectif_in_scope(cur, ctx: Dict[str, Any], id_effectif: Optional[
     return row
 
 
+def _json_dict(value: Any) -> Dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            data = json.loads(value)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def _is_annual_interview_type(value: Any) -> bool:
+    return _clean(value).lower() == "entretien_annuel"
+
+
+def _is_cancelled_status(value: Any) -> bool:
+    return _clean(value).lower() in ("annulé", "annule", "cancelled", "canceled")
+
+
+def _is_done_status(value: Any) -> bool:
+    return _clean(value).lower() in ("réalisé", "realise", "réalise", "realized", "done")
+
+
+def _event_payload_with_entretien(payload: Any, id_entretien: Optional[str]) -> Dict[str, Any]:
+    data = _json_dict(payload)
+    if _clean(id_entretien):
+        data["id_entretien"] = _clean(id_entretien)
+    return data
+
+
+def _annual_entretien_exists(cur, id_ent: str, id_entretien: Optional[str]) -> bool:
+    ident = _clean(id_entretien)
+    if not ident:
+        return False
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_entretien_individuel
+        WHERE id_ent = %s
+          AND id_entretien = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_ent, ident),
+    )
+    return cur.fetchone() is not None
+
+
+def _annual_entretien_realized(cur, id_ent: str, id_entretien: Optional[str]) -> bool:
+    ident = _clean(id_entretien)
+    if not ident:
+        return False
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_entretien_individuel
+        WHERE id_ent = %s
+          AND id_entretien = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND (
+            date_realisee IS NOT NULL
+            OR lower(COALESCE(statut, '')) IN ('terminé', 'termine')
+          )
+        LIMIT 1
+        """,
+        (id_ent, ident),
+    )
+    return cur.fetchone() is not None
+
+
+def _ensure_annual_entretien_for_calendar_event(
+    cur,
+    ctx: Dict[str, Any],
+    id_effectif: Optional[str],
+    date_debut: datetime,
+) -> str:
+    eff = _clean(id_effectif)
+    if not eff:
+        return ""
+
+    planned_date = date_debut.date()
+
+    cur.execute(
+        """
+        SELECT id_entretien
+        FROM public.tbl_entretien_individuel
+        WHERE id_ent = %s
+          AND id_effectif_client = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND date_realisee IS NULL
+          AND lower(COALESCE(type_entretien, '')) LIKE '%%annuel%%'
+          AND lower(COALESCE(statut, '')) NOT IN ('terminé', 'termine', 'archivé', 'archive')
+        ORDER BY
+          CASE
+            WHEN date_prevue = %s THEN 0
+            WHEN date_prevue >= CURRENT_DATE THEN 1
+            WHEN date_prevue IS NULL THEN 2
+            ELSE 3
+          END,
+          COALESCE(date_prevue, %s) ASC,
+          updated_at DESC
+        LIMIT 1
+        """,
+        (ctx["id_ent"], eff, planned_date, planned_date),
+    )
+    existing = cur.fetchone()
+
+    if existing:
+        id_entretien = _clean(existing.get("id_entretien"))
+        cur.execute(
+            """
+            UPDATE public.tbl_entretien_individuel
+            SET date_prevue = %s,
+                id_manager = COALESCE(NULLIF(id_manager, ''), %s),
+                updated_at = NOW()
+            WHERE id_ent = %s
+              AND id_entretien = %s
+              AND COALESCE(archive, FALSE) = FALSE
+            RETURNING id_entretien
+            """,
+            (planned_date, ctx.get("id_manager"), ctx["id_ent"], id_entretien),
+        )
+        row = cur.fetchone() or {}
+        return _clean(row.get("id_entretien")) or id_entretien
+
+    id_entretien = str(uuid4())
+    cur.execute(
+        """
+        INSERT INTO public.tbl_entretien_individuel
+        (
+            id_entretien,
+            id_ent,
+            id_effectif_client,
+            id_manager,
+            type_entretien,
+            statut,
+            date_prevue,
+            date_realisee,
+            periode_debut,
+            periode_fin,
+            preparation,
+            realisation,
+            competences_entretien,
+            documents,
+            synthese,
+            bilan,
+            objectifs,
+            developpement,
+            plan_actions,
+            archive,
+            created_at,
+            updated_at
+        )
+        VALUES
+        (
+            %s, %s, %s, %s,
+            'Entretien annuel',
+            'à réaliser',
+            %s,
+            NULL,
+            NULL,
+            NULL,
+            '{}'::jsonb,
+            '{}'::jsonb,
+            '[]'::jsonb,
+            '{}'::jsonb,
+            '{}'::jsonb,
+            '{}'::jsonb,
+            '{}'::jsonb,
+            '{}'::jsonb,
+            '{}'::jsonb,
+            FALSE,
+            NOW(),
+            NOW()
+        )
+        RETURNING id_entretien
+        """,
+        (id_entretien, ctx["id_ent"], eff, ctx.get("id_manager"), planned_date),
+    )
+    row = cur.fetchone() or {}
+    return _clean(row.get("id_entretien")) or id_entretien
+
+
+def _link_calendar_event_to_entretien(cur, id_ent: str, id_evenement: Optional[str], id_entretien: Optional[str]) -> None:
+    if not _clean(id_evenement) or not _clean(id_entretien):
+        return
+
+    cur.execute(
+        """
+        UPDATE public.tbl_calendrier_rh
+        SET payload_json = COALESCE(payload_json, '{}'::jsonb) || %s::jsonb,
+            updated_at = NOW()
+        WHERE id_ent = %s
+          AND id_evenement = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        """,
+        (json.dumps({"id_entretien": _clean(id_entretien)}, ensure_ascii=False), id_ent, _clean(id_evenement)),
+    )
+
+
+def _sync_annual_entretien_from_event_row(cur, ctx: Dict[str, Any], event_row: Dict[str, Any]) -> Dict[str, Any]:
+    if not event_row or not _is_annual_interview_type(event_row.get("type_evenement")):
+        return event_row
+
+    payload = _json_dict(event_row.get("payload_json"))
+    id_entretien = _clean(payload.get("id_entretien"))
+    id_evenement = _clean(event_row.get("id_evenement"))
+    id_effectif = _clean(event_row.get("id_effectif"))
+    date_debut = event_row.get("date_debut")
+
+    if not isinstance(date_debut, datetime):
+        try:
+            date_debut = _parse_datetime_param("date_debut", _dt_to_str(date_debut))
+        except Exception:
+            date_debut = None
+
+    if _is_cancelled_status(event_row.get("statut")):
+        if id_entretien:
+            cur.execute(
+                """
+                UPDATE public.tbl_entretien_individuel
+                SET archive = TRUE,
+                    statut = 'archivé',
+                    updated_at = NOW()
+                WHERE id_ent = %s
+                  AND id_entretien = %s
+                  AND date_realisee IS NULL
+                  AND COALESCE(archive, FALSE) = FALSE
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM public.tbl_validations_electroniques ve
+                    WHERE ve.id_ent = public.tbl_entretien_individuel.id_ent
+                      AND ve.id_document_ref = public.tbl_entretien_individuel.id_entretien
+                      AND COALESCE(ve.archive, FALSE) = FALSE
+                  )
+                """,
+                (ctx["id_ent"], id_entretien),
+            )
+        return event_row
+
+    if id_entretien and _annual_entretien_exists(cur, ctx["id_ent"], id_entretien):
+        if isinstance(date_debut, datetime):
+            cur.execute(
+                """
+                UPDATE public.tbl_entretien_individuel
+                SET date_prevue = %s,
+                    updated_at = NOW()
+                WHERE id_ent = %s
+                  AND id_entretien = %s
+                  AND date_realisee IS NULL
+                  AND COALESCE(archive, FALSE) = FALSE
+                """,
+                (date_debut.date(), ctx["id_ent"], id_entretien),
+            )
+    elif id_effectif and isinstance(date_debut, datetime):
+        id_entretien = _ensure_annual_entretien_for_calendar_event(cur, ctx, id_effectif, date_debut)
+        _link_calendar_event_to_entretien(cur, ctx["id_ent"], id_evenement, id_entretien)
+        payload = _event_payload_with_entretien(payload, id_entretien)
+        event_row["payload_json"] = payload
+
+    if id_entretien:
+        event_row["id_entretien"] = id_entretien
+
+    return event_row
+
 def _event_type_label(value: Optional[str]) -> str:
     mapping = {
         "entretien_annuel": "Entretien annuel",
@@ -330,11 +598,14 @@ def _row_to_event(row: Dict[str, Any]) -> Dict[str, Any]:
     collaborateur = " ".join(
         [x for x in [_clean(row.get("prenom_effectif")), _clean(row.get("nom_effectif")).upper()] if x]
     ).strip()
+    payload = _json_dict(row.get("payload_json"))
+    id_entretien = _clean(row.get("id_entretien")) or _clean(payload.get("id_entretien")) or None
     return {
         "id_evenement": row.get("id_evenement"),
         "id_ent": row.get("id_ent"),
         "id_manager": row.get("id_manager"),
         "id_effectif": row.get("id_effectif"),
+        "id_entretien": id_entretien,
         "type_evenement": row.get("type_evenement"),
         "type_label": _event_type_label(row.get("type_evenement")),
         "titre": row.get("titre"),
@@ -346,8 +617,8 @@ def _row_to_event(row: Dict[str, Any]) -> Dict[str, Any]:
         "id_service": row.get("id_service"),
         "nom_service": row.get("nom_service") or ("Non lié" if not _clean(row.get("id_service")) and row.get("id_effectif") else None),
         "collaborateur": collaborateur or None,
-        "payload_json": row.get("payload_json") or {},
-        "notification_json": row.get("notification_json") or {},
+        "payload_json": payload,
+        "notification_json": _json_dict(row.get("notification_json")),
         "archive": bool(row.get("archive")),
         "created_at": _dt_to_str(row.get("created_at")),
         "updated_at": _dt_to_str(row.get("updated_at")),
@@ -459,6 +730,16 @@ def _fetch_annual_interview_suggestions(cur, ctx: Dict[str, Any]) -> List[Dict[s
               AND COALESCE(future_ei.archive, FALSE) = FALSE
               AND future_ei.date_prevue >= CURRENT_DATE
               AND lower(COALESCE(future_ei.statut, '')) IN ('à réaliser', 'a réaliser', 'en cours', 'à signer', 'a signer', 'à signer 1/2', 'a signer 1/2', 'à signer 2/2', 'a signer 2/2')
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_calendrier_rh ev
+            WHERE ev.id_ent = ec.id_ent
+              AND ev.id_effectif = ec.id_effectif
+              AND COALESCE(ev.archive, FALSE) = FALSE
+              AND ev.type_evenement = 'entretien_annuel'
+              AND ev.date_debut::date >= CURRENT_DATE
+              AND lower(COALESCE(ev.statut, '')) NOT IN ('réalisé', 'realise', 'réalise', 'annulé', 'annule')
           )
         ORDER BY date_echeance ASC, ec.nom_effectif ASC, ec.prenom_effectif ASC
         LIMIT 120
@@ -964,6 +1245,11 @@ def calendrier_create_event(id_contact: str, payload: CalendrierEventPayload, re
                 typ = _clean(payload.type_evenement) or "evenement_rh"
                 statut = _clean(payload.statut) or "planifie"
                 source = _clean(payload.source) or "manuel"
+                event_payload = dict(payload.payload_json or {})
+
+                if _is_annual_interview_type(typ) and eff:
+                    id_entretien = _ensure_annual_entretien_for_calendar_event(cur, ctx, eff.get("id_effectif"), date_debut)
+                    event_payload = _event_payload_with_entretien(event_payload, id_entretien)
 
                 cur.execute(
                     """
@@ -1002,7 +1288,7 @@ def calendrier_create_event(id_contact: str, payload: CalendrierEventPayload, re
                         date_fin,
                         statut,
                         source,
-                        json.dumps(payload.payload_json or {}, ensure_ascii=False),
+                        json.dumps(event_payload, ensure_ascii=False),
                         json.dumps({"eligible": True, "source": source}, ensure_ascii=False),
                     ),
                 )
@@ -1041,6 +1327,11 @@ def calendrier_create_event_from_suggestion(id_contact: str, payload: Calendrier
 
                 event_payload = dict(suggestion.get("payload_json") or {})
                 event_payload.update({"id_suggestion": suggestion.get("id_suggestion"), "source_suggestion": suggestion.get("source")})
+
+                if _is_annual_interview_type(typ) and eff:
+                    id_entretien = _ensure_annual_entretien_for_calendar_event(cur, ctx, eff.get("id_effectif"), date_debut)
+                    event_payload = _event_payload_with_entretien(event_payload, id_entretien)
+
                 notification_payload = dict(suggestion.get("notification_json") or {})
                 notification_payload.update({"eligible": True, "base_calendrier": True})
 
@@ -1128,7 +1419,7 @@ def calendrier_create_event_from_suggestion(id_contact: str, payload: Calendrier
                         suggestion.get("priorite") or "normale",
                         suggestion.get("source") or "moteur",
                         id_evenement,
-                        json.dumps(suggestion.get("payload_json") or {}, ensure_ascii=False),
+                        json.dumps(event_payload, ensure_ascii=False),
                         json.dumps(suggestion.get("notification_json") or {}, ensure_ascii=False),
                     ),
                 )
@@ -1151,7 +1442,7 @@ def calendrier_patch_event(id_contact: str, id_evenement: str, payload: Calendri
 
                 cur.execute(
                     """
-                    SELECT id_evenement, id_effectif
+                    SELECT id_evenement, id_effectif, type_evenement, date_debut, date_fin, statut, payload_json
                     FROM public.tbl_calendrier_rh
                     WHERE id_evenement = %s
                       AND id_ent = %s
@@ -1163,6 +1454,18 @@ def calendrier_patch_event(id_contact: str, id_evenement: str, payload: Calendri
                 current = cur.fetchone()
                 if current is None:
                     raise HTTPException(status_code=404, detail="Événement calendrier introuvable.")
+
+                current_payload = _json_dict(current.get("payload_json"))
+                effective_type = _clean(payload.type_evenement) if payload.type_evenement is not None else _clean(current.get("type_evenement"))
+                effective_statut = _clean(payload.statut) if payload.statut is not None else _clean(current.get("statut"))
+
+                if _is_annual_interview_type(effective_type) and _is_done_status(effective_statut):
+                    id_entretien = _clean(current_payload.get("id_entretien"))
+                    if not _annual_entretien_realized(cur, ctx["id_ent"], id_entretien):
+                        raise HTTPException(
+                            status_code=409,
+                            detail="Un entretien annuel ne peut pas être marqué réalisé depuis le calendrier. Ouvre l’entretien et réalise-le pour tracer le contenu.",
+                        )
 
                 updates = []
                 params: List[Any] = []
@@ -1207,9 +1510,10 @@ def calendrier_patch_event(id_contact: str, id_evenement: str, payload: Calendri
                     """,
                     tuple(params),
                 )
-                row = cur.fetchone()
+                row = dict(cur.fetchone() or {})
+                row = _sync_annual_entretien_from_event_row(cur, ctx, row)
                 conn.commit()
-                return _row_to_event(dict(row or {}))
+                return _row_to_event(row)
     except HTTPException:
         raise
     except Exception as e:

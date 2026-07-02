@@ -744,6 +744,265 @@ def _ep_current_actor_context(cur, id_contact: str, request: Request) -> Dict[st
     }
 
 
+
+def _ep_table_exists(cur, table_name: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = %s
+        LIMIT 1
+        """,
+        (table_name,),
+    )
+    return cur.fetchone() is not None
+
+
+def _ep_sync_json_dict(value: Any) -> Dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            data = json.loads(value)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def _ep_is_annual_entretien(value: Any) -> bool:
+    raw = str(value or "").strip().lower()
+    return "annuel" in raw
+
+
+def _ep_calendar_event_status_for_entretien(row: Dict[str, Any]) -> str:
+    statut = str(row.get("statut") or "").strip().lower()
+    if row.get("date_realisee") is not None or statut in ("terminé", "termine"):
+        return "réalisé"
+    if "signer" in statut:
+        return "en_cours"
+    return "planifie"
+
+
+def _ep_materialize_annual_calendar_events(cur, id_ent: str, id_effectif: str, id_manager: Optional[str]) -> None:
+    if not _ep_table_exists(cur, "tbl_calendrier_rh"):
+        return
+
+    cur.execute(
+        """
+        SELECT
+          ev.id_evenement,
+          ev.date_debut,
+          ev.payload_json
+        FROM public.tbl_calendrier_rh ev
+        WHERE ev.id_ent = %s
+          AND ev.id_effectif = %s
+          AND ev.type_evenement = 'entretien_annuel'
+          AND COALESCE(ev.archive, FALSE) = FALSE
+          AND lower(COALESCE(ev.statut, '')) NOT IN ('réalisé', 'realise', 'réalise', 'annulé', 'annule')
+        ORDER BY ev.date_debut ASC, ev.updated_at DESC
+        LIMIT 20
+        """,
+        (id_ent, id_effectif),
+    )
+    rows = cur.fetchall() or []
+
+    for ev in rows:
+        payload = _ep_sync_json_dict(ev.get("payload_json"))
+        linked_id = str(payload.get("id_entretien") or "").strip()
+        planned_date = ev.get("date_debut").date() if ev.get("date_debut") else None
+        if not planned_date:
+            continue
+
+        if linked_id:
+            cur.execute(
+                """
+                SELECT id_entretien
+                FROM public.tbl_entretien_individuel
+                WHERE id_ent = %s
+                  AND id_entretien = %s
+                  AND COALESCE(archive, FALSE) = FALSE
+                LIMIT 1
+                """,
+                (id_ent, linked_id),
+            )
+            if cur.fetchone():
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entretien_individuel
+                    SET date_prevue = %s,
+                        updated_at = NOW()
+                    WHERE id_ent = %s
+                      AND id_entretien = %s
+                      AND date_realisee IS NULL
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (planned_date, id_ent, linked_id),
+                )
+                continue
+
+        cur.execute(
+            """
+            SELECT id_entretien
+            FROM public.tbl_entretien_individuel
+            WHERE id_ent = %s
+              AND id_effectif_client = %s
+              AND COALESCE(archive, FALSE) = FALSE
+              AND date_realisee IS NULL
+              AND lower(COALESCE(type_entretien, '')) LIKE '%%annuel%%'
+              AND lower(COALESCE(statut, '')) NOT IN ('terminé', 'termine', 'archivé', 'archive')
+            ORDER BY
+              CASE
+                WHEN date_prevue = %s THEN 0
+                WHEN date_prevue >= CURRENT_DATE THEN 1
+                WHEN date_prevue IS NULL THEN 2
+                ELSE 3
+              END,
+              COALESCE(date_prevue, %s) ASC,
+              updated_at DESC
+            LIMIT 1
+            """,
+            (id_ent, id_effectif, planned_date, planned_date),
+        )
+        existing = cur.fetchone()
+
+        if existing:
+            id_entretien = str(existing.get("id_entretien") or "").strip()
+            cur.execute(
+                """
+                UPDATE public.tbl_entretien_individuel
+                SET date_prevue = %s,
+                    id_manager = COALESCE(NULLIF(id_manager, ''), %s),
+                    updated_at = NOW()
+                WHERE id_ent = %s
+                  AND id_entretien = %s
+                  AND COALESCE(archive, FALSE) = FALSE
+                """,
+                (planned_date, id_manager, id_ent, id_entretien),
+            )
+        else:
+            id_entretien = str(uuid4())
+            cur.execute(
+                """
+                INSERT INTO public.tbl_entretien_individuel
+                (
+                    id_entretien,
+                    id_ent,
+                    id_effectif_client,
+                    id_manager,
+                    type_entretien,
+                    statut,
+                    date_prevue,
+                    date_realisee,
+                    periode_debut,
+                    periode_fin,
+                    preparation,
+                    realisation,
+                    competences_entretien,
+                    documents,
+                    synthese,
+                    bilan,
+                    objectifs,
+                    developpement,
+                    plan_actions,
+                    archive,
+                    created_at,
+                    updated_at
+                )
+                VALUES
+                (
+                    %s, %s, %s, %s,
+                    'Entretien annuel',
+                    'à réaliser',
+                    %s,
+                    NULL,
+                    NULL,
+                    NULL,
+                    '{}'::jsonb,
+                    '{}'::jsonb,
+                    '[]'::jsonb,
+                    '{}'::jsonb,
+                    '{}'::jsonb,
+                    '{}'::jsonb,
+                    '{}'::jsonb,
+                    '{}'::jsonb,
+                    '{}'::jsonb,
+                    FALSE,
+                    NOW(),
+                    NOW()
+                )
+                """,
+                (id_entretien, id_ent, id_effectif, id_manager, planned_date),
+            )
+
+        cur.execute(
+            """
+            UPDATE public.tbl_calendrier_rh
+            SET payload_json = COALESCE(payload_json, '{}'::jsonb) || %s::jsonb,
+                updated_at = NOW()
+            WHERE id_ent = %s
+              AND id_evenement = %s
+              AND COALESCE(archive, FALSE) = FALSE
+            """,
+            (json.dumps({"id_entretien": id_entretien}, ensure_ascii=False), id_ent, ev.get("id_evenement")),
+        )
+
+
+def _ep_sync_calendar_for_entretien_update(cur, id_ent: str, row: Dict[str, Any]) -> None:
+    if not row or not _ep_is_annual_entretien(row.get("type_entretien")):
+        return
+    if not _ep_table_exists(cur, "tbl_calendrier_rh"):
+        return
+
+    id_entretien = str(row.get("id_entretien") or "").strip()
+    id_effectif = str(row.get("id_effectif_client") or "").strip()
+    if not id_entretien or not id_effectif:
+        return
+
+    date_prevue = row.get("date_prevue")
+    statut_cal = _ep_calendar_event_status_for_entretien(row)
+
+    cur.execute(
+        """
+        UPDATE public.tbl_calendrier_rh
+        SET statut = %s,
+            date_debut = CASE
+              WHEN %s::date IS NOT NULL THEN (%s::date + COALESCE(date_debut::time, TIME '09:00'))
+              ELSE date_debut
+            END,
+            date_fin = CASE
+              WHEN %s::date IS NOT NULL AND date_fin IS NOT NULL THEN (%s::date + COALESCE(date_fin::time, TIME '10:00'))
+              ELSE date_fin
+            END,
+            payload_json = COALESCE(payload_json, '{}'::jsonb) || %s::jsonb,
+            updated_at = NOW()
+        WHERE id_ent = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND type_evenement = 'entretien_annuel'
+          AND (
+            payload_json->>'id_entretien' = %s
+            OR (
+              id_effectif = %s
+              AND date_debut::date = COALESCE(%s::date, date_debut::date)
+            )
+          )
+        """,
+        (
+            statut_cal,
+            date_prevue,
+            date_prevue,
+            date_prevue,
+            date_prevue,
+            json.dumps({"id_entretien": id_entretien}, ensure_ascii=False),
+            id_ent,
+            id_entretien,
+            id_effectif,
+            date_prevue,
+        ),
+    )
+
+
 def _fetch_effectif_context(cur, id_ent: str, id_effectif: str) -> Dict[str, Any]:
     cur.execute(
         """
@@ -1253,22 +1512,44 @@ def get_entretien_performance_collaborateurs(
                           AND ec.archive = FALSE
                         GROUP BY ec.id_effectif_client
                     ),
-                    entretien_suivi AS (
+                    entretien_source AS (
                         SELECT
                             ei.id_effectif_client,
-                            MAX(ei.date_realisee) FILTER (WHERE ei.date_realisee IS NOT NULL) AS date_dernier_entretien,
-                            MIN(ei.date_prevue) FILTER (
-                                WHERE ei.date_realisee IS NULL
-                                  AND ei.date_prevue >= CURRENT_DATE
-                            ) AS date_prochain_entretien,
-                            MIN(ei.date_prevue) FILTER (
-                                WHERE ei.date_realisee IS NULL
-                                  AND ei.date_prevue < CURRENT_DATE
-                            ) AS date_prevue_retard
+                            ei.date_realisee,
+                            ei.date_prevue,
+                            ei.statut
                         FROM public.tbl_entretien_individuel ei
                         WHERE ei.id_ent = %s
                           AND COALESCE(ei.archive, FALSE) = FALSE
-                        GROUP BY ei.id_effectif_client
+
+                        UNION ALL
+
+                        SELECT
+                            ev.id_effectif AS id_effectif_client,
+                            NULL::date AS date_realisee,
+                            ev.date_debut::date AS date_prevue,
+                            ev.statut
+                        FROM public.tbl_calendrier_rh ev
+                        WHERE ev.id_ent = %s
+                          AND ev.type_evenement = 'entretien_annuel'
+                          AND ev.id_effectif IS NOT NULL
+                          AND COALESCE(ev.archive, FALSE) = FALSE
+                          AND lower(COALESCE(ev.statut, '')) NOT IN ('réalisé', 'realise', 'réalise', 'annulé', 'annule')
+                    ),
+                    entretien_suivi AS (
+                        SELECT
+                            es.id_effectif_client,
+                            MAX(es.date_realisee) FILTER (WHERE es.date_realisee IS NOT NULL) AS date_dernier_entretien,
+                            MIN(es.date_prevue) FILTER (
+                                WHERE es.date_realisee IS NULL
+                                  AND es.date_prevue >= CURRENT_DATE
+                            ) AS date_prochain_entretien,
+                            MIN(es.date_prevue) FILTER (
+                                WHERE es.date_realisee IS NULL
+                                  AND es.date_prevue < CURRENT_DATE
+                            ) AS date_prevue_retard
+                        FROM entretien_source es
+                        GROUP BY es.id_effectif_client
                     )
                     SELECT
                         e.id_effectif,
@@ -1346,7 +1627,7 @@ def get_entretien_performance_collaborateurs(
 
                     LIMIT %s
                     """,
-                    tuple([id_ent, *params, limit]),
+                    tuple([id_ent, id_ent, *params, limit]),
                 )
 
                 rows = cur.fetchall() or []
@@ -1515,6 +1796,8 @@ def ep_list_entretiens_individuels(
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
                 _fetch_effectif_context(cur, id_ent, id_effectif)
+                actor_ctx = _ep_current_actor_context(cur, id_contact, request)
+                _ep_materialize_annual_calendar_events(cur, id_ent, id_effectif, actor_ctx.get("id_evaluateur") or id_contact)
 
                 cur.execute(
                     """
@@ -1741,6 +2024,7 @@ def ep_create_entretien_individuel(
                 )
 
                 row = cur.fetchone()
+                _ep_sync_calendar_for_entretien_update(cur, id_ent, dict(row or {}))
                 conn.commit()
 
                 return _ep_entretien_item_from_row(row)
@@ -1866,6 +2150,7 @@ def ep_update_entretien_individuel(
                 )
 
                 row = cur.fetchone()
+                _ep_sync_calendar_for_entretien_update(cur, id_ent, dict(row or {}))
                 conn.commit()
 
                 return _ep_entretien_item_from_row(row)

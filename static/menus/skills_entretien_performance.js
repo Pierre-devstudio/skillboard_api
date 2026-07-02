@@ -29,6 +29,7 @@
     selectedCollaborateurServiceId: "",
     pendingPreselectCollaborateurId: "",
     pendingPreselectServiceId: "",
+    pendingPreselectEntretienId: "",
     pendingPreselectFallbackAll: false,
     _collabLoadSeq: 0,
     _collabLoadingKey: "",
@@ -558,6 +559,7 @@
   function readPendingCollaborateurPreselect() {
     let idEff = "";
     let idService = "";
+    let idEntretien = "";
 
     try {
       idEff = (
@@ -572,12 +574,19 @@
         window.sessionStorage.getItem("ep_preselect_id_service") ||
         ""
       ).toString().trim();
+
+      idEntretien = (
+        window.sessionStorage.getItem("skills_ep_preselect_id_entretien") ||
+        window.sessionStorage.getItem("ep_preselect_id_entretien") ||
+        ""
+      ).toString().trim();
     } catch (_) {}
 
     if (!idEff) return false;
 
     state.pendingPreselectCollaborateurId = idEff;
     state.pendingPreselectServiceId = idService;
+    state.pendingPreselectEntretienId = idEntretien;
     state.pendingPreselectFallbackAll = false;
 
     const search = $("ep_txtSearchCollab");
@@ -595,8 +604,10 @@
       window.sessionStorage.removeItem("skills_ep_preselect_id_effectif");
       window.sessionStorage.removeItem("skills_ep_preselect_nom");
       window.sessionStorage.removeItem("skills_ep_preselect_id_service");
+      window.sessionStorage.removeItem("skills_ep_preselect_id_entretien");
       window.sessionStorage.removeItem("ep_preselect_id_effectif");
       window.sessionStorage.removeItem("ep_preselect_id_service");
+      window.sessionStorage.removeItem("ep_preselect_id_entretien");
       window.sessionStorage.removeItem("novoskill_ep_preselect_id_effectif");
     } catch (_) {}
   }
@@ -661,12 +672,15 @@
     if (!idEff) return;
 
     const idService = String(detail?.id_service || detail?.serviceId || "").trim();
+    const idEntretien = String(detail?.id_entretien || detail?.idEntretien || "").trim();
     const samePending =
       String(state.pendingPreselectCollaborateurId || "") === idEff &&
-      String(state.pendingPreselectServiceId || "") === idService;
+      String(state.pendingPreselectServiceId || "") === idService &&
+      String(state.pendingPreselectEntretienId || "") === idEntretien;
 
     state.pendingPreselectCollaborateurId = idEff;
     state.pendingPreselectServiceId = idService;
+    state.pendingPreselectEntretienId = idEntretien;
     state.pendingPreselectFallbackAll = false;
 
     const search = $("ep_txtSearchCollab");
@@ -2903,6 +2917,25 @@ function getCollaborateurInitials(c) {
     }
   }
 
+  function epOpenPendingEntretienFromCalendar() {
+    const wanted = String(state.pendingPreselectEntretienId || "").trim();
+    if (!wanted) return;
+
+    const entretien = (Array.isArray(state._entretiensList) ? state._entretiensList : [])
+      .find(e => String(e?.id_entretien || "") === wanted);
+
+    if (!entretien) return;
+
+    state.pendingPreselectEntretienId = "";
+    const st = epNormText(entretien.statut || "");
+    const mode = entretien.date_realisee || st.includes("signer") || st.includes("termine")
+      ? "realisation"
+      : "preparation";
+
+    epSetPageTab("annuel");
+    openEntretienModal(entretien, mode);
+  }
+
   async function loadEntretiensIndividuels() {
     const wrap = $("ep_entretienList");
     if (!state.selectedCollaborateurId || !_portal) {
@@ -2918,6 +2951,7 @@ function getCollaborateurInitials(c) {
     state._entretiensList = Array.isArray(data) ? data : [];
     epRenderEntretienOverview(state._entretiensList);
     renderEntretiensIndividuels(state._entretiensList);
+    epOpenPendingEntretienFromCalendar();
 
     return state._entretiensList;
   }
