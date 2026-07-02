@@ -536,7 +536,12 @@
     setText("ep_ctxMatricule", "—");
     setText("ep_ctxPoste", "—");
     setText("ep_ctxService", "—");
+    setText("ep_ctxServiceBadge", "Service non renseigné");
     setText("ep_ctxDate", "—");
+    setText("ep_punctualCollaborateur", "—");
+    epRenderAnnualCompetenceSummary([]);
+    epRenderSuggestions([]);
+    epRenderEntretienOverview([]);
   }
 
 
@@ -680,8 +685,13 @@
     setText("ep_ctxMatricule", "—");
     setText("ep_ctxPoste", "—");
     setText("ep_ctxService", "—");
+    setText("ep_ctxServiceBadge", "Service non renseigné");
     setText("ep_ctxDate", "—");
+    setText("ep_punctualCollaborateur", "—");
 
+    epRenderAnnualCompetenceSummary([]);
+    epRenderSuggestions([]);
+    epRenderEntretienOverview([]);
 
     setText("ep_kpiToDo", "0");
     setText("ep_kpiDone", "0");
@@ -864,17 +874,454 @@
     setText("ep_kpiToDo", `${never} / ${total}`);
   }
 
-  async function afterAuditSavedRefresh(savedApiResp) {
-    // 1) Rafraîchir la jauge (couverture poste) sans attendre un changement de collaborateur
-    state._covData = null;
-    state._covLastKey = null;
-    try {
-      refreshCouverturePosteActuel(true);
-    } catch (_) {
-      // pas bloquant
+
+  function epNormText(value) {
+    return (value || "")
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function epStatusSlug(value) {
+    return epNormText(value)
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "neutre";
+  }
+
+  function epDateObj(value) {
+    const raw = (value || "").toString().trim();
+    if (!raw) return null;
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function epMonthsSince(value) {
+    const d = epDateObj(value);
+    if (!d) return null;
+    const now = new Date();
+    return (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+  }
+
+  function epCompetenceStatusKey(x) {
+    if (!x || x._neverAudited || !x.date_derniere_eval) return "never";
+    const months = epMonthsSince(x.date_derniere_eval);
+    if (Number.isFinite(months) && months >= 24) return "review";
+    return "ok";
+  }
+
+  function epCompetenceStatusLabel(key) {
+    if (key === "never") return "Jamais évaluée";
+    if (key === "review") return "À revoir";
+    return "À jour";
+  }
+
+  function epCompetenceStatusBadgeClass(key) {
+    if (key === "never") return "ep-status-badge ep-status-badge--danger";
+    if (key === "review") return "ep-status-badge ep-status-badge--warning";
+    return "ep-status-badge ep-status-badge--success";
+  }
+
+  function epBadgeLevelHtml(niveau) {
+    const txt = _nsLevelLabel4(niveau || "—");
+    return `<span class="sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(txt)}</span>`;
+  }
+
+  function epSetBadgeText(id, textValue) {
+    const el = $(id);
+    if (!el) return;
+    const txt = (textValue || "—").toString().trim() || "—";
+    el.textContent = txt;
+    el.className = `sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(txt)}`;
+  }
+
+  function epIsAnnualEntretien(entretien) {
+    return epNormText(entretien?.type_entretien || "").includes("annuel");
+  }
+
+  function epEntretienDateValue(entretien) {
+    return (entretien?.date_realisee || entretien?.date_prevue || entretien?.created_at || "").toString().trim();
+  }
+
+  function epSortEntretienDesc(a, b) {
+    const da = epDateObj(epEntretienDateValue(a));
+    const db = epDateObj(epEntretienDateValue(b));
+    const ta = da ? da.getTime() : 0;
+    const tb = db ? db.getTime() : 0;
+    return tb - ta;
+  }
+
+  function epIsEntretienClosed(entretien) {
+    const s = epNormText(entretien?.statut || "");
+    return s.includes("termine") || s.includes("signe");
+  }
+
+  function epCurrentAnnualEntretien(list) {
+    const annuals = (Array.isArray(list) ? list : []).filter(epIsAnnualEntretien).sort(epSortEntretienDesc);
+    return annuals.find(e => !epIsEntretienClosed(e)) || annuals[0] || null;
+  }
+
+  function epRenderAnnualCompetenceSummary(list) {
+    const arr = Array.isArray(list) ? list : [];
+    const never = arr.filter(x => epCompetenceStatusKey(x) === "never").length;
+    const review = arr.filter(x => epCompetenceStatusKey(x) === "review").length;
+    const critical = arr.filter(x => getEpCritPctValue(x?.poids_criticite_pct) > 0).length;
+
+    setText("ep_annualMetricNever", String(never));
+    setText("ep_annualMetricReview", String(review));
+    setText("ep_annualMetricCritical", String(critical));
+  }
+
+  function epFillCompetenceDomainFilter(list) {
+    const sel = $("ep_selCompetenceDomain");
+    if (!sel) return;
+
+    const current = (sel.value || "").toString();
+    const domains = Array.from(new Set((Array.isArray(list) ? list : [])
+      .map(x => (x.domaine || "Sans domaine").toString().trim() || "Sans domaine")))
+      .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+
+    sel.innerHTML = `<option value="">Domaine : Tous</option>`;
+    domains.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = `Domaine : ${d}`;
+      sel.appendChild(opt);
+    });
+
+    if (domains.includes(current)) sel.value = current;
+  }
+
+
+  function epRenderPunctualCompetenceRows(list) {
+    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    const arr = Array.isArray(list) ? list : [];
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="ep-empty-cell">Aucune compétence disponible pour ce collaborateur.</td></tr>`;
+      return;
     }
 
-    // 2) Mettre à jour l’en-tête de la compétence (niveau + date dernière éval)
+    arr.forEach(x => {
+      const tr = document.createElement("tr");
+      const statusKey = epCompetenceStatusKey(x);
+      const domaine = (x.domaine || "Sans domaine").toString().trim() || "Sans domaine";
+      const critPct = getEpCritPctValue(x?.poids_criticite_pct);
+
+      tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
+      tr.dataset.idComp = x.id_comp || "";
+      tr.dataset.critPct = String(critPct);
+      tr.dataset.neverAudited = x._neverAudited ? "1" : "0";
+      tr.dataset.domain = domaine;
+      tr.dataset.status = statusKey;
+      tr.dataset.searchText = `${x.code || ""} ${x.intitule || ""} ${domaine}`;
+
+      tr.innerHTML = `
+        <td><span class="sb-badge sb-badge-ref-comp-code ep-comp-code">${epEsc(x.code || "—")}</span></td>
+        <td><div class="ep-punctual-comp-title" title="${epEsc(x.intitule || "")}">${epEsc(x.intitule || "—")}</div></td>
+        <td><span class="ep-domain-text">${epEsc(domaine)}</span></td>
+        <td>${epEsc(epFormatDateFR(x.date_derniere_eval) || "—")}</td>
+        <td>${epBadgeLevelHtml(x.niveau_actuel || "—")}</td>
+        <td><span class="${epCompetenceStatusBadgeClass(statusKey)}">${epEsc(epCompetenceStatusLabel(statusKey))}</span></td>
+        <td>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs ep-punctual-eval-btn" data-eval="1">
+            <span class="sb-btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            </span>
+            <span>Évaluer</span>
+          </button>
+        </td>
+      `;
+
+      tr.addEventListener("click", async () => {
+        const tb = $("ep_tblCompetences")?.querySelector("tbody");
+        if (tb) tb.querySelectorAll("tr.active").forEach(r => r.classList.remove("active"));
+        tr.classList.add("active");
+        await epOpenEvaluationStandalone(x);
+      });
+
+      tr.querySelector('[data-eval="1"]')?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        tr.click();
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    epApplyPunctualFilters();
+  }
+
+  function epRenderSuggestions(list) {
+    const wrap = $("ep_suggestionsList");
+    if (!wrap) return;
+
+    const arr = (Array.isArray(list) ? list : [])
+      .filter(x => epCompetenceStatusKey(x) !== "ok")
+      .sort((a, b) => {
+        const sa = epCompetenceStatusKey(a) === "never" ? 0 : 1;
+        const sb = epCompetenceStatusKey(b) === "never" ? 0 : 1;
+        if (sa !== sb) return sa - sb;
+        return String(a.intitule || "").localeCompare(String(b.intitule || ""), "fr", { sensitivity: "base" });
+      })
+      .slice(0, 4);
+
+    if (!arr.length) {
+      wrap.innerHTML = `<div class="ep-history-empty">Aucune suggestion prioritaire.</div>`;
+      return;
+    }
+
+    wrap.innerHTML = "";
+    arr.forEach(x => {
+      const key = epCompetenceStatusKey(x);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ep-suggestion-row";
+      btn.innerHTML = `
+        <span class="ep-suggestion-main">
+          <span class="ep-suggestion-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </span>
+          <span>${epEsc(x.intitule || "Compétence")}</span>
+        </span>
+        <span class="${epCompetenceStatusBadgeClass(key)}">${epEsc(epCompetenceStatusLabel(key))}</span>
+        <span aria-hidden="true">›</span>
+      `;
+      btn.addEventListener("click", () => epOpenEvaluationStandalone(x));
+      wrap.appendChild(btn);
+    });
+  }
+
+  function epApplyPunctualFilters() {
+    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
+    if (!tbody) return;
+
+    const q = epNormText($("ep_txtSearchCompetence")?.value || "");
+    const domain = ($("ep_selCompetenceDomain")?.value || "").toString().trim();
+    const statusBtn = document.querySelector(".ep-status-filter-btn.is-active");
+    const status = statusBtn?.dataset?.epStatus || "all";
+    const seuil = getEpCriticiteSeuil();
+
+    let visible = 0;
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      const hay = epNormText(tr.dataset.searchText || tr.textContent || "");
+      const rowDomain = (tr.dataset.domain || "").toString().trim();
+      const rowStatus = (tr.dataset.status || "").toString().trim();
+      const crit = getEpCritPctValue(tr.dataset.critPct || 0);
+
+      const okSearch = !q || hay.includes(q);
+      const okDomain = !domain || rowDomain === domain;
+      const okStatus = status === "all" || rowStatus === status;
+      const okCrit = crit + 0.0001 >= seuil;
+
+      const ok = okSearch && okDomain && okStatus && okCrit;
+      tr.style.display = ok ? "" : "none";
+      if (ok) visible += 1;
+    });
+
+    setText("ep_compCount", String(visible));
+  }
+
+  function epSetPageTab(tab) {
+    const target = ["annuel", "ponctuel", "formation"].includes(tab) ? tab : "annuel";
+
+    document.querySelectorAll("#view-entretien-performance .ep-page-tab").forEach(btn => {
+      const active = btn.dataset.epTab === target;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    document.querySelectorAll("#view-entretien-performance .ep-tab-panel").forEach(panel => {
+      panel.classList.toggle("is-active", panel.dataset.epPanel === target);
+    });
+  }
+
+  function bindPageTabsOnce() {
+    if (state._pageTabsBound) return;
+    state._pageTabsBound = true;
+
+    document.querySelectorAll("#view-entretien-performance .ep-page-tab").forEach(btn => {
+      btn.addEventListener("click", () => epSetPageTab(btn.dataset.epTab || "annuel"));
+    });
+
+    $("ep_btnAnnualSeeCompetences")?.addEventListener("click", () => epSetPageTab("ponctuel"));
+    $("ep_btnAnnualPrepare")?.addEventListener("click", () => epOpenAnnualEntretien("preparation"));
+    $("ep_btnAnnualRealize")?.addEventListener("click", () => epOpenAnnualEntretien("realisation"));
+    $("ep_btnAnnualReport")?.addEventListener("click", () => {
+      const e = state._annualCurrentEntretien || null;
+      if (e?.id_entretien) openEntretienPdf(e.id_entretien);
+    });
+
+    $("ep_btnNewPonctuel")?.addEventListener("click", () => epOpenNewPunctualEvaluation());
+    $("ep_txtSearchCompetence")?.addEventListener("input", epApplyPunctualFilters);
+    $("ep_selCompetenceDomain")?.addEventListener("change", epApplyPunctualFilters);
+
+    document.querySelectorAll("#view-entretien-performance .ep-status-filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#view-entretien-performance .ep-status-filter-btn").forEach(x => x.classList.remove("is-active"));
+        btn.classList.add("is-active");
+        epApplyPunctualFilters();
+      });
+    });
+  }
+
+  function epOpenAnnualEntretien(mode) {
+    const entretien = state._annualCurrentEntretien || null;
+    openEntretienModal(entretien, mode || (entretien ? "realisation" : "preparation"));
+
+    if (!entretien) {
+      epSetValue("ep_entretienType", "Entretien annuel");
+      if (state._entretienDraft) state._entretienDraft.type_entretien = "Entretien annuel";
+      setText("ep_entretienModalTitle", mode === "realisation" ? "Réaliser l’entretien annuel" : "Préparer l’entretien annuel");
+    }
+  }
+
+  function epOpenNewPunctualEvaluation() {
+    const arr = Array.isArray(state._checklistAll) ? state._checklistAll : [];
+    if (!arr.length) {
+      _portal?.showAlert?.("warning", "Aucune compétence disponible pour ce collaborateur.");
+      return;
+    }
+
+    const target = arr.find(x => epCompetenceStatusKey(x) === "never") || arr.find(x => epCompetenceStatusKey(x) === "review") || arr[0];
+    epOpenEvaluationStandalone(target);
+  }
+
+  function epRenderEntretienOverview(list) {
+    const arr = Array.isArray(list) ? list : [];
+    const annuals = arr.filter(epIsAnnualEntretien).sort(epSortEntretienDesc);
+    const current = epCurrentAnnualEntretien(arr);
+    const last = annuals.find(e => e.date_realisee || epIsEntretienClosed(e)) || annuals[0] || null;
+
+    state._annualCurrentEntretien = current || null;
+
+    if (last) {
+      setText("ep_annualLastDate", epFormatDateFR(epEntretienDateValue(last)) || "—");
+      setText("ep_annualLastSub", epIsEntretienClosed(last) ? "Entretien signé ou terminé" : (last.statut || "—"));
+    } else {
+      setText("ep_annualLastDate", "—");
+      setText("ep_annualLastSub", "Aucun historique annuel");
+    }
+
+    if (current?.date_prevue) {
+      setText("ep_annualNextDate", epFormatDateFR(current.date_prevue));
+      setText("ep_annualNextSub", current.date_realisee ? "Réalisé" : "À venir");
+    } else {
+      setText("ep_annualNextDate", "À planifier");
+      setText("ep_annualNextSub", "Aucune date prévue");
+    }
+
+    epSetBadgeText("ep_annualCurrentStatus", current?.statut || "À préparer");
+    setText("ep_annualCurrentSub", current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucun entretien annuel ouvert");
+
+    const st = epNormText(current?.statut || "");
+    let signTxt = "Non engagé";
+    let signSub = "Collaborateur";
+    if (st.includes("signer")) signTxt = "Signature en attente";
+    if (st.includes("termine") || st.includes("signe")) signTxt = "Signé";
+    epSetBadgeText("ep_annualSignatureStatus", signTxt);
+    setText("ep_annualSignatureSub", signSub);
+
+    const hasCurrent = !!current;
+    setText("ep_stepPreparationBadge", hasCurrent ? "Préparé" : "À préparer");
+    setText("ep_stepPreparationSub", hasCurrent?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucune préparation ouverte");
+    setText("ep_stepRealisationBadge", current?.date_realisee ? "Réalisé" : "À réaliser");
+    setText("ep_stepRealisationSub", current?.date_realisee ? `Réalisé le ${epFormatDateFR(current.date_realisee)}` : "Planifier et conduire l’entretien");
+    setText("ep_stepSignaturesBadge", signTxt);
+    setText("ep_stepSignaturesSub", signTxt === "Signature en attente" ? "Validation collaborateur attendue" : "Validation électronique");
+    setText("ep_stepRapportBadge", current?.id_entretien ? "Disponible" : "À générer");
+    setText("ep_stepRapportSub", current?.id_entretien ? "Rapport PDF accessible" : "Enregistre l’entretien avant le rapport");
+
+    const reportBtn = $("ep_btnAnnualReport");
+    if (reportBtn) reportBtn.disabled = !current?.id_entretien;
+
+    epRenderAnnualHistory(annuals);
+  }
+
+  function epRenderAnnualHistory(annuals) {
+    const tbody = $("ep_annualHistoryBody");
+    if (!tbody) return;
+
+    const rows = (Array.isArray(annuals) ? annuals : []).slice(0, 4);
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="ep-empty-cell">Aucun entretien annuel enregistré.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = "";
+    rows.forEach(e => {
+      const d = epDateObj(epEntretienDateValue(e));
+      const year = d ? String(d.getFullYear()) : "—";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${epEsc(year)}</td>
+        <td>${epEsc(epFormatDateFR(epEntretienDateValue(e)) || "—")}</td>
+        <td><span class="sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(e.statut)}">${epEsc(e.statut || "—")}</span></td>
+        <td class="ep-annual-history-actions">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="open">Voir</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="pdf">PDF</button>
+        </td>
+      `;
+      tr.querySelector('[data-act="open"]')?.addEventListener("click", () => openEntretienModal(e, "realisation"));
+      tr.querySelector('[data-act="pdf"]')?.addEventListener("click", () => openEntretienPdf(e.id_entretien));
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function epLoadPunctualHistorySummary() {
+    const tbody = $("ep_punctualHistoryBody");
+    if (!tbody) return;
+
+    if (!state.selectedCollaborateurId || !_portal) {
+      tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Sélectionne un collaborateur.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Chargement…</td></tr>`;
+
+    try {
+      const url = `${_portal.apiBase}/skills/entretien-performance/historique/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+      const data = await _portal.apiJson(url);
+      const rows = Array.isArray(data) ? data : [];
+      state._historyAll = rows;
+      epRenderPunctualHistorySummary(rows);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Impossible de charger l’historique.</td></tr>`;
+    }
+  }
+
+  function epRenderPunctualHistorySummary(rows) {
+    const tbody = $("ep_punctualHistoryBody");
+    if (!tbody) return;
+
+    const arr = (Array.isArray(rows) ? rows : []).slice(0, 4);
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Aucune évaluation ponctuelle enregistrée.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = "";
+    arr.forEach(row => {
+      const tr = document.createElement("tr");
+      const level = _epLevelFromScore24(row.resultat_eval);
+      tr.innerHTML = `
+        <td>${epEsc(epFormatDateFR(row.date_audit) || "—")}</td>
+        <td>${epEsc(row.intitule || "—")}</td>
+        <td>${epEsc(row.nom_evaluateur || "—")}</td>
+        <td><span class="sb-badge ${getEpLevelBadgeClass(level)}">${epEsc(level || "—")}</span></td>
+        <td><button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="history">Voir</button></td>
+      `;
+      tr.querySelector('[data-act="history"]')?.addEventListener("click", () => $("ep_btnHistoryGlobal")?.click());
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function afterAuditSavedRefresh(savedApiResp) {
+    // 1) Mettre à jour l’en-tête de la compétence (niveau + date dernière éval)
     const levelTxt = (document.getElementById("ep_levelABC")?.textContent || "").toString().trim();
     if (levelTxt && levelTxt !== "—") {
       setText("ep_compCurrent", _nsLevelLabel4(levelTxt));
@@ -885,7 +1332,7 @@
     const lastEl = $("ep_compLastEval");
     if (lastEl) lastEl.textContent = `Dernière éval : ${dateTxt}`;
 
-    // 3) Mettre à jour la checklist (state + visuel badge rouge)
+    // 2) Mettre à jour la checklist (state + synthèses de page)
     const idEc = (state.selectedEffectifCompetenceId || "").toString().trim();
     if (idEc) {
       if (Array.isArray(state._checklistAll)) {
@@ -926,6 +1373,9 @@
 
     // 4) KPI “à faire” (jamais auditées)
     _recalcKpiToDoPreferState();
+    epRenderAnnualCompetenceSummary(state._checklistAll || []);
+    epRenderSuggestions(state._checklistAll || []);
+    epApplyPunctualFilters();
 
     // 5) Réappliquer filtres éventuels (recherche / slider selon ta version)
     try {
@@ -982,27 +1432,12 @@
 
     if (!scopeOk) setText("ep_ctxService", "—");
 
-    // -------- Couverture poste actuel (jauge) --------
-    bindCouverturePosteOnce();
-
     if (!collabOk) {
       resetCouverturePosteUI();
       return;
     }
 
-    // Au moins, on affiche le bloc (sinon tu ne verras jamais le toggle)
-    showCouverturePosteWrap("Calcul en cours…");
-
-    // Recharge seulement si le collaborateur a changé
-    const key = String(state.selectedCollaborateurId || "");
-    if (state._covLastKey !== key) {
-      state._covLastKey = key;
-      state._covData = null;
-      refreshCouverturePosteActuel(true);
-    } else {
-      // si déjà chargé, on re-render (ex: toggle)
-      renderCouverturePoste();
-    }
+    showCouverturePosteWrap("");
   }
 
   // ======================================================
@@ -1022,7 +1457,7 @@
 
     if (hint) {
       hint.style.display = "";
-      hint.textContent = "La synthèse apparaîtra après sélection d'un collaborateur";
+      hint.textContent = "Sélectionne un collaborateur pour préparer un entretien ou lancer une évaluation.";
     }
     if (wrap) wrap.style.display = "none";
     if (svg) svg.innerHTML = "";
@@ -1388,17 +1823,7 @@ function renderCollaborateurs(list) {
 
         if (!state.selectedCollaborateurId || !_portal) return;
 
-        // ---- Couverture poste actuel (jauge) ----
-        // On affiche tout de suite le bloc + le toggle, et on passe en "Calcul en cours…"
-        bindCouverturePosteOnce();
         showCouverturePosteWrap("");
-
-        // On force un recalcul à chaque changement de collaborateur
-        state._covLastKey = null;
-        state._covData = null;
-
-        // Lance le calcul (asynchrone, ne bloque pas le reste du chargement)
-        refreshCouverturePosteActuel(true);
 
         if ($("modalEpHistory")?.classList.contains("show") && $("ep_histPanelProgression")?.classList.contains("is-active")) {
           loadProgressionData();
@@ -1432,6 +1857,7 @@ function renderCollaborateurs(list) {
 
             const svc = (eff.nom_service || eff.id_service || "").toString().trim();
             setText("ep_ctxService", svc || "—");
+            setText("ep_ctxServiceBadge", svc || "Service non renseigné");
           } else {
             state.selectedCollaborateurServiceId = "";
 
@@ -1440,6 +1866,7 @@ function renderCollaborateurs(list) {
             setText("ep_ctxMatricule", "—");
             setText("ep_ctxPoste", "—");
             setText("ep_ctxService", "—");
+            setText("ep_ctxServiceBadge", "Service non renseigné");
           }
 
 
@@ -1475,257 +1902,21 @@ function renderCollaborateurs(list) {
           setText("ep_kpiChanged", "0");
           setText("ep_kpiReview", "0");
 
-          list.forEach(x => {
+          epFillCompetenceDomainFilter(list);
+          epRenderAnnualCompetenceSummary(list);
+          epRenderSuggestions(list);
+          epRenderPunctualCompetenceRows(list);
 
-            const tr = document.createElement("tr");
-            tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
-            tr.dataset.idComp = x.id_comp || "";
-            const _pct = getEpCritPctValue(x?.poids_criticite_pct);
-            tr.dataset.critPct = String(_pct);
+          setText("ep_punctualCollaborateur", $("ep_ctxCollaborateur")?.textContent || "—");
 
+          try {
+            await loadEntretiensIndividuels();
+          } catch (e) {
+            console.error("Entretiens individuels:", e);
+            epRenderEntretienOverview([]);
+          }
 
-
-            // Col: carte compétence compacte
-            // Ligne = badge compétence + titre + niveau + bouton évaluer
-            const tdComp = document.createElement("td");
-
-            const rowWrap = document.createElement("div");
-            rowWrap.className = "ep-comp-card";
-            tr.dataset.neverAudited = x._neverAudited ? "1" : "0";
-
-            const top = document.createElement("div");
-            top.className = "ep-comp-card-top";
-
-            const badge = document.createElement("span");
-            badge.className = "sb-badge sb-badge-ref-comp-code ep-comp-code";
-            badge.textContent = (x.code || "").toString().trim();
-
-            const title = document.createElement("span");
-            title.className = "ep-comp-title";
-            title.textContent = (x.intitule || "").toString().trim();
-            title.title = title.textContent;
-
-            const niveau = (x.niveau_actuel || "").toString().trim();
-            const levelBadge = document.createElement("span");
-            levelBadge.className = `sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}`;
-            levelBadge.textContent = _nsLevelLabel4(niveau || "—");
-            levelBadge.title = "Niveau actuel";
-
-            const iconEdit = `
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-              </svg>
-            `;
-
-            const btnEdit = document.createElement("button");
-            btnEdit.type = "button";
-            btnEdit.className = "sb-icon-btn ep-comp-edit-btn";
-            btnEdit.title = "Évaluer la compétence";
-            btnEdit.setAttribute("aria-label", "Évaluer la compétence");
-            btnEdit.innerHTML = iconEdit;
-
-            btnEdit.addEventListener("click", (ev) => {
-              ev.preventDefault();
-              ev.stopPropagation();
-              tr.click();
-            });
-
-            top.appendChild(badge);
-            top.appendChild(title);
-            top.appendChild(levelBadge);
-            top.appendChild(btnEdit);
-
-            rowWrap.appendChild(top);
-            tdComp.appendChild(rowWrap);
-
-            tr.appendChild(tdComp);
-
-            // ---- CLIC COMPETENCE ----
-            tr.addEventListener("click", async () => {
-              // sélection visuelle
-              const tb = $("ep_tblCompetences")?.querySelector("tbody");
-              if (tb) tb.querySelectorAll("tr.active").forEach(r => r.classList.remove("active"));
-              tr.classList.add("active");
-
-              state.selectedCompetenceId = x.id_comp || null;
-              state.selectedEffectifCompetenceId = x.id_effectif_competence || null;
-
-              state._entretienAuditContext = null;              
-              state._historyAuditEditing = null;
-
-              const evalModal = $("modalEpEvaluation");
-              if (evalModal) evalModal.classList.remove("is-history-readonly", "is-history-editable");
-
-              clearSaveInlineMsg();
-              openModal("modalEpEvaluation");
-
-              // En-tête évaluation
-              setText("ep_evalHint", "Évaluation en cours.");
-              renderEvalCompetenceTitle(x.code, x.intitule);
-              renderEvalDomainBadge("", "");
-
-              // reset champs saisie
-              for (let i = 1; i <= 4; i++) {
-                setText(`ep_critLabel${i}`, "—");
-                const sel = $(`ep_critNote${i}`);
-                if (sel) sel.value = "";
-                const com = $(`ep_critCom${i}`);
-                if (com) com.value = "";
-                setDisabled(`ep_critNote${i}`, true);
-                setDisabled(`ep_critCom${i}`, true);
-              }
-              const obs = $("ep_txtObservation");
-              if (obs) obs.value = "";
-              setDisabled("ep_txtObservation", true);
-
-              // charge le détail compétence via l’API existante du référentiel (on ne réinvente rien)
-              try {
-                if (!_portal) return;
-
-                // cache léger
-                state._compDetailCache = state._compDetailCache || {};
-                let detail = state._compDetailCache[x.id_comp];
-
-                if (!detail) {
-                  // service réel du collaborateur si dispo, sinon fallback sur service filtre
-                  const id_service = (state.selectedCollaborateurServiceId || state.serviceId || "").toString().trim();
-                  if (!id_service) throw new Error("Service introuvable pour charger le détail de compétence.");
-
-                  const url = `${_portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id_service)}/${encodeURIComponent(x.id_comp)}`;
-                  detail = await _portal.apiJson(url);
-                  state._compDetailCache[x.id_comp] = detail;
-                }
-
-                const comp = detail?.competence || {};
-                const grid = comp?.grille_evaluation || null;
-
-                // Domaine : badge standard domaine avec rond couleur + fond soft + bordure couleur
-                const dom = comp?.domaine || null;
-
-                const domLabel = dom
-                  ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "")
-                  : (x.domaine || "");
-
-                renderEvalDomainBadge(domLabel, dom?.couleur || "");
-
-
-                // Critères: on prend jusqu’à 4 critères renseignés
-                const keys = (grid && typeof grid === "object") ? Object.keys(grid) : [];
-                const sortKey = (k) => {
-                  const m = String(k).match(/(\d+)/);
-                  return m ? parseInt(m[1], 10) : 999;
-                };
-                const ordered = keys.slice().sort((a, b) => sortKey(a) - sortKey(b));
-
-                let nbEnabled = 0;
-
-                for (let i = 1; i <= 4; i++) {
-                const key = ordered[i - 1];
-                const c = key ? (grid[key] || {}) : null;
-
-                const nom = c ? (c.Nom ?? c.nom ?? "").toString().trim() : "";
-                const evalsRaw = c ? (Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : []) : [];
-
-                // On garde les 4 textes pour le popover…
-                const evalsAll = (evalsRaw || []).map(v => (v ?? "").toString().trim());
-                // …mais pour décider si le critère existe, on ne compte que les textes non vides
-                const evalsNonEmpty = evalsAll.filter(v => v.length > 0);
-
-                const enabled = !!key && (nom.length > 0 || evalsNonEmpty.length > 0);
-
-                const labelEl = $(`ep_critLabel${i}`);
-                const noteId = `ep_critNote${i}`;
-                const comId  = `ep_critCom${i}`;
-
-                // Ligne (tr) pour masquer/afficher
-                const tr = labelEl ? labelEl.closest("tr") : null;
-                if (tr) tr.style.display = enabled ? "" : "none";
-
-                // Si critère vide -> on bloque tout et on nettoie
-                if (!enabled) {
-                    if (labelEl) labelEl.textContent = "";
-                    const sel = $(noteId);
-                    if (sel) sel.value = "";
-                    const com = $(comId);
-                    if (com) com.value = "";
-
-                    setDisabled(noteId, true);
-                    setDisabled(comId, true);
-                    continue;
-                }
-
-                // Label + bouton aide ⓘ propre
-                const labelText = (nom || key || "").toString().trim();
-
-                if (labelEl) {
-                    labelEl.innerHTML = "";
-
-                    const spanTxt = document.createElement("span");
-                    spanTxt.textContent = labelText;
-                    labelEl.appendChild(spanTxt);
-
-                    const btn = document.createElement("button");
-                    btn.type = "button";
-                    btn.className = "ep-crit-help";
-                    btn.textContent = "i";
-                    btn.title = "Guide de notation";
-                    btn.setAttribute("aria-label", "Guide de notation");
-
-                    // Style minimal, propre, lisible (pas la bordure de tracteur)
-                    btn.style.marginLeft = "10px";
-                    btn.style.width = "22px";
-                    btn.style.height = "22px";
-                    btn.style.borderRadius = "999px";
-                    btn.style.border = "1px solid #d1d5db";
-                    btn.style.background = "#fff";
-                    btn.style.color = "#111";
-                    btn.style.fontWeight = "700";
-                    btn.style.fontSize = "13px";
-                    btn.style.lineHeight = "20px";
-                    btn.style.padding = "0";
-                    btn.style.cursor = "pointer";
-
-                    btn.addEventListener("click", (ev) => {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-
-                    const sel = $(noteId);
-                    const selectedNote = sel ? (sel.value || "") : "";
-                    openGuidePopover(btn, i, labelText, evalsAll, selectedNote);
-                    });
-
-                    labelEl.appendChild(btn);
-                }
-
-                setDisabled(noteId, false);
-                setDisabled(comId, false);
-
-                nbEnabled += 1;
-                }
-
-
-
-                // Affichage résultat (le calcul reste interne sur 24, l'utilisateur voit une maîtrise %)
-                setText("ep_scoreRaw", "—");
-                setText("ep_scorePct", "—");
-                setText("ep_levelABC", "—");
-
-                // Déverrouillage global
-                setDisabled("ep_selEvalMethod", false);
-                setDisabled("ep_txtObservation", false);
-
-                setDisabled("ep_btnSave", false);
-
-              } catch (e) {
-                _portal && _portal.showAlert("error", "Détail compétence", String(e?.message || e));
-              }
-            });
-
-            if (tbody) tbody.appendChild(tr);
-          });
-
-
+          epLoadPunctualHistorySummary();
 
           // Slider criticité activé + filtre appliqué
           bindCriticiteSliderOnce();
@@ -1803,10 +1994,9 @@ function renderCollaborateurs(list) {
     if (state._covRefreshTimer) clearTimeout(state._covRefreshTimer);
 
     state._covRefreshTimer = setTimeout(() => {
-      state._covData = null;
-      state._covLastKey = null;
-      refreshCouverturePosteActuel(true);
-    }, 220);
+      epRenderAnnualCompetenceSummary(state._checklistAll || []);
+      epApplyPunctualFilters();
+    }, 120);
   }
 
   function bindCriticiteSliderOnce() {
@@ -1833,8 +2023,7 @@ function renderCollaborateurs(list) {
   function applyChecklistCriticiteFilter() {
     const rng = $("ep_rngCriticite");
     const valEl = $("ep_rngCriticiteVal");
-    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
-    if (!rng || !tbody) return;
+    if (!rng) return;
 
     const seuil = Math.max(0, Math.min(100, Number(rng.value || 0)));
     state._critSeuil = seuil;
@@ -1842,27 +2031,15 @@ function renderCollaborateurs(list) {
     updateCriticiteSliderVisual();
 
     const EPS = 0.0001;
-
-    // Filtrage DOM : seuil inclusif, donc 75 affiche bien 75.
-    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
-      const pct = getEpCritPctValue(tr.dataset.critPct);
-      tr.style.display = (pct + EPS >= seuil) ? "" : "none";
-    });
-
-    // Compteurs / KPI basés sur la liste complète en mémoire
     const all = Array.isArray(state._checklistAll) ? state._checklistAll : [];
     const filtered = all.filter(x => getEpCritPctValue(x?.poids_criticite_pct) + EPS >= seuil);
-
-    const total = all.length;
-    const shown = filtered.length;
     const todo = filtered.filter(x => x._neverAudited).length;
 
-    // Affiche "X / Y" pour que l’utilisateur comprenne le filtre
-    setText("ep_compCount", total ? `${shown} / ${total}` : "0");
-    setText("ep_kpiToDo", `${todo} / ${shown}`);
+    setText("ep_kpiToDo", `${todo} / ${filtered.length}`);
+    epRenderAnnualCompetenceSummary(filtered);
+    epApplyPunctualFilters();
 
-    // Si la compétence sélectionnée vient d'être masquée -> on reset
-    const active = tbody.querySelector("tr.active");
+    const active = $("ep_tblCompetences")?.querySelector("tbody tr.active");
     if (active && active.style.display === "none") {
       active.classList.remove("active");
       state.selectedCompetenceId = null;
@@ -1870,6 +2047,7 @@ function renderCollaborateurs(list) {
       resetEvaluationPanel();
     }
   }
+
 
 
   async function loadCollaborateurs() {
@@ -1901,6 +2079,7 @@ function renderCollaborateurs(list) {
 
       renderCollaborateurs(data || []);
       setText("ep_ctxService", getSelectedServiceName() || "—");
+      setText("ep_ctxServiceBadge", getSelectedServiceName() || "Service non renseigné");
 
     } catch (e) {
       if (state._collabLoadSeq !== loadSeq) return;
@@ -1909,6 +2088,7 @@ function renderCollaborateurs(list) {
       console.error(e);
       renderCollaborateurs([]);
       setText("ep_ctxService", getSelectedServiceName() || "—");
+      setText("ep_ctxServiceBadge", getSelectedServiceName() || "Service non renseigné");
     } finally {
       if (state._collabLoadSeq === loadSeq) {
         state._collabLoadingKey = "";
@@ -2616,6 +2796,7 @@ function renderCollaborateurs(list) {
     const data = await _portal.apiJson(url);
 
     state._entretiensList = Array.isArray(data) ? data : [];
+    epRenderEntretienOverview(state._entretiensList);
     renderEntretiensIndividuels(state._entretiensList);
 
     return state._entretiensList;
@@ -3759,6 +3940,7 @@ function renderCollaborateurs(list) {
         _bound = true;
 
         bindFiltersToggleOnce();
+        bindPageTabsOnce();
         updateCriticiteSliderVisual();
 
         if (!state._preselectListenersBound) {
@@ -3815,36 +3997,6 @@ function renderCollaborateurs(list) {
             if (e.target === modalHistory) closeHistory();
         });
         }
-
-        // Modal Coverage Detail (standard)
-        const modalCov = $("modalEpCoverageDetail");
-        const btnXCov = $("btnCloseEpCoverageDetailModalX");
-        const btnCloseCov = $("btnEpCoverageDetailModalClose");
-        const closeCov = () => closeModal("modalEpCoverageDetail");
-
-        if (btnXCov) btnXCov.addEventListener("click", closeCov);
-        if (btnCloseCov) btnCloseCov.addEventListener("click", closeCov);
-        if (modalCov) {
-          modalCov.addEventListener("click", (e) => {
-            if (e.target === modalCov) closeCov();
-          });
-        }
-
-        // Clic sur la jauge -> ouvre le détail
-        const svgCov = $("ep_svgGauge") || document.querySelector("#ep_covWrap svg");
-        if (svgCov) {
-          svgCov.style.cursor = "pointer";
-          svgCov.style.pointerEvents = "auto";
-
-          svgCov.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            openModal("modalEpCoverageDetail");
-            if (typeof renderCoverageDetailModal === "function") renderCoverageDetailModal();
-          });
-        }
-
-
 
         // Header actions
         const btnHelp = $("ep_btnHelpScoring");

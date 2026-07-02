@@ -15,7 +15,7 @@
       </div>
       <div style="min-width:0;">
         <div class="card-title ep-page-head__title">Entretiens & évaluations</div>
-        <div class="card-sub ep-page-head__sub">Piloter les entretiens, identifier les compétences à auditer et tracer les évaluations.</div>
+        <div class="card-sub ep-page-head__sub">Préparer, réaliser et valider les entretiens de vos collaborateurs.</div>
       </div>
     </div>
 
@@ -130,125 +130,299 @@
 
     <div class="ep-work-col">
       <div class="card ep-panel-card ep-summary-empty-card" id="ep_covHint">
-        La synthèse apparaîtra après sélection d'un collaborateur
+        Sélectionne un collaborateur pour préparer un entretien ou lancer une évaluation.
       </div>
 
-      <div id="ep_covWrap" class="ep-summary-split" style="display:none;">
-        <div class="card ep-panel-card ep-summary-card" id="ep_cardSyntheseCollaborateur">
-          <div class="card-header ep-summary-head">
-            <div class="ep-section-title">
-              <span class="ep-section-title__icon" aria-hidden="true">
+      <div id="ep_covWrap" class="ep-collab-workspace" style="display:none;">
+        <div class="card ep-panel-card ep-collab-summary-card" id="ep_cardSyntheseCollaborateur">
+          <div class="card-body ep-collab-summary-body">
+            <div class="ep-collab-summary-main">
+              <div class="ep-collab-avatar" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M18 21a6 6 0 0 0-12 0"/><circle cx="12" cy="8" r="4"/><path d="M22 21a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </span>
-              <span class="card-title">Synthèse collaborateur</span>
-            </div>
-          </div>
-
-          <div class="card-body ep-summary-body">
-            <div class="ep-summary-person">
-              <div class="ep-summary-label">Collaborateur</div>
-              <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
-              <div class="ep-summary-role" id="ep_ctxPoste">—</div>
-
-              <div class="ep-summary-actions">
-                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnHistoryGlobal">
-                  <span class="sb-btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                  </span>
-                  <span>Historique des entretiens</span>
-                </button>
-
-                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnEntretienIndividuel">
-                  <span class="sb-btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-                  </span>
-                  <span>Préparer un entretien individuel</span>
-                </button>
-
-                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnReportPdf">
-                  <span class="sb-btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
-                  </span>
-                  <span>Générer un rapport PDF</span>
-                </button>
               </div>
-
-              <div class="ep-entretien-active" id="ep_entretienActiveLabel" style="display:none;"></div>
-
-              <div id="ep_ctxMatricule" style="display:none;">—</div>
-              <div id="ep_ctxService" style="display:none;">—</div>
-              <div id="ep_ctxDate" style="display:none;">—</div>
-              <div id="ep_kpiToDo" style="display:none;">0</div>
+              <div class="ep-collab-identity">
+                <div class="ep-summary-label">Collaborateur</div>
+                <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
+                <div class="ep-summary-role" id="ep_ctxPoste">—</div>
+                <div class="ep-collab-service-pill" id="ep_ctxServiceBadge">Service non renseigné</div>
+              </div>
             </div>
+
+            <div class="ep-collab-summary-grid">
+              <div class="ep-collab-summary-item">
+                <span>Dernier entretien annuel</span>
+                <strong id="ep_annualLastDate">—</strong>
+                <em id="ep_annualLastSub">—</em>
+              </div>
+              <div class="ep-collab-summary-item">
+                <span>Prochaine échéance</span>
+                <strong id="ep_annualNextDate">—</strong>
+                <em id="ep_annualNextSub">—</em>
+              </div>
+              <div class="ep-collab-summary-item">
+                <span>Entretien en cours</span>
+                <strong><span class="sb-badge ep-entretien-status" id="ep_annualCurrentStatus">—</span></strong>
+                <em id="ep_annualCurrentSub">—</em>
+              </div>
+              <div class="ep-collab-summary-item">
+                <span>Signatures</span>
+                <strong><span class="sb-badge ep-entretien-status" id="ep_annualSignatureStatus">—</span></strong>
+                <em id="ep_annualSignatureSub">—</em>
+              </div>
+            </div>
+
+            <div id="ep_ctxMatricule" style="display:none;">—</div>
+            <div id="ep_ctxService" style="display:none;">—</div>
+            <div id="ep_ctxDate" style="display:none;">—</div>
+            <div id="ep_kpiToDo" style="display:none;">0</div>
+            <div id="ep_compCount" style="display:none;">0</div>
           </div>
         </div>
 
-        <div class="card ep-panel-card ep-gauge-card" id="ep_cardCouverturePoste">
-          <div class="card-header ep-summary-head ep-gauge-head">
-            <div class="ep-section-title">
-              <span class="ep-section-title__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-18 0"/><path d="M12 12 8 8"/><path d="M12 3v3"/><path d="M3.6 8.5l2.6 1.5"/><path d="M20.4 8.5 17.8 10"/></svg>
-              </span>
-              <span class="card-title">Maîtrise du poste</span>
+        <div class="ep-page-tabs" role="tablist" aria-label="Types d'entretiens">
+          <button type="button" class="ep-page-tab is-active" data-ep-tab="annuel" role="tab" aria-selected="true">Entretien annuel</button>
+          <button type="button" class="ep-page-tab" data-ep-tab="ponctuel" role="tab" aria-selected="false">Entretien ponctuel</button>
+          <button type="button" class="ep-page-tab" data-ep-tab="formation" role="tab" aria-selected="false">Suivi post-formation</button>
+        </div>
+
+        <div class="ep-tab-panel is-active" id="ep_panelAnnuel" data-ep-panel="annuel">
+          <div class="card ep-panel-card ep-annual-flow-card">
+            <div class="ep-panel-title-row">
+              <div>
+                <div class="card-title">Entretien annuel en cours</div>
+                <div class="card-sub">Un flux unique : préparer, réaliser, signer, produire le rapport.</div>
+              </div>
             </div>
 
-            <div class="ep-summary-help-wrap">
-              <button type="button" class="ep-round-help ep-summary-help" id="ep_btnSummaryHelp" aria-label="Comprendre la jauge">?</button>
+            <div class="ep-annual-steps">
+              <div class="ep-annual-step" id="ep_stepPreparation">
+                <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M9 7h6"/><path d="M5 5a2 2 0 0 1 2-2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5"/></svg></div>
+                <div class="ep-step-title">1. Préparation</div>
+                <span class="sb-badge" id="ep_stepPreparationBadge">À préparer</span>
+                <div class="ep-step-sub" id="ep_stepPreparationSub">Aucune préparation ouverte</div>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAnnualPrepare">
+                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span>
+                  <span>Préparer</span>
+                </button>
+              </div>
 
-              <div class="ep-summary-help-pop" aria-hidden="true">
-                <div class="ep-priority-pop-title">Maîtrise du poste</div>
-                <div class="ep-summary-help-text">
-                  Cette jauge montre dans quelle mesure le collaborateur maîtrise les compétences attendues de son poste, en donnant plus de poids aux compétences les plus critiques.
-                  <br><br>
-                  Les compétences sous le seuil de criticité défini ne sont pas prises en compte.
+              <div class="ep-annual-step" id="ep_stepRealisation">
+                <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></div>
+                <div class="ep-step-title">2. Réalisation</div>
+                <span class="sb-badge" id="ep_stepRealisationBadge">À réaliser</span>
+                <div class="ep-step-sub" id="ep_stepRealisationSub">Planifier et conduire l’entretien</div>
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="ep_btnAnnualRealize">
+                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></span>
+                  <span>Réaliser l’entretien</span>
+                </button>
+              </div>
+
+              <div class="ep-annual-step" id="ep_stepSignatures">
+                <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></div>
+                <div class="ep-step-title">3. Signatures</div>
+                <span class="sb-badge" id="ep_stepSignaturesBadge">Non engagé</span>
+                <div class="ep-step-sub" id="ep_stepSignaturesSub">Validation électronique</div>
+              </div>
+
+              <div class="ep-annual-step" id="ep_stepRapport">
+                <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg></div>
+                <div class="ep-step-title">4. Rapport</div>
+                <span class="sb-badge" id="ep_stepRapportBadge">À générer</span>
+                <div class="ep-step-sub" id="ep_stepRapportSub">Rapport d’entretien</div>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAnnualReport">
+                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg></span>
+                  <span>Voir le rapport</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-annual-bottom-grid">
+            <div class="card ep-panel-card ep-annual-comp-card">
+              <div class="ep-panel-title-row">
+                <div class="ep-section-title">
+                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span>
+                  <span class="card-title">Compétences à aborder</span>
                 </div>
               </div>
+
+              <div class="ep-annual-metrics">
+                <div class="ep-annual-metric">
+                  <strong id="ep_annualMetricNever">0</strong>
+                  <span>Jamais évaluées</span>
+                  <em>À évaluer pour la 1re fois</em>
+                </div>
+                <div class="ep-annual-metric">
+                  <strong id="ep_annualMetricReview">0</strong>
+                  <span>À réévaluer</span>
+                  <em>Évaluées il y a plus de 24 mois</em>
+                </div>
+                <div class="ep-annual-metric">
+                  <strong id="ep_annualMetricCritical">0</strong>
+                  <span>Critiques</span>
+                  <em>Dans le périmètre du poste</em>
+                </div>
+              </div>
+
+              <button type="button" class="ep-link-row" id="ep_btnAnnualSeeCompetences">
+                <span>Voir le détail des compétences</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+
+            <div class="card ep-panel-card ep-annual-history-card">
+              <div class="ep-panel-title-row">
+                <div class="ep-section-title">
+                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></span>
+                  <span class="card-title">Historique des entretiens annuels</span>
+                </div>
+              </div>
+
+              <div class="table-wrap ep-annual-history-wrap">
+                <table class="sb-table ep-annual-history-table">
+                  <thead>
+                    <tr>
+                      <th>Année</th>
+                      <th>Date</th>
+                      <th>Statut</th>
+                      <th>Rapport</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ep_annualHistoryBody">
+                    <tr><td colspan="4" class="ep-empty-cell">Aucun entretien annuel chargé.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ep-tab-panel" id="ep_panelPonctuel" data-ep-panel="ponctuel">
+          <div class="card ep-panel-card ep-punctual-hero">
+            <div>
+              <div class="card-title">Évaluation ponctuelle</div>
+              <div class="card-sub">Évaluer une compétence hors entretien annuel.</div>
+            </div>
+            <div class="sb-actions">
+              <button type="button" class="sb-btn sb-btn--accent" id="ep_btnNewPonctuel">
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+                <span>Nouvelle évaluation ponctuelle</span>
+              </button>
+              <button type="button" class="sb-btn sb-btn--soft" id="ep_btnHistoryGlobal">
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                <span>Voir l’historique</span>
+              </button>
             </div>
           </div>
 
-          <div class="card-body ep-gauge-body">
-            <div class="ep-summary-gauge">
-              <svg id="ep_svgGauge" viewBox="0 0 240 150" aria-label="Couverture du poste actuel"></svg>
-              <div class="ep-coverage-legend">
-                <span><i class="ep-leg ep-leg--bad"></i>Écart fort</span>
-                <span><i class="ep-leg ep-leg--warn"></i>À renforcer</span>
-                <span><i class="ep-leg ep-leg--ok"></i>Conforme</span>
+          <div class="card ep-panel-card ep-competence-panel">
+            <div class="card-header ep-competence-head">
+              <div class="ep-section-title">
+                <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                <span class="card-title">Rechercher une compétence</span>
+              </div>
+              <div class="card-sub">Collaborateur : <strong id="ep_punctualCollaborateur">—</strong></div>
+            </div>
+
+            <div class="card-body">
+              <div class="ep-punctual-toolbar">
+                <div class="ep-search-field ep-punctual-search">
+                  <input id="ep_txtSearchCompetence" class="ep-search-input" placeholder="Rechercher une compétence" autocomplete="off" />
+                  <span class="ep-search-field__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                </div>
+                <select id="ep_selCompetenceDomain" class="sb-select ep-punctual-domain">
+                  <option value="">Domaine : Tous</option>
+                </select>
+                <div class="ep-status-filter" role="group" aria-label="Filtrer les compétences">
+                  <button type="button" class="ep-status-filter-btn" data-ep-status="never">Jamais évaluée</button>
+                  <button type="button" class="ep-status-filter-btn" data-ep-status="review">À revoir</button>
+                  <button type="button" class="ep-status-filter-btn is-active" data-ep-status="all">Toutes</button>
+                </div>
+              </div>
+
+              <div class="table-wrap ep-comp-table-wrap">
+                <table class="sb-table ep-punctual-table" id="ep_tblCompetences">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Compétence</th>
+                      <th>Domaine</th>
+                      <th>Dernière évaluation</th>
+                      <th>Niveau actuel</th>
+                      <th>Statut</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-punctual-bottom-grid">
+            <div class="card ep-panel-card ep-punctual-history-card">
+              <div class="ep-panel-title-row">
+                <div class="ep-section-title">
+                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                  <span class="card-title">Historique des évaluations ponctuelles</span>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="sb-table ep-punctual-history-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Compétence</th>
+                      <th>Évaluateur</th>
+                      <th>Résultat</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ep_punctualHistoryBody">
+                    <tr><td colspan="5" class="ep-empty-cell">Aucun historique chargé.</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div class="ep-summary-score">
-              <div class="ep-summary-score-value" id="ep_covPctPoste">—</div>
-              <div class="ep-summary-score-label">Maîtrise du poste</div>
-              <div class="card-sub ep-summary-score-hint">Détail au clic</div>
-              <div id="ep_covPctMax" style="display:none;">—</div>
+            <div class="card ep-panel-card ep-suggestions-card">
+              <div class="ep-panel-title-row">
+                <div class="ep-section-title">
+                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12c.7.6 1 1.4 1 2h6c0-.6.3-1.4 1-2a7 7 0 0 0-4-12Z"/></svg></span>
+                  <span class="card-title">Suggestions du moment</span>
+                </div>
+              </div>
+              <div class="ep-suggestions-list" id="ep_suggestionsList">
+                <div class="ep-history-empty">Sélectionne un collaborateur.</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="card ep-panel-card ep-competence-panel">
-        <div class="card-header ep-competence-head">
-          <div class="ep-section-title">
-            <span class="ep-section-title__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
-            </span>
-            <span class="card-title">Compétences à auditer</span>
+        <div class="ep-tab-panel" id="ep_panelFormation" data-ep-panel="formation">
+          <div class="card ep-panel-card ep-formation-hero">
+            <div>
+              <div class="card-title">Évaluation post-formation</div>
+              <div class="card-sub">Vérifier le transfert des acquis en situation de travail.</div>
+            </div>
+            <div class="sb-actions">
+              <button type="button" class="sb-btn sb-btn--accent" id="ep_btnFormationEval" disabled>
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3Z"/></svg></span>
+                <span>Lancer l’évaluation</span>
+              </button>
+              <button type="button" class="sb-btn sb-btn--soft" id="ep_btnFormationReport" disabled>
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg></span>
+                <span>Voir le rapport</span>
+              </button>
+            </div>
           </div>
-          <div id="ep_compCount" style="display:none;">0</div>
-        </div>
 
-        <div class="card-body">
-          <!-- Filtre criticité déplacé dans la carte Périmètre -->
-
-          <div class="table-wrap ep-comp-table-wrap">
-            <table class="sb-table" id="ep_tblCompetences">
-              <thead>
-                <tr>
-                  <th>Compétence</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+          <div class="card ep-panel-card ep-formation-empty-card">
+            <div class="ep-empty-illustration" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg></div>
+            <div>
+              <div class="card-title">Aucune formation terminée à suivre pour l’instant</div>
+              <div class="card-sub">Cet onglet recevra les évaluations à froid lorsque les formations terminées seront reliées au collaborateur.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -510,7 +684,6 @@
             <div class="ep-prog-viewbar">
               <button type="button" class="ep-prog-view is-active" data-view="competences">Compétences</button>
               <button type="button" class="ep-prog-view" data-view="domaines">Domaines</button>
-              <button type="button" class="ep-prog-view" data-view="poste">Maîtrise du poste</button>
             </div>
           </div>
 
@@ -805,43 +978,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Modal: détail couverture poste -->
-  <div class="modal" id="modalEpCoverageDetail" aria-hidden="true">
-    <div class="modal-card modal-card--wide">
-      <div class="modal-header">
-        <div style="font-weight:600;">Détail couverture du poste</div>
-        <button type="button" class="modal-x" id="btnCloseEpCoverageDetailModalX" aria-label="Fermer">×</button>
-      </div>
-
-      <div class="modal-body">
-        <div class="card-sub" style="margin-top:0;">
-          Détail des compétences attendues pour le poste actuel, avec le niveau requis, la criticité et le niveau du salarié.
-        </div>
-
-        <div class="hint" id="ep_covDetailInfo" style="margin-top:8px;"></div>
-
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table" id="ep_tblCoverageDetail">
-            <thead>
-              <tr>
-                <th>Compétence</th>
-                <th class="col-center">Criticité</th>
-                <th class="col-center">Niveau requis</th>
-                <th class="col-center">Niveau salarié</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="btnEpCoverageDetailModalClose">Fermer</button>
-      </div>
-    </div>
-  </div>
-
 
   <!-- Modal Observation (depuis Historique) -->
   <div class="modal" id="modalEpHistoryObs" aria-hidden="true">

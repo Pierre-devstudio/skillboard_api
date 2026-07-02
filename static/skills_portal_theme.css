@@ -28931,3 +28931,620 @@ body{
     grid-template-columns:1fr;
   }
 }
+
+/* ======================================================
+   Entretiens & évaluations — socle onglets métier
+   ====================================================== */
+#view-entretien-performance .ep-collab-workspace{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#view-entretien-performance .ep-collab-summary-card{
+  overflow:hidden;
+}
+
+#view-entretien-performance .ep-collab-summary-body{
+  display:grid;
+  grid-template-columns:minmax(240px, .9fr) minmax(0, 1.6fr);
+  gap:18px;
+  align-items:center;
+  padding:18px 20px;
+}
+
+#view-entretien-performance .ep-collab-summary-main{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+
+#view-entretien-performance .ep-collab-avatar{
+  width:56px;
+  height:56px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  background:color-mix(in srgb, var(--accent) 8%, #fff);
+  border:1px solid color-mix(in srgb, var(--accent) 14%, var(--sb-gray-200));
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-collab-avatar svg{
+  width:26px;
+  height:26px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-entretien-performance .ep-collab-identity{
+  min-width:0;
+}
+
+#view-entretien-performance .ep-collab-service-pill{
+  margin-top:8px;
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  max-width:100%;
+  min-height:24px;
+  padding:0 9px;
+  border-radius:999px;
+  background:#f8fafc;
+  border:1px solid var(--sb-gray-200);
+  color:var(--sb-gray-700);
+  font-size:12px;
+  font-weight:600;
+}
+
+#view-entretien-performance .ep-collab-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:0;
+  border-left:1px solid var(--sb-gray-200);
+}
+
+#view-entretien-performance .ep-collab-summary-item{
+  min-width:0;
+  padding:2px 14px;
+  border-right:1px solid var(--sb-gray-200);
+}
+
+#view-entretien-performance .ep-collab-summary-item:last-child{
+  border-right:0;
+}
+
+#view-entretien-performance .ep-collab-summary-item span:not(.sb-badge){
+  display:block;
+  color:var(--sb-gray-700);
+  font-size:12px;
+  font-weight:650;
+  line-height:1.25;
+}
+
+#view-entretien-performance .ep-collab-summary-item strong{
+  display:block;
+  margin-top:8px;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:700;
+  line-height:1.2;
+}
+
+#view-entretien-performance .ep-collab-summary-item em{
+  display:block;
+  margin-top:8px;
+  color:var(--sb-gray-500);
+  font-style:normal;
+  font-size:12px;
+  font-weight:500;
+  line-height:1.25;
+}
+
+#view-entretien-performance .ep-page-tabs{
+  display:flex;
+  align-items:center;
+  gap:24px;
+  min-height:44px;
+  padding:0 4px;
+  border-bottom:1px solid var(--sb-gray-200);
+}
+
+#view-entretien-performance .ep-page-tab{
+  position:relative;
+  height:44px;
+  border:0;
+  background:transparent;
+  color:var(--sb-gray-700);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:650;
+  padding:0 10px;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-page-tab::after{
+  content:"";
+  position:absolute;
+  left:8px;
+  right:8px;
+  bottom:-1px;
+  height:2px;
+  border-radius:999px 999px 0 0;
+  background:transparent;
+}
+
+#view-entretien-performance .ep-page-tab.is-active{
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-page-tab.is-active::after{
+  background:var(--accent);
+}
+
+#view-entretien-performance .ep-tab-panel{
+  display:none;
+  flex-direction:column;
+  gap:12px;
+}
+
+#view-entretien-performance .ep-tab-panel.is-active{
+  display:flex;
+}
+
+#view-entretien-performance .ep-panel-title-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+#view-entretien-performance .ep-annual-flow-card,
+#view-entretien-performance .ep-punctual-hero,
+#view-entretien-performance .ep-formation-hero{
+  padding:18px 20px;
+}
+
+#view-entretien-performance .ep-punctual-hero,
+#view-entretien-performance .ep-formation-hero{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+#view-entretien-performance .ep-annual-steps{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:12px;
+}
+
+#view-entretien-performance .ep-annual-step{
+  min-width:0;
+  padding:14px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:8px;
+}
+
+#view-entretien-performance .ep-step-icon{
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:color-mix(in srgb, var(--accent) 9%, #fff);
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-step-icon svg,
+#view-entretien-performance .ep-empty-illustration svg,
+#view-entretien-performance .ep-suggestion-icon svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-entretien-performance .ep-step-icon svg{
+  width:20px;
+  height:20px;
+}
+
+#view-entretien-performance .ep-step-title{
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:700;
+  line-height:1.25;
+}
+
+#view-entretien-performance .ep-step-sub{
+  min-height:30px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.25;
+}
+
+#view-entretien-performance .ep-annual-bottom-grid,
+#view-entretien-performance .ep-punctual-bottom-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+  gap:12px;
+}
+
+#view-entretien-performance .ep-annual-comp-card,
+#view-entretien-performance .ep-annual-history-card,
+#view-entretien-performance .ep-punctual-history-card,
+#view-entretien-performance .ep-suggestions-card{
+  padding:16px 18px;
+}
+
+#view-entretien-performance .ep-annual-metrics{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+
+#view-entretien-performance .ep-annual-metric{
+  padding:12px 10px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:13px;
+  background:#fff;
+  text-align:center;
+}
+
+#view-entretien-performance .ep-annual-metric strong{
+  display:block;
+  color:var(--accent);
+  font-size:22px;
+  line-height:1;
+  font-weight:650;
+}
+
+#view-entretien-performance .ep-annual-metric span{
+  display:block;
+  margin-top:7px;
+  color:var(--sb-gray-900);
+  font-size:12px;
+  font-weight:700;
+}
+
+#view-entretien-performance .ep-annual-metric em{
+  display:block;
+  margin-top:5px;
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-style:normal;
+  line-height:1.25;
+}
+
+#view-entretien-performance .ep-link-row{
+  width:100%;
+  margin-top:12px;
+  border:1px solid var(--sb-gray-200);
+  background:#fff;
+  border-radius:12px;
+  min-height:40px;
+  padding:0 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:var(--sb-gray-700);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:650;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-link-row:hover{
+  border-color:color-mix(in srgb, var(--accent) 35%, var(--sb-gray-300));
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-empty-cell{
+  color:var(--sb-gray-500);
+  font-size:12px;
+  text-align:center;
+  padding:14px !important;
+}
+
+#view-entretien-performance .ep-punctual-toolbar{
+  display:grid;
+  grid-template-columns:minmax(220px, 1fr) minmax(180px, 260px) auto;
+  gap:10px;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+#view-entretien-performance .ep-punctual-search{
+  margin-top:0;
+}
+
+#view-entretien-performance .ep-punctual-domain{
+  height:38px;
+}
+
+#view-entretien-performance .ep-status-filter{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+#view-entretien-performance .ep-status-filter-btn{
+  border:1px solid var(--sb-gray-200);
+  background:#fff;
+  color:var(--sb-gray-700);
+  height:30px;
+  padding:0 11px;
+  border-radius:999px;
+  font-family:inherit;
+  font-size:12px;
+  font-weight:650;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-status-filter-btn.is-active{
+  color:var(--accent);
+  border-color:color-mix(in srgb, var(--accent) 28%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--accent) 7%, #fff);
+}
+
+#view-entretien-performance .ep-comp-table-wrap{
+  max-height:calc(100vh - 505px);
+  min-height:260px;
+  overflow:auto;
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  background:#fff;
+}
+
+#view-entretien-performance .ep-punctual-table{
+  border-collapse:collapse;
+  border-spacing:0;
+}
+
+#view-entretien-performance .ep-punctual-table thead{
+  display:table-header-group;
+}
+
+#view-entretien-performance .ep-punctual-table thead th{
+  position:sticky;
+  top:0;
+  z-index:1;
+  background:#fff;
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:700;
+  border-bottom:1px solid var(--sb-gray-200);
+}
+
+#view-entretien-performance .ep-punctual-table tbody td{
+  padding:9px 10px;
+  border-bottom:1px solid var(--sb-gray-100);
+  font-size:12px;
+  color:var(--sb-gray-700);
+  vertical-align:middle;
+}
+
+#view-entretien-performance .ep-punctual-table tbody tr{
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-punctual-table tbody tr:hover{
+  background:color-mix(in srgb, var(--accent) 3%, #fff);
+}
+
+#view-entretien-performance .ep-punctual-table tbody tr.active{
+  background:color-mix(in srgb, var(--accent) 6%, #fff);
+}
+
+#view-entretien-performance .ep-punctual-comp-title{
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:650;
+  line-height:1.25;
+  max-width:360px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-status-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:22px;
+  padding:0 9px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+#view-entretien-performance .ep-status-badge--success{
+  color:#166534;
+  background:rgba(22,163,74,.10);
+  border:1px solid rgba(22,163,74,.18);
+}
+
+#view-entretien-performance .ep-status-badge--warning{
+  color:#92400e;
+  background:rgba(245,158,11,.12);
+  border:1px solid rgba(245,158,11,.22);
+}
+
+#view-entretien-performance .ep-status-badge--danger{
+  color:#991b1b;
+  background:rgba(220,38,38,.08);
+  border:1px solid rgba(220,38,38,.15);
+}
+
+#view-entretien-performance .ep-suggestions-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+#view-entretien-performance .ep-suggestion-row{
+  width:100%;
+  min-height:38px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  padding:0 10px;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto auto;
+  gap:10px;
+  align-items:center;
+  color:var(--sb-gray-700);
+  font-family:inherit;
+  font-size:12px;
+  font-weight:650;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-suggestion-row:hover{
+  border-color:color-mix(in srgb, var(--accent) 28%, var(--sb-gray-200));
+  background:color-mix(in srgb, var(--accent) 4%, #fff);
+}
+
+#view-entretien-performance .ep-suggestion-main{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-suggestion-icon{
+  width:22px;
+  height:22px;
+  border-radius:999px;
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:color-mix(in srgb, var(--accent) 7%, #fff);
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-suggestion-icon svg{
+  width:14px;
+  height:14px;
+}
+
+#view-entretien-performance .ep-formation-empty-card{
+  min-height:230px;
+  padding:28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  text-align:left;
+}
+
+#view-entretien-performance .ep-empty-illustration{
+  width:52px;
+  height:52px;
+  border-radius:16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  background:color-mix(in srgb, var(--accent) 8%, #fff);
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-empty-illustration svg{
+  width:26px;
+  height:26px;
+}
+
+@media (max-width:1200px){
+  #view-entretien-performance .ep-collab-summary-body{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-collab-summary-grid{
+    border-left:0;
+    border-top:1px solid var(--sb-gray-200);
+    padding-top:12px;
+  }
+
+  #view-entretien-performance .ep-annual-steps{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  #view-entretien-performance .ep-punctual-toolbar{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-status-filter{
+    justify-content:flex-start;
+  }
+}
+
+@media (max-width:760px){
+  #view-entretien-performance .ep-collab-summary-grid,
+  #view-entretien-performance .ep-annual-steps,
+  #view-entretien-performance .ep-annual-bottom-grid,
+  #view-entretien-performance .ep-punctual-bottom-grid{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-collab-summary-item{
+    border-right:0;
+    border-bottom:1px solid var(--sb-gray-200);
+    padding:10px 0;
+  }
+
+  #view-entretien-performance .ep-page-tabs{
+    overflow-x:auto;
+  }
+
+  #view-entretien-performance .ep-punctual-hero,
+  #view-entretien-performance .ep-formation-hero{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
+
+#view-entretien-performance .ep-entretien-status--prepare,
+#view-entretien-performance .ep-entretien-status--disponible,
+#view-entretien-performance .ep-entretien-status--signe{
+  color:#166534;
+  background:rgba(22,163,74,.10);
+  border-color:rgba(22,163,74,.18);
+}
+
+#view-entretien-performance .ep-entretien-status--signature-en-attente,
+#view-entretien-performance .ep-entretien-status--a-generer,
+#view-entretien-performance .ep-entretien-status--a-preparer{
+  color:#92400e;
+  background:rgba(245,158,11,.12);
+  border-color:rgba(245,158,11,.22);
+}
+
+#view-entretien-performance .ep-entretien-status--non-engage,
+#view-entretien-performance .ep-entretien-status--neutre{
+  color:var(--sb-gray-700);
+  background:#f8fafc;
+  border-color:var(--sb-gray-200);
+}
