@@ -1608,14 +1608,28 @@
           <span class="ep-punctual-history-chevron" aria-hidden="true">⌄</span>
         </button>
         <div class="ep-punctual-history-acc-body${open ? " is-open" : ""}">
-          ${hasAudits ? group.audits.map(audit => `
-            <div class="ep-punctual-history-eval-row">
-              <span class="ep-punctual-history-date">${epEsc(epFormatDateFR(audit.date_audit) || "—")}</span>
-              <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
-              <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "—")}</span>
-              <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "")}">${epEsc(audit.nom_evaluateur || "—")}</span>
+          ${hasAudits ? `
+            <div class="ep-punctual-history-eval-head" aria-hidden="true">
+              <span>Date</span>
+              <span>Type d’évaluation</span>
+              <span>Niveau atteint</span>
+              <span>Évaluateur</span>
             </div>
-          `).join("") : `<div class="ep-punctual-history-empty-row">Aucune évaluation enregistrée pour cette compétence.</div>`}
+            ${group.audits.map((audit, auditIndex) => `
+              <div class="ep-punctual-history-eval-row${auditIndex >= 4 ? " ep-punctual-history-eval-extra" : ""}">
+                <span class="ep-punctual-history-date">${epEsc(epFormatDateFR(audit.date_audit) || "—")}</span>
+                <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "—")}</span>
+                <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
+                <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "Non affecté")}">Évalué par : ${epEsc(audit.nom_evaluateur || "Non affecté")}</span>
+              </div>
+            `).join("")}
+            ${group.audits.length > 4 ? `
+              <button type="button" class="ep-punctual-history-more-audits" data-ep-more-audits="1" aria-expanded="false">
+                <span>Voir toutes les évaluations (${group.audits.length - 4})</span>
+                <span class="ep-more-competences__chevron" aria-hidden="true">⌄</span>
+              </button>
+            ` : ""}
+          ` : `<div class="ep-punctual-history-empty-row">Aucune évaluation enregistrée pour cette compétence.</div>`}
         </div>
       `;
 
@@ -1625,6 +1639,18 @@
         const isOpen = head.classList.toggle("is-open");
         head.setAttribute("aria-expanded", isOpen ? "true" : "false");
         body?.classList.toggle("is-open", isOpen);
+      });
+
+      const moreAuditsBtn = acc.querySelector('[data-ep-more-audits="1"]');
+      moreAuditsBtn?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const isExpanded = body?.classList.toggle("is-audits-expanded");
+        moreAuditsBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+        const label = moreAuditsBtn.querySelector("span");
+        if (label) {
+          label.textContent = isExpanded ? "Voir moins d’évaluations" : `Voir toutes les évaluations (${Math.max(0, group.audits.length - 4)})`;
+        }
       });
 
       list.appendChild(acc);

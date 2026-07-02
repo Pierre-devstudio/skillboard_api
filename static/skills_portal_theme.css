@@ -29529,15 +29529,36 @@ body{
   display:block;
 }
 
+#view-entretien-performance .ep-punctual-history-eval-head,
 #view-entretien-performance .ep-punctual-history-eval-row{
   display:grid;
-  grid-template-columns:105px 128px minmax(130px, 1fr) minmax(120px, .9fr);
+  grid-template-columns:105px minmax(150px, 1fr) 128px minmax(170px, 1fr);
   gap:10px;
   align-items:center;
+}
+
+#view-entretien-performance .ep-punctual-history-eval-head{
+  padding:7px 0 6px;
+  border-top:1px solid var(--sb-gray-100);
+  color:var(--sb-gray-400);
+  font-size:10.5px;
+  font-weight:750;
+  letter-spacing:.01em;
+}
+
+#view-entretien-performance .ep-punctual-history-eval-row{
   padding:8px 0;
   border-top:1px solid var(--sb-gray-100);
   color:var(--sb-gray-700);
   font-size:12px;
+}
+
+#view-entretien-performance .ep-punctual-history-eval-row.ep-punctual-history-eval-extra{
+  display:none;
+}
+
+#view-entretien-performance .ep-punctual-history-acc-body.is-audits-expanded .ep-punctual-history-eval-row.ep-punctual-history-eval-extra{
+  display:grid;
 }
 
 #view-entretien-performance .ep-punctual-history-date{
@@ -29560,6 +29581,33 @@ body{
 
 #view-entretien-performance .ep-punctual-history-evaluator{
   color:var(--sb-gray-500);
+}
+
+#view-entretien-performance .ep-punctual-history-more-audits{
+  width:100%;
+  min-height:30px;
+  margin:2px 0 0;
+  border:0;
+  border-top:1px solid var(--sb-gray-100);
+  background:#fff;
+  color:var(--sb-gray-500);
+  font-family:inherit;
+  font-size:11.5px;
+  font-weight:650;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-punctual-history-more-audits:hover{
+  background:color-mix(in srgb, var(--accent) 3%, #fff);
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-punctual-history-more-audits[aria-expanded="true"] .ep-more-competences__chevron{
+  transform:rotate(180deg) translateY(1px);
 }
 
 #view-entretien-performance .ep-punctual-history-empty-row{
@@ -30118,8 +30166,16 @@ body{
     padding-left:14px;
   }
 
+  #view-entretien-performance .ep-punctual-history-eval-head{
+    display:none;
+  }
+
   #view-entretien-performance .ep-punctual-history-eval-row{
     grid-template-columns:1fr;
     gap:5px;
+  }
+
+  #view-entretien-performance .ep-punctual-history-acc-body.is-audits-expanded .ep-punctual-history-eval-row.ep-punctual-history-eval-extra{
+    display:grid;
   }
 }
