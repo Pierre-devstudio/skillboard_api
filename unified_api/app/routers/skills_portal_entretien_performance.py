@@ -3099,7 +3099,7 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                             WHEN COALESCE(a.id_entretien_individuel, '') <> ''
                                 THEN COALESCE(NULLIF(ei.type_entretien, ''), 'Entretien individuel')
                             WHEN COALESCE(a.methode_eval, '') = ''
-                              OR lower(COALESCE(a.methode_eval, '')) LIKE '%entretien de performance%'
+                              OR lower(COALESCE(a.methode_eval, '')) LIKE '%%entretien de performance%%'
                                 THEN 'Entretien ponctuel'
                             ELSE a.methode_eval
                         END AS source_eval
