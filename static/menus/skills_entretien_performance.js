@@ -1285,6 +1285,164 @@
     el.className = `sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(txt)}`;
   }
 
+  function epPreparationRaw(entretien) {
+    const prep = entretien && typeof entretien.preparation === "object" && entretien.preparation !== null
+      ? entretien.preparation
+      : {};
+    return prep;
+  }
+
+  function epPreparationHasContent(preparation) {
+    const prep = preparation && typeof preparation === "object" ? preparation : {};
+    return [prep.notes, prep.points, prep.commentaire, prep.synthese]
+      .some(v => (v || "").toString().trim());
+  }
+
+  function epPreparationState(entretien) {
+    const prep = epPreparationRaw(entretien);
+    const raw = epNormText(prep.statut || prep.status || prep.etat || "");
+    const validationAuto = prep.validation_auto === true || epNormText(prep.validation_auto || "") === "true";
+    const validated = raw === "validee"
+      || raw === "prepare"
+      || raw === "prepared"
+      || !!prep.date_validation
+      || !!prep.date_validation_auto;
+
+    if (validated) {
+      return {
+        key: validationAuto ? "validee_auto" : "validee",
+        label: "Préparé",
+        done: true,
+        inProgress: false,
+        validationAuto,
+        dateValidation: prep.date_validation_auto || prep.date_validation || "",
+      };
+    }
+
+    const opened = raw === "en-cours"
+      || raw === "en_cours"
+      || raw === "en cours"
+      || !!prep.date_ouverture
+      || epPreparationHasContent(prep);
+
+    if (opened) {
+      return {
+        key: "en_cours",
+        label: "En cours",
+        done: false,
+        inProgress: true,
+        validationAuto: false,
+        dateOuverture: prep.date_ouverture || "",
+      };
+    }
+
+    return {
+      key: "a_preparer",
+      label: "À préparer",
+      done: false,
+      inProgress: false,
+      validationAuto: false,
+    };
+  }
+
+  function epStepBadgeSvg(kind) {
+    if (kind === "progress") {
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2"/><path d="M3 12A9 9 0 0 1 18.5 5.8"/><path d="M18 2v5h-5"/><path d="M6 22v-5h5"/></svg>`;
+    }
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`;
+  }
+
+  function epSetAnnualStepState(el, stepState) {
+    if (!el) return;
+
+    const key = stepState || "pending";
+    el.classList.toggle("is-done", key === "done");
+    el.classList.toggle("is-in-progress", key === "progress");
+    el.classList.toggle("is-pending", key === "pending");
+
+    const badge = el.querySelector(".ep-step-done-badge");
+    if (badge) badge.innerHTML = epStepBadgeSvg(key === "progress" ? "progress" : "done");
+  }
+
+  function epCurrentActorId() {
+    return (_portal?.contactId || "").toString().trim();
+  }
+
+  function epBuildPreparationPayload(basePreparation, statusMode) {
+    const previous = basePreparation && typeof basePreparation === "object" ? basePreparation : {};
+    const prep = { ...previous };
+    const now = new Date().toISOString();
+    const actorId = epCurrentActorId();
+
+    prep.notes = epGetValue("ep_entretienPrepNotes");
+    prep.points = epGetValue("ep_entretienPrepPoints");
+
+    const currentState = epPreparationState({ preparation: previous });
+
+    if (statusMode === "en_cours") {
+      if (!currentState.done) {
+        prep.statut = "en_cours";
+        if (!prep.date_ouverture) prep.date_ouverture = now;
+        if (!prep.id_ouvreur && actorId) prep.id_ouvreur = actorId;
+      }
+    } else if (statusMode === "validee") {
+      prep.statut = "validee";
+      prep.validation_auto = false;
+      prep.date_validation = now;
+      if (actorId) prep.id_validateur = actorId;
+      if (!prep.date_ouverture) prep.date_ouverture = now;
+      if (!prep.id_ouvreur && actorId) prep.id_ouvreur = actorId;
+    } else if (statusMode === "auto_validee") {
+      if (!currentState.done) {
+        prep.statut = "validee";
+        prep.validation_auto = true;
+        prep.validation_auto_source = "realisation_entretien";
+        prep.date_validation_auto = now;
+        prep.date_validation = prep.date_validation || now;
+        if (actorId) {
+          prep.id_validateur_auto = actorId;
+          prep.id_validateur = prep.id_validateur || actorId;
+        }
+        if (!prep.date_ouverture) prep.date_ouverture = now;
+        if (!prep.id_ouvreur && actorId) prep.id_ouvreur = actorId;
+      }
+    }
+
+    return prep;
+  }
+
+  function epBuildPreparationPayloadFromEntretien(entretien, statusMode) {
+    const previous = epPreparationRaw(entretien);
+    const prep = { ...previous };
+    const now = new Date().toISOString();
+    const actorId = epCurrentActorId();
+    const currentState = epPreparationState(entretien);
+
+    if (statusMode === "en_cours" && !currentState.done) {
+      prep.statut = "en_cours";
+      if (!prep.date_ouverture) prep.date_ouverture = now;
+      if (!prep.id_ouvreur && actorId) prep.id_ouvreur = actorId;
+    }
+
+    return prep;
+  }
+
+  function epBuildEntretienPayloadFromItem(entretien, statusMode) {
+    return {
+      type_entretien: entretien?.type_entretien || "Entretien annuel",
+      statut: entretien?.statut || "à réaliser",
+      date_prevue: entretien?.date_prevue || null,
+      date_realisee: entretien?.date_realisee || null,
+      periode_debut: entretien?.periode_debut || null,
+      periode_fin: entretien?.periode_fin || null,
+      preparation: epBuildPreparationPayloadFromEntretien(entretien, statusMode),
+      realisation: entretien?.realisation || {},
+      competences_entretien: Array.isArray(entretien?.competences_entretien) ? entretien.competences_entretien : [],
+      documents: entretien?.documents || {},
+      synthese: entretien?.synthese || {},
+    };
+  }
+
   function epIsAnnualEntretien(entretien) {
     return epNormText(entretien?.type_entretien || "").includes("annuel");
   }
@@ -1551,14 +1709,37 @@
     });
   }
 
-  function epOpenAnnualEntretien(mode) {
-    const entretien = state._annualCurrentEntretien || null;
-    openEntretienModal(entretien, mode || (entretien ? "realisation" : "preparation"));
+  async function epOpenAnnualEntretien(mode) {
+    let entretien = state._annualCurrentEntretien || null;
+    const wantedMode = mode || (entretien ? "realisation" : "preparation");
+
+    if (wantedMode === "preparation" && entretien?.id_entretien && epPreparationState(entretien).key === "a_preparer" && _portal) {
+      try {
+        const payload = epBuildEntretienPayloadFromItem(entretien, "en_cours");
+        entretien = await _portal.apiJson(
+          `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(entretien.id_entretien)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+        state._annualCurrentEntretien = entretien;
+        state._entretiensList = (Array.isArray(state._entretiensList) ? state._entretiensList : []).map(item =>
+          String(item?.id_entretien || "") === String(entretien.id_entretien || "") ? entretien : item
+        );
+        epRenderEntretienOverview(state._entretiensList);
+      } catch (e) {
+        _portal?.showAlert?.("warning", String(e?.message || e || "Impossible de marquer la préparation en cours."));
+      }
+    }
+
+    openEntretienModal(entretien, wantedMode);
 
     if (!entretien) {
       epSetValue("ep_entretienType", "Entretien annuel");
       if (state._entretienDraft) state._entretienDraft.type_entretien = "Entretien annuel";
-      setText("ep_entretienModalTitle", mode === "realisation" ? "Réaliser l’entretien annuel" : "Préparer l’entretien annuel");
+      setText("ep_entretienModalTitle", wantedMode === "realisation" ? "Réaliser l’entretien annuel" : "Préparer l’entretien annuel");
     }
   }
 
@@ -1610,14 +1791,21 @@
     if (st.includes("signer")) signTxt = currentStatus;
     if (st.includes("termine") || st.includes("signe")) signTxt = "Signé";
 
-    const hasCurrent = !!current;
-    const prepDone = hasCurrent;
+    const prepState = epPreparationState(current);
     const realizationDone = !!(current?.date_realisee || st.includes("signer") || st.includes("termine") || st.includes("signe"));
     const signaturesDone = !!(st.includes("termine") || st.includes("signe"));
     const reportDone = signaturesDone && !!current?.id_entretien;
 
-    setText("ep_stepPreparationBadge", prepDone ? "Préparé" : "À préparer");
-    setText("ep_stepPreparationSub", current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucune préparation ouverte");
+    const prepSub = prepState.key === "validee_auto"
+      ? "Validée automatiquement à la réalisation"
+      : prepState.done
+        ? (prepState.dateValidation ? `Validée le ${epFormatDateFR(prepState.dateValidation)}` : "Préparation validée")
+        : prepState.inProgress
+          ? (prepState.dateOuverture ? `Ouverte le ${epFormatDateFR(prepState.dateOuverture)}` : "Préparation en cours")
+          : (current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucune préparation ouverte");
+
+    setText("ep_stepPreparationBadge", prepState.label);
+    setText("ep_stepPreparationSub", prepSub);
     setText("ep_stepRealisationBadge", realizationDone ? "Réalisé" : "À réaliser");
     setText("ep_stepRealisationSub", realizationDone ? `Réalisé le ${epFormatDateFR(current.date_realisee)}` : "Planifier et conduire l’entretien");
     setText("ep_stepSignaturesBadge", signTxt);
@@ -1626,7 +1814,11 @@
     setText("ep_stepRapportSub", current?.id_entretien ? "Rapport PDF accessible" : "Enregistre l’entretien avant le rapport");
 
     const prepareBtnLabel = $("ep_btnAnnualPrepare")?.querySelector("span:last-child");
-    if (prepareBtnLabel) prepareBtnLabel.textContent = prepDone ? "Reprendre la préparation" : "Préparer l’entretien";
+    if (prepareBtnLabel) {
+      prepareBtnLabel.textContent = prepState.done
+        ? "Modifier la préparation"
+        : (prepState.inProgress ? "Reprendre la préparation" : "Préparer l’entretien");
+    }
 
     const reportBtn = $("ep_btnAnnualReport");
     if (reportBtn) reportBtn.disabled = !current?.id_entretien;
@@ -1635,11 +1827,11 @@
     const stepRealisation = $("ep_stepRealisation");
     const stepSignatures = $("ep_stepSignatures");
     const stepRapport = $("ep_stepRapport");
-    [[stepPreparation, prepDone], [stepRealisation, realizationDone], [stepSignatures, signaturesDone], [stepRapport, reportDone]].forEach(([el, done]) => {
-      if (!el) return;
-      el.classList.toggle("is-done", !!done);
-      el.classList.toggle("is-pending", !done);
-    });
+
+    epSetAnnualStepState(stepPreparation, prepState.done ? "done" : (prepState.inProgress ? "progress" : "pending"));
+    epSetAnnualStepState(stepRealisation, realizationDone ? "done" : "pending");
+    epSetAnnualStepState(stepSignatures, signaturesDone ? "done" : "pending");
+    epSetAnnualStepState(stepRapport, reportDone ? "done" : "pending");
 
     epRenderAnnualHistory(annuals);
   }
@@ -3062,11 +3254,15 @@ function getCollaborateurInitials(c) {
     const statutField = document.querySelector("#modalEpEntretien .ep-entretien-field-statut");
     const dateRealiseeField = document.querySelector("#modalEpEntretien .ep-entretien-field-date-realisee");
     const entretienCritFilter = document.querySelector("#modalEpEntretien .ep-entretien-crit-filter");
+    const savePrepDraftBtn = $("ep_btnSavePrepDraft");
+    const saveEntretienBtn = $("ep_btnSaveEntretien");
 
     if (statutModebar) statutModebar.style.display = isPreparation ? "none" : "flex";
     if (statutField) statutField.style.display = isPreparation ? "none" : "";
     if (dateRealiseeField) dateRealiseeField.style.display = isPreparation ? "none" : "";
     if (entretienCritFilter) entretienCritFilter.style.display = isPreparation ? "" : "none";
+    if (savePrepDraftBtn) savePrepDraftBtn.style.display = isPreparation ? "" : "none";
+    if (saveEntretienBtn) saveEntretienBtn.textContent = isPreparation ? "Valider la préparation" : "Enregistrer";
 
     document.querySelectorAll("#modalEpEntretien .ep-entretien-tab").forEach(btn => {
       const panel = btn.dataset.panel || "";
@@ -3241,21 +3437,24 @@ function getCollaborateurInitials(c) {
     epLoadEntretienDocuments();
   }
 
-  function buildEntretienPayload(statutOverride) {
+  function buildEntretienPayload(statutOverride, options) {
     const d = state._entretienDraft || epDefaultEntretienDraft();
+    const statut = statutOverride || epGetValue("ep_entretienStatut") || "à réaliser";
+    let preparationStatus = options?.preparationStatus || "";
+
+    if (!preparationStatus && epGetEntretienMode() === "realisation" && epNormalizeEntretienStatut(statut) !== "à réaliser") {
+      preparationStatus = "auto_validee";
+    }
 
     return {
       type_entretien: epGetValue("ep_entretienType") || "Entretien individuel",
-      statut: statutOverride || epGetValue("ep_entretienStatut") || "à réaliser",
+      statut,
       date_prevue: epGetValue("ep_entretienDatePrevue") || null,
       date_realisee: epGetValue("ep_entretienDateRealisee") || null,
       periode_debut: epGetValue("ep_entretienPeriodeDebut") || null,
       periode_fin: epGetValue("ep_entretienPeriodeFin") || null,
 
-      preparation: {
-        notes: epGetValue("ep_entretienPrepNotes"),
-        points: epGetValue("ep_entretienPrepPoints"),
-      },
+      preparation: epBuildPreparationPayload(d.preparation || {}, preparationStatus),
 
       realisation: {
         bilan: epGetValue("ep_entretienBilan"),
@@ -3391,13 +3590,13 @@ function getCollaborateurInitials(c) {
     openModal("modalEpEntretien");
   }
 
-  async function saveEntretienOnly(statutOverride) {
+  async function saveEntretienOnly(statutOverride, options) {
     if (!state.selectedCollaborateurId || !_portal) {
       throw new Error("Sélectionne un collaborateur.");
     }
 
     const idEntretien = epGetValue("ep_entretienId");
-    const payload = buildEntretienPayload(statutOverride);
+    const payload = buildEntretienPayload(statutOverride, options || {});
     const isUpdate = !!idEntretien;
 
     const url = isUpdate
@@ -3429,6 +3628,19 @@ function getCollaborateurInitials(c) {
     await loadEntretiensIndividuels();
   }
 
+  async function epSavePreparationDraft() {
+    if (state._entretienModalMode !== "preparation") return;
+
+    try {
+      epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de la préparation…");
+      await saveEntretienOnly("à réaliser", { preparationStatus: "en_cours" });
+      epSetInlineMsg("ep_entretienMsg", "success", "Préparation enregistrée sans validation.");
+    } catch (e) {
+      const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
+      epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
+    }
+  }
+
   async function openEntretienValidationFlow() {
     if (!state.selectedCollaborateurId || !_portal) {
       epSetInlineMsg("ep_entretienMsg", "danger", "Sélectionne un collaborateur.");
@@ -3437,9 +3649,9 @@ function getCollaborateurInitials(c) {
 
     if (state._entretienModalMode === "preparation") {
       try {
-        epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de la préparation…");
-        await saveEntretienOnly("à réaliser");
-        epSetInlineMsg("ep_entretienMsg", "success", "Préparation enregistrée. Entretien à réaliser.");
+        epSetInlineMsg("ep_entretienMsg", "info", "Validation de la préparation…");
+        await saveEntretienOnly("à réaliser", { preparationStatus: "validee" });
+        epSetInlineMsg("ep_entretienMsg", "success", "Préparation validée. Entretien à réaliser.");
       } catch (e) {
         const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
         epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
@@ -4795,6 +5007,11 @@ function getCollaborateurInitials(c) {
           btnNewEntretienHistory.addEventListener("click", () => {
             openEntretienModal(null, "preparation");
           });
+        }
+
+        const btnSavePrepDraft = $("ep_btnSavePrepDraft");
+        if (btnSavePrepDraft) {
+          btnSavePrepDraft.addEventListener("click", epSavePreparationDraft);
         }
 
         const btnSaveEntretien = $("ep_btnSaveEntretien");

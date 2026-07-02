@@ -30262,3 +30262,21 @@ body{
     display:grid;
   }
 }
+
+#view-entretien-performance .ep-annual-step.is-in-progress .ep-step-done-badge{
+  display:inline-flex;
+  background:var(--sb-info);
+}
+
+#view-entretien-performance .ep-annual-step.is-in-progress .ep-step-done-badge svg{
+  animation:ep-preparation-spin 1.25s linear infinite;
+}
+
+#view-entretien-performance .ep-annual-step.is-in-progress .ep-step-done-badge svg path{
+  stroke-width:2.1;
+}
+
+@keyframes ep-preparation-spin{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
