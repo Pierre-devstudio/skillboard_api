@@ -36,7 +36,9 @@
     collabExpanded: false,
     _collaborateursAll: [],
     _punctualShowAllCompetences: false,
+    _punctualHistoryShowAllCompetences: false,
     selectedCompetenceId: null,
+    selectedEffectifCompetenceId: null,
     scoring: null,
     selectedEntretienId: null,
     _entretiensList: [],
@@ -553,6 +555,12 @@
     if (tbody) tbody.innerHTML = "";
     setText("ep_compCount", "0");
     state.selectedCompetenceId = null;
+    state.selectedEffectifCompetenceId = null;
+    state._punctualShowAllCompetences = false;
+    state._punctualHistoryShowAllCompetences = false;
+    state._checklistAll = [];
+    state._historyAll = [];
+    epRenderPunctualHistorySummary([]);
   }
 
   function readPendingCollaborateurPreselect() {
@@ -1282,6 +1290,11 @@
       epApplyPunctualFilters();
     });
 
+    $("ep_btnMoreHistoryCompetences")?.addEventListener("click", () => {
+      state._punctualHistoryShowAllCompetences = !state._punctualHistoryShowAllCompetences;
+      epRenderPunctualHistorySummary(state._historyAll || []);
+    });
+
     document.querySelectorAll("#view-entretien-performance .ep-status-filter-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("#view-entretien-performance .ep-status-filter-btn").forEach(x => x.classList.remove("is-active"));
@@ -1416,15 +1429,18 @@
   }
 
   async function epLoadPunctualHistorySummary() {
-    const tbody = $("ep_punctualHistoryBody");
-    if (!tbody) return;
+    const list = $("ep_punctualHistoryList");
+    if (!list) return;
 
     if (!state.selectedCollaborateurId || !_portal) {
-      tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Sélectionne un collaborateur.</td></tr>`;
+      state._historyAll = [];
+      list.innerHTML = `<div class="ep-empty-cell">Sélectionne un collaborateur.</div>`;
+      epUpdatePunctualHistoryMoreButton(0, 0);
       return;
     }
 
-    tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Chargement…</td></tr>`;
+    list.innerHTML = `<div class="ep-empty-cell">Chargement…</div>`;
+    epUpdatePunctualHistoryMoreButton(0, 0);
 
     try {
       const url = `${_portal.apiBase}/skills/entretien-performance/historique/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
@@ -1433,38 +1449,188 @@
       state._historyAll = rows;
       epRenderPunctualHistorySummary(rows);
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Impossible de charger l’historique.</td></tr>`;
+      state._historyAll = [];
+      list.innerHTML = `<div class="ep-empty-cell">Impossible de charger l’historique.</div>`;
+      epUpdatePunctualHistoryMoreButton(0, 0);
     }
   }
 
-  function epRenderPunctualHistorySummary(rows) {
-    const tbody = $("ep_punctualHistoryBody");
-    if (!tbody) return;
+  function epHistoryDateTime(value) {
+    const d = epDateObj(value);
+    return d ? d.getTime() : 0;
+  }
 
-    const arr = (Array.isArray(rows) ? rows : []).slice(0, 4);
-    if (!arr.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="ep-empty-cell">Aucune évaluation ponctuelle enregistrée.</td></tr>`;
+  function epHistorySourceLabel(row) {
+    const apiSource = (row?.source_eval || "").toString().trim();
+    if (apiSource) return apiSource;
+
+    const method = (row?.methode_eval || "").toString().trim();
+    const methodKey = epNormText(method);
+    const type = (row?.type_entretien || "").toString().trim();
+
+    if ((row?.id_action_formation_acquisition || "").toString().trim()) return "Suivi post-formation";
+    if ((row?.id_entretien_individuel || "").toString().trim()) return type || "Entretien individuel";
+    if (methodKey.includes("formation")) return "Suivi post-formation";
+    if (methodKey.includes("audit") || methodKey.includes("certification") || methodKey.includes("examen")) return "Audit compétence";
+    if (!method || methodKey.includes("entretien de performance")) return "Entretien ponctuel";
+    return method;
+  }
+
+  function epBuildPunctualHistoryCompetenceGroups(rows) {
+    const map = new Map();
+
+    function makeKey(row, fallbackIndex) {
+      const idEc = (row?.id_effectif_competence || "").toString().trim();
+      if (idEc) return `ec:${idEc}`;
+      const idComp = (row?.id_comp || "").toString().trim();
+      if (idComp) return `comp:${idComp}`;
+      return `row:${fallbackIndex}`;
+    }
+
+    function ensureGroup(row, fallbackIndex) {
+      const key = makeKey(row, fallbackIndex);
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          id_effectif_competence: (row?.id_effectif_competence || "").toString().trim(),
+          id_comp: (row?.id_comp || "").toString().trim(),
+          code: (row?.code || "").toString().trim(),
+          intitule: (row?.intitule || "").toString().trim(),
+          dernier_niveau: _nsLevelLabel4(row?.niveau_actuel || ""),
+          derniere_eval: row?.date_derniere_eval || "",
+          audits: [],
+        });
+      }
+      return map.get(key);
+    }
+
+    (Array.isArray(state._checklistAll) ? state._checklistAll : []).forEach((x, index) => {
+      ensureGroup(x, index);
+    });
+
+    (Array.isArray(rows) ? rows : []).forEach((row, index) => {
+      const group = ensureGroup(row, index);
+      const auditDate = row?.date_audit || "";
+      const scoreInfo = _epScoreInfoFromAudit(row);
+      const auditLevel = scoreInfo?.levelLabel && scoreInfo.levelLabel !== "—"
+        ? scoreInfo.levelLabel
+        : _epLevelFromScore24(row?.resultat_eval);
+
+      if (row?.id_audit_competence || auditDate) {
+        group.audits.push({
+          ...row,
+          _sourceLabel: epHistorySourceLabel(row),
+          _levelLabel: auditLevel || "—",
+          _dateTime: epHistoryDateTime(auditDate),
+        });
+      }
+
+      if (auditDate && epHistoryDateTime(auditDate) >= epHistoryDateTime(group.derniere_eval)) {
+        group.derniere_eval = auditDate;
+        if (auditLevel && auditLevel !== "—") group.dernier_niveau = auditLevel;
+      }
+
+      if (!group.code && row?.code) group.code = row.code;
+      if (!group.intitule && row?.intitule) group.intitule = row.intitule;
+    });
+
+    return Array.from(map.values())
+      .map(group => ({
+        ...group,
+        audits: group.audits.sort((a, b) => (b._dateTime || 0) - (a._dateTime || 0)),
+      }))
+      .sort((a, b) => {
+        const da = epHistoryDateTime(a.derniere_eval);
+        const db = epHistoryDateTime(b.derniere_eval);
+        if (da !== db) return db - da;
+        return String(a.code || a.intitule || "").localeCompare(String(b.code || b.intitule || ""), "fr", { sensitivity: "base" });
+      });
+  }
+
+  function epUpdatePunctualHistoryMoreButton(totalCount, hiddenCount) {
+    const btn = $("ep_btnMoreHistoryCompetences");
+    const label = $("ep_moreHistoryCompetencesLabel");
+    if (!btn || !label) return;
+
+    const total = Number(totalCount || 0);
+    const hidden = Math.max(0, Number(hiddenCount || 0));
+    const expanded = !!state._punctualHistoryShowAllCompetences;
+
+    btn.style.display = (hidden > 0 || expanded) ? "" : "none";
+    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    label.textContent = expanded ? "Voir moins de compétences" : `Voir plus de compétences (${hidden})`;
+  }
+
+  function epRenderPunctualHistorySummary(rows) {
+    const list = $("ep_punctualHistoryList");
+    if (!list) return;
+
+    if (!state.selectedCollaborateurId) {
+      list.innerHTML = `<div class="ep-empty-cell">Sélectionne un collaborateur.</div>`;
+      epUpdatePunctualHistoryMoreButton(0, 0);
       return;
     }
 
-    tbody.innerHTML = "";
-    arr.forEach(row => {
-      const tr = document.createElement("tr");
-      const level = _epLevelFromScore24(row.resultat_eval);
-      tr.innerHTML = `
-        <td class="ep-history-date-cell">${epEsc(epFormatDateFR(row.date_audit) || "—")}</td>
-        <td><div class="ep-punctual-history-title" title="${epEsc(row.intitule || "")}">${epEsc(row.intitule || "—")}</div></td>
-        <td><div class="ep-punctual-history-evaluator">${epEsc(row.nom_evaluateur || "—")}</div></td>
-        <td><span class="sb-badge ${getEpLevelBadgeClass(level)}">${epEsc(level || "—")}</span></td>
-        <td class="ep-punctual-history-actions">
-          <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--pdf" data-act="history" title="Voir le détail" aria-label="Voir le détail">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/></svg>
-          </button>
-        </td>
+    const groups = epBuildPunctualHistoryCompetenceGroups(rows);
+    if (!groups.length) {
+      list.innerHTML = `<div class="ep-empty-cell">Aucune compétence rattachée à ce collaborateur.</div>`;
+      epUpdatePunctualHistoryMoreButton(0, 0);
+      return;
+    }
+
+    const expandedList = !!state._punctualHistoryShowAllCompetences;
+    const visible = expandedList ? groups : groups.slice(0, 5);
+    const hidden = Math.max(0, groups.length - 5);
+
+    list.innerHTML = "";
+    visible.forEach((group, index) => {
+      const acc = document.createElement("div");
+      acc.className = "ep-punctual-history-acc";
+
+      const hasAudits = group.audits.length > 0;
+      const open = index === 0 && hasAudits;
+      const level = group.dernier_niveau && group.dernier_niveau !== "—" ? group.dernier_niveau : "—";
+      const countLabel = `${group.audits.length} évaluation${group.audits.length > 1 ? "s" : ""}`;
+
+      acc.innerHTML = `
+        <button type="button" class="ep-punctual-history-acc-head${open ? " is-open" : ""}" aria-expanded="${open ? "true" : "false"}">
+          <span class="ep-punctual-history-acc-main">
+            <span class="sb-badge sb-badge-ref-comp-code ep-punctual-history-code">${epEsc(group.code || "—")}</span>
+            <span class="ep-punctual-history-acc-title">
+              <span class="ep-punctual-history-acc-name" title="${epEsc(group.intitule || "")}">${epEsc(group.intitule || "Compétence sans intitulé")}</span>
+              <span class="ep-punctual-history-acc-meta">
+                <span>Dernier niveau : <strong>${epEsc(level)}</strong></span>
+                <span>Dernière évaluation : <strong>${epEsc(epFormatDateFR(group.derniere_eval) || "—")}</strong></span>
+              </span>
+            </span>
+          </span>
+          <span class="ep-punctual-history-count">${epEsc(countLabel)}</span>
+          <span class="ep-punctual-history-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="ep-punctual-history-acc-body${open ? " is-open" : ""}">
+          ${hasAudits ? group.audits.map(audit => `
+            <div class="ep-punctual-history-eval-row">
+              <span class="ep-punctual-history-date">${epEsc(epFormatDateFR(audit.date_audit) || "—")}</span>
+              <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
+              <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "—")}</span>
+              <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "")}">${epEsc(audit.nom_evaluateur || "—")}</span>
+            </div>
+          `).join("") : `<div class="ep-punctual-history-empty-row">Aucune évaluation enregistrée pour cette compétence.</div>`}
+        </div>
       `;
-      tr.querySelector('[data-act="history"]')?.addEventListener("click", () => $("ep_btnHistoryGlobal")?.click());
-      tbody.appendChild(tr);
+
+      const head = acc.querySelector(".ep-punctual-history-acc-head");
+      const body = acc.querySelector(".ep-punctual-history-acc-body");
+      head?.addEventListener("click", () => {
+        const isOpen = head.classList.toggle("is-open");
+        head.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        body?.classList.toggle("is-open", isOpen);
+      });
+
+      list.appendChild(acc);
     });
+
+    epUpdatePunctualHistoryMoreButton(groups.length, hidden);
   }
 
   async function afterAuditSavedRefresh(savedApiResp) {
@@ -1522,6 +1688,7 @@
     _recalcKpiToDoPreferState();
     epRenderAnnualCompetenceSummary(state._checklistAll || []);
     epApplyPunctualFilters();
+    await epLoadPunctualHistorySummary();
 
     // 5) Réappliquer filtres éventuels (recherche / slider selon ta version)
     try {
@@ -2054,6 +2221,7 @@ function getCollaborateurInitials(c) {
         }
 
         clearCompetences();
+        state._punctualHistoryShowAllCompetences = false;
         resetEvaluationPanel();
 
         if (!state.selectedCollaborateurId || !_portal) return;
@@ -3469,6 +3637,8 @@ function getCollaborateurInitials(c) {
   }
 
   async function epOpenEvaluationStandalone(x) {
+    state.selectedCompetenceId = (x?.id_comp || "").toString().trim();
+    state.selectedEffectifCompetenceId = (x?.id_effectif_competence || "").toString().trim();
     state._historyAuditEditing = null;
 
     const evalModal = $("modalEpEvaluation");

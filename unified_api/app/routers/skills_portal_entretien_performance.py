@@ -174,6 +174,11 @@ class AuditHistoryItem(BaseModel):
     resultat_eval: Optional[float] = None
     observation: Optional[str] = None
     methode_eval: Optional[str] = None
+    source_eval: Optional[str] = None
+    id_entretien_individuel: Optional[str] = None
+    type_entretien: Optional[str] = None
+    id_action_formation_acquisition: Optional[str] = None
+    role_competence_entretien: Optional[str] = None
 
     id_audit_competence: Optional[str] = None
     id_effectif_competence: Optional[str] = None
@@ -3058,7 +3063,8 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                     FROM public.tbl_effectif_client e
                     WHERE e.id_effectif = %s
                       AND e.id_ent = %s
-                      AND e.archive = FALSE
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
                     """,
                     (id_effectif_client, id_ent),
                 )
@@ -3078,22 +3084,48 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                         a.resultat_eval,
                         a.detail_eval,
                         a.observation,
+                        a.id_entretien_individuel,
+                        a.id_action_formation_acquisition,
+                        a.role_competence_entretien,
+
+                        ei.type_entretien,
 
                         c.id_comp,
                         c.code,
-                        c.intitule
+                        c.intitule,
+
+                        CASE
+                            WHEN COALESCE(a.id_action_formation_acquisition, '') <> '' THEN 'Suivi post-formation'
+                            WHEN COALESCE(a.id_entretien_individuel, '') <> ''
+                                THEN COALESCE(NULLIF(ei.type_entretien, ''), 'Entretien individuel')
+                            WHEN COALESCE(a.methode_eval, '') = ''
+                              OR lower(COALESCE(a.methode_eval, '')) LIKE '%entretien de performance%'
+                                THEN 'Entretien ponctuel'
+                            ELSE a.methode_eval
+                        END AS source_eval
                     FROM public.tbl_effectif_client_audit_competence a
                     JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_effectif_competence = a.id_effectif_competence
+                     AND COALESCE(ec.archive, FALSE) = FALSE
+                     AND COALESCE(ec.actif, TRUE) = TRUE
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif_client
+                     AND e.id_ent = %s
+                     AND COALESCE(e.archive, FALSE) = FALSE
+                     AND COALESCE(e.statut_actif, TRUE) = TRUE
                     JOIN public.tbl_competence c
                       ON c.id_comp = ec.id_comp
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                     AND COALESCE(c.etat, 'valide') <> 'inactive'
+                    LEFT JOIN public.tbl_entretien_individuel ei
+                      ON ei.id_entretien = a.id_entretien_individuel
+                     AND ei.id_ent = e.id_ent
+                     AND COALESCE(ei.archive, FALSE) = FALSE
                     WHERE ec.id_effectif_client = %s
-                      AND ec.archive = FALSE
-                      AND ec.actif = TRUE
-                    ORDER BY a.date_audit DESC
-                    LIMIT 200
+                    ORDER BY a.date_audit DESC NULLS LAST, c.code ASC
+                    LIMIT 500
                     """,
-                    (id_effectif_client,),
+                    (id_ent, id_effectif_client),
                 )
 
                 rows = cur.fetchall() or []
@@ -3119,6 +3151,11 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                             id_evaluateur=r.get("id_evaluateur"),
                             nom_evaluateur=r.get("nom_evaluateur"),
                             methode_eval=r.get("methode_eval"),
+                            source_eval=r.get("source_eval"),
+                            id_entretien_individuel=r.get("id_entretien_individuel"),
+                            type_entretien=r.get("type_entretien"),
+                            id_action_formation_acquisition=r.get("id_action_formation_acquisition"),
+                            role_competence_entretien=r.get("role_competence_entretien"),
                             resultat_eval=float(r["resultat_eval"]) if r.get("resultat_eval") is not None else None,
                             detail_eval=detail_eval,
                             observation=r.get("observation"),

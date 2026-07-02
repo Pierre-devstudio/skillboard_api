@@ -315,13 +315,6 @@
           </div>
 
           <div class="card ep-panel-card ep-competence-panel ep-punctual-main-card">
-            <div class="card-header ep-competence-head ep-punctual-main-head">
-              <div class="ep-section-title">
-                <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
-                <span class="card-title">Évaluations ponctuelles</span>
-              </div>
-            </div>
-
             <div class="card-body ep-punctual-main-body">
               <div class="ep-punctual-inner-tabs" role="tablist" aria-label="Évaluations ponctuelles">
                 <button type="button" class="ep-punctual-inner-tab is-active" data-ep-punctual-tab="competences" role="tab" aria-selected="true">
@@ -373,21 +366,14 @@
               </div>
 
               <div class="ep-punctual-inner-panel" data-ep-punctual-panel="historique">
-                <div class="table-wrap ep-punctual-history-wrap">
-                  <table class="sb-table ep-punctual-history-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Compétence</th>
-                        <th>Évaluateur</th>
-                        <th>Résultat</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="ep_punctualHistoryBody">
-                      <tr><td colspan="5" class="ep-empty-cell">Aucun historique chargé.</td></tr>
-                    </tbody>
-                  </table>
+                <div class="ep-punctual-history-wrap">
+                  <div class="ep-punctual-history-list" id="ep_punctualHistoryList">
+                    <div class="ep-empty-cell">Aucun historique chargé.</div>
+                  </div>
+                  <button type="button" class="ep-more-competences ep-more-history-competences" id="ep_btnMoreHistoryCompetences" style="display:none;">
+                    <span id="ep_moreHistoryCompetencesLabel">Plus de compétences</span>
+                    <span class="ep-more-competences__chevron" aria-hidden="true">⌄</span>
+                  </button>
                 </div>
               </div>
             </div>
