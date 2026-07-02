@@ -6786,7 +6786,6 @@ body{
   --ep-border-soft:#edf0f4;
   --ep-text:#111827;
   --ep-muted:#667085;
-  --ep-priority-high:#7c3aed;
 }
 
 #view-entretien-performance .ep-page-head{
@@ -7081,88 +7080,11 @@ body{
 }
 
 #view-entretien-performance .ep-collab-panel .ep-collab-head{
-  position:relative;
-  align-items:flex-start;
+  align-items:center;
   gap:12px;
-  padding-right:34px;
   min-height:30px;
 }
 
-#view-entretien-performance .ep-priority-help-wrap{
-  position:absolute;
-  top:-2px;
-  right:0;
-  z-index:20;
-}
-
-#view-entretien-performance .ep-priority-help{
-  width:26px;
-  height:26px;
-  border-radius:999px;
-  border:1px solid var(--sb-gray-300);
-  background:#fff;
-  color:var(--sb-gray-700);
-  font-size:13px;
-  font-weight:800;
-  line-height:1;
-  cursor:pointer;
-}
-
-#view-entretien-performance .ep-priority-help:hover,
-#view-entretien-performance .ep-priority-help:focus{
-  border-color:var(--accent);
-  color:var(--accent);
-  outline:none;
-  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
-}
-
-#view-entretien-performance .ep-priority-pop{
-  position:absolute;
-  top:34px;
-  right:0;
-  z-index:50;
-  width:245px;
-  display:none;
-  padding:10px 12px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  background:#fff;
-  box-shadow:0 12px 28px rgba(17,24,39,.16);
-}
-
-#view-entretien-performance .ep-priority-pop.is-open{
-  display:block;
-}
-
-#view-entretien-performance .ep-priority-pop-title{
-  font-size:12px;
-  font-weight:800;
-  color:var(--sb-gray-900);
-  margin-bottom:8px;
-}
-
-#view-entretien-performance .ep-priority-pop-row{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  color:var(--sb-gray-700);
-  line-height:1.25;
-  margin-top:6px;
-}
-
-#view-entretien-performance .ep-priority-line{
-  width:4px;
-  height:20px;
-  border-radius:999px;
-  display:inline-block;
-  flex:0 0 4px;
-}
-
-#view-entretien-performance .ep-priority-line--high{ background:var(--ep-priority-high); }
-#view-entretien-performance .ep-priority-line--plan{ background:var(--sb-warning); }
-#view-entretien-performance .ep-priority-line--ok{ background:var(--sb-success); }
-#view-entretien-performance .ep-priority-line--none{ background:var(--sb-gray-300); }
 
 #view-entretien-performance .ep-search-field{
   position:relative;
@@ -7243,15 +7165,9 @@ body{
 
 #view-entretien-performance .ep-collab-card.active{
   border-color:color-mix(in srgb, var(--accent) 55%, var(--sb-gray-300));
-  border-left-color:var(--accent);
-  background:color-mix(in srgb, var(--accent) 7%, #ffffff);
-  box-shadow:0 6px 14px rgba(17,24,39,.06);
+  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
+  box-shadow:0 8px 18px rgba(17,24,39,.08);
 }
-
-#view-entretien-performance .ep-collab-card--high{ border-left-color:var(--ep-priority-high); }
-#view-entretien-performance .ep-collab-card--plan{ border-left-color:var(--sb-warning); }
-#view-entretien-performance .ep-collab-card--ok{ border-left-color:var(--sb-success); }
-#view-entretien-performance .ep-collab-card--none{ border-left-color:var(--sb-gray-300); }
 
 #view-entretien-performance .ep-collab-card-main{
   min-width:0;
@@ -7417,9 +7333,6 @@ body{
   transition:background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
 }
 
-#view-entretien-performance .ep-comp-card--never{
-  border-left-color:var(--ep-priority-high);
-}
 
 #view-entretien-performance .ep-comp-card:hover{
   background:color-mix(in srgb, var(--accent) 4%, #ffffff);
@@ -8056,7 +7969,7 @@ body{
   box-shadow:0 0 0 2px #ffffff, 0 0 0 3px rgba(15,23,42,.04);
 }
 
-#view-entretien-performance .ep-priority-help{
+#view-entretien-performance .ep-round-help{
   width:28px;
   height:28px;
   background:#ffffff;
@@ -8077,9 +7990,6 @@ body{
   min-width:90px;
 }
 
-#view-entretien-performance .ep-comp-card--never{
-  border-left-color:var(--ep-priority-high);
-}
 
 #view-entretien-performance #ep_tblCompetences tbody tr.active .ep-comp-card{
   border-color:color-mix(in srgb, var(--accent) 50%, var(--sb-gray-300));
@@ -17791,7 +17701,6 @@ body{
    ====================================================== */
 
 #view-entretien-performance{
-  --ep-priority-high:#7c3aed;
 }
 
 #view-entretien-performance .ep-page-head{
@@ -17908,88 +17817,11 @@ body{
 }
 
 #view-entretien-performance .ep-collab-panel .ep-collab-head{
-  position:relative;
-  align-items:flex-start;
+  align-items:center;
   gap:12px;
-  padding-right:34px;
   min-height:30px;
 }
 
-#view-entretien-performance .ep-priority-help-wrap{
-  position:absolute;
-  top:-2px;
-  right:0;
-  z-index:20;
-}
-
-#view-entretien-performance .ep-priority-help{
-  width:26px;
-  height:26px;
-  border-radius:999px;
-  border:1px solid var(--sb-gray-300);
-  background:#fff;
-  color:var(--sb-gray-700);
-  font-size:13px;
-  font-weight:800;
-  line-height:1;
-  cursor:pointer;
-}
-
-#view-entretien-performance .ep-priority-help:hover,
-#view-entretien-performance .ep-priority-help:focus{
-  border-color:var(--accent);
-  color:var(--accent);
-  outline:none;
-  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
-}
-
-#view-entretien-performance .ep-priority-pop{
-  position:absolute;
-  top:34px;
-  right:0;
-  z-index:50;
-  width:245px;
-  display:none;
-  padding:10px 12px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  background:#fff;
-  box-shadow:0 12px 28px rgba(17,24,39,.16);
-}
-
-#view-entretien-performance .ep-priority-pop.is-open{
-  display:block;
-}
-
-#view-entretien-performance .ep-priority-pop-title{
-  font-size:12px;
-  font-weight:800;
-  color:var(--sb-gray-900);
-  margin-bottom:8px;
-}
-
-#view-entretien-performance .ep-priority-pop-row{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  color:var(--sb-gray-700);
-  line-height:1.25;
-  margin-top:6px;
-}
-
-#view-entretien-performance .ep-priority-line{
-  width:4px;
-  height:20px;
-  border-radius:999px;
-  display:inline-block;
-  flex:0 0 4px;
-}
-
-#view-entretien-performance .ep-priority-line--high{ background:var(--ep-priority-high); }
-#view-entretien-performance .ep-priority-line--plan{ background:var(--sb-warning); }
-#view-entretien-performance .ep-priority-line--ok{ background:var(--sb-success); }
-#view-entretien-performance .ep-priority-line--none{ background:var(--sb-gray-300); }
 
 #view-entretien-performance .ep-search-field{
   margin-top:2px;
@@ -18038,14 +17870,14 @@ body{
   align-items:center;
   text-align:left;
   min-height:52px;
-  padding:8px 10px 8px 12px;
+  padding:9px 12px;
   border:1px solid var(--sb-gray-200);
-  border-left:5px solid var(--sb-gray-300);
   border-radius:12px;
   background:#fff;
   cursor:pointer;
   font-family:inherit;
   box-sizing:border-box;
+  transition:border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
 
 #view-entretien-performance .ep-collab-card:hover{
@@ -18054,15 +17886,9 @@ body{
 
 #view-entretien-performance .ep-collab-card.active{
   border-color:color-mix(in srgb, var(--accent) 55%, var(--sb-gray-300));
-  border-left-color:var(--accent);
-  background:color-mix(in srgb, var(--accent) 7%, #ffffff);
-  box-shadow:0 6px 14px rgba(17,24,39,.06);
+  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
+  box-shadow:0 8px 18px rgba(17,24,39,.08);
 }
-
-#view-entretien-performance .ep-collab-card--high{ border-left-color:var(--ep-priority-high); }
-#view-entretien-performance .ep-collab-card--plan{ border-left-color:var(--sb-warning); }
-#view-entretien-performance .ep-collab-card--ok{ border-left-color:var(--sb-success); }
-#view-entretien-performance .ep-collab-card--none{ border-left-color:var(--sb-gray-300); }
 
 #view-entretien-performance .ep-collab-card-main{
   min-width:0;
@@ -18211,9 +18037,8 @@ body{
 
 #view-entretien-performance #ep_tblCompetences tbody tr.active .ep-comp-card{
   border-color:color-mix(in srgb, var(--accent) 55%, var(--sb-gray-300));
-  border-left-color:var(--accent);
   background:color-mix(in srgb, var(--accent) 6%, #ffffff);
-  box-shadow:0 6px 14px rgba(17,24,39,.06);
+  box-shadow:0 8px 18px rgba(17,24,39,.08);
 }
 
 #view-entretien-performance .ep-comp-card{
@@ -18221,15 +18046,12 @@ body{
   flex-direction:column;
   padding:10px 12px;
   border:1px solid var(--sb-gray-200);
-  border-left:5px solid var(--sb-gray-300);
   border-radius:13px;
   background:#fff;
   min-width:0;
+  transition:border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
 
-#view-entretien-performance .ep-comp-card--never{
-  border-left-color:var(--ep-priority-high);
-}
 
 #view-entretien-performance .ep-comp-card:hover{
   background:color-mix(in srgb, var(--accent) 4%, #ffffff);

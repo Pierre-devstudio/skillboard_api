@@ -826,8 +826,7 @@
   function _setRowAuditedVisual(tr) {
     if (!tr) return;
 
-    const card = tr.querySelector(".ep-comp-card");
-    if (card) card.classList.remove("ep-comp-card--never");
+    tr.dataset.neverAudited = "0";
 
     const levelTxt = (document.getElementById("ep_levelABC")?.textContent || "").toString().trim();
     const levelBadge = tr.querySelector(".ep-comp-level-badge");
@@ -845,7 +844,7 @@
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const total = rows.length;
 
-    const never = rows.filter(r => !!r.querySelector(".ep-comp-card--never")).length;
+    const never = rows.filter(r => (r.dataset.neverAudited || "0") === "1").length;
 
     setText("ep_compCount", String(total));
     setText("ep_kpiToDo", `${never} / ${total}`);
@@ -1335,12 +1334,9 @@ function renderCollaborateurs(list) {
       const nom = (c.nom_effectif || "").toString().trim().toUpperCase();
       const name = `${nom} ${prenom}`.trim() || "Collaborateur";
       const poste = (c.intitule_poste || "Poste non renseigné").toString().trim();
-      const priority = getCollaborateurPriority(c);
-
       const item = document.createElement("button");
       item.type = "button";
-      item.className = `ep-collab-card ep-collab-card--${priority}`;
-      item.dataset.priority = priority;
+      item.className = "ep-collab-card";
       item.dataset.idEffectif = String(c.id_effectif || "");
       item.dataset.idService = String(c.id_service || "");
       item.title = poste ? `${name} - ${poste}` : name;
@@ -1495,7 +1491,7 @@ function renderCollaborateurs(list) {
 
             const rowWrap = document.createElement("div");
             rowWrap.className = "ep-comp-card";
-            if (x._neverAudited) rowWrap.classList.add("ep-comp-card--never");
+            tr.dataset.neverAudited = x._neverAudited ? "1" : "0";
 
             const top = document.createElement("div");
             top.className = "ep-comp-card-top";
@@ -1973,42 +1969,6 @@ function renderCollaborateurs(list) {
     const pct = max > min ? ((raw - min) / (max - min)) * 100 : 0;
 
     rng.style.setProperty("--ep-crit-pos", `${Math.max(0, Math.min(100, pct))}%`);
-  }
-
-  function bindPriorityHelpOnce() {
-    const btn = $("ep_btnPriorityHelp");
-    const pop = $("ep_priorityHelpPop");
-
-    if (!btn || !pop || state._priorityHelpBound) return;
-
-    state._priorityHelpBound = true;
-
-    const close = () => {
-      pop.classList.remove("is-open");
-      pop.setAttribute("aria-hidden", "true");
-    };
-
-    btn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-
-      const opened = pop.classList.toggle("is-open");
-      pop.setAttribute("aria-hidden", opened ? "false" : "true");
-    });
-
-    document.addEventListener("click", (ev) => {
-      if (!pop.classList.contains("is-open")) return;
-      const target = ev.target;
-      if (target === btn || btn.contains(target) || pop.contains(target)) return;
-      close();
-    });
-
-    document.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape") close();
-    });
-
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
   }
 
   async function resetScope() {
@@ -3813,7 +3773,6 @@ function renderCollaborateurs(list) {
           window.addEventListener("ep:preselect-collaborateur", onPreselect);
         }
 
-        bindPriorityHelpOnce();
 
         // Modal évaluation (standard)
         const modalEval = $("modalEpEvaluation");
