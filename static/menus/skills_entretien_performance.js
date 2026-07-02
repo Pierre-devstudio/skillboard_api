@@ -32,6 +32,8 @@
     pendingPreselectFallbackAll: false,
     _collabLoadSeq: 0,
     _collabLoadingKey: "",
+    collabExpanded: false,
+    _collaborateursAll: [],
     selectedCompetenceId: null,
     scoring: null,
     selectedEntretienId: null,
@@ -1738,43 +1740,88 @@
     return "sb-badge-niv";
   }
 
-function renderCollaborateurs(list) {
+function getCollaborateurInitials(c) {
+    const prenom = (c?.prenom_effectif || "").toString().trim();
+    const nom = (c?.nom_effectif || "").toString().trim();
+    const p = prenom ? prenom.charAt(0) : "";
+    const n = nom ? nom.charAt(0) : "";
+    return `${p}${n}`.toUpperCase() || "—";
+  }
+
+  function getCollaborateurEntretienStatus(c) {
+    const raw = (c?.statut_entretien_suivi || "").toString().trim().toLowerCase();
+    const label = (c?.libelle_entretien_suivi || "").toString().trim();
+
+    if (["a_jour", "ok", "jour", "signed", "signe", "signé"].includes(raw)) {
+      return { key: "ok", label: label || "Entretien à jour" };
+    }
+    if (["planifie", "planifié", "planned", "prepare", "préparé"].includes(raw)) {
+      return { key: "planned", label: label || "Entretien planifié" };
+    }
+    if (["retard", "late", "overdue", "en_retard"].includes(raw)) {
+      return { key: "late", label: label || "Entretien en retard" };
+    }
+    if (["a_planifier", "à_planifier", "todo", "none"].includes(raw)) {
+      return { key: "todo", label: label || "Entretien à planifier" };
+    }
+
+    const priority = getCollaborateurPriority(c);
+    if (priority === "ok") return { key: "ok", label: "Entretien à jour" };
+    if (priority === "plan") return { key: "todo", label: "Entretien à planifier" };
+    if (priority === "high") return { key: "late", label: "Entretien en retard" };
+    return { key: "neutral", label: "Statut entretien non renseigné" };
+  }
+
+  function renderCollaborateurs(list) {
     const wrap = $("ep_listCollaborateurs");
     if (!wrap) return;
 
     wrap.innerHTML = "";
 
     const arr = (Array.isArray(list) ? list : []).slice().sort((a, b) => {
-      const pa = getCollaborateurPriority(a);
-      const pb = getCollaborateurPriority(b);
-
-      const ra = getCollaborateurPriorityRank(pa);
-      const rb = getCollaborateurPriorityRank(pb);
-
-      if (ra !== rb) return ra - rb;
-
       const na = `${(a?.nom_effectif || "").toString()} ${(a?.prenom_effectif || "").toString()}`.trim();
       const nb = `${(b?.nom_effectif || "").toString()} ${(b?.prenom_effectif || "").toString()}`.trim();
-
       return na.localeCompare(nb, "fr", { sensitivity: "base" });
     });
 
+    state._collaborateursAll = arr;
     setText("ep_collabCount", String(arr.length));
+
+    const currentId = String(state.selectedCollaborateurId || "").trim();
+    const pendingId = String(state.pendingPreselectCollaborateurId || "").trim();
+    const mustRevealId = pendingId || currentId;
+    if (mustRevealId) {
+      const idx = arr.findIndex(c => String(c?.id_effectif || "") === mustRevealId);
+      if (idx >= 6) state.collabExpanded = true;
+    }
 
     wrap.classList.remove("sb-tree");
     wrap.classList.add("ep-collab-stack");
 
-    arr.forEach(c => {
+    const isExpanded = !!state.collabExpanded;
+    const visibleLimit = isExpanded ? arr.length : 6;
+    const visible = arr.slice(0, visibleLimit);
+
+    visible.forEach(c => {
       const prenom = (c.prenom_effectif || "").toString().trim();
-      const nom = (c.nom_effectif || "").toString().trim().toUpperCase();
+      const nomRaw = (c.nom_effectif || "").toString().trim();
+      const nom = nomRaw.toUpperCase();
       const name = `${nom} ${prenom}`.trim() || "Collaborateur";
       const poste = (c.intitule_poste || "Poste non renseigné").toString().trim();
+      const status = getCollaborateurEntretienStatus(c);
+
       const item = document.createElement("button");
       item.type = "button";
       item.className = "ep-collab-card";
       item.dataset.idEffectif = String(c.id_effectif || "");
       item.dataset.idService = String(c.id_service || "");
-      item.title = poste ? `${name} - ${poste}` : name;
+      item.dataset.entretienStatus = status.key;
+      item.title = `${name}${poste ? ` - ${poste}` : ""} · ${status.label}`;
+
+      const avatar = document.createElement("span");
+      avatar.className = "ep-collab-card-avatar";
+      avatar.textContent = getCollaborateurInitials(c);
+      avatar.setAttribute("aria-hidden", "true");
 
       const left = document.createElement("div");
       left.className = "ep-collab-card-main";
@@ -1787,9 +1834,16 @@ function renderCollaborateurs(list) {
       roleEl.className = "ep-collab-card-role";
       roleEl.textContent = poste;
 
+      const dot = document.createElement("span");
+      dot.className = `ep-collab-status-dot ep-collab-status-dot--${status.key}`;
+      dot.title = status.label;
+      dot.setAttribute("aria-label", status.label);
+
       left.appendChild(nameEl);
       left.appendChild(roleEl);
+      item.appendChild(avatar);
       item.appendChild(left);
+      item.appendChild(dot);
 
       item.addEventListener("click", async () => {
         // sélection visuelle
@@ -1957,6 +2011,20 @@ function renderCollaborateurs(list) {
       wrap.appendChild(item);
     });
 
+    if (arr.length > 6) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "ep-collab-more";
+      more.innerHTML = isExpanded
+        ? `<span>Réduire la liste</span><span aria-hidden="true">↑</span>`
+        : `<span>Plus de collaborateurs</span><strong>${arr.length - 6}</strong><span aria-hidden="true">→</span>`;
+      more.addEventListener("click", () => {
+        state.collabExpanded = !state.collabExpanded;
+        renderCollaborateurs(state._collaborateursAll || []);
+      });
+      wrap.appendChild(more);
+    }
+
     const pendingApplied = applyPendingCollaborateurPreselect();
 
     if (!pendingApplied) {
@@ -2053,6 +2121,8 @@ function renderCollaborateurs(list) {
   async function loadCollaborateurs() {
     if (!_portal) return;
     if (!state.serviceId) return;
+
+    state.collabExpanded = false;
 
     const q = ($("ep_txtSearchCollab")?.value || "").trim();
     const pendingId = String(state.pendingPreselectCollaborateurId || "").trim();

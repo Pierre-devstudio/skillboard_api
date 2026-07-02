@@ -108,6 +108,11 @@ class CollaborateurListItem(BaseModel):
 
     ismanager: Optional[bool] = None
 
+    date_dernier_entretien: Optional[str] = None
+    date_prochain_entretien: Optional[str] = None
+    statut_entretien_suivi: Optional[str] = None
+    libelle_entretien_suivi: Optional[str] = None
+
 class AuditCritereItem(BaseModel):
     code_critere: str  # "Critere1".."Critere4"
     niveau: int        # 1..4
@@ -262,7 +267,12 @@ class CollaborateurListItem(BaseModel):
     nb_competences_jamais_auditees: int = 0
     date_derniere_eval: Optional[str] = None
     mois_depuis_derniere_eval: Optional[int] = None
-    priorite_eval: Optional[str] = None    
+    priorite_eval: Optional[str] = None
+
+    date_dernier_entretien: Optional[str] = None
+    date_prochain_entretien: Optional[str] = None
+    statut_entretien_suivi: Optional[str] = None
+    libelle_entretien_suivi: Optional[str] = None
 
 
 # ======================================================
@@ -1242,6 +1252,23 @@ def get_entretien_performance_collaborateurs(
                         WHERE ec.actif = TRUE
                           AND ec.archive = FALSE
                         GROUP BY ec.id_effectif_client
+                    ),
+                    entretien_suivi AS (
+                        SELECT
+                            ei.id_effectif_client,
+                            MAX(ei.date_realisee) FILTER (WHERE ei.date_realisee IS NOT NULL) AS date_dernier_entretien,
+                            MIN(ei.date_prevue) FILTER (
+                                WHERE ei.date_realisee IS NULL
+                                  AND ei.date_prevue >= CURRENT_DATE
+                            ) AS date_prochain_entretien,
+                            MIN(ei.date_prevue) FILTER (
+                                WHERE ei.date_realisee IS NULL
+                                  AND ei.date_prevue < CURRENT_DATE
+                            ) AS date_prevue_retard
+                        FROM public.tbl_entretien_individuel ei
+                        WHERE ei.id_ent = %s
+                          AND COALESCE(ei.archive, FALSE) = FALSE
+                        GROUP BY ei.id_effectif_client
                     )
                     SELECT
                         e.id_effectif,
@@ -1272,7 +1299,26 @@ def get_entretien_performance_collaborateurs(
                             WHEN comp.date_derniere_eval IS NULL THEN 'high'
                             WHEN comp.date_derniere_eval < (CURRENT_DATE - INTERVAL '12 months') THEN 'plan'
                             ELSE 'ok'
-                        END AS priorite_eval
+                        END AS priorite_eval,
+
+                        ent.date_dernier_entretien::text AS date_dernier_entretien,
+                        ent.date_prochain_entretien::text AS date_prochain_entretien,
+
+                        CASE
+                            WHEN ent.date_prevue_retard IS NOT NULL THEN 'retard'
+                            WHEN ent.date_prochain_entretien IS NOT NULL THEN 'planifie'
+                            WHEN ent.date_dernier_entretien IS NULL THEN 'a_planifier'
+                            WHEN ent.date_dernier_entretien < (CURRENT_DATE - INTERVAL '12 months') THEN 'retard'
+                            ELSE 'a_jour'
+                        END AS statut_entretien_suivi,
+
+                        CASE
+                            WHEN ent.date_prevue_retard IS NOT NULL THEN 'Entretien en retard'
+                            WHEN ent.date_prochain_entretien IS NOT NULL THEN 'Entretien planifié'
+                            WHEN ent.date_dernier_entretien IS NULL THEN 'Entretien à planifier'
+                            WHEN ent.date_dernier_entretien < (CURRENT_DATE - INTERVAL '12 months') THEN 'Entretien en retard'
+                            ELSE 'Entretien à jour'
+                        END AS libelle_entretien_suivi
 
                     FROM public.tbl_effectif_client e
 
@@ -1289,22 +1335,18 @@ def get_entretien_performance_collaborateurs(
                     LEFT JOIN comp_eval comp
                         ON comp.id_effectif_client = e.id_effectif
 
+                    LEFT JOIN entretien_suivi ent
+                        ON ent.id_effectif_client = e.id_effectif
+
                     WHERE {where_sql}
 
                     ORDER BY
-                        CASE
-                            WHEN COALESCE(comp.nb_competences_total, 0) = 0 THEN 3
-                            WHEN COALESCE(comp.nb_competences_jamais_auditees, 0) > 0 THEN 0
-                            WHEN comp.date_derniere_eval IS NULL THEN 0
-                            WHEN comp.date_derniere_eval < (CURRENT_DATE - INTERVAL '12 months') THEN 1
-                            ELSE 2
-                        END,
                         e.nom_effectif,
                         e.prenom_effectif
 
                     LIMIT %s
                     """,
-                    tuple([*params, limit]),
+                    tuple([id_ent, *params, limit]),
                 )
 
                 rows = cur.fetchall() or []
@@ -1324,6 +1366,10 @@ def get_entretien_performance_collaborateurs(
                         date_derniere_eval=r.get("date_derniere_eval"),
                         mois_depuis_derniere_eval=r.get("mois_depuis_derniere_eval"),
                         priorite_eval=r.get("priorite_eval"),
+                        date_dernier_entretien=r.get("date_dernier_entretien"),
+                        date_prochain_entretien=r.get("date_prochain_entretien"),
+                        statut_entretien_suivi=r.get("statut_entretien_suivi"),
+                        libelle_entretien_suivi=r.get("libelle_entretien_suivi"),
                     )
                     for r in rows
                 ]

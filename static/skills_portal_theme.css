@@ -29548,3 +29548,146 @@ body{
   background:#f8fafc;
   border-color:var(--sb-gray-200);
 }
+
+
+/* ======================================================
+   Entretiens & évaluations — liste collaborateurs sobre
+   ====================================================== */
+
+#view-entretien-performance .ep-collab-list{
+  max-height:none;
+  min-height:0;
+  padding-right:0;
+  overflow:visible;
+}
+
+#view-entretien-performance .ep-collab-stack{
+  gap:0;
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  overflow:hidden;
+  background:#fff;
+}
+
+#view-entretien-performance .ep-collab-card{
+  min-height:58px;
+  padding:10px 12px;
+  border:0;
+  border-bottom:1px solid var(--sb-gray-200);
+  border-radius:0;
+  box-shadow:none;
+  gap:10px;
+}
+
+#view-entretien-performance .ep-collab-card:last-of-type{
+  border-bottom:0;
+}
+
+#view-entretien-performance .ep-collab-card:hover{
+  background:#f8fafc;
+}
+
+#view-entretien-performance .ep-collab-card.active{
+  border-color:transparent;
+  background:color-mix(in srgb, var(--accent) 7%, #ffffff);
+  box-shadow:inset 3px 0 0 var(--accent);
+}
+
+#view-entretien-performance .ep-collab-card-avatar{
+  width:30px;
+  height:30px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 30px;
+  background:color-mix(in srgb, var(--accent) 10%, #ffffff);
+  color:var(--accent);
+  font-size:11px;
+  font-weight:750;
+  letter-spacing:.02em;
+}
+
+#view-entretien-performance .ep-collab-card-main{
+  min-width:0;
+  flex:1 1 auto;
+}
+
+#view-entretien-performance .ep-collab-card-name{
+  font-size:13px;
+  font-weight:700;
+}
+
+#view-entretien-performance .ep-collab-card-role{
+  margin-top:3px;
+  font-size:11.5px;
+}
+
+#view-entretien-performance .ep-collab-status-dot{
+  width:9px;
+  height:9px;
+  border-radius:999px;
+  flex:0 0 9px;
+  background:var(--sb-gray-300);
+  box-shadow:0 0 0 3px rgba(148,163,184,.14);
+}
+
+#view-entretien-performance .ep-collab-status-dot--ok{
+  background:var(--sb-success);
+  box-shadow:0 0 0 3px rgba(62,190,73,.14);
+}
+
+#view-entretien-performance .ep-collab-status-dot--planned{
+  background:var(--sb-info);
+  box-shadow:0 0 0 3px rgba(2,132,199,.14);
+}
+
+#view-entretien-performance .ep-collab-status-dot--todo{
+  background:var(--sb-warning);
+  box-shadow:0 0 0 3px rgba(245,158,11,.16);
+}
+
+#view-entretien-performance .ep-collab-status-dot--late{
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-entretien-performance .ep-collab-more{
+  width:100%;
+  min-height:46px;
+  border:0;
+  border-top:1px solid var(--sb-gray-200);
+  background:#fff;
+  color:var(--sb-gray-900);
+  cursor:pointer;
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:0 14px;
+}
+
+#view-entretien-performance .ep-collab-more:hover,
+#view-entretien-performance .ep-collab-more:focus{
+  background:#f8fafc;
+  color:var(--accent);
+  outline:none;
+}
+
+#view-entretien-performance .ep-collab-more strong{
+  margin-left:auto;
+  min-width:22px;
+  height:22px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:color-mix(in srgb, var(--accent) 8%, #ffffff);
+  border:1px solid color-mix(in srgb, var(--accent) 20%, var(--sb-gray-200));
+  color:var(--accent);
+  font-size:11px;
+  font-weight:800;
+}
