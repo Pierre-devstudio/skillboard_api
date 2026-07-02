@@ -1254,17 +1254,35 @@
     if (st.includes("termine") || st.includes("signe")) signTxt = "Signé";
 
     const hasCurrent = !!current;
-    setText("ep_stepPreparationBadge", hasCurrent ? "Préparé" : "À préparer");
+    const prepDone = hasCurrent;
+    const realizationDone = !!(current?.date_realisee || st.includes("signer") || st.includes("termine") || st.includes("signe"));
+    const signaturesDone = !!(st.includes("termine") || st.includes("signe"));
+    const reportDone = signaturesDone && !!current?.id_entretien;
+
+    setText("ep_stepPreparationBadge", prepDone ? "Préparé" : "À préparer");
     setText("ep_stepPreparationSub", current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucune préparation ouverte");
-    setText("ep_stepRealisationBadge", current?.date_realisee ? "Réalisé" : "À réaliser");
-    setText("ep_stepRealisationSub", current?.date_realisee ? `Réalisé le ${epFormatDateFR(current.date_realisee)}` : "Planifier et conduire l’entretien");
+    setText("ep_stepRealisationBadge", realizationDone ? "Réalisé" : "À réaliser");
+    setText("ep_stepRealisationSub", realizationDone ? `Réalisé le ${epFormatDateFR(current.date_realisee)}` : "Planifier et conduire l’entretien");
     setText("ep_stepSignaturesBadge", signTxt);
-    setText("ep_stepSignaturesSub", st.includes("signer") ? "Validation électronique en attente" : "Validation électronique");
+    setText("ep_stepSignaturesSub", st.includes("signer") ? "Validation électronique en attente" : (signaturesDone ? "Signatures finalisées" : "Validation électronique"));
     setText("ep_stepRapportBadge", current?.id_entretien ? "Disponible" : "À générer");
     setText("ep_stepRapportSub", current?.id_entretien ? "Rapport PDF accessible" : "Enregistre l’entretien avant le rapport");
 
+    const prepareBtnLabel = $("ep_btnAnnualPrepare")?.querySelector("span:last-child");
+    if (prepareBtnLabel) prepareBtnLabel.textContent = prepDone ? "Reprendre la préparation" : "Préparer l’entretien";
+
     const reportBtn = $("ep_btnAnnualReport");
     if (reportBtn) reportBtn.disabled = !current?.id_entretien;
+
+    const stepPreparation = $("ep_stepPreparation");
+    const stepRealisation = $("ep_stepRealisation");
+    const stepSignatures = $("ep_stepSignatures");
+    const stepRapport = $("ep_stepRapport");
+    [[stepPreparation, prepDone], [stepRealisation, realizationDone], [stepSignatures, signaturesDone], [stepRapport, reportDone]].forEach(([el, done]) => {
+      if (!el) return;
+      el.classList.toggle("is-done", !!done);
+      el.classList.toggle("is-pending", !done);
+    });
 
     epRenderAnnualHistory(annuals);
   }
