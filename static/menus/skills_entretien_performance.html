@@ -523,9 +523,14 @@
             </select>
           </div>
 
-          <div class="ep-score-card">
+          <div class="ep-score-card ep-score-card--mastery">
             <div class="label">Maîtrise</div>
-            <div class="value" id="ep_scorePct">—</div>
+            <div class="ep-mastery-value">
+              <div class="value" id="ep_scorePct">—</div>
+              <div class="ep-mastery-gauge is-empty" id="ep_masteryGauge" aria-hidden="true">
+                <span></span>
+              </div>
+            </div>
           </div>
 
           <div class="ep-score-card">
@@ -542,8 +547,14 @@
 
       <div class="modal-footer ep-eval-modal-footer">
         <div id="ep_saveMsg" class="sb-inline-msg" aria-live="polite"></div>
-        <button type="button" class="sb-btn sb-btn--soft" id="btnEpEvaluationModalClose">Annuler</button>
-        <button class="sb-btn sb-btn--accent" id="ep_btnSave" type="button" disabled>Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnEpEvaluationModalClose">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg></span>
+          <span>Annuler</span>
+        </button>
+        <button class="sb-btn sb-btn--accent" id="ep_btnSave" type="button" disabled>
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6" /></svg></span>
+          <span>Enregistrer</span>
+        </button>
       </div>
     </div>
   </div>

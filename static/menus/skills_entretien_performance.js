@@ -174,6 +174,60 @@
     m.setAttribute("aria-hidden", "true");
   }
 
+
+  function epEvaluationNoteLabel(value) {
+    const n = Number(value);
+    if (n === 1) return "Débutant";
+    if (n === 2) return "Intermédiaire";
+    if (n === 3) return "Avancé";
+    if (n === 4) return "Expert";
+    return "—";
+  }
+
+  function epApplyEvaluationNoteLabels() {
+    for (let i = 1; i <= 4; i++) {
+      const sel = $(`ep_critNote${i}`);
+      if (!sel) continue;
+
+      Array.from(sel.options || []).forEach(opt => {
+        const value = (opt.value || "").toString().trim();
+        if (!value) {
+          opt.textContent = "—";
+          return;
+        }
+
+        opt.textContent = epEvaluationNoteLabel(value);
+      });
+    }
+  }
+
+  function epUpdateMasteryGauge(value) {
+    const gauge = $("ep_masteryGauge");
+    if (!gauge) return;
+
+    const raw = (value ?? $("ep_scorePct")?.textContent ?? "").toString();
+    const match = raw.match(/-?\d+(?:[,.]\d+)?/);
+    const pct = match ? Number(match[0].replace(",", ".")) : NaN;
+
+    if (!Number.isFinite(pct)) {
+      gauge.classList.add("is-empty");
+      gauge.style.removeProperty("--ep-mastery-pct");
+      gauge.setAttribute("aria-hidden", "true");
+      return;
+    }
+
+    const safePct = Math.max(0, Math.min(100, pct));
+    gauge.classList.remove("is-empty");
+    gauge.style.setProperty("--ep-mastery-pct", `${safePct}%`);
+    gauge.setAttribute("aria-hidden", "false");
+    gauge.setAttribute("aria-label", `Maîtrise ${Math.round(safePct)} %`);
+  }
+
+  function epSetScorePct(value) {
+    setText("ep_scorePct", value);
+    epUpdateMasteryGauge(value);
+  }
+
   // ------------------------------------------------------
   // Couverture poste: modal détail (réutilise state._covData)
   // ------------------------------------------------------
@@ -470,8 +524,8 @@
 
             const badge = document.createElement("span");
             badge.className = "sb-badge";
-            badge.textContent = String(i);
-            badge.style.minWidth = "28px";
+            badge.textContent = epEvaluationNoteLabel(i);
+            badge.style.minWidth = "104px";
             badge.style.textAlign = "center";
 
             const text = document.createElement("div");
@@ -791,7 +845,7 @@
     setText("ep_compLastEval", "");
 
     setText("ep_scoreRaw", "—");
-    setText("ep_scorePct", "—");
+    epSetScorePct("—");
     setText("ep_levelABC", "—");
 
     for (let i = 1; i <= 4; i++) {
@@ -984,7 +1038,7 @@
     setText("ep_compLastEval", lastDate ? `Dernière éval : ${lastDate}` : "");
     setText("ep_levelABC", niveau);
     setText("ep_scoreRaw", scoreInfo.sum === null ? "—" : String(scoreInfo.sum));
-    setText("ep_scorePct", scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
+    epSetScorePct(scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
 
     epSetSelectValueOrAdd("ep_selEvalMethod", method);
     setDisabled("ep_selEvalMethod", !canEditHistoryAudit);
@@ -4952,6 +5006,8 @@ function getCollaborateurInitials(c) {
 
         bindFiltersToggleOnce();
         bindPageTabsOnce();
+        epApplyEvaluationNoteLabels();
+        epUpdateMasteryGauge();
         updateCriticiteSliderVisual();
 
         if (!state._preselectListenersBound) {
@@ -5388,7 +5444,7 @@ function getCollaborateurInitials(c) {
               setText("ep_levelABC", niveau);
 
               setText("ep_scoreRaw", scoreInfo.sum === null ? "—" : String(scoreInfo.sum));
-              setText("ep_scorePct", scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
+              epSetScorePct(scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
 
               setSelectValueOrAdd("ep_selEvalMethod", method);
               setDisabled("ep_selEvalMethod", !canEditHistoryAudit);
@@ -5756,7 +5812,7 @@ function getCollaborateurInitials(c) {
 
         if (filledCount === 0) {
             setText("ep_scoreRaw", "—");
-            setText("ep_scorePct", "—");
+            epSetScorePct("—");
             setText("ep_levelABC", "—");
             return;
         }
@@ -5768,10 +5824,10 @@ function getCollaborateurInitials(c) {
         const pct = computePct(score24);
 
         if (enabledCount > 0 && filledCount === enabledCount && score24 !== null && pct !== null) {
-            setText("ep_scorePct", `${pct}%`);
+            epSetScorePct(`${pct}%`);
             setText("ep_levelABC", computeLevel(score24));
         } else {
-            setText("ep_scorePct", "—");
+            epSetScorePct("—");
             setText("ep_levelABC", "—");
         }
         };
@@ -6008,7 +6064,7 @@ function getCollaborateurInitials(c) {
     // Alignement UI : résultat affiché en pourcentage de maîtrise
     const pct = Math.max(0, Math.min(100, Math.round((score24 / 24) * 100)));
     if (document.getElementById("ep_scoreRaw")) document.getElementById("ep_scoreRaw").textContent = String(sum);
-    if (document.getElementById("ep_scorePct")) document.getElementById("ep_scorePct").textContent = `${pct}%`;
+    epSetScorePct(`${pct}%`);
     if (document.getElementById("ep_levelABC")) document.getElementById("ep_levelABC").textContent = _levelLabelFromCode(niveau_actuel);
 
     const observation = (document.getElementById("ep_txtObservation")?.value || "").trim();

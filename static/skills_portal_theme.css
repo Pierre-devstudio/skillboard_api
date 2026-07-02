@@ -30280,3 +30280,75 @@ body{
   from{ transform:rotate(0deg); }
   to{ transform:rotate(360deg); }
 }
+
+/* ======================================================
+   Entretien performance — Modal évaluation affinée
+   ====================================================== */
+
+#modalEpEvaluation .ep-score-card--mastery .ep-mastery-value{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+
+#modalEpEvaluation .ep-score-card--mastery #ep_scorePct{
+  flex:0 0 auto;
+  font-size:21px;
+  font-weight:750;
+  letter-spacing:-.02em;
+}
+
+#modalEpEvaluation .ep-mastery-gauge{
+  --ep-mastery-pct:0%;
+  position:relative;
+  flex:1 1 130px;
+  max-width:170px;
+  min-width:112px;
+  height:14px;
+  border-radius:999px;
+  background:linear-gradient(90deg, #dc2626 0%, #f97316 34%, #facc15 58%, #22c55e 100%);
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,.08);
+  overflow:visible;
+}
+
+#modalEpEvaluation .ep-mastery-gauge::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  left:var(--ep-mastery-pct);
+  width:4px;
+  height:22px;
+  border-radius:999px;
+  background:var(--sb-gray-900);
+  transform:translate(-50%, -50%);
+  box-shadow:0 0 0 2px #fff, 0 4px 10px rgba(15,23,42,.16);
+}
+
+#modalEpEvaluation .ep-mastery-gauge span{
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(90deg, rgba(255,255,255,.16), rgba(255,255,255,.34));
+  pointer-events:none;
+}
+
+#modalEpEvaluation .ep-mastery-gauge.is-empty{
+  opacity:.22;
+  background:var(--sb-gray-200);
+}
+
+#modalEpEvaluation .ep-mastery-gauge.is-empty::after{
+  display:none;
+}
+
+#modalEpEvaluation .ep-eval-modal-footer .sb-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+#modalEpEvaluation .ep-eval-modal-footer .sb-btn .sb-btn-icon{
+  color:currentColor;
+}
