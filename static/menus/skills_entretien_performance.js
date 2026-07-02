@@ -1189,16 +1189,23 @@
   function epUpdatePunctualMoreButton(visibleTotal, hiddenCount) {
     const btn = $("ep_btnMoreCompetences");
     const label = $("ep_moreCompetencesLabel");
+    const wrap = document.querySelector("#view-entretien-performance .ep-comp-table-wrap");
     if (!btn || !label) return;
 
-    const hasMore = Number(hiddenCount || 0) > 0;
-    btn.style.display = hasMore || state._punctualShowAllCompetences ? "" : "none";
-    btn.setAttribute("aria-expanded", state._punctualShowAllCompetences ? "true" : "false");
+    const total = Number(visibleTotal || 0);
+    const hidden = Math.max(0, Number(hiddenCount || 0));
+    const expanded = !!state._punctualShowAllCompetences;
+    const hasMore = hidden > 0;
 
-    if (state._punctualShowAllCompetences) {
+    if (wrap) wrap.classList.toggle("is-expanded", expanded && total > 5);
+
+    btn.style.display = hasMore || expanded ? "" : "none";
+    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+    if (expanded) {
       label.textContent = "Voir moins de compétences";
     } else {
-      label.textContent = `Voir plus de compétences (${hiddenCount})`;
+      label.textContent = `Voir plus de compétences (${hidden})`;
     }
   }
 

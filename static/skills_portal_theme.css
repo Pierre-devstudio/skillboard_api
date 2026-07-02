@@ -29386,6 +29386,10 @@ body{
   min-height:0;
 }
 
+#view-entretien-performance .ep-comp-table-wrap.is-expanded{
+  overflow:visible;
+}
+
 #view-entretien-performance .ep-punctual-table{
   width:100%;
   table-layout:fixed;
