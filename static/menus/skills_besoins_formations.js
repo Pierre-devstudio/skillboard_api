@@ -378,7 +378,17 @@
     }
 
     bindRowActions();
-    renderDetail(_selectedItem || visible[0] || null);
+    if (_selectedItem) {
+      const selectedId = String(_selectedItem.id_demande_rh || _selectedItem.source_ref || "");
+      const updated = selectedId
+        ? rows.find(x => String(x.id_demande_rh || x.source_ref || "") === selectedId)
+        : null;
+      if (updated && byId("bfDetailPanel")?.classList.contains("is-open")) {
+        renderDetail(updated);
+      } else {
+        renderDetail(null);
+      }
+    }
   }
 
   function bindRowActions() {
@@ -588,7 +598,6 @@
       });
       closeDemandModal();
       await refresh();
-      renderDetail(data?.item || null);
       setMsg(data?.message || "Demande RH enregistrée.", "success");
     } catch (e) {
       setMsg(errMsg(e), "error", "bfDemandModalMsg");
@@ -606,7 +615,6 @@
         body: JSON.stringify({ statut })
       });
       await refresh();
-      renderDetail(data?.item || null);
       setMsg(data?.message || "Statut mis à jour.", "success");
     } catch (e) {
       setMsg(errMsg(e), "error");
@@ -620,7 +628,6 @@
     try {
       const data = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/transmettre-studio`), { method: "POST" });
       await refresh();
-      renderDetail(data?.item || null);
       setMsg(data?.message || "Demande transmise au Studio.", "success");
     } catch (e) {
       setMsg(errMsg(e), "error");
@@ -733,11 +740,29 @@
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target && e.target.closest("[data-bf-demand-close]")) closeDemandModal();
+      const target = e.target;
+      if (!target || typeof target.closest !== "function") return;
+
+      if (target.closest("[data-bf-demand-close]")) {
+        closeDemandModal();
+        return;
+      }
+
+      const detailPanel = byId("bfDetailPanel");
+      if (!detailPanel?.classList.contains("is-open")) return;
+      if (target.closest("#bfDetailPanel")) return;
+      if (target.closest("[data-bf-view]")) return;
+      renderDetail(null);
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && byId("bfDemandModal")?.classList.contains("show")) closeDemandModal();
+      if (e.key === "Escape" && byId("bfDemandModal")?.classList.contains("show")) {
+        closeDemandModal();
+        return;
+      }
+      if (e.key === "Escape" && byId("bfDetailPanel")?.classList.contains("is-open")) {
+        renderDetail(null);
+      }
     });
   }
 
