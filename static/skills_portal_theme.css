@@ -30389,8 +30389,8 @@ body{
   justify-content:center;
   flex:0 0 42px;
   border-radius:14px;
-  background:var(--ep-red-soft);
-  color:var(--ep-red);
+  background:#fff1f3;
+  color:#d81d30;
 }
 
 #view-besoins-formations .bf-page-title-icon svg{
