@@ -88,11 +88,13 @@
   }
 
   function objectTitle(item) {
+    if (isAnalyseProposal(item)) return "Renforcer l’autonomie sur une compétence clé";
     if (item?.type_demande === "formation" && item?.intitule_competence) return "Renforcer une compétence";
     return item?.objet || "Demande RH";
   }
 
   function objectSub(item) {
+    if (isAnalyseProposal(item) && item?.intitule_competence) return item.intitule_competence;
     return item?.intitule_competence || item?.description || "À qualifier";
   }
 
@@ -219,8 +221,44 @@
       entretien: "Entretien",
       documentation: "Documentation",
       organisation: "Organisation",
-      autre: "Autre"
-    }[v] || "Demande";
+      autre: "À définir"
+    }[v] || "À définir";
+  }
+
+  function isAnalyseProposal(item) {
+    return item && item.origine === "analyse" && item.is_signal_actuel && !item.id_demande_rh;
+  }
+
+  function finalityLabel(item) {
+    if (item?.finalite_label) return item.finalite_label;
+    if (isAnalyseProposal(item) || item?.intitule_competence) return "Monter en compétence";
+    return "Besoin RH";
+  }
+
+  function responseLabel(item) {
+    if (item?.reponse_rh_label) return item.reponse_rh_label;
+    return typeLabel(item?.type_demande);
+  }
+
+  function responseBadgeClass(item) {
+    const label = responseLabel(item).toLowerCase();
+    if (label.includes("définir") || label.includes("definir")) return "bf-badge--gray";
+    return badgeClass("type", item?.type_demande);
+  }
+
+  function whyTitle(item) {
+    return item?.origine === "analyse" ? "Pourquoi Novoskill propose cette demande ?" : "Justification de la demande";
+  }
+
+  function whyProposalText(item) {
+    if (item?.pourquoi_proposition) return item.pourquoi_proposition;
+    if (isAnalyseProposal(item)) {
+      const comp = item.intitule_competence || "cette compétence";
+      const actuel = item.niveau_actuel_label || item.niveau_actuel || "non évalué";
+      const attendu = item.niveau_attendu_label || item.niveau_attendu || "attendu";
+      return `Novoskill propose cette demande car le niveau actuel sur ${comp} (${actuel}) est inférieur au niveau attendu (${attendu}) pour le poste occupé.`;
+    }
+    return item?.description || "Aucune justification détaillée pour le moment.";
   }
 
   function originLabel(v) {
@@ -415,8 +453,9 @@
         <div class="bf-table-row bf-table-row--head">
           <div>Collaborateur</div>
           <div class="bf-cell--center">Origine</div>
-          <div class="bf-cell--center">Type</div>
+          <div class="bf-cell--center">Finalité</div>
           <div>Objet</div>
+          <div class="bf-cell--center">Réponse RH</div>
           <div class="bf-cell--center">Statut</div>
           <div class="bf-cell--center">Échéance</div>
           <div class="bf-cell--center">Actions</div>
@@ -431,11 +470,12 @@
               </div>
             </div>
             <div class="bf-cell--center"><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
-            <div class="bf-cell--center"><span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span></div>
+            <div class="bf-cell--center"><span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span></div>
             <div class="bf-object">
               <strong>${escapeHtml(objectTitle(item))}</strong>
               <small>${escapeHtml(objectSub(item))}</small>
             </div>
+            <div class="bf-cell--center"><span class="bf-badge ${responseBadgeClass(item)}">${escapeHtml(responseLabel(item))}</span></div>
             <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
             <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
             <div class="bf-row-actions">
@@ -470,7 +510,7 @@
                 </div>
                 <div class="bf-group-count">
                   <strong>${group.items.length}</strong>
-                  <small>${group.items.length > 1 ? "demandes" : "demande"}</small>
+                  <small>${group.items.every(x => isAnalyseProposal(x.item)) ? (group.items.length > 1 ? "propositions" : "proposition") : (group.items.length > 1 ? "demandes" : "demande")}</small>
                 </div>
                 <div class="bf-cell--center"><span class="bf-badge ${badgeClass("statut", mainStatus)}">${escapeHtml(groupMainStatusLabel(group))}</span></div>
                 <div class="bf-date bf-cell--center"><span>${escapeHtml(groupMainEcheance(group))}</span><small>${escapeHtml(priorityLabel(mainPriority))}</small></div>
@@ -480,8 +520,9 @@
                 <div class="bf-group-panel">
                   <div class="bf-group-demand-row bf-group-demand-row--head">
                     <div class="bf-cell--center">Origine</div>
-                    <div class="bf-cell--center">Type</div>
+                    <div class="bf-cell--center">Finalité</div>
                     <div>Objet</div>
+                    <div class="bf-cell--center">Réponse RH</div>
                     <div class="bf-cell--center">Statut</div>
                     <div class="bf-cell--center">Échéance</div>
                     <div class="bf-cell--center">Actions</div>
@@ -489,11 +530,12 @@
                   ${group.items.map(({ item, index }) => `
                     <div class="bf-group-demand-row" data-bf-row="${index}" data-bf-key="${escapeHtml(itemStableKey(item, index))}">
                       <div class="bf-cell--center"><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
-                      <div class="bf-cell--center"><span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span></div>
+                      <div class="bf-cell--center"><span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span></div>
                       <div class="bf-object">
                         <strong>${escapeHtml(objectTitle(item))}</strong>
                         <small>${escapeHtml(objectSub(item))}</small>
                       </div>
+                      <div class="bf-cell--center"><span class="bf-badge ${responseBadgeClass(item)}">${escapeHtml(responseLabel(item))}</span></div>
                       <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
                       <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
                       <div class="bf-row-actions">
@@ -604,7 +646,7 @@
       return;
     }
     panel.classList.add("is-open");
-    setText("bfDetailSub", `${item.collaborateur_nom_complet || "Demande collective"} · ${typeLabel(item.type_demande)}`);
+    setText("bfDetailSub", `${item.collaborateur_nom_complet || "Demande collective"} · ${finalityLabel(item)}`);
     const canValidate = item.id_demande_rh && item.statut === "a_valider";
     const canTransmit = item.id_demande_rh && item.statut === "validee" && item.type_demande === "formation";
     body.innerHTML = `
@@ -612,10 +654,11 @@
         <div class="bf-detail-topline">
           <span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span>
           <span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span>
-          <span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span>
+          <span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span>
+          <span class="bf-badge ${responseBadgeClass(item)}">${escapeHtml(responseLabel(item))}</span>
         </div>
-        <h3>${escapeHtml(item.objet || "Demande RH")}</h3>
-        <p>${escapeHtml(item.description || "Aucune justification détaillée pour le moment.")}</p>
+        <h3>${escapeHtml(objectTitle(item))}</h3>
+        <p>${escapeHtml(objectSub(item))}</p>
       </div>
 
       <div class="bf-detail-section">
@@ -624,6 +667,12 @@
           <span class="bf-avatar">${escapeHtml(initials(item.collaborateur_nom_complet))}</span>
           <div><strong>${escapeHtml(item.collaborateur_nom_complet || "Demande collective")}</strong><small>${escapeHtml(item.intitule_poste || "Poste non précisé")} · ${escapeHtml(item.nom_service || "Service non précisé")}</small></div>
         </div>
+      </div>
+
+      <div class="bf-detail-section bf-detail-section--why">
+        <h4>${escapeHtml(whyTitle(item))}</h4>
+        <p>${escapeHtml(whyProposalText(item))}</p>
+        ${isAnalyseProposal(item) ? `<div class="bf-detail-note">Cette proposition ne déclenche pas une formation automatiquement. Elle sert à confirmer le besoin terrain puis à choisir la réponse RH adaptée.</div>` : ""}
       </div>
 
       <div class="bf-detail-section">
@@ -637,8 +686,8 @@
       <div class="bf-detail-grid">
         <div><span>Priorité</span><strong>${escapeHtml(priorityLabel(item.priorite))}</strong></div>
         <div><span>Échéance</span><strong>${escapeHtml(echeanceLabel(item))}</strong></div>
-        <div><span>Score</span><strong>${escapeHtml(item.score_anticipation || 0)}%</strong></div>
-        <div><span>Criticité</span><strong>${escapeHtml(item.criticite || 0)}</strong></div>
+        <div><span>Niveau actuel</span><strong>${escapeHtml(item.niveau_actuel_label || item.niveau_actuel || "—")}</strong></div>
+        <div><span>Niveau attendu</span><strong>${escapeHtml(item.niveau_attendu_label || item.niveau_attendu || "—")}</strong></div>
       </div>
 
       <div class="bf-detail-section">
@@ -681,14 +730,14 @@
 
     const isCreate = !_modalItem;
     setText("bfDemandModalTitle", isCreate ? "Créer une demande RH" : "Qualifier la demande RH");
-    setText("bfDemandModalSub", isCreate ? "Demande manager, renfort, mobilité, transmission ou formation." : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
+    setText("bfDemandModalSub", isCreate ? "Décrivez le besoin terrain. La réponse RH peut rester à définir." : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
 
     const eff = byId("bfDemandEffectif");
     if (eff) eff.value = _modalItem?.id_effectif_concerne || "";
     const comp = byId("bfDemandCompetence");
     if (comp) comp.value = _modalItem?.id_comp || "";
     const type = byId("bfDemandType");
-    if (type) type.value = _modalItem?.type_demande || "formation";
+    if (type) type.value = _modalItem?.type_demande || "autre";
     const priority = byId("bfDemandPriority");
     if (priority) priority.value = _modalItem?.priorite || "normale";
     const objet = byId("bfDemandObjet");
@@ -727,7 +776,7 @@
       origine: isSignal ? (_modalItem.origine || "analyse") : (_modalItem?.origine || "manager"),
       source_type: isSignal ? (_modalItem.source_type || "analyse_competences") : (_modalItem?.source_type || "manager"),
       source_ref: _modalItem?.source_ref || _modalItem?.id_demande_rh || null,
-      type_demande: byId("bfDemandType")?.value || "formation",
+      type_demande: byId("bfDemandType")?.value || "autre",
       objet: byId("bfDemandObjet")?.value || _modalItem?.objet || "Demande RH à qualifier",
       description: byId("bfDemandDescription")?.value || _modalItem?.description || "",
       statut,

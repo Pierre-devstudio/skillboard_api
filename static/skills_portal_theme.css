@@ -30611,6 +30611,18 @@ body{
   color:#cf1f2b;
 }
 
+#view-besoins-formations .bf-proposal-note{
+  margin:0 0 10px;
+  padding:8px 10px;
+  border:1px solid rgba(124,58,237,.16);
+  border-radius:11px;
+  background:rgba(124,58,237,.055);
+  color:#5b21b6;
+  font-size:11.5px;
+  font-weight:650;
+  line-height:1.35;
+}
+
 #view-besoins-formations .bf-list-wrap{
   margin-top:8px;
 }
@@ -30636,7 +30648,7 @@ body{
 
 #view-besoins-formations .bf-table-row{
   display:grid;
-  grid-template-columns:minmax(260px,1.22fr) 78px 92px minmax(250px,1.28fr) 112px 112px 138px;
+  grid-template-columns:minmax(250px,1.10fr) 76px 128px minmax(235px,1.18fr) 102px 104px 110px 132px;
   gap:8px;
   align-items:center;
   min-height:58px;
@@ -30923,7 +30935,7 @@ body{
 
 #view-besoins-formations .bf-group-demand-row{
   display:grid;
-  grid-template-columns:80px 94px minmax(260px,1fr) 116px 112px 138px;
+  grid-template-columns:78px 128px minmax(250px,1fr) 102px 108px 110px 132px;
   gap:8px;
   align-items:center;
   min-height:48px;
@@ -31018,6 +31030,18 @@ body{
   color:#475569;
   font-size:12px;
   line-height:1.4;
+}
+
+#view-besoins-formations .bf-detail-note{
+  margin-top:9px;
+  padding:9px 10px;
+  border:1px solid rgba(217,119,6,.18);
+  border-radius:11px;
+  background:rgba(217,119,6,.07);
+  color:#92400e;
+  font-size:11.5px;
+  font-weight:650;
+  line-height:1.35;
 }
 
 #view-besoins-formations .bf-detail-topline{

@@ -82,7 +82,7 @@ class DemandeRhPayload(BaseModel):
     origine: Optional[str] = "manager"
     source_type: Optional[str] = "manager"
     source_ref: Optional[str] = None
-    type_demande: Optional[str] = "formation"
+    type_demande: Optional[str] = "autre"
     objet: Optional[str] = None
     description: Optional[str] = None
     statut: Optional[str] = None
@@ -188,7 +188,7 @@ def _normalise_demande_type(value: str) -> str:
         "action_rh": "autre",
     }
     s = aliases.get(s, s)
-    return s if s in DEMANDE_TYPES else "formation"
+    return s if s in DEMANDE_TYPES else "autre"
 
 
 def _normalise_demande_priorite(value: str) -> str:
@@ -211,6 +211,44 @@ def _priority_from_demande_score(score: int, criticite: int = 0) -> str:
     if s <= 30:
         return "basse"
     return "normale"
+
+
+def _niveau_label(value: Any) -> str:
+    s = _s(value)
+    if not s:
+        return "—"
+    up = s.upper()
+    if up == "A" or "DÉBUT" in up or "DEBUT" in up or "INITIAL" in up:
+        return "Débutant"
+    if up == "B" or "INTERM" in up:
+        return "Intermédiaire"
+    if up == "C" or "AVANC" in up:
+        return "Avancé"
+    if up == "D" or "EXPERT" in up:
+        return "Expert"
+    if s.isdigit():
+        n = _i(s)
+        if n >= 4:
+            return "Expert"
+        if n == 3:
+            return "Avancé"
+        if n == 2:
+            return "Intermédiaire"
+        if n == 1:
+            return "Débutant"
+    return s
+
+
+def _analyse_gap_explanation(row: Dict[str, Any]) -> str:
+    comp = _s(row.get("intitule_competence")) or "cette compétence"
+    poste = _s(row.get("intitule_poste")) or "le poste occupé"
+    actuel = _niveau_label(row.get("niveau_actuel"))
+    attendu = _niveau_label(row.get("niveau_requis") or row.get("niveau_attendu"))
+    return (
+        f"Novoskill propose cette demande car le niveau actuel du collaborateur sur « {comp} » "
+        f"({actuel}) est inférieur au niveau attendu ({attendu}) pour {poste}. "
+        "La demande sert à confirmer le besoin terrain avant de choisir la réponse RH adaptée."
+    )
 
 
 def _json_list(values: Any) -> List[str]:
@@ -766,12 +804,45 @@ def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
     origine = _normalise_demande_origine(row.get("origine") or row.get("source_type"))
     type_demande = _normalise_demande_type(row.get("type_demande"))
     priorite = _normalise_demande_priorite(row.get("priorite"))
+    payload_signal = row.get("payload_signal") or {}
+    if isinstance(payload_signal, str):
+        try:
+            parsed = json.loads(payload_signal)
+            payload_signal = parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            payload_signal = {}
+    if not isinstance(payload_signal, dict):
+        payload_signal = {}
+    finalite_terrain = _s(row.get("finalite_terrain") or payload_signal.get("finalite_terrain"))
+    if not finalite_terrain:
+        finalite_terrain = "monter_competence" if _s(row.get("id_comp")) else "besoin_rh"
+    finalite_label = {
+        "monter_competence": "Monter en compétence",
+        "securiser_poste": "Sécuriser un poste",
+        "preparer_evolution": "Préparer une évolution",
+        "renforcer_equipe": "Renforcer une équipe",
+        "anticiper_depart": "Anticiper un départ",
+        "capitaliser_savoir": "Capitaliser un savoir-faire",
+        "traiter_demande_salarie": "Traiter une demande salarié",
+        "besoin_rh": "Besoin RH",
+    }.get(finalite_terrain, "Besoin RH")
+    reponse_rh_label = "À définir" if type_demande == "autre" else {
+        "formation": "Formation",
+        "transmission": "Transmission",
+        "renfort": "Renfort",
+        "recrutement": "Recrutement",
+        "mobilite": "Mobilité",
+        "tutorat": "Tutorat",
+        "entretien": "Entretien",
+        "documentation": "Documentation",
+        "organisation": "Organisation",
+    }.get(type_demande, "À définir")
     nom = " ".join([_s(row.get("prenom_effectif")), _s(row.get("nom_effectif"))]).strip()
     nom = _s(row.get("collaborateur_nom_complet")) or nom or "Demande collective"
     objet = _s(row.get("objet"))
     if not objet:
-        if type_demande == "formation" and _s(row.get("intitule_competence")):
-            objet = f"Renforcer {row.get('intitule_competence')}"
+        if _s(row.get("intitule_competence")):
+            objet = "Renforcer l’autonomie sur une compétence clé"
         else:
             objet = "Demande RH à qualifier"
     score = _i(row.get("score_anticipation") or row.get("indice_fragilite"))
@@ -783,6 +854,9 @@ def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
         "source_type": row.get("source_type") or origine,
         "origine": origine,
         "type_demande": type_demande,
+        "finalite_terrain": finalite_terrain,
+        "finalite_label": finalite_label,
+        "reponse_rh_label": reponse_rh_label,
         "objet": objet,
         "description": row.get("description") or row.get("motif_priorite") or "",
         "statut": statut,
@@ -799,7 +873,9 @@ def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
         "code_competence": row.get("code_competence"),
         "intitule_competence": row.get("intitule_competence"),
         "niveau_attendu": row.get("niveau_attendu") or row.get("niveau_requis"),
+        "niveau_attendu_label": _niveau_label(row.get("niveau_attendu") or row.get("niveau_requis")),
         "niveau_actuel": row.get("niveau_actuel"),
+        "niveau_actuel_label": _niveau_label(row.get("niveau_actuel")),
         "ecart_niveau": _i(row.get("ecart_niveau")),
         "criticite": criticite,
         "indice_fragilite": score,
@@ -813,7 +889,10 @@ def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
         "commentaire_manager": row.get("commentaire_manager") or "",
         "commentaire_salarie": row.get("commentaire_salarie") or "",
         "commentaire_client": row.get("commentaire_client") or "",
-        "payload_signal": row.get("payload_signal") or {},
+        "payload_signal": payload_signal,
+        "pourquoi_proposition": row.get("pourquoi_proposition") or payload_signal.get("pourquoi_proposition") or (
+            _analyse_gap_explanation(row) if _normalise_demande_origine(row.get("origine") or row.get("source_type")) == "analyse" and _s(row.get("id_comp")) else ""
+        ),
         "created_at": row.get("created_at"),
         "updated_at": row.get("updated_at"),
         "is_signal_actuel": bool(row.get("is_signal_actuel")),
@@ -828,12 +907,13 @@ def _demande_from_current_signal(row: Dict[str, Any]) -> Dict[str, Any]:
         "id_demande_rh": None,
         "origine": "analyse",
         "source_type": "analyse_competences",
-        "type_demande": "formation",
+        "type_demande": "autre",
         "statut": DEMANDE_STATUT_A_QUALIFIER,
         "priorite": _priority_from_demande_score(score, _i(row.get("criticite"))),
-        "objet": f"Renforcer {row.get('intitule_competence') or 'une compétence'}",
-        "description": row.get("motif_priorite") or "Besoin détecté par l’analyse des fragilités.",
-        "payload_signal": row,
+        "objet": "Renforcer l’autonomie sur une compétence clé",
+        "description": "Proposition issue de l’analyse des écarts de niveau.",
+        "pourquoi_proposition": _analyse_gap_explanation(row),
+        "payload_signal": {**row, "finalite_terrain": "monter_competence", "reponse_rh": "autre", "pourquoi_proposition": _analyse_gap_explanation(row)},
         "is_signal_actuel": True,
     })
     return _demande_base_item(item)
@@ -855,7 +935,8 @@ def _demande_from_legacy_besoin(row: Dict[str, Any]) -> Dict[str, Any]:
         "type_demande": "formation",
         "statut": mapped,
         "priorite": _priority_from_demande_score(_i(row.get("score_anticipation")), _i(row.get("criticite"))),
-        "objet": f"Renforcer {row.get('intitule_competence') or 'une compétence'}",
+        "objet": "Renforcer l’autonomie sur une compétence clé",
+        "finalite_terrain": "monter_competence",
         "description": row.get("motif_priorite") or "Besoin transmis depuis l’ancienne page Besoins & formations.",
         "source_ref": row.get("id_besoin_formation"),
         "is_signal_actuel": False,
@@ -992,7 +1073,7 @@ def _insert_demande_rh(cur, id_ent: str, id_contact: str, payload: DemandeRhPayl
     objet = _s(payload.objet)
     if not objet:
         if _s(ref.get("intitule_competence")):
-            objet = f"Renforcer {ref.get('intitule_competence')}"
+            objet = "Renforcer l’autonomie sur une compétence clé"
         else:
             objet = "Demande RH à qualifier"
 
@@ -1003,6 +1084,8 @@ def _insert_demande_rh(cur, id_ent: str, id_contact: str, payload: DemandeRhPayl
         "captured_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "origine": origine,
         "type_demande": type_demande,
+        "finalite_terrain": payload_signal.get("finalite_terrain") or ("monter_competence" if ref.get("id_comp") else "besoin_rh"),
+        "reponse_rh": type_demande,
     })
 
     modalites_json = json.dumps(_json_list(payload.modalites_souhaitees), ensure_ascii=False)

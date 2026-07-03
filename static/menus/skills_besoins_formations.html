@@ -49,9 +49,10 @@
         </select>
       </div>
       <div class="bf-field">
-        <label class="sb-label" for="bfTypeSelect">Type</label>
+        <label class="sb-label" for="bfTypeSelect">Réponse RH</label>
         <select id="bfTypeSelect" class="sb-select">
-          <option value="tous">Tous</option>
+          <option value="tous">Toutes</option>
+          <option value="autre">À définir</option>
           <option value="formation">Formation</option>
           <option value="transmission">Transmission</option>
           <option value="renfort">Renfort</option>
@@ -61,7 +62,6 @@
           <option value="entretien">Entretien</option>
           <option value="documentation">Documentation</option>
           <option value="organisation">Organisation</option>
-          <option value="autre">Autre</option>
         </select>
       </div>
       <div class="bf-field">
@@ -126,6 +126,8 @@
       <button type="button" class="bf-tab" data-bf-tab="tous"><span>Historique</span><strong>—</strong></button>
     </div>
 
+    <div class="bf-proposal-note" id="bfProposalNote">Les propositions Novoskill affichées automatiquement concernent uniquement les écarts entre niveau actuel et niveau attendu. Les mobilités, renforts et postes à pourvoir passent par le simulateur ou une demande manager.</div>
+
     <div id="bfListWrap" class="bf-list-wrap">
       <div class="bf-empty">Chargement des demandes…</div>
     </div>
@@ -151,7 +153,7 @@
       <div class="modal-header">
         <div>
           <div id="bfDemandModalTitle" class="card-title">Créer une demande RH</div>
-          <div id="bfDemandModalSub" class="card-sub">Renseignez uniquement ce qui est utile maintenant. Le reste se qualifie ensuite.</div>
+          <div id="bfDemandModalSub" class="card-sub">Exprimez le besoin terrain. La réponse RH se qualifie ensuite.</div>
         </div>
         <button type="button" class="modal-x" data-bf-demand-close>×</button>
       </div>
@@ -169,8 +171,9 @@
 
           <div class="bf-modal-card">
             <div class="bf-modal-card__title">Qualification</div>
-            <label class="bf-form-label" for="bfDemandType">Type de demande</label>
+            <label class="bf-form-label" for="bfDemandType">Réponse RH envisagée</label>
             <select id="bfDemandType" class="sb-select">
+              <option value="autre">À définir</option>
               <option value="formation">Formation</option>
               <option value="transmission">Transmission</option>
               <option value="renfort">Renfort</option>
@@ -180,7 +183,6 @@
               <option value="entretien">Entretien</option>
               <option value="documentation">Documentation</option>
               <option value="organisation">Organisation</option>
-              <option value="autre">Autre</option>
             </select>
 
             <label class="bf-form-label" for="bfDemandPriority">Priorité</label>

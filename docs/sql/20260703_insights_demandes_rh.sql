@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.tbl_insights_demande_rh (
   origine TEXT NOT NULL DEFAULT 'manager',
   source_type TEXT NOT NULL DEFAULT 'manager',
   source_ref TEXT,
-  type_demande TEXT NOT NULL DEFAULT 'formation',
+  type_demande TEXT NOT NULL DEFAULT 'autre',
   objet TEXT NOT NULL,
   description TEXT,
   statut TEXT NOT NULL DEFAULT 'a_qualifier',
