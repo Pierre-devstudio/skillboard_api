@@ -30382,19 +30382,26 @@ body{
 }
 
 #view-besoins-formations .bf-page-title-icon{
-  width:36px;
-  height:36px;
+  width:42px;
+  height:42px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 auto;
-  border-radius:12px;
-  background:rgba(210,35,43,.10);
-  color:var(--accent);
+  flex:0 0 42px;
+  border-radius:14px;
+  background:var(--ep-red-soft);
+  color:var(--ep-red);
 }
 
 #view-besoins-formations .bf-page-title-icon svg{
+  width:20px;
+  height:20px;
   display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 #view-besoins-formations .bf-page-head .card-title,
