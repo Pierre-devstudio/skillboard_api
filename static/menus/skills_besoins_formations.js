@@ -88,9 +88,11 @@
   }
 
   function objectTitle(item) {
+    const objet = String(item?.objet || "").trim();
+    if (objet) return objet;
     if (isAnalyseProposal(item)) return "Renforcer l’autonomie sur une compétence clé";
     if (item?.intitule_competence) return "Renforcer une compétence";
-    return item?.objet || "Demande RH";
+    return "Demande RH";
   }
 
   function objectSub(item) {
