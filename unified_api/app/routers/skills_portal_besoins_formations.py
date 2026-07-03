@@ -83,6 +83,7 @@ class DemandeRhPayload(BaseModel):
     source_type: Optional[str] = "manager"
     source_ref: Optional[str] = None
     type_demande: Optional[str] = "autre"
+    finalite_terrain: Optional[str] = None
     objet: Optional[str] = None
     description: Optional[str] = None
     statut: Optional[str] = None
@@ -191,6 +192,38 @@ def _normalise_demande_type(value: str) -> str:
     return s if s in DEMANDE_TYPES else "autre"
 
 
+def _normalise_demande_finalite(value: str, has_competence: bool = False) -> str:
+    s = _s(value).lower()
+    aliases = {
+        "competence": "monter_competence",
+        "compétence": "monter_competence",
+        "montee_competence": "monter_competence",
+        "montée_compétence": "monter_competence",
+        "securisation_poste": "securiser_poste",
+        "sécuriser_poste": "securiser_poste",
+        "evolution": "preparer_evolution",
+        "évolution": "preparer_evolution",
+        "savoir_faire": "capitaliser_savoir",
+        "demande_salarie": "traiter_demande_salarie",
+        "demande_salarié": "traiter_demande_salarie",
+        "autre": "besoin_rh",
+    }
+    s = aliases.get(s, s)
+    allowed = {
+        "monter_competence",
+        "securiser_poste",
+        "preparer_evolution",
+        "renforcer_equipe",
+        "anticiper_depart",
+        "capitaliser_savoir",
+        "traiter_demande_salarie",
+        "besoin_rh",
+    }
+    if s in allowed:
+        return s
+    return "monter_competence" if has_competence else "besoin_rh"
+
+
 def _normalise_demande_priorite(value: str) -> str:
     s = _s(value).lower()
     if s in ("urgent", "critique"):
@@ -247,7 +280,7 @@ def _analyse_gap_explanation(row: Dict[str, Any]) -> str:
     return (
         f"Novoskill propose cette demande car le niveau actuel du collaborateur sur « {comp} » "
         f"({actuel}) est inférieur au niveau attendu ({attendu}) pour {poste}. "
-        "La demande sert à confirmer le besoin terrain avant de choisir la réponse RH adaptée."
+        "La demande sert à confirmer le besoin terrain avant transmission au Studio."
     )
 
 
@@ -749,10 +782,11 @@ def _demande_signal_key(row: Dict[str, Any]) -> str:
     ])
 
 
-def _demande_apply_filters(rows: List[Dict[str, Any]], statut_filter: str, origine: str, type_demande: str, priorite: str, q: str, fragilite_min: int, criticite_min: int) -> List[Dict[str, Any]]:
+def _demande_apply_filters(rows: List[Dict[str, Any]], statut_filter: str, origine: str, type_demande: str, finalite_terrain: str, priorite: str, q: str, fragilite_min: int, criticite_min: int) -> List[Dict[str, Any]]:
     needle = _s(q).lower()
     orig = _s(origine).lower()
     typ = _s(type_demande).lower()
+    finalite = _s(finalite_terrain).lower()
     prio = _s(priorite).lower()
     out = []
     for r in rows:
@@ -764,6 +798,8 @@ def _demande_apply_filters(rows: List[Dict[str, Any]], statut_filter: str, origi
         if orig not in ("", "tous", "all") and _normalise_demande_origine(r.get("origine")) != orig:
             continue
         if typ not in ("", "tous", "all") and _normalise_demande_type(r.get("type_demande")) != typ:
+            continue
+        if finalite not in ("", "tous", "all") and _normalise_demande_finalite(r.get("finalite_terrain") or (r.get("payload_signal") or {}).get("finalite_terrain"), bool(_s(r.get("id_comp")))) != finalite:
             continue
         if prio not in ("", "toutes", "tous", "all") and _normalise_demande_priorite(r.get("priorite")) != prio:
             continue
@@ -813,9 +849,10 @@ def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
             payload_signal = {}
     if not isinstance(payload_signal, dict):
         payload_signal = {}
-    finalite_terrain = _s(row.get("finalite_terrain") or payload_signal.get("finalite_terrain"))
-    if not finalite_terrain:
-        finalite_terrain = "monter_competence" if _s(row.get("id_comp")) else "besoin_rh"
+    finalite_terrain = _normalise_demande_finalite(
+        row.get("finalite_terrain") or payload_signal.get("finalite_terrain"),
+        bool(_s(row.get("id_comp")))
+    )
     finalite_label = {
         "monter_competence": "Monter en compétence",
         "securiser_poste": "Sécuriser un poste",
@@ -826,17 +863,6 @@ def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
         "traiter_demande_salarie": "Traiter une demande salarié",
         "besoin_rh": "Besoin RH",
     }.get(finalite_terrain, "Besoin RH")
-    reponse_rh_label = "À définir" if type_demande == "autre" else {
-        "formation": "Formation",
-        "transmission": "Transmission",
-        "renfort": "Renfort",
-        "recrutement": "Recrutement",
-        "mobilite": "Mobilité",
-        "tutorat": "Tutorat",
-        "entretien": "Entretien",
-        "documentation": "Documentation",
-        "organisation": "Organisation",
-    }.get(type_demande, "À définir")
     nom = " ".join([_s(row.get("prenom_effectif")), _s(row.get("nom_effectif"))]).strip()
     nom = _s(row.get("collaborateur_nom_complet")) or nom or "Demande collective"
     objet = _s(row.get("objet"))
@@ -856,7 +882,6 @@ def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
         "type_demande": type_demande,
         "finalite_terrain": finalite_terrain,
         "finalite_label": finalite_label,
-        "reponse_rh_label": reponse_rh_label,
         "objet": objet,
         "description": row.get("description") or row.get("motif_priorite") or "",
         "statut": statut,
@@ -913,7 +938,7 @@ def _demande_from_current_signal(row: Dict[str, Any]) -> Dict[str, Any]:
         "objet": "Renforcer l’autonomie sur une compétence clé",
         "description": "Proposition issue de l’analyse des écarts de niveau.",
         "pourquoi_proposition": _analyse_gap_explanation(row),
-        "payload_signal": {**row, "finalite_terrain": "monter_competence", "reponse_rh": "autre", "pourquoi_proposition": _analyse_gap_explanation(row)},
+        "payload_signal": {**row, "finalite_terrain": "monter_competence", "pourquoi_proposition": _analyse_gap_explanation(row)},
         "is_signal_actuel": True,
     })
     return _demande_base_item(item)
@@ -1084,8 +1109,10 @@ def _insert_demande_rh(cur, id_ent: str, id_contact: str, payload: DemandeRhPayl
         "captured_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "origine": origine,
         "type_demande": type_demande,
-        "finalite_terrain": payload_signal.get("finalite_terrain") or ("monter_competence" if ref.get("id_comp") else "besoin_rh"),
-        "reponse_rh": type_demande,
+        "finalite_terrain": _normalise_demande_finalite(
+            payload.finalite_terrain or payload_signal.get("finalite_terrain"),
+            bool(ref.get("id_comp"))
+        ),
     })
 
     modalites_json = json.dumps(_json_list(payload.modalites_souhaitees), ensure_ascii=False)
@@ -1166,6 +1193,7 @@ def get_demandes_rh(
     statut: str = Query(default="tous"),
     origine: str = Query(default="tous"),
     type_demande: str = Query(default="tous"),
+    finalite_terrain: str = Query(default="tous"),
     priorite: str = Query(default="toutes"),
     q: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=0, ge=0, le=100),
@@ -1210,6 +1238,7 @@ def get_demandes_rh(
                     _filter_demande_statut(statut),
                     origine,
                     type_demande,
+                    finalite_terrain,
                     priorite,
                     q or "",
                     fragilite_min,
@@ -1335,12 +1364,30 @@ def qualifier_demande_rh(id_contact: str, id_demande: str, payload: DemandeRhPay
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-                _fetch_demande_by_id(cur, id_ent, id_demande)
+                existing = _fetch_demande_by_id(cur, id_ent, id_demande)
                 ref = _lookup_demande_refs(cur, id_ent, payload)
                 statut = _filter_demande_statut(payload.statut or DEMANDE_STATUT_A_VALIDER)
                 if statut in ("", "tous", "a_traiter"):
                     statut = DEMANDE_STATUT_A_VALIDER
                 modalites_json = json.dumps(_json_list(payload.modalites_souhaitees), ensure_ascii=False)
+                payload_signal = existing.get("payload_signal") or {}
+                if isinstance(payload_signal, str):
+                    try:
+                        payload_signal = json.loads(payload_signal)
+                    except Exception:
+                        payload_signal = {}
+                if not isinstance(payload_signal, dict):
+                    payload_signal = {}
+                if isinstance(payload.payload_signal, dict):
+                    payload_signal.update(payload.payload_signal)
+                payload_signal.update({
+                    "finalite_terrain": _normalise_demande_finalite(
+                        payload.finalite_terrain or payload_signal.get("finalite_terrain"),
+                        bool(ref.get("id_comp") or _s(payload.id_comp))
+                    ),
+                    "qualified_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                })
+                payload_json = json.dumps(payload_signal, ensure_ascii=False)
                 cur.execute(
                     """
                     UPDATE public.tbl_insights_demande_rh
@@ -1364,6 +1411,7 @@ def qualifier_demande_rh(id_contact: str, id_demande: str, payload: DemandeRhPay
                         echeance_souhaitee = %s,
                         modalites_souhaitees = %s::jsonb,
                         commentaire_manager = %s,
+                        payload_signal = %s::jsonb,
                         updated_at = NOW()
                     WHERE id_ent = %s
                       AND id_demande_rh = %s
@@ -1385,6 +1433,7 @@ def qualifier_demande_rh(id_contact: str, id_demande: str, payload: DemandeRhPay
                         _date_or_none(payload.echeance_souhaitee),
                         modalites_json,
                         _s(payload.commentaire_manager),
+                        payload_json,
                         id_ent, id_demande,
                     ),
                 )
@@ -1440,8 +1489,6 @@ def transmettre_demande_rh_studio(id_contact: str, id_demande: str, request: Req
                     raise HTTPException(status_code=400, detail=dest.get("reason") or "Studio destinataire indisponible.")
                 id_owner_dest = _s(dest.get("id_owner"))
                 d = _fetch_demande_by_id(cur, id_ent, id_demande)
-                if _normalise_demande_type(d.get("type_demande")) != "formation":
-                    raise HTTPException(status_code=400, detail="Seules les demandes de type Formation peuvent être transmises au Studio dans ce patch.")
                 if not _s(d.get("id_comp")) or not _s(d.get("id_effectif_concerne")):
                     raise HTTPException(status_code=400, detail="Transmission impossible : compétence ou collaborateur manquant.")
 

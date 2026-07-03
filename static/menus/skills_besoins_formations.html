@@ -49,19 +49,17 @@
         </select>
       </div>
       <div class="bf-field">
-        <label class="sb-label" for="bfTypeSelect">Réponse RH</label>
-        <select id="bfTypeSelect" class="sb-select">
+        <label class="sb-label" for="bfFinaliteSelect">Finalité</label>
+        <select id="bfFinaliteSelect" class="sb-select">
           <option value="tous">Toutes</option>
-          <option value="autre">À définir</option>
-          <option value="formation">Formation</option>
-          <option value="transmission">Transmission</option>
-          <option value="renfort">Renfort</option>
-          <option value="recrutement">Recrutement</option>
-          <option value="mobilite">Mobilité</option>
-          <option value="tutorat">Tutorat</option>
-          <option value="entretien">Entretien</option>
-          <option value="documentation">Documentation</option>
-          <option value="organisation">Organisation</option>
+          <option value="monter_competence">Monter en compétence</option>
+          <option value="securiser_poste">Sécuriser un poste</option>
+          <option value="preparer_evolution">Préparer une évolution</option>
+          <option value="renforcer_equipe">Renforcer une équipe</option>
+          <option value="anticiper_depart">Anticiper un départ</option>
+          <option value="capitaliser_savoir">Capitaliser un savoir-faire</option>
+          <option value="traiter_demande_salarie">Traiter une demande salarié</option>
+          <option value="besoin_rh">Autre besoin RH</option>
         </select>
       </div>
       <div class="bf-field">
@@ -153,7 +151,7 @@
       <div class="modal-header">
         <div>
           <div id="bfDemandModalTitle" class="card-title">Créer une demande RH</div>
-          <div id="bfDemandModalSub" class="card-sub">Exprimez le besoin terrain. La réponse RH se qualifie ensuite.</div>
+          <div id="bfDemandModalSub" class="card-sub">Exprimez le besoin terrain. Le traitement se fera ensuite côté Studio puis Plan d’actions.</div>
         </div>
         <button type="button" class="modal-x" data-bf-demand-close>×</button>
       </div>
@@ -171,18 +169,16 @@
 
           <div class="bf-modal-card">
             <div class="bf-modal-card__title">Qualification</div>
-            <label class="bf-form-label" for="bfDemandType">Réponse RH envisagée</label>
-            <select id="bfDemandType" class="sb-select">
-              <option value="autre">À définir</option>
-              <option value="formation">Formation</option>
-              <option value="transmission">Transmission</option>
-              <option value="renfort">Renfort</option>
-              <option value="recrutement">Recrutement</option>
-              <option value="mobilite">Mobilité</option>
-              <option value="tutorat">Tutorat</option>
-              <option value="entretien">Entretien</option>
-              <option value="documentation">Documentation</option>
-              <option value="organisation">Organisation</option>
+            <label class="bf-form-label" for="bfDemandFinalite">Finalité terrain</label>
+            <select id="bfDemandFinalite" class="sb-select">
+              <option value="monter_competence">Monter en compétence</option>
+              <option value="securiser_poste">Sécuriser un poste</option>
+              <option value="preparer_evolution">Préparer une évolution</option>
+              <option value="renforcer_equipe">Renforcer une équipe</option>
+              <option value="anticiper_depart">Anticiper un départ</option>
+              <option value="capitaliser_savoir">Capitaliser un savoir-faire</option>
+              <option value="traiter_demande_salarie">Traiter une demande salarié</option>
+              <option value="besoin_rh">Autre besoin RH</option>
             </select>
 
             <label class="bf-form-label" for="bfDemandPriority">Priorité</label>
@@ -203,7 +199,7 @@
             <textarea id="bfDemandDescription" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Contexte terrain, simulation retenue, demande salarié, fragilité détectée…"></textarea>
           </div>
 
-          <div class="bf-modal-card">
+          <div class="bf-modal-card bf-modal-card--wide">
             <div class="bf-modal-card__title">Échéance</div>
             <label class="bf-form-label" for="bfDemandDelai">Délai souhaité</label>
             <select id="bfDemandDelai" class="sb-select">
@@ -219,21 +215,9 @@
             <input id="bfDemandEcheance" class="sb-ctrl" type="date">
           </div>
 
-          <div class="bf-modal-card">
-            <div class="bf-modal-card__title">Modalités utiles</div>
-            <div class="bf-check-list" id="bfDemandModalites">
-              <label><input type="checkbox" value="Présentiel"> Présentiel</label>
-              <label><input type="checkbox" value="Distanciel"> Distanciel</label>
-              <label><input type="checkbox" value="Hybride"> Hybride</label>
-              <label><input type="checkbox" value="AFEST / situation de travail"> AFEST / situation de travail</label>
-              <label><input type="checkbox" value="Tutorat interne"> Tutorat interne</label>
-              <label><input type="checkbox" value="E-learning"> E-learning</label>
-            </div>
-          </div>
-
           <div class="bf-modal-card bf-modal-card--wide">
             <div class="bf-modal-card__title">Commentaire manager</div>
-            <textarea id="bfDemandCommentaire" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Décision, attente, contrainte planning, niveau d’urgence réel…"></textarea>
+            <textarea id="bfDemandCommentaire" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Attente terrain, contrainte planning, niveau d’urgence réel, éléments à transmettre au Studio…"></textarea>
           </div>
         </div>
       </div>

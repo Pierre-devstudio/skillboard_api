@@ -21,7 +21,7 @@
   const STORE_SERVICE = "sb_bf_service";
   const STORE_STATUT = "sb_bf_statut";
   const STORE_ORIGIN = "sb_bf_origine";
-  const STORE_TYPE = "sb_bf_type";
+  const STORE_FINALITE = "sb_bf_finalite";
   const STORE_PRIORITY = "sb_bf_priorite";
 
   function byId(id) { return document.getElementById(id); }
@@ -89,7 +89,7 @@
 
   function objectTitle(item) {
     if (isAnalyseProposal(item)) return "Renforcer l’autonomie sur une compétence clé";
-    if (item?.type_demande === "formation" && item?.intitule_competence) return "Renforcer une compétence";
+    if (item?.intitule_competence) return "Renforcer une compétence";
     return item?.objet || "Demande RH";
   }
 
@@ -111,7 +111,7 @@
       id_service: getQueryService(),
       statut: (byId("bfStatutSelect")?.value || "a_traiter").trim(),
       origine: (byId("bfOriginSelect")?.value || "tous").trim(),
-      type_demande: (byId("bfTypeSelect")?.value || "tous").trim(),
+      finalite_terrain: (byId("bfFinaliteSelect")?.value || "tous").trim(),
       priorite: (byId("bfPrioritySelect")?.value || "toutes").trim(),
       q: (byId("bfSearchInput")?.value || "").trim()
     };
@@ -122,7 +122,7 @@
     localStorage.setItem(STORE_SERVICE, getRawService());
     localStorage.setItem(STORE_STATUT, f.statut);
     localStorage.setItem(STORE_ORIGIN, f.origine);
-    localStorage.setItem(STORE_TYPE, f.type_demande);
+    localStorage.setItem(STORE_FINALITE, f.finalite_terrain);
     localStorage.setItem(STORE_PRIORITY, f.priorite);
   }
 
@@ -130,7 +130,7 @@
     const map = [
       ["bfStatutSelect", STORE_STATUT, "a_traiter"],
       ["bfOriginSelect", STORE_ORIGIN, "tous"],
-      ["bfTypeSelect", STORE_TYPE, "tous"],
+      ["bfFinaliteSelect", STORE_FINALITE, "tous"],
       ["bfPrioritySelect", STORE_PRIORITY, "toutes"],
     ];
     map.forEach(([id, key, defv]) => {
@@ -210,40 +210,39 @@
     `).join("");
   }
 
-  function typeLabel(v) {
-    return {
-      formation: "Formation",
-      transmission: "Transmission",
-      renfort: "Renfort",
-      recrutement: "Recrutement",
-      mobilite: "Mobilité",
-      tutorat: "Tutorat",
-      entretien: "Entretien",
-      documentation: "Documentation",
-      organisation: "Organisation",
-      autre: "À définir"
-    }[v] || "À définir";
-  }
-
   function isAnalyseProposal(item) {
     return item && item.origine === "analyse" && item.is_signal_actuel && !item.id_demande_rh;
   }
 
+  function finalityValue(item) {
+    const value = (item?.finalite_terrain || item?.payload_signal?.finalite_terrain || "").toString().trim();
+    const allowed = new Set([
+      "monter_competence",
+      "securiser_poste",
+      "preparer_evolution",
+      "renforcer_equipe",
+      "anticiper_depart",
+      "capitaliser_savoir",
+      "traiter_demande_salarie",
+      "besoin_rh"
+    ]);
+    if (allowed.has(value)) return value;
+    if (isAnalyseProposal(item) || item?.intitule_competence || item?.id_comp) return "monter_competence";
+    return "besoin_rh";
+  }
+
   function finalityLabel(item) {
     if (item?.finalite_label) return item.finalite_label;
-    if (isAnalyseProposal(item) || item?.intitule_competence) return "Monter en compétence";
-    return "Besoin RH";
-  }
-
-  function responseLabel(item) {
-    if (item?.reponse_rh_label) return item.reponse_rh_label;
-    return typeLabel(item?.type_demande);
-  }
-
-  function responseBadgeClass(item) {
-    const label = responseLabel(item).toLowerCase();
-    if (label.includes("définir") || label.includes("definir")) return "bf-badge--gray";
-    return badgeClass("type", item?.type_demande);
+    return {
+      monter_competence: "Monter en compétence",
+      securiser_poste: "Sécuriser un poste",
+      preparer_evolution: "Préparer une évolution",
+      renforcer_equipe: "Renforcer une équipe",
+      anticiper_depart: "Anticiper un départ",
+      capitaliser_savoir: "Capitaliser un savoir-faire",
+      traiter_demande_salarie: "Traiter une demande salarié",
+      besoin_rh: "Besoin RH"
+    }[finalityValue(item)] || "Besoin RH";
   }
 
   function whyTitle(item) {
@@ -354,7 +353,7 @@
     if (item.statut === "a_valider" && id) {
       return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-status="validee" data-id="${escapeHtml(id)}">Valider</button>`;
     }
-    if (item.statut === "validee" && id && item.type_demande === "formation") {
+    if (item.statut === "validee" && id && item.id_comp && item.id_effectif_concerne) {
       return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-transmit="${escapeHtml(id)}">Transmettre</button>`;
     }
     if (item.statut === "validee") {
@@ -455,7 +454,6 @@
           <div class="bf-cell--center">Origine</div>
           <div class="bf-cell--center">Finalité</div>
           <div>Objet</div>
-          <div class="bf-cell--center">Réponse RH</div>
           <div class="bf-cell--center">Statut</div>
           <div class="bf-cell--center">Échéance</div>
           <div class="bf-cell--center">Actions</div>
@@ -475,7 +473,6 @@
               <strong>${escapeHtml(objectTitle(item))}</strong>
               <small>${escapeHtml(objectSub(item))}</small>
             </div>
-            <div class="bf-cell--center"><span class="bf-badge ${responseBadgeClass(item)}">${escapeHtml(responseLabel(item))}</span></div>
             <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
             <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
             <div class="bf-row-actions">
@@ -522,7 +519,6 @@
                     <div class="bf-cell--center">Origine</div>
                     <div class="bf-cell--center">Finalité</div>
                     <div>Objet</div>
-                    <div class="bf-cell--center">Réponse RH</div>
                     <div class="bf-cell--center">Statut</div>
                     <div class="bf-cell--center">Échéance</div>
                     <div class="bf-cell--center">Actions</div>
@@ -535,7 +531,6 @@
                         <strong>${escapeHtml(objectTitle(item))}</strong>
                         <small>${escapeHtml(objectSub(item))}</small>
                       </div>
-                      <div class="bf-cell--center"><span class="bf-badge ${responseBadgeClass(item)}">${escapeHtml(responseLabel(item))}</span></div>
                       <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
                       <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
                       <div class="bf-row-actions">
@@ -648,14 +643,13 @@
     panel.classList.add("is-open");
     setText("bfDetailSub", `${item.collaborateur_nom_complet || "Demande collective"} · ${finalityLabel(item)}`);
     const canValidate = item.id_demande_rh && item.statut === "a_valider";
-    const canTransmit = item.id_demande_rh && item.statut === "validee" && item.type_demande === "formation";
+    const canTransmit = item.id_demande_rh && item.statut === "validee" && item.id_comp && item.id_effectif_concerne;
     body.innerHTML = `
       <div class="bf-detail-section">
         <div class="bf-detail-topline">
           <span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span>
           <span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span>
           <span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span>
-          <span class="bf-badge ${responseBadgeClass(item)}">${escapeHtml(responseLabel(item))}</span>
         </div>
         <h3>${escapeHtml(objectTitle(item))}</h3>
         <p>${escapeHtml(objectSub(item))}</p>
@@ -672,7 +666,7 @@
       <div class="bf-detail-section bf-detail-section--why">
         <h4>${escapeHtml(whyTitle(item))}</h4>
         <p>${escapeHtml(whyProposalText(item))}</p>
-        ${isAnalyseProposal(item) ? `<div class="bf-detail-note">Cette proposition ne déclenche pas une formation automatiquement. Elle sert à confirmer le besoin terrain puis à choisir la réponse RH adaptée.</div>` : ""}
+        ${isAnalyseProposal(item) ? `<div class="bf-detail-note">Cette proposition sert à confirmer le besoin terrain avant transmission au Studio. Les actions lancées seront suivies dans Plan d’actions.</div>` : ""}
       </div>
 
       <div class="bf-detail-section">
@@ -730,14 +724,14 @@
 
     const isCreate = !_modalItem;
     setText("bfDemandModalTitle", isCreate ? "Créer une demande RH" : "Qualifier la demande RH");
-    setText("bfDemandModalSub", isCreate ? "Décrivez le besoin terrain. La réponse RH peut rester à définir." : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
+    setText("bfDemandModalSub", isCreate ? "Décrivez le besoin terrain. Le traitement se fera ensuite côté Studio puis Plan d’actions." : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
 
     const eff = byId("bfDemandEffectif");
     if (eff) eff.value = _modalItem?.id_effectif_concerne || "";
     const comp = byId("bfDemandCompetence");
     if (comp) comp.value = _modalItem?.id_comp || "";
-    const type = byId("bfDemandType");
-    if (type) type.value = _modalItem?.type_demande || "autre";
+    const finalite = byId("bfDemandFinalite");
+    if (finalite) finalite.value = finalityValue(_modalItem);
     const priority = byId("bfDemandPriority");
     if (priority) priority.value = _modalItem?.priorite || "normale";
     const objet = byId("bfDemandObjet");
@@ -751,10 +745,6 @@
     const comment = byId("bfDemandCommentaire");
     if (comment) comment.value = _modalItem?.commentaire_manager || "";
 
-    const modalites = new Set(_modalItem?.modalites_souhaitees || []);
-    byId("bfDemandModalites")?.querySelectorAll("input[type='checkbox']").forEach(cb => {
-      cb.checked = modalites.has(cb.value);
-    });
     setMsg("", "", "bfDemandModalMsg");
     byId("bfDemandModal")?.classList.add("show");
   }
@@ -766,7 +756,7 @@
   }
 
   function collectDemandPayload() {
-    const modalites = Array.from(byId("bfDemandModalites")?.querySelectorAll("input[type='checkbox']:checked") || []).map(cb => cb.value);
+    const finaliteTerrain = byId("bfDemandFinalite")?.value || finalityValue(_modalItem);
     const isSignal = _modalItem && !_modalItem.id_demande_rh;
     const statut = _modalItem ? "a_valider" : "a_qualifier";
     return {
@@ -776,21 +766,21 @@
       origine: isSignal ? (_modalItem.origine || "analyse") : (_modalItem?.origine || "manager"),
       source_type: isSignal ? (_modalItem.source_type || "analyse_competences") : (_modalItem?.source_type || "manager"),
       source_ref: _modalItem?.source_ref || _modalItem?.id_demande_rh || null,
-      type_demande: byId("bfDemandType")?.value || "autre",
+      type_demande: "autre",
       objet: byId("bfDemandObjet")?.value || _modalItem?.objet || "Demande RH à qualifier",
       description: byId("bfDemandDescription")?.value || _modalItem?.description || "",
       statut,
       priorite: byId("bfDemandPriority")?.value || "normale",
       delai_souhaite: byId("bfDemandDelai")?.value || "",
       echeance_souhaitee: byId("bfDemandEcheance")?.value || null,
-      modalites_souhaitees: modalites,
+      modalites_souhaitees: [],
       commentaire_manager: byId("bfDemandCommentaire")?.value || "",
       niveau_attendu: _modalItem?.niveau_attendu || null,
       niveau_actuel: _modalItem?.niveau_actuel || null,
       ecart_niveau: _modalItem?.ecart_niveau || 0,
       criticite: _modalItem?.criticite || 0,
       score_anticipation: _modalItem?.score_anticipation || 0,
-      payload_signal: _modalItem?.payload_signal || {}
+      payload_signal: { ...(_modalItem?.payload_signal || {}), finalite_terrain: finaliteTerrain }
     };
   }
 
@@ -887,7 +877,7 @@
       const params = {
         statut: f.statut,
         origine: f.origine,
-        type_demande: f.type_demande,
+        finalite_terrain: f.finalite_terrain,
         priorite: f.priorite,
         limit: "400"
       };
@@ -910,7 +900,7 @@
     if (_bound) return;
     _bound = true;
 
-    ["bfServiceSelect", "bfStatutSelect", "bfOriginSelect", "bfTypeSelect", "bfPrioritySelect"].forEach(id => {
+    ["bfServiceSelect", "bfStatutSelect", "bfOriginSelect", "bfFinaliteSelect", "bfPrioritySelect"].forEach(id => {
       const el = byId(id);
       if (!el) return;
       el.addEventListener("change", async () => {
@@ -929,7 +919,7 @@
       if (byId("bfServiceSelect")) byId("bfServiceSelect").value = allId;
       if (byId("bfStatutSelect")) byId("bfStatutSelect").value = "a_traiter";
       if (byId("bfOriginSelect")) byId("bfOriginSelect").value = "tous";
-      if (byId("bfTypeSelect")) byId("bfTypeSelect").value = "tous";
+      if (byId("bfFinaliteSelect")) byId("bfFinaliteSelect").value = "tous";
       if (byId("bfPrioritySelect")) byId("bfPrioritySelect").value = "toutes";
       if (byId("bfSearchInput")) byId("bfSearchInput").value = "";
       await loadRefs();
