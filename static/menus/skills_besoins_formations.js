@@ -11,6 +11,8 @@
   let _refs = { effectifs: [], competences: [] };
   let _loading = false;
   let _visibleCount = 8;
+  let _viewMode = "grouped";
+  let _openGroups = new Set();
   let _selectedItem = null;
   let _modalMode = "create";
   let _modalItem = null;
@@ -76,7 +78,11 @@
       send: `<svg ${attrs}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`,
       check: `<svg ${attrs}><path d="M20 6 9 17l-5-5"/></svg>`,
       close: `<svg ${attrs}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
-      pdf: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`
+      pdf: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`,
+      list: `<svg ${attrs}><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>`,
+      group: `<svg ${attrs}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      chevronDown: `<svg ${attrs}><path d="m6 9 6 6 6-6"/></svg>`,
+      chevronUp: `<svg ${attrs}><path d="m18 15-6-6-6 6"/></svg>`
     };
     return map[name] || "";
   }
@@ -304,8 +310,9 @@
     });
   }
 
-  function actionButtonHtml(item) {
+  function actionButtonHtml(item, index) {
     const id = item.id_demande_rh || "";
+    const idxAttr = Number.isInteger(index) ? ` data-bf-index="${index}"` : "";
     if (item.statut === "a_valider" && id) {
       return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-status="validee" data-id="${escapeHtml(id)}">Valider</button>`;
     }
@@ -318,23 +325,93 @@
     if (item.statut === "transmise_studio" || item.statut === "prise_en_charge" || item.statut === "action_creee") {
       return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-follow="1">Voir le suivi</button>`;
     }
-    return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-edit="${escapeHtml(id)}">Qualifier</button>`;
+    return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-edit="${escapeHtml(id)}"${idxAttr}>Qualifier</button>`;
   }
 
-  function renderRows() {
-    const wrap = byId("bfListWrap");
-    if (!wrap) return;
-    const rows = Array.isArray(_lastData?.items) ? _lastData.items : [];
-    if (!rows.length) {
-      wrap.innerHTML = `<div class="bf-empty">Aucune demande RH ne correspond aux filtres.</div>`;
-      byId("btnBfShowMore").style.display = "none";
-      renderDetail(null);
-      return;
-    }
+  function itemStableKey(item, index) {
+    return String(item?.id_demande_rh || item?.source_ref || `idx_${index}`);
+  }
 
+  function groupStableKey(item) {
+    return String(item?.id_effectif_concerne || item?.id_effectif || item?.collaborateur_nom_complet || "demande_collective");
+  }
+
+  function statusOrder(statut) {
+    return {
+      a_qualifier: 1,
+      a_valider: 2,
+      validee: 3,
+      transmise_studio: 4,
+      prise_en_charge: 5,
+      action_creee: 6,
+      refusee: 7,
+      classee: 8
+    }[statut] || 9;
+  }
+
+  function priorityOrder(priorite) {
+    return {
+      critique: 1,
+      haute: 2,
+      normale: 3,
+      basse: 4
+    }[priorite] || 3;
+  }
+
+  function buildGroups(rows) {
+    const map = new Map();
+    rows.forEach((item, index) => {
+      const key = groupStableKey(item);
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name: item.collaborateur_nom_complet || "Demande collective",
+          poste: item.intitule_poste || "Poste non précisé",
+          service: item.nom_service || "Service non précisé",
+          items: []
+        });
+      }
+      map.get(key).items.push({ item, index });
+    });
+    return Array.from(map.values());
+  }
+
+  function groupBestPriority(group) {
+    const first = [...group.items].sort((a, b) => priorityOrder(a.item.priorite) - priorityOrder(b.item.priorite))[0]?.item || {};
+    return first.priorite || "normale";
+  }
+
+  function groupMainStatus(group) {
+    const first = [...group.items].sort((a, b) => statusOrder(a.item.statut) - statusOrder(b.item.statut))[0]?.item || {};
+    return first.statut || "a_qualifier";
+  }
+
+  function groupMainStatusLabel(group) {
+    const first = [...group.items].sort((a, b) => statusOrder(a.item.statut) - statusOrder(b.item.statut))[0]?.item || {};
+    return first.statut_label || { a_qualifier: "À qualifier", a_valider: "À valider", validee: "Validée", transmise_studio: "Transmise", prise_en_charge: "Prise en charge", action_creee: "Action créée", refusee: "Refusée", classee: "Classée" }[first.statut] || "À qualifier";
+  }
+
+  function groupMainEcheance(group) {
+    const dated = group.items
+      .map(x => x.item)
+      .filter(x => x.echeance_souhaitee)
+      .sort((a, b) => String(a.echeance_souhaitee || "").localeCompare(String(b.echeance_souhaitee || "")))[0];
+    return echeanceLabel(dated || group.items[0]?.item || {});
+  }
+
+  function updateViewToggle() {
+    const text = byId("bfViewToggleText");
+    const ico = byId("bfViewToggleIcon");
+    const btn = byId("btnBfViewToggle");
+    if (text) text.textContent = _viewMode === "grouped" ? "Vue liste" : "Vue groupée";
+    if (ico) ico.innerHTML = _viewMode === "grouped" ? icon("list", 15) : icon("group", 15);
+    if (btn) btn.setAttribute("aria-pressed", _viewMode === "grouped" ? "true" : "false");
+  }
+
+  function renderListRows(rows) {
     const visible = rows.slice(0, _visibleCount);
-    wrap.innerHTML = `
-      <div class="bf-table">
+    return `
+      <div class="bf-table bf-table--list">
         <div class="bf-table-row bf-table-row--head">
           <div>Collaborateur</div>
           <div class="bf-cell--center">Origine</div>
@@ -364,17 +441,98 @@
             <div class="bf-row-actions">
               <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${idx}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
               <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-edit="${escapeHtml(item.id_demande_rh || "")}" data-bf-index="${idx}" title="Qualifier" aria-label="Qualifier">${icon("edit")}</button>
-              ${actionButtonHtml(item)}
+              ${actionButtonHtml(item, idx)}
             </div>
           </div>
         `).join("")}
       </div>
     `;
+  }
 
+  function renderGroupedRows(rows) {
+    const groups = buildGroups(rows);
+    const visibleGroups = groups.slice(0, _visibleCount);
+    return `
+      <div class="bf-group-stack">
+        ${visibleGroups.map((group, gidx) => {
+          const isOpen = _openGroups.has(group.key);
+          const mainStatus = groupMainStatus(group);
+          const mainPriority = groupBestPriority(group);
+          return `
+            <div class="bf-group-card ${gidx === 0 ? "is-suggested" : ""} ${isOpen ? "is-open" : ""}">
+              <button type="button" class="bf-group-row" data-bf-group-toggle="${escapeHtml(encodeURIComponent(group.key))}" aria-expanded="${isOpen ? "true" : "false"}">
+                <div class="bf-who">
+                  <span class="bf-avatar">${escapeHtml(initials(group.name))}</span>
+                  <div>
+                    <strong>${escapeHtml(group.name)}</strong>
+                    <small>${escapeHtml(group.poste)} · ${escapeHtml(group.service)}</small>
+                  </div>
+                </div>
+                <div class="bf-group-count">
+                  <strong>${group.items.length}</strong>
+                  <small>${group.items.length > 1 ? "demandes" : "demande"}</small>
+                </div>
+                <div class="bf-cell--center"><span class="bf-badge ${badgeClass("statut", mainStatus)}">${escapeHtml(groupMainStatusLabel(group))}</span></div>
+                <div class="bf-date bf-cell--center"><span>${escapeHtml(groupMainEcheance(group))}</span><small>${escapeHtml(priorityLabel(mainPriority))}</small></div>
+                <span class="bf-group-chevron" aria-hidden="true">${isOpen ? icon("chevronUp", 15) : icon("chevronDown", 15)}</span>
+              </button>
+              ${isOpen ? `
+                <div class="bf-group-panel">
+                  <div class="bf-group-demand-row bf-group-demand-row--head">
+                    <div class="bf-cell--center">Origine</div>
+                    <div class="bf-cell--center">Type</div>
+                    <div>Objet</div>
+                    <div class="bf-cell--center">Statut</div>
+                    <div class="bf-cell--center">Échéance</div>
+                    <div class="bf-cell--center">Actions</div>
+                  </div>
+                  ${group.items.map(({ item, index }) => `
+                    <div class="bf-group-demand-row" data-bf-row="${index}" data-bf-key="${escapeHtml(itemStableKey(item, index))}">
+                      <div class="bf-cell--center"><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
+                      <div class="bf-cell--center"><span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span></div>
+                      <div class="bf-object">
+                        <strong>${escapeHtml(objectTitle(item))}</strong>
+                        <small>${escapeHtml(objectSub(item))}</small>
+                      </div>
+                      <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
+                      <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
+                      <div class="bf-row-actions">
+                        <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${index}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
+                        <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-edit="${escapeHtml(item.id_demande_rh || "")}" data-bf-index="${index}" title="Qualifier" aria-label="Qualifier">${icon("edit")}</button>
+                        ${actionButtonHtml(item, index)}
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ""}
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function renderRows() {
+    const wrap = byId("bfListWrap");
+    if (!wrap) return;
+    updateViewToggle();
+    const rows = Array.isArray(_lastData?.items) ? _lastData.items : [];
+    if (!rows.length) {
+      wrap.innerHTML = `<div class="bf-empty">Aucune demande RH ne correspond aux filtres.</div>`;
+      byId("btnBfShowMore").style.display = "none";
+      renderDetail(null);
+      return;
+    }
+
+    wrap.innerHTML = _viewMode === "grouped"
+      ? renderGroupedRows(rows)
+      : renderListRows(rows);
+
+    const totalUnits = _viewMode === "grouped" ? buildGroups(rows).length : rows.length;
     const more = byId("btnBfShowMore");
     if (more) {
-      more.style.display = rows.length > 8 ? "" : "none";
-      more.textContent = _visibleCount >= rows.length ? "Voir moins" : "Voir plus";
+      more.style.display = totalUnits > 8 ? "" : "none";
+      more.textContent = _visibleCount >= totalUnits ? "Voir moins" : "Voir plus";
     }
 
     bindRowActions();
@@ -394,6 +552,15 @@
   function bindRowActions() {
     const wrap = byId("bfListWrap");
     if (!wrap) return;
+    wrap.querySelectorAll("[data-bf-group-toggle]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = decodeURIComponent(btn.getAttribute("data-bf-group-toggle") || "");
+        if (!key) return;
+        if (_openGroups.has(key)) _openGroups.delete(key);
+        else _openGroups.add(key);
+        renderRows();
+      });
+    });
     wrap.querySelectorAll("[data-bf-view]").forEach(btn => {
       btn.addEventListener("click", () => {
         const idx = Number(btn.getAttribute("data-bf-view"));
@@ -721,12 +888,18 @@
     });
 
     byId("btnBfRefresh")?.addEventListener("click", refresh);
+    byId("btnBfViewToggle")?.addEventListener("click", () => {
+      _viewMode = _viewMode === "grouped" ? "list" : "grouped";
+      _visibleCount = 8;
+      renderRows();
+    });
     byId("btnBfCreateDemand")?.addEventListener("click", () => openDemandModal(null, "create"));
     byId("btnBfSaveDemand")?.addEventListener("click", saveDemandFromModal);
     byId("btnBfCloseDetail")?.addEventListener("click", () => renderDetail(null));
 
     byId("btnBfShowMore")?.addEventListener("click", () => {
-      const total = (_lastData?.items || []).length;
+      const rows = Array.isArray(_lastData?.items) ? _lastData.items : [];
+      const total = _viewMode === "grouped" ? buildGroups(rows).length : rows.length;
       _visibleCount = _visibleCount >= total ? 8 : Math.min(total, _visibleCount + 8);
       renderRows();
     });
