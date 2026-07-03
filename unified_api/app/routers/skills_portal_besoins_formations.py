@@ -21,6 +21,40 @@ STATUT_PRIS_EN_CHARGE = "pris_en_charge"
 STATUT_TRAITE = "traite"
 STATUTS = {STATUT_ENVOYE, STATUT_PRIS_EN_CHARGE, STATUT_TRAITE}
 
+DEMANDE_STATUT_A_QUALIFIER = "a_qualifier"
+DEMANDE_STATUT_A_VALIDER = "a_valider"
+DEMANDE_STATUT_VALIDEE = "validee"
+DEMANDE_STATUT_TRANSMISE = "transmise_studio"
+DEMANDE_STATUT_PRISE_EN_CHARGE = "prise_en_charge"
+DEMANDE_STATUT_ACTION_CREEE = "action_creee"
+DEMANDE_STATUT_REFUSEE = "refusee"
+DEMANDE_STATUT_CLASSEE = "classee"
+DEMANDE_STATUTS = {
+    DEMANDE_STATUT_A_QUALIFIER,
+    DEMANDE_STATUT_A_VALIDER,
+    DEMANDE_STATUT_VALIDEE,
+    DEMANDE_STATUT_TRANSMISE,
+    DEMANDE_STATUT_PRISE_EN_CHARGE,
+    DEMANDE_STATUT_ACTION_CREEE,
+    DEMANDE_STATUT_REFUSEE,
+    DEMANDE_STATUT_CLASSEE,
+}
+
+DEMANDE_ORIGINES = {"analyse", "simulation", "manager", "salarie", "entretien"}
+DEMANDE_TYPES = {
+    "formation",
+    "transmission",
+    "renfort",
+    "recrutement",
+    "mobilite",
+    "tutorat",
+    "entretien",
+    "documentation",
+    "organisation",
+    "autre",
+}
+DEMANDE_PRIORITES = {"basse", "normale", "haute", "critique"}
+
 
 def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
     return resolve_insights_id_ent_for_request(cur, id_contact, request)
@@ -38,6 +72,36 @@ class BesoinFormationSendPayload(BaseModel):
     periode_souhaitee: Optional[str] = None
     precision_periode: Optional[str] = None
     modalites_souhaitees: List[str] = []
+    commentaire_manager: Optional[str] = None
+
+
+class DemandeRhPayload(BaseModel):
+    id_effectif_concerne: Optional[str] = None
+    id_poste: Optional[str] = None
+    id_comp: Optional[str] = None
+    origine: Optional[str] = "manager"
+    source_type: Optional[str] = "manager"
+    source_ref: Optional[str] = None
+    type_demande: Optional[str] = "formation"
+    objet: Optional[str] = None
+    description: Optional[str] = None
+    statut: Optional[str] = None
+    priorite: Optional[str] = "normale"
+    delai_souhaite: Optional[str] = None
+    echeance_souhaitee: Optional[str] = None
+    modalites_souhaitees: List[str] = []
+    commentaire_manager: Optional[str] = None
+    commentaire_salarie: Optional[str] = None
+    niveau_attendu: Optional[str] = None
+    niveau_actuel: Optional[str] = None
+    ecart_niveau: Optional[int] = None
+    criticite: Optional[int] = None
+    score_anticipation: Optional[int] = None
+    payload_signal: Dict[str, Any] = {}
+
+
+class DemandeRhStatutPayload(BaseModel):
+    statut: str
     commentaire_manager: Optional[str] = None
 
 
@@ -69,6 +133,114 @@ def _filter_statut(statut: str) -> str:
     if s in ("a_envoyer", "envoyer"):
         return "a_envoyer"
     return s if s in STATUTS else "tous"
+
+
+def _label_demande_statut(statut: str) -> str:
+    s = _s(statut)
+    return {
+        DEMANDE_STATUT_A_QUALIFIER: "À qualifier",
+        DEMANDE_STATUT_A_VALIDER: "À valider",
+        DEMANDE_STATUT_VALIDEE: "Validée",
+        DEMANDE_STATUT_TRANSMISE: "Transmise au Studio",
+        DEMANDE_STATUT_PRISE_EN_CHARGE: "Prise en charge",
+        DEMANDE_STATUT_ACTION_CREEE: "Action créée",
+        DEMANDE_STATUT_REFUSEE: "Refusée",
+        DEMANDE_STATUT_CLASSEE: "Classée",
+    }.get(s, s or "—")
+
+
+def _filter_demande_statut(statut: str) -> str:
+    s = _s(statut).lower()
+    if s in ("", "tous", "all"):
+        return "tous"
+    if s == "a_traiter":
+        return "a_traiter"
+    if s in ("transmises", "transmise", "envoye_studio"):
+        return DEMANDE_STATUT_TRANSMISE
+    if s in ("pris_en_charge", "prise_en_charge"):
+        return DEMANDE_STATUT_PRISE_EN_CHARGE
+    if s in ("traite", "action_creee"):
+        return DEMANDE_STATUT_ACTION_CREEE
+    return s if s in DEMANDE_STATUTS else "tous"
+
+
+def _normalise_demande_origine(value: str) -> str:
+    s = _s(value).lower()
+    if s in ("analyse_competences", "fragilite", "fragilité", "moteur"):
+        return "analyse"
+    if s in ("simulation_rh", "simulateur", "scenario", "scénario"):
+        return "simulation"
+    if s in ("people", "collaborateur", "salarie", "salarié"):
+        return "salarie"
+    if s in ("entretien_performance", "evaluation", "évaluation"):
+        return "entretien"
+    return s if s in DEMANDE_ORIGINES else "manager"
+
+
+def _normalise_demande_type(value: str) -> str:
+    s = _s(value).lower()
+    aliases = {
+        "renfort_temporaire": "renfort",
+        "recruter": "recrutement",
+        "mobilité": "mobilite",
+        "tutorat_interne": "tutorat",
+        "capitalisation": "documentation",
+        "action_rh": "autre",
+    }
+    s = aliases.get(s, s)
+    return s if s in DEMANDE_TYPES else "formation"
+
+
+def _normalise_demande_priorite(value: str) -> str:
+    s = _s(value).lower()
+    if s in ("urgent", "critique"):
+        return "critique"
+    if s in ("haute", "haut", "élevée", "elevee", "a_securiser", "à sécuriser"):
+        return "haute"
+    if s in ("basse", "faible"):
+        return "basse"
+    return s if s in DEMANDE_PRIORITES else "normale"
+
+
+def _priority_from_demande_score(score: int, criticite: int = 0) -> str:
+    s = max(_i(score), _i(criticite))
+    if s >= 80:
+        return "critique"
+    if s >= 65:
+        return "haute"
+    if s <= 30:
+        return "basse"
+    return "normale"
+
+
+def _json_list(values: Any) -> List[str]:
+    if values is None:
+        return []
+    if isinstance(values, list):
+        return [_s(x) for x in values if _s(x)]
+    if isinstance(values, str):
+        try:
+            parsed = json.loads(values)
+            if isinstance(parsed, list):
+                return [_s(x) for x in parsed if _s(x)]
+        except Exception:
+            return [_s(values)] if _s(values) else []
+    return []
+
+
+def _date_or_none(value: Any):
+    s = _s(value)
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s[:10]).date().isoformat()
+    except Exception:
+        return None
+
+
+def _demande_table_exists(cur) -> bool:
+    cur.execute("SELECT to_regclass('public.tbl_insights_demande_rh') AS tbl")
+    return bool((cur.fetchone() or {}).get("tbl"))
 
 
 def _scope_dict(scope) -> Dict[str, Any]:
@@ -528,6 +700,790 @@ def _merge(current: List[Dict[str, Any]], demandes: List[Dict[str, Any]], statut
         "indisponibilite": sum(1 for x in rows if _i(x.get("nb_indispos_actuelles")) > 0 or _i(x.get("collaborateur_indisponible")) > 0),
     }
     return rows, kpis
+
+
+def _demande_signal_key(row: Dict[str, Any]) -> str:
+    return "|".join([
+        _s(row.get("source_type")) or "analyse_competences",
+        _s(row.get("id_effectif_concerne")),
+        _s(row.get("id_poste")),
+        _s(row.get("id_comp")),
+    ])
+
+
+def _demande_apply_filters(rows: List[Dict[str, Any]], statut_filter: str, origine: str, type_demande: str, priorite: str, q: str, fragilite_min: int, criticite_min: int) -> List[Dict[str, Any]]:
+    needle = _s(q).lower()
+    orig = _s(origine).lower()
+    typ = _s(type_demande).lower()
+    prio = _s(priorite).lower()
+    out = []
+    for r in rows:
+        statut = _s(r.get("statut"))
+        if statut_filter == "a_traiter" and statut not in (DEMANDE_STATUT_A_QUALIFIER, DEMANDE_STATUT_A_VALIDER):
+            continue
+        if statut_filter not in ("", "tous", "a_traiter") and statut != statut_filter:
+            continue
+        if orig not in ("", "tous", "all") and _normalise_demande_origine(r.get("origine")) != orig:
+            continue
+        if typ not in ("", "tous", "all") and _normalise_demande_type(r.get("type_demande")) != typ:
+            continue
+        if prio not in ("", "toutes", "tous", "all") and _normalise_demande_priorite(r.get("priorite")) != prio:
+            continue
+        if _i(r.get("score_anticipation")) < fragilite_min:
+            continue
+        if _i(r.get("criticite")) < criticite_min and _normalise_demande_origine(r.get("origine")) == "analyse":
+            continue
+        if needle:
+            hay = " ".join([
+                _s(r.get("objet")), _s(r.get("description")), _s(r.get("collaborateur_nom_complet")),
+                _s(r.get("intitule_poste")), _s(r.get("nom_service")), _s(r.get("intitule_competence")),
+                _s(r.get("code_competence")), _s(r.get("commentaire_manager")), _s(r.get("commentaire_salarie")),
+            ]).lower()
+            if needle not in hay:
+                continue
+        out.append(r)
+    return out
+
+
+def _demande_kpis(rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    return {
+        "total": len(rows),
+        "a_qualifier": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_A_QUALIFIER),
+        "a_valider": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_A_VALIDER),
+        "validee": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_VALIDEE),
+        "transmise_studio": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_TRANSMISE),
+        "prise_en_charge": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_PRISE_EN_CHARGE),
+        "action_creee": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_ACTION_CREEE),
+        "a_traiter": sum(1 for x in rows if x.get("statut") in (DEMANDE_STATUT_A_QUALIFIER, DEMANDE_STATUT_A_VALIDER)),
+        "collaborateurs": len({_s(x.get("id_effectif_concerne")) for x in rows if _s(x.get("id_effectif_concerne"))}),
+    }
+
+
+def _demande_base_item(row: Dict[str, Any]) -> Dict[str, Any]:
+    statut = _filter_demande_statut(row.get("statut") or DEMANDE_STATUT_A_QUALIFIER)
+    if statut in ("", "tous", "a_traiter"):
+        statut = DEMANDE_STATUT_A_QUALIFIER
+    origine = _normalise_demande_origine(row.get("origine") or row.get("source_type"))
+    type_demande = _normalise_demande_type(row.get("type_demande"))
+    priorite = _normalise_demande_priorite(row.get("priorite"))
+    nom = " ".join([_s(row.get("prenom_effectif")), _s(row.get("nom_effectif"))]).strip()
+    nom = _s(row.get("collaborateur_nom_complet")) or nom or "Demande collective"
+    objet = _s(row.get("objet"))
+    if not objet:
+        if type_demande == "formation" and _s(row.get("intitule_competence")):
+            objet = f"Renforcer {row.get('intitule_competence')}"
+        else:
+            objet = "Demande RH à qualifier"
+    score = _i(row.get("score_anticipation") or row.get("indice_fragilite"))
+    criticite = _i(row.get("criticite"))
+    return {
+        "id_demande_rh": row.get("id_demande_rh"),
+        "id_besoin_formation": row.get("id_besoin_formation"),
+        "source_ref": row.get("source_ref"),
+        "source_type": row.get("source_type") or origine,
+        "origine": origine,
+        "type_demande": type_demande,
+        "objet": objet,
+        "description": row.get("description") or row.get("motif_priorite") or "",
+        "statut": statut,
+        "statut_label": _label_demande_statut(statut),
+        "priorite": priorite,
+        "id_effectif_concerne": row.get("id_effectif_concerne"),
+        "collaborateur_nom_complet": nom,
+        "id_poste": row.get("id_poste"),
+        "code_poste": row.get("code_poste"),
+        "intitule_poste": row.get("intitule_poste") or "Poste non précisé",
+        "id_service": row.get("id_service"),
+        "nom_service": row.get("nom_service") or "",
+        "id_comp": row.get("id_comp"),
+        "code_competence": row.get("code_competence"),
+        "intitule_competence": row.get("intitule_competence"),
+        "niveau_attendu": row.get("niveau_attendu") or row.get("niveau_requis"),
+        "niveau_actuel": row.get("niveau_actuel"),
+        "ecart_niveau": _i(row.get("ecart_niveau")),
+        "criticite": criticite,
+        "indice_fragilite": score,
+        "score_anticipation": score,
+        "delai_recommande": row.get("delai_recommande") or _delai_from_score(score),
+        "delai_souhaite": row.get("delai_souhaite"),
+        "echeance_souhaitee": row.get("echeance_souhaitee"),
+        "periode_souhaitee": row.get("periode_souhaitee"),
+        "precision_periode": row.get("precision_periode"),
+        "modalites_souhaitees": _json_list(row.get("modalites_souhaitees")),
+        "commentaire_manager": row.get("commentaire_manager") or "",
+        "commentaire_salarie": row.get("commentaire_salarie") or "",
+        "commentaire_client": row.get("commentaire_client") or "",
+        "payload_signal": row.get("payload_signal") or {},
+        "created_at": row.get("created_at"),
+        "updated_at": row.get("updated_at"),
+        "is_signal_actuel": bool(row.get("is_signal_actuel")),
+        "signal_key": _demande_signal_key(row),
+    }
+
+
+def _demande_from_current_signal(row: Dict[str, Any]) -> Dict[str, Any]:
+    score = _i(row.get("score_anticipation"))
+    item = dict(row)
+    item.update({
+        "id_demande_rh": None,
+        "origine": "analyse",
+        "source_type": "analyse_competences",
+        "type_demande": "formation",
+        "statut": DEMANDE_STATUT_A_QUALIFIER,
+        "priorite": _priority_from_demande_score(score, _i(row.get("criticite"))),
+        "objet": f"Renforcer {row.get('intitule_competence') or 'une compétence'}",
+        "description": row.get("motif_priorite") or "Besoin détecté par l’analyse des fragilités.",
+        "payload_signal": row,
+        "is_signal_actuel": True,
+    })
+    return _demande_base_item(item)
+
+
+def _demande_from_legacy_besoin(row: Dict[str, Any]) -> Dict[str, Any]:
+    legacy_status = _s(row.get("statut"))
+    mapped = {
+        STATUT_ENVOYE: DEMANDE_STATUT_TRANSMISE,
+        STATUT_PRIS_EN_CHARGE: DEMANDE_STATUT_PRISE_EN_CHARGE,
+        STATUT_TRAITE: DEMANDE_STATUT_ACTION_CREEE,
+        "a_envoyer": DEMANDE_STATUT_A_QUALIFIER,
+    }.get(legacy_status, DEMANDE_STATUT_TRANSMISE)
+    item = dict(row)
+    item.update({
+        "id_demande_rh": None,
+        "origine": "analyse",
+        "source_type": row.get("source_type") or "analyse_competences",
+        "type_demande": "formation",
+        "statut": mapped,
+        "priorite": _priority_from_demande_score(_i(row.get("score_anticipation")), _i(row.get("criticite"))),
+        "objet": f"Renforcer {row.get('intitule_competence') or 'une compétence'}",
+        "description": row.get("motif_priorite") or "Besoin transmis depuis l’ancienne page Besoins & formations.",
+        "source_ref": row.get("id_besoin_formation"),
+        "is_signal_actuel": False,
+    })
+    return _demande_base_item(item)
+
+
+def _fetch_demandes_rh(cur, id_ent: str, id_service: Optional[str]) -> List[Dict[str, Any]]:
+    if not _demande_table_exists(cur):
+        return []
+    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
+    sql = f"""
+    WITH
+    {cte_sql}
+    SELECT d.*
+    FROM public.tbl_insights_demande_rh d
+    WHERE d.id_ent = %s
+      AND COALESCE(d.archive, FALSE) = FALSE
+      AND (
+            d.id_effectif_concerne IS NULL
+            OR d.id_effectif_concerne IN (SELECT id_effectif FROM effectifs_scope)
+          )
+      AND (
+            d.id_poste IS NULL
+            OR d.id_poste IN (SELECT id_poste FROM postes_scope)
+          )
+    ORDER BY d.updated_at DESC NULLS LAST, d.created_at DESC NULLS LAST
+    """
+    cur.execute(sql, tuple(cte_params + [id_ent]))
+    return [_demande_base_item(dict(r)) for r in (cur.fetchall() or [])]
+
+
+def _lookup_demande_refs(cur, id_ent: str, payload: DemandeRhPayload) -> Dict[str, Any]:
+    ref: Dict[str, Any] = {}
+    id_eff = _s(payload.id_effectif_concerne)
+    id_poste = _s(payload.id_poste)
+    id_comp = _s(payload.id_comp)
+
+    if id_eff:
+        cur.execute(
+            """
+            SELECT
+                e.id_effectif AS id_effectif_concerne,
+                e.nom_effectif,
+                e.prenom_effectif,
+                e.id_poste_actuel,
+                e.id_service,
+                fp.id_poste,
+                COALESCE(NULLIF(fp.codif_client, ''), fp.codif_poste) AS code_poste,
+                fp.intitule_poste,
+                org.nom_service
+            FROM public.tbl_effectif_client e
+            LEFT JOIN public.tbl_fiche_poste fp
+                   ON fp.id_poste = e.id_poste_actuel
+                  AND fp.id_ent = e.id_ent
+                  AND COALESCE(fp.actif, TRUE) = TRUE
+            LEFT JOIN public.tbl_entreprise_organigramme org
+                   ON org.id_service = e.id_service
+                  AND org.id_ent = e.id_ent
+                  AND COALESCE(org.archive, FALSE) = FALSE
+            WHERE e.id_ent = %s
+              AND e.id_effectif = %s
+              AND COALESCE(e.archive, FALSE) = FALSE
+              AND COALESCE(e.statut_actif, TRUE) = TRUE
+            LIMIT 1
+            """,
+            (id_ent, id_eff),
+        )
+        r = cur.fetchone()
+        if not r:
+            raise HTTPException(status_code=404, detail="Collaborateur introuvable ou archivé.")
+        ref.update(dict(r))
+        if not id_poste:
+            id_poste = _s(r.get("id_poste") or r.get("id_poste_actuel"))
+
+    if id_poste:
+        cur.execute(
+            """
+            SELECT
+                fp.id_poste,
+                COALESCE(NULLIF(fp.codif_client, ''), fp.codif_poste) AS code_poste,
+                fp.intitule_poste,
+                fp.id_service,
+                org.nom_service
+            FROM public.tbl_fiche_poste fp
+            LEFT JOIN public.tbl_entreprise_organigramme org
+                   ON org.id_service = fp.id_service
+                  AND org.id_ent = fp.id_ent
+                  AND COALESCE(org.archive, FALSE) = FALSE
+            WHERE fp.id_ent = %s
+              AND fp.id_poste = %s
+              AND COALESCE(fp.actif, TRUE) = TRUE
+            LIMIT 1
+            """,
+            (id_ent, id_poste),
+        )
+        r = cur.fetchone()
+        if not r:
+            raise HTTPException(status_code=404, detail="Poste introuvable ou inactif.")
+        ref.update({k: v for k, v in dict(r).items() if v is not None})
+
+    if id_comp:
+        cur.execute(
+            """
+            SELECT c.id_comp, c.code AS code_competence, c.intitule AS intitule_competence
+            FROM public.tbl_competence c
+            WHERE c.id_comp = %s
+              AND COALESCE(c.masque, FALSE) = FALSE
+              AND LOWER(COALESCE(c.etat, 'valide')) NOT IN ('archive', 'archivé', 'inactif', 'masque', 'masqué')
+            LIMIT 1
+            """,
+            (id_comp,),
+        )
+        r = cur.fetchone()
+        if not r:
+            raise HTTPException(status_code=404, detail="Compétence introuvable ou masquée.")
+        ref.update(dict(r))
+
+    return ref
+
+
+def _insert_demande_rh(cur, id_ent: str, id_contact: str, payload: DemandeRhPayload) -> Dict[str, Any]:
+    if not _demande_table_exists(cur):
+        raise HTTPException(status_code=400, detail="Table tbl_insights_demande_rh absente. Appliquez la migration SQL du patch.")
+
+    ref = _lookup_demande_refs(cur, id_ent, payload)
+    origine = _normalise_demande_origine(payload.origine)
+    type_demande = _normalise_demande_type(payload.type_demande)
+    priorite = _normalise_demande_priorite(payload.priorite)
+    statut = _filter_demande_statut(payload.statut or DEMANDE_STATUT_A_QUALIFIER)
+    if statut in ("", "tous", "a_traiter"):
+        statut = DEMANDE_STATUT_A_QUALIFIER
+
+    objet = _s(payload.objet)
+    if not objet:
+        if _s(ref.get("intitule_competence")):
+            objet = f"Renforcer {ref.get('intitule_competence')}"
+        else:
+            objet = "Demande RH à qualifier"
+
+    payload_signal = payload.payload_signal or {}
+    if not isinstance(payload_signal, dict):
+        payload_signal = {}
+    payload_signal.update({
+        "captured_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "origine": origine,
+        "type_demande": type_demande,
+    })
+
+    modalites_json = json.dumps(_json_list(payload.modalites_souhaitees), ensure_ascii=False)
+    payload_json = json.dumps(payload_signal, ensure_ascii=False)
+    dest = _resolve_destination(cur, id_ent)
+    id_owner_dest = _s(dest.get("id_owner")) or None
+    demande_id = str(uuid.uuid4())
+    cur.execute(
+        """
+        INSERT INTO public.tbl_insights_demande_rh (
+            id_demande_rh, id_ent, id_owner_destinataire, id_demandeur,
+            id_effectif_concerne, nom_effectif, prenom_effectif,
+            id_poste, code_poste, intitule_poste, id_service, nom_service,
+            id_comp, code_competence, intitule_competence,
+            origine, source_type, source_ref, type_demande,
+            objet, description, statut, priorite,
+            niveau_attendu, niveau_actuel, ecart_niveau,
+            criticite, indice_fragilite, score_anticipation,
+            delai_souhaite, echeance_souhaitee, modalites_souhaitees,
+            commentaire_manager, commentaire_salarie, payload_signal,
+            archive, created_at, updated_at
+        ) VALUES (
+            %s, %s, %s, %s,
+            %s, %s, %s,
+            %s, %s, %s, %s, %s,
+            %s, %s, %s,
+            %s, %s, %s, %s,
+            %s, %s, %s, %s,
+            %s, %s, %s,
+            %s, %s, %s,
+            %s, %s, %s::jsonb,
+            %s, %s, %s::jsonb,
+            FALSE, NOW(), NOW()
+        )
+        RETURNING *
+        """,
+        (
+            demande_id, id_ent, id_owner_dest, id_contact,
+            ref.get("id_effectif_concerne") or _s(payload.id_effectif_concerne) or None, ref.get("nom_effectif"), ref.get("prenom_effectif"),
+            ref.get("id_poste") or _s(payload.id_poste) or None, ref.get("code_poste"), ref.get("intitule_poste"), ref.get("id_service"), ref.get("nom_service"),
+            ref.get("id_comp") or _s(payload.id_comp) or None, ref.get("code_competence"), ref.get("intitule_competence"),
+            origine, _s(payload.source_type) or origine, _s(payload.source_ref) or None, type_demande,
+            objet, _s(payload.description), statut, priorite,
+            _s(payload.niveau_attendu) or None, _s(payload.niveau_actuel) or None, _i(payload.ecart_niveau),
+            _i(payload.criticite), _i(payload.score_anticipation), _i(payload.score_anticipation),
+            _s(payload.delai_souhaite) or None, _date_or_none(payload.echeance_souhaitee), modalites_json,
+            _s(payload.commentaire_manager), _s(payload.commentaire_salarie), payload_json,
+        ),
+    )
+    return _demande_base_item(dict(cur.fetchone() or {}))
+
+
+def _fetch_demande_by_id(cur, id_ent: str, id_demande: str) -> Dict[str, Any]:
+    if not _demande_table_exists(cur):
+        raise HTTPException(status_code=400, detail="Table tbl_insights_demande_rh absente. Appliquez la migration SQL du patch.")
+    cur.execute(
+        """
+        SELECT *
+        FROM public.tbl_insights_demande_rh
+        WHERE id_ent = %s
+          AND id_demande_rh = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_ent, id_demande),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Demande RH introuvable.")
+    return dict(row)
+
+
+@router.get("/skills/demandes-rh/{id_contact}")
+def get_demandes_rh(
+    id_contact: str,
+    request: Request,
+    id_service: Optional[str] = Query(default=None),
+    statut: str = Query(default="tous"),
+    origine: str = Query(default="tous"),
+    type_demande: str = Query(default="tous"),
+    priorite: str = Query(default="toutes"),
+    q: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=0, ge=0, le=100),
+    fragilite_min: int = Query(default=0, ge=0, le=100),
+    limit: int = Query(default=400, ge=1, le=1000),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, _s(id_service) or None)
+                dest = _resolve_destination(cur, id_ent)
+                id_owner_dest = _s(dest.get("id_owner"))
+
+                current = _fetch_current(cur, id_ent, scope.id_service, max(0, criticite_min), id_owner_dest, min(limit, 800))
+                demandes_rh = _fetch_demandes_rh(cur, id_ent, scope.id_service)
+                legacy = _fetch_demandes(cur, id_ent, id_owner_dest)
+
+                rows: List[Dict[str, Any]] = []
+                seen = set()
+
+                for d in demandes_rh:
+                    rows.append(d)
+                    seen.add(_demande_signal_key(d))
+
+                for l in legacy:
+                    item = _demande_from_legacy_besoin(l)
+                    key = _demande_signal_key(item)
+                    if key not in seen:
+                        rows.append(item)
+                        seen.add(key)
+
+                for c in current:
+                    item = _demande_from_current_signal(c)
+                    key = _demande_signal_key(item)
+                    if key not in seen:
+                        rows.append(item)
+                        seen.add(key)
+
+                rows = _demande_apply_filters(
+                    rows,
+                    _filter_demande_statut(statut),
+                    origine,
+                    type_demande,
+                    priorite,
+                    q or "",
+                    fragilite_min,
+                    criticite_min,
+                )
+                rows.sort(key=lambda x: (
+                    0 if x.get("statut") in (DEMANDE_STATUT_A_QUALIFIER, DEMANDE_STATUT_A_VALIDER) else 1,
+                    -_i(x.get("score_anticipation")),
+                    str(x.get("collaborateur_nom_complet") or ""),
+                    str(x.get("objet") or ""),
+                ))
+
+                return {
+                    "scope": _scope_dict(scope),
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "destination": dest,
+                    "kpis": _demande_kpis(rows),
+                    "items": rows[:limit],
+                    "table_ready": _demande_table_exists(cur),
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur demandes RH : {e}")
+
+
+@router.get("/skills/demandes-rh/{id_contact}/refs")
+def get_demandes_rh_refs(
+    id_contact: str,
+    request: Request,
+    id_service: Optional[str] = Query(default=None),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                scope = _fetch_service_label(cur, id_ent, _s(id_service) or None)
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+                cur.execute(
+                    f"""
+                    WITH
+                    {cte_sql}
+                    SELECT
+                        e.id_effectif,
+                        e.nom_effectif,
+                        e.prenom_effectif,
+                        e.id_poste_actuel AS id_poste,
+                        fp.intitule_poste,
+                        e.id_service,
+                        org.nom_service
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    LEFT JOIN public.tbl_fiche_poste fp
+                           ON fp.id_poste = e.id_poste_actuel
+                          AND fp.id_ent = e.id_ent
+                          AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme org
+                           ON org.id_service = e.id_service
+                          AND org.id_ent = e.id_ent
+                          AND COALESCE(org.archive, FALSE) = FALSE
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                    ORDER BY e.nom_effectif, e.prenom_effectif
+                    LIMIT 800
+                    """,
+                    tuple(cte_params + [id_ent]),
+                )
+                effectifs = [dict(r) for r in (cur.fetchall() or [])]
+
+                cur.execute(
+                    f"""
+                    WITH
+                    {cte_sql}
+                    SELECT DISTINCT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.domaine
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                    JOIN public.tbl_competence c ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                    WHERE COALESCE(fpc.masque, FALSE) = FALSE
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND LOWER(COALESCE(c.etat, 'valide')) NOT IN ('archive', 'archivé', 'inactif', 'masque', 'masqué')
+                    ORDER BY c.code, c.intitule
+                    LIMIT 800
+                    """,
+                    tuple(cte_params),
+                )
+                competences = [dict(r) for r in (cur.fetchall() or [])]
+
+                return {
+                    "scope": _scope_dict(scope),
+                    "effectifs": effectifs,
+                    "competences": competences,
+                    "table_ready": _demande_table_exists(cur),
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur référentiels demandes RH : {e}")
+
+
+@router.post("/skills/demandes-rh/{id_contact}")
+def creer_demande_rh(id_contact: str, payload: DemandeRhPayload, request: Request):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                item = _insert_demande_rh(cur, id_ent, id_contact, payload)
+                conn.commit()
+                return {"ok": True, "item": item, "message": "Demande RH créée."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur création demande RH : {e}")
+
+
+@router.post("/skills/demandes-rh/{id_contact}/{id_demande}/qualifier")
+def qualifier_demande_rh(id_contact: str, id_demande: str, payload: DemandeRhPayload, request: Request):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                _fetch_demande_by_id(cur, id_ent, id_demande)
+                ref = _lookup_demande_refs(cur, id_ent, payload)
+                statut = _filter_demande_statut(payload.statut or DEMANDE_STATUT_A_VALIDER)
+                if statut in ("", "tous", "a_traiter"):
+                    statut = DEMANDE_STATUT_A_VALIDER
+                modalites_json = json.dumps(_json_list(payload.modalites_souhaitees), ensure_ascii=False)
+                cur.execute(
+                    """
+                    UPDATE public.tbl_insights_demande_rh
+                    SET id_effectif_concerne = COALESCE(%s, id_effectif_concerne),
+                        nom_effectif = COALESCE(%s, nom_effectif),
+                        prenom_effectif = COALESCE(%s, prenom_effectif),
+                        id_poste = COALESCE(%s, id_poste),
+                        code_poste = COALESCE(%s, code_poste),
+                        intitule_poste = COALESCE(%s, intitule_poste),
+                        id_service = COALESCE(%s, id_service),
+                        nom_service = COALESCE(%s, nom_service),
+                        id_comp = %s,
+                        code_competence = %s,
+                        intitule_competence = %s,
+                        type_demande = %s,
+                        objet = %s,
+                        description = %s,
+                        statut = %s,
+                        priorite = %s,
+                        delai_souhaite = %s,
+                        echeance_souhaitee = %s,
+                        modalites_souhaitees = %s::jsonb,
+                        commentaire_manager = %s,
+                        updated_at = NOW()
+                    WHERE id_ent = %s
+                      AND id_demande_rh = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    RETURNING *
+                    """,
+                    (
+                        ref.get("id_effectif_concerne") or _s(payload.id_effectif_concerne) or None,
+                        ref.get("nom_effectif"), ref.get("prenom_effectif"),
+                        ref.get("id_poste") or _s(payload.id_poste) or None, ref.get("code_poste"), ref.get("intitule_poste"),
+                        ref.get("id_service"), ref.get("nom_service"),
+                        ref.get("id_comp") or _s(payload.id_comp) or None, ref.get("code_competence"), ref.get("intitule_competence"),
+                        _normalise_demande_type(payload.type_demande),
+                        _s(payload.objet) or "Demande RH à qualifier",
+                        _s(payload.description),
+                        statut,
+                        _normalise_demande_priorite(payload.priorite),
+                        _s(payload.delai_souhaite) or None,
+                        _date_or_none(payload.echeance_souhaitee),
+                        modalites_json,
+                        _s(payload.commentaire_manager),
+                        id_ent, id_demande,
+                    ),
+                )
+                row = cur.fetchone()
+                conn.commit()
+                return {"ok": True, "item": _demande_base_item(dict(row or {})), "message": "Demande RH mise à jour."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur qualification demande RH : {e}")
+
+
+@router.post("/skills/demandes-rh/{id_contact}/{id_demande}/statut")
+def changer_statut_demande_rh(id_contact: str, id_demande: str, payload: DemandeRhStatutPayload, request: Request):
+    try:
+        statut = _filter_demande_statut(payload.statut)
+        if statut not in DEMANDE_STATUTS:
+            raise HTTPException(status_code=400, detail="Statut de demande RH invalide.")
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                _fetch_demande_by_id(cur, id_ent, id_demande)
+                cur.execute(
+                    """
+                    UPDATE public.tbl_insights_demande_rh
+                    SET statut = %s,
+                        commentaire_manager = CASE WHEN %s <> '' THEN %s ELSE commentaire_manager END,
+                        updated_at = NOW()
+                    WHERE id_ent = %s
+                      AND id_demande_rh = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    RETURNING *
+                    """,
+                    (statut, _s(payload.commentaire_manager), _s(payload.commentaire_manager), id_ent, id_demande),
+                )
+                row = cur.fetchone()
+                conn.commit()
+                return {"ok": True, "item": _demande_base_item(dict(row or {})), "message": "Statut mis à jour."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur changement statut demande RH : {e}")
+
+
+@router.post("/skills/demandes-rh/{id_contact}/{id_demande}/transmettre-studio")
+def transmettre_demande_rh_studio(id_contact: str, id_demande: str, request: Request):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                dest = _resolve_destination(cur, id_ent)
+                if not dest.get("can_send"):
+                    raise HTTPException(status_code=400, detail=dest.get("reason") or "Studio destinataire indisponible.")
+                id_owner_dest = _s(dest.get("id_owner"))
+                d = _fetch_demande_by_id(cur, id_ent, id_demande)
+                if _normalise_demande_type(d.get("type_demande")) != "formation":
+                    raise HTTPException(status_code=400, detail="Seules les demandes de type Formation peuvent être transmises au Studio dans ce patch.")
+                if not _s(d.get("id_comp")) or not _s(d.get("id_effectif_concerne")):
+                    raise HTTPException(status_code=400, detail="Transmission impossible : compétence ou collaborateur manquant.")
+
+                payload_signal = dict(d.get("payload_signal") or {})
+                payload_signal.update({
+                    "source": "demande_rh",
+                    "source_ref": id_demande,
+                    "captured_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "type_demande": d.get("type_demande"),
+                    "origine": d.get("origine"),
+                    "objet": d.get("objet"),
+                })
+                payload_json = json.dumps(payload_signal, ensure_ascii=False)
+                modalites_json = json.dumps(_json_list(d.get("modalites_souhaitees")), ensure_ascii=False)
+
+                cur.execute(
+                    """
+                    SELECT id_besoin_formation
+                    FROM public.tbl_insights_besoin_formation
+                    WHERE id_ent_source = %s
+                      AND id_owner_destinataire = %s
+                      AND id_comp = %s
+                      AND COALESCE(id_poste, '') = COALESCE(%s, '')
+                      AND COALESCE(id_effectif_concerne, '') = COALESCE(%s, '')
+                      AND COALESCE(archive, FALSE) = FALSE
+                      AND statut IN ('envoye_studio', 'pris_en_charge')
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    (id_ent, id_owner_dest, d.get("id_comp"), d.get("id_poste"), d.get("id_effectif_concerne")),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    besoin_id = existing.get("id_besoin_formation")
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_insights_besoin_formation
+                        SET payload_signal = %s::jsonb,
+                            besoin_type = 'individuel',
+                            code_poste = %s,
+                            nom_effectif = %s,
+                            prenom_effectif = %s,
+                            niveau_actuel = %s,
+                            ecart_niveau = %s,
+                            indice_fragilite = %s,
+                            score_anticipation = %s,
+                            criticite = %s,
+                            priorite = %s,
+                            delai_recommande = %s,
+                            delai_souhaite = %s,
+                            modalites_souhaitees = %s::jsonb,
+                            motif_priorite = %s,
+                            commentaire_client = %s,
+                            commentaire_manager = %s,
+                            updated_at = NOW()
+                        WHERE id_besoin_formation = %s
+                        """,
+                        (
+                            payload_json, d.get("code_poste"), d.get("nom_effectif"), d.get("prenom_effectif"), d.get("niveau_actuel"),
+                            _i(d.get("ecart_niveau")), _i(d.get("indice_fragilite")), _i(d.get("score_anticipation")), _i(d.get("criticite")),
+                            d.get("priorite"), d.get("delai_souhaite"), d.get("delai_souhaite"), modalites_json,
+                            d.get("description"), d.get("commentaire_manager"), d.get("commentaire_manager"), besoin_id,
+                        ),
+                    )
+                else:
+                    besoin_id = str(uuid.uuid4())
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_insights_besoin_formation (
+                            id_besoin_formation, id_owner_destinataire, id_ent_source, id_effectif_demandeur,
+                            source_console, source_type, besoin_type,
+                            id_comp, code_competence, intitule_competence,
+                            id_poste, code_poste, intitule_poste, id_service, nom_service,
+                            id_effectif_concerne, nom_effectif, prenom_effectif,
+                            niveau_attendu, niveau_actuel, ecart_niveau,
+                            criticite, indice_fragilite, score_anticipation, priorite,
+                            delai_recommande, delai_souhaite, periode_souhaitee, precision_periode, modalites_souhaitees,
+                            motif_priorite, commentaire_client, commentaire_manager,
+                            formation_existante, nb_formations_existantes,
+                            statut, payload_signal, archive, created_at, updated_at
+                        ) VALUES (
+                            %s, %s, %s, %s,
+                            'insights', 'demande_rh', 'individuel',
+                            %s, %s, %s,
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s,
+                            %s, %s, %s,
+                            %s, %s, %s, %s,
+                            %s, %s, NULL, NULL, %s::jsonb,
+                            %s, %s, %s,
+                            FALSE, 0,
+                            'envoye_studio', %s::jsonb, FALSE, NOW(), NOW()
+                        )
+                        """,
+                        (
+                            besoin_id, id_owner_dest, id_ent, id_contact,
+                            d.get("id_comp"), d.get("code_competence"), d.get("intitule_competence"),
+                            d.get("id_poste"), d.get("code_poste"), d.get("intitule_poste"), d.get("id_service"), d.get("nom_service"),
+                            d.get("id_effectif_concerne"), d.get("nom_effectif"), d.get("prenom_effectif"),
+                            d.get("niveau_attendu"), d.get("niveau_actuel"), _i(d.get("ecart_niveau")),
+                            _i(d.get("criticite")), _i(d.get("indice_fragilite")), _i(d.get("score_anticipation")), d.get("priorite"),
+                            d.get("delai_souhaite"), d.get("delai_souhaite"), modalites_json,
+                            d.get("description"), d.get("commentaire_manager"), d.get("commentaire_manager"), payload_json,
+                        ),
+                    )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_insights_demande_rh
+                    SET statut = 'transmise_studio',
+                        id_besoin_formation = %s,
+                        updated_at = NOW()
+                    WHERE id_ent = %s
+                      AND id_demande_rh = %s
+                    RETURNING *
+                    """,
+                    (besoin_id, id_ent, id_demande),
+                )
+                row = cur.fetchone()
+                conn.commit()
+                return {"ok": True, "item": _demande_base_item(dict(row or {})), "message": "Demande transmise au Studio."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur transmission demande RH : {e}")
 
 
 @router.get("/skills/besoins-formations/{id_contact}")

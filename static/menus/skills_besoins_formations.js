@@ -1,21 +1,26 @@
 /* ======================================================
    static/menus/skills_besoins_formations.js
-   Besoins & formations Insights
-   Vue individuelle sobre : qui / quoi / délai / statut / commentaire / action
+   Demandes RH Insights
+   Centre d'émission, qualification et transmission des demandes RH
    ====================================================== */
 (function () {
   let _bound = false;
   let _servicesLoaded = false;
   let _portal = null;
   let _lastData = null;
+  let _refs = { effectifs: [], competences: [] };
   let _loading = false;
-  let _modalGroup = null;
+  let _visibleCount = 8;
+  let _selectedItem = null;
+  let _modalMode = "create";
+  let _modalItem = null;
+  let _searchTimer = null;
 
   const STORE_SERVICE = "sb_bf_service";
   const STORE_STATUT = "sb_bf_statut";
-  const STORE_FRAG = "sb_bf_fragilite_min";
-  const STORE_CRIT = "sb_bf_criticite_min";
-  const STORE_FOCUS = "sb_bf_focus_v1";
+  const STORE_ORIGIN = "sb_bf_origine";
+  const STORE_TYPE = "sb_bf_type";
+  const STORE_PRIORITY = "sb_bf_priorite";
 
   function byId(id) { return document.getElementById(id); }
 
@@ -39,12 +44,6 @@
     return isNaN(n) ? 0 : n;
   }
 
-  function clampInt(v, min, max, defv) {
-    const n = parseInt(v, 10);
-    if (isNaN(n)) return defv;
-    return Math.max(min, Math.min(max, n));
-  }
-
   function setText(id, value, fallback = "—") {
     const el = byId(id);
     if (!el) return;
@@ -54,31 +53,32 @@
   function setMsg(text, type, targetId = "bfActionMsg") {
     const el = byId(targetId);
     if (!el) return;
-
     const normalizedType = type === "error" ? "danger" : (type || "");
-    const finalType = normalizedType === "warning" ? "info" : normalizedType;
-
     el.textContent = text || "";
     el.className = "sb-inline-msg";
-
-    if (finalType) {
-      el.classList.add("sb-inline-msg--" + finalType);
-    }
-
-    if (text) {
-      el.classList.add("is-visible");
-    } else {
-      el.classList.remove("is-visible");
-    }
-
-    if (text && finalType === "success") {
+    if (normalizedType) el.classList.add("sb-inline-msg--" + normalizedType);
+    if (text) el.classList.add("is-visible");
+    if (text && normalizedType === "success") {
       window.setTimeout(() => {
         if (el.textContent === text) {
           el.textContent = "";
           el.className = "sb-inline-msg";
         }
-      }, 5000);
+      }, 4500);
     }
+  }
+
+  function icon(name, size = 16) {
+    const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24"`;
+    const map = {
+      eye: `<svg ${attrs}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+      edit: `<svg ${attrs}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+      send: `<svg ${attrs}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`,
+      check: `<svg ${attrs}><path d="M20 6 9 17l-5-5"/></svg>`,
+      close: `<svg ${attrs}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+      pdf: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 15h1"/><path d="M12 15h4"/></svg>`
+    };
+    return map[name] || "";
   }
 
   function getRawService() {
@@ -92,9 +92,11 @@
   function getFilters() {
     return {
       id_service: getQueryService(),
-      statut: (byId("bfStatutSelect")?.value || "tous").trim(),
-      fragilite_min: clampInt(byId("bfFragiliteRange")?.value, 0, 100, 0),
-      criticite_min: clampInt(byId("bfCriticiteRange")?.value, 0, 100, 70)
+      statut: (byId("bfStatutSelect")?.value || "a_traiter").trim(),
+      origine: (byId("bfOriginSelect")?.value || "tous").trim(),
+      type_demande: (byId("bfTypeSelect")?.value || "tous").trim(),
+      priorite: (byId("bfPrioritySelect")?.value || "toutes").trim(),
+      q: (byId("bfSearchInput")?.value || "").trim()
     };
   }
 
@@ -102,46 +104,30 @@
     const f = getFilters();
     localStorage.setItem(STORE_SERVICE, getRawService());
     localStorage.setItem(STORE_STATUT, f.statut);
-    localStorage.setItem(STORE_FRAG, String(f.fragilite_min));
-    localStorage.setItem(STORE_CRIT, String(f.criticite_min));
-  }
-
-  function applyFilterLabels() {
-    setText("bfFragiliteValue", byId("bfFragiliteRange")?.value || "0", "0");
-    setText("bfCriticiteValue", byId("bfCriticiteRange")?.value || "70", "70");
+    localStorage.setItem(STORE_ORIGIN, f.origine);
+    localStorage.setItem(STORE_TYPE, f.type_demande);
+    localStorage.setItem(STORE_PRIORITY, f.priorite);
   }
 
   function restoreFilters() {
-    const statut = (localStorage.getItem(STORE_STATUT) || "tous").trim();
-    const frag = clampInt(localStorage.getItem(STORE_FRAG), 0, 100, 0);
-    const crit = clampInt(localStorage.getItem(STORE_CRIT), 0, 100, 70);
-
-    const selStatut = byId("bfStatutSelect");
-    if (selStatut && Array.from(selStatut.options).some(o => o.value === statut)) selStatut.value = statut;
-
-    const rFrag = byId("bfFragiliteRange");
-    if (rFrag) rFrag.value = String(frag);
-
-    const rCrit = byId("bfCriticiteRange");
-    if (rCrit) rCrit.value = String(crit);
-
+    const map = [
+      ["bfStatutSelect", STORE_STATUT, "a_traiter"],
+      ["bfOriginSelect", STORE_ORIGIN, "tous"],
+      ["bfTypeSelect", STORE_TYPE, "tous"],
+      ["bfPrioritySelect", STORE_PRIORITY, "toutes"],
+    ];
+    map.forEach(([id, key, defv]) => {
+      const el = byId(id);
+      if (!el) return;
+      const v = (localStorage.getItem(key) || defv).trim();
+      if (Array.from(el.options).some(o => o.value === v)) el.value = v;
+    });
     const selService = byId("bfServiceSelect");
     const storedService = (localStorage.getItem(STORE_SERVICE) || "").trim();
     if (selService && storedService) {
       const exists = Array.from(selService.options || []).some(o => String(o.value || "") === storedService);
       if (exists) selService.value = storedService;
     }
-
-    const focus = readFocusContext();
-    if (focus) {
-      if (selService) selService.value = window.portal?.serviceFilter?.ALL_ID || "__ALL__";
-      if (selStatut) selStatut.value = "tous";
-      if (rFrag) rFrag.value = "0";
-      const critFocus = clampInt(focus.criticite_min, 0, 100, crit);
-      if (rCrit) rCrit.value = String(critFocus);
-    }
-
-    applyFilterLabels();
   }
 
   async function loadServices(portal) {
@@ -158,494 +144,528 @@
     _servicesLoaded = true;
   }
 
-
-  function readFocusContext() {
-    try {
-      const raw = localStorage.getItem(STORE_FOCUS);
-      const ctx = raw ? JSON.parse(raw) : null;
-      if (!ctx || typeof ctx !== "object") return null;
-      const created = Date.parse(ctx.created_at || "");
-      if (created && (Date.now() - created) > 30 * 60 * 1000) {
-        localStorage.removeItem(STORE_FOCUS);
-        return null;
-      }
-      return ctx;
-    } catch (_) {
-      return null;
-    }
+  function apiUrl(path, params) {
+    const qs = new URLSearchParams(params || {});
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return `${_portal.apiBase}${path}${suffix}`;
   }
 
-  function clearFocusContext() {
-    try { localStorage.removeItem(STORE_FOCUS); } catch (_) {}
-  }
-
-  function focusGroupFromContext(groups) {
-    const ctx = readFocusContext();
-    if (!ctx) return;
-
-    const wantedId = (ctx.id_effectif || ctx.effectif_id || ctx.id_effectif_concerne || "").toString().trim();
-    const wantedName = (ctx.effectif_label || ctx.collaborateur || "ce collaborateur").toString().trim() || "ce collaborateur";
-    if (!wantedId) {
-      clearFocusContext();
-      return;
-    }
-
-    const list = Array.isArray(groups) ? groups : [];
-    const group = list.find(g => String(g.id_effectif_concerne || g.key || "") === wantedId);
-    if (!group) {
-      setMsg(`Aucun besoin affiché pour ${wantedName}. Vérifiez les filtres ou l’absence d’écart sur le poste actuel.`, "info");
-      clearFocusContext();
-      return;
-    }
-
-    const wrap = byId("bfListWrap");
-    const card = wrap ? Array.from(wrap.querySelectorAll(".bf-person-card")).find(el => el.getAttribute("data-bf-group") === group.key) : null;
-    if (!card) {
-      clearFocusContext();
-      return;
-    }
-
-    const toggle = card.querySelector(".bf-accordion-toggle");
-    const panel = card.querySelector(".bf-accordion-panel");
-    const icon = card.querySelector(".bf-accordion-icon");
-    if (toggle) toggle.setAttribute("aria-expanded", "true");
-    if (panel) panel.hidden = false;
-    if (icon) icon.textContent = "⌃";
-
-    card.classList.add("bf-person-card--focus");
-    card.scrollIntoView({ behavior: "smooth", block: "center" });
-    setMsg(ctx.message || `Besoins de montée en compétence affichés pour ${group.nom}.`, "info");
-    clearFocusContext();
-  }
-
-  function scoreDelay(items) {
-    const maxScore = Math.max(...items.map(x => num(x.score_anticipation || x.indice_fragilite)), 0);
-    if (maxScore >= 80) return "Dès que possible";
-    if (maxScore >= 65) return "Sous 3 mois";
-    if (maxScore >= 45) return "Sous 6 mois";
-    return "Sous 12 mois";
-  }
-
-  function priorityRank(p) {
-    const s = (p || "").toString().toLowerCase();
-    if (s.includes("urgent")) return 4;
-    if (s.includes("sécur") || s.includes("secur")) return 3;
-    if (s.includes("anticip")) return 2;
-    return 1;
-  }
-
-  function bestPriority(items) {
-    let best = "À surveiller";
-    (items || []).forEach(item => {
-      if (priorityRank(item.priorite) > priorityRank(best)) best = item.priorite || best;
-    });
-    return best;
-  }
-
-  function statusSummary(items) {
-    const list = items || [];
-    if (!list.length) return { code: "a_envoyer", label: "À envoyer" };
-
-    const statuses = new Set(list.map(x => x.statut || "a_envoyer"));
-    if (statuses.size === 1) {
-      const s = list[0].statut || "a_envoyer";
-      return { code: s, label: list[0].statut_label || labelStatut(s) };
-    }
-
-    if (statuses.has("a_envoyer")) return { code: "a_envoyer", label: "Partiel" };
-    if (statuses.has("pris_en_charge")) return { code: "pris_en_charge", label: "Pris en charge" };
-    if (statuses.has("envoye_studio")) return { code: "envoye_studio", label: "Envoyé au Studio" };
-    return { code: "traite", label: "Traité" };
-  }
-
-  function labelStatut(s) {
-    return {
-      a_envoyer: "À envoyer",
-      envoye_studio: "Envoyé au Studio",
-      pris_en_charge: "Pris en charge",
-      traite: "Traité"
-    }[s] || "—";
-  }
-
-  function statutClass(statut) {
-    const s = (statut || "").toString();
-    if (s === "a_envoyer") return "sb-badge--warning";
-    if (s === "envoye_studio") return "sb-badge--info";
-    if (s === "pris_en_charge") return "sb-badge--violet";
-    if (s === "traite") return "sb-badge--success";
-    return "";
-  }
-
-  function renderDestination(dest) {
+  function renderDestination(dest, tableReady) {
     const el = byId("bfDestinationText");
     if (!el) return;
-
+    const dbBadge = tableReady === false
+      ? `<span class="sb-badge sb-badge--warning">Migration SQL à appliquer</span>`
+      : "";
     if (dest && dest.can_send) {
       el.innerHTML = `
         <span class="bf-destination-label">Destination</span>
         <span class="sb-badge sb-badge--success">Studio actif</span>
         <span>${escapeHtml(dest.nom_owner || dest.id_owner || "Studio")}</span>
-        <span class="sb-badge">${escapeHtml(dest.learn_actif ? "Learn actif" : "Learn non actif")}</span>
+        ${dbBadge}
       `;
       return;
     }
-
     el.innerHTML = `
       <span class="bf-destination-label">Destination</span>
       <span class="sb-badge sb-badge--danger">Envoi bloqué</span>
       <span>${escapeHtml(dest?.reason || "Aucun Studio destinataire configuré.")}</span>
+      ${dbBadge}
     `;
   }
 
-  function renderMiniKpis(kpis) {
-    const k = kpis || {};
-    const el = byId("bfMiniKpis");
+  function renderKpis(kpis) {
+    const values = [
+      ["À qualifier", kpis?.a_qualifier ?? 0, "bf-kpi-icon--red", "?"],
+      ["À valider", kpis?.a_valider ?? 0, "bf-kpi-icon--orange", "✓"],
+      ["Transmises au Studio", kpis?.transmise_studio ?? 0, "bf-kpi-icon--violet", "↗"],
+      ["Actions créées", kpis?.action_creee ?? 0, "bf-kpi-icon--green", "✓"],
+    ];
+    const el = byId("bfKpiGrid");
     if (!el) return;
-    el.innerHTML = `
-      <span class="bf-mini-kpi"><strong>${escapeHtml(k.total ?? 0)}</strong><span>besoins</span></span>
-      <span class="bf-mini-kpi"><strong>${escapeHtml(k.collaborateurs ?? 0)}</strong><span>collaborateurs</span></span>
-      <span class="bf-mini-kpi"><strong>${escapeHtml(k.a_envoyer ?? 0)}</strong><span>à envoyer</span></span>
-      <span class="bf-mini-kpi"><strong>${escapeHtml(k.risque_5_ans ?? 0)}</strong><span>risque 5 ans</span></span>
-    `;
-  }
-
-  function labelCode(item) {
-    return item.code_competence || item.code || "—";
-  }
-
-  function labelCompetence(item) {
-    return item.intitule_competence || item.intitule || "Compétence";
-  }
-
-  function labelCollaborateur(item) {
-    return item.collaborateur_nom_complet || [item.prenom_effectif, item.nom_effectif].filter(Boolean).join(" ") || "Collaborateur";
-  }
-
-  function labelPoste(item) {
-    return item.intitule_poste || "Poste non précisé";
-  }
-
-  function groupByCollaborateur(items) {
-    const map = new Map();
-
-    (items || []).forEach(item => {
-      const key = item.id_effectif_concerne || `collab:${labelCollaborateur(item)}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          id_effectif_concerne: item.id_effectif_concerne || "",
-          nom: labelCollaborateur(item),
-          poste: labelPoste(item),
-          service: item.nom_service || "",
-          items: [],
-        });
-      }
-      map.get(key).items.push(item);
-    });
-
-    return Array.from(map.values()).sort((a, b) => a.nom.localeCompare(b.nom));
-  }
-
-  function commentSummary(items) {
-    const txt = (items || [])
-      .map(x => x.commentaire_manager || x.commentaire_client || "")
-      .find(x => String(x || "").trim());
-    return txt || "—";
-  }
-
-  function skillsSummary(items) {
-    const list = (items || []).slice(0, 3);
-    const html = list.map(item => `
-      <span class="bf-skill-chip" title="${escapeHtml(labelCompetence(item))}">
-        ${escapeHtml(labelCode(item))} · ${escapeHtml(labelCompetence(item))}
-      </span>
-    `).join("");
-
-    const more = (items || []).length > 3
-      ? `<span class="bf-skill-more">+${items.length - 3}</span>`
-      : "";
-
-    return html + more;
-  }
-
-  function renderRows(items, destination) {
-    const wrap = byId("bfListWrap");
-    if (!wrap) return;
-
-    const list = Array.isArray(items) ? items : [];
-    if (!list.length) {
-      wrap.innerHTML = `<div class="bf-empty">Aucun besoin individuel ne correspond aux filtres.</div>`;
-      focusGroupFromContext([]);
-      return;
-    }
-
-    const canSend = !!destination?.can_send;
-    const groups = groupByCollaborateur(list);
-
-    wrap.innerHTML = groups.map(group => {
-      const st = statusSummary(group.items);
-      const sendableCount = group.items.filter(x => x.statut === "a_envoyer").length;
-      const delay = scoreDelay(group.items);
-      const prio = bestPriority(group.items);
-      const actionDisabled = !canSend || sendableCount <= 0;
-      const comment = commentSummary(group.items);
-
-      return `
-        <article class="bf-person-card" data-bf-group="${escapeHtml(group.key)}">
-          <button type="button" class="bf-person-row bf-accordion-toggle" aria-expanded="false">
-            <div class="bf-cell bf-cell--who">
-              <div class="bf-person-name">${escapeHtml(group.nom)}</div>
-              <div class="bf-person-poste">${escapeHtml(group.poste)}</div>
-            </div>
-
-            <div class="bf-cell bf-cell--need">
-              <div class="bf-need-count">${group.items.length} compétence${group.items.length > 1 ? "s" : ""} à renforcer</div>
-              <div class="bf-need-preview">Voir le détail des compétences</div>
-            </div>
-
-            <div class="bf-cell bf-cell--delay">
-              <span class="bf-delay">${escapeHtml(delay)}</span>
-              <span class="bf-prio">${escapeHtml(prio)}</span>
-            </div>
-
-            <div class="bf-cell bf-cell--status">
-              <span class="sb-badge ${statutClass(st.code)}">${escapeHtml(st.label)}</span>
-            </div>
-
-            <div class="bf-cell bf-cell--comment" title="${escapeHtml(comment)}">
-              ${escapeHtml(comment)}
-            </div>
-
-            <div class="bf-cell bf-cell--action">
-              <span class="bf-accordion-icon">⌄</span>
-            </div>
-          </button>
-
-          <div class="bf-accordion-panel" hidden>
-            <div class="bf-accordion-inner">
-              <div class="bf-competence-list">
-                ${group.items.map(item => `
-                  <div class="bf-competence-line">
-                    <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(labelCode(item))}</span>
-                    <span>${escapeHtml(labelCompetence(item))}</span>
-                  </div>
-                `).join("")}
-              </div>
-
-              <div class="bf-accordion-actions">
-                <button type="button" class="sb-btn sb-btn--accent bf-send-btn" ${actionDisabled ? "disabled" : ""}>
-                  Préparer l’envoi
-                </button>
-              </div>
-            </div>
-          </div>
-        </article>
-      `;
-    }).join("");
-
-    wrap.querySelectorAll(".bf-accordion-toggle").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const card = btn.closest(".bf-person-card");
-        if (!card) return;
-
-        const panel = card.querySelector(".bf-accordion-panel");
-        const icon = card.querySelector(".bf-accordion-icon");
-        const isOpen = btn.getAttribute("aria-expanded") === "true";
-
-        btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
-        if (panel) panel.hidden = isOpen;
-        if (icon) icon.textContent = isOpen ? "⌄" : "⌃";
-      });
-    });
-
-    wrap.querySelectorAll(".bf-send-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const card = btn.closest(".bf-person-card");
-        const group = card ? groups.find(g => g.key === card.getAttribute("data-bf-group")) : null;
-        if (group) openSendModal(group, true);
-      });
-    });
-
-    focusGroupFromContext(groups);
-  }
-
-  function levelLabel(v) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.label(v);
-    return v || "Non évalué";
-  }
-
-  function competenceDetailHtml(item, allowCheck) {
-    const checked = item.statut === "a_envoyer" ? "checked" : "";
-    const disabled = item.statut === "a_envoyer" && allowCheck ? "" : "disabled";
-    const risk5 = num(item.nb_sorties_prevues) + num(item.nb_retraites_estimees);
-    const formation = num(item.nb_formations_existantes) > 0
-      ? `${num(item.nb_formations_existantes)} formation${num(item.nb_formations_existantes) > 1 ? "s" : ""} connue${num(item.nb_formations_existantes) > 1 ? "s" : ""}`
-      : "Formation à vérifier";
-
-    return `
-      <div class="bf-comp-row" data-id-comp="${escapeHtml(item.id_comp || "")}" data-id-poste="${escapeHtml(item.id_poste || "")}" data-id-effectif="${escapeHtml(item.id_effectif_concerne || "")}">
-        <label class="bf-comp-check">
-          <input type="checkbox" class="bf-comp-select" ${checked} ${disabled}>
-        </label>
-
-        <div class="bf-comp-main">
-          <div class="bf-comp-title">
-            <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(labelCode(item))}</span>
-            <strong>${escapeHtml(labelCompetence(item))}</strong>
-          </div>
-          <div class="bf-comp-sub">${escapeHtml(item.motif_priorite || "Besoin détecté")}</div>
-        </div>
-
-        <div class="bf-comp-levels">
-          <span><small>Actuel</small><strong>${escapeHtml(levelLabel(item.niveau_actuel))}</strong></span>
-          <span><small>Attendu</small><strong>${escapeHtml(levelLabel(item.niveau_requis || item.niveau_attendu || "—"))}</strong></span>
-        </div>
-
-        <div class="bf-comp-meta">
-          <span>Score ${escapeHtml(item.score_anticipation || item.indice_fragilite || 0)}%</span>
-          <span>Crit. ${escapeHtml(item.criticite || 0)}</span>
-          ${risk5 > 0 ? `<span>Risque 5 ans</span>` : ""}
-          <span>${escapeHtml(formation)}</span>
-          <span>${escapeHtml(item.statut_label || "À envoyer")}</span>
+    el.innerHTML = values.map(([label, value, klass, ico]) => `
+      <div class="card bf-kpi-card">
+        <span class="bf-kpi-icon ${klass}" aria-hidden="true">${escapeHtml(ico)}</span>
+        <div>
+          <div class="bf-kpi-label">${escapeHtml(label)}</div>
+          <div class="bf-kpi-value">${escapeHtml(value)}</div>
         </div>
       </div>
-    `;
+    `).join("");
   }
 
-  function openSendModal(group, sendMode) {
-    _modalGroup = group;
+  function typeLabel(v) {
+    return {
+      formation: "Formation",
+      transmission: "Transmission",
+      renfort: "Renfort",
+      recrutement: "Recrutement",
+      mobilite: "Mobilité",
+      tutorat: "Tutorat",
+      entretien: "Entretien",
+      documentation: "Documentation",
+      organisation: "Organisation",
+      autre: "Autre"
+    }[v] || "Demande";
+  }
 
-    const modal = byId("bfSendModal");
-    if (!modal) return;
+  function originLabel(v) {
+    return {
+      analyse: "Analyse",
+      simulation: "Simulation",
+      manager: "Manager",
+      salarie: "Salarié",
+      entretien: "Entretien"
+    }[v] || "Manager";
+  }
 
-    const sendable = group.items.filter(x => x.statut === "a_envoyer");
-    const selectedItems = sendMode ? sendable : group.items;
-    const defaultDelay = scoreDelay(group.items);
-    const existingComment = commentSummary(group.items);
-    const comment = existingComment === "—" ? "" : existingComment;
-
-    setText("bfModalTitle", sendMode ? "Préparer l’envoi au Studio" : "Détail du besoin collaborateur");
-    setText("bfModalSub", `${group.nom} · ${group.poste}`);
-
-    const compWrap = byId("bfModalCompetences");
-    if (compWrap) {
-      compWrap.innerHTML = selectedItems.map(item => competenceDetailHtml(item, sendMode)).join("");
+  function badgeClass(kind, value) {
+    if (kind === "statut") {
+      return {
+        a_qualifier: "bf-badge--red",
+        a_valider: "bf-badge--orange",
+        validee: "bf-badge--green",
+        transmise_studio: "bf-badge--blue",
+        prise_en_charge: "bf-badge--violet",
+        action_creee: "bf-badge--green",
+        refusee: "bf-badge--gray",
+        classee: "bf-badge--gray"
+      }[value] || "bf-badge--gray";
     }
-
-    const delai = byId("bfModalDelai");
-    if (delai) delai.value = Array.from(delai.options).some(o => o.value === defaultDelay) ? defaultDelay : "Sous 6 mois";
-
-    const periode = byId("bfModalPeriode");
-    if (periode) periode.value = "";
-
-    const precision = byId("bfModalPrecision");
-    if (precision) precision.value = "";
-
-    const commentaire = byId("bfModalCommentaire");
-    if (commentaire) commentaire.value = comment;
-
-    modal.querySelectorAll(".bf-check-list input[type='checkbox']").forEach(cb => { cb.checked = false; });
-    setMsg("", "", "bfModalMsg");
-
-    const confirm = byId("btnBfConfirmSend");
-    if (confirm) confirm.style.display = sendMode ? "" : "none";
-
-    modal.classList.add("show");
+    if (kind === "type") {
+      return {
+        formation: "bf-badge--blue",
+        transmission: "bf-badge--violet",
+        renfort: "bf-badge--cyan",
+        recrutement: "bf-badge--red",
+        mobilite: "bf-badge--orange",
+        tutorat: "bf-badge--green",
+        entretien: "bf-badge--gray",
+        documentation: "bf-badge--gray",
+        organisation: "bf-badge--cyan",
+        autre: "bf-badge--gray"
+      }[value] || "bf-badge--gray";
+    }
+    return {
+      analyse: "bf-badge--violet",
+      simulation: "bf-badge--orange",
+      manager: "bf-badge--green",
+      salarie: "bf-badge--blue",
+      entretien: "bf-badge--gray"
+    }[value] || "bf-badge--gray";
   }
 
-  function closeModal() {
-    const modal = byId("bfSendModal");
-    if (modal) modal.classList.remove("show");
-    _modalGroup = null;
+  function priorityLabel(v) {
+    return {
+      critique: "Critique",
+      haute: "Haute",
+      normale: "Normale",
+      basse: "Basse"
+    }[v] || "Normale";
   }
 
-  function selectedModalItems() {
-    const modal = byId("bfSendModal");
-    if (!modal) return [];
-
-    return Array.from(modal.querySelectorAll(".bf-comp-row")).filter(row => {
-      const cb = row.querySelector(".bf-comp-select");
-      return cb && cb.checked && !cb.disabled;
-    }).map(row => ({
-      id_comp: row.getAttribute("data-id-comp") || "",
-      id_poste: row.getAttribute("data-id-poste") || null,
-      id_effectif_concerne: row.getAttribute("data-id-effectif") || null,
-    })).filter(x => x.id_comp && x.id_effectif_concerne);
+  function initials(name) {
+    const parts = (name || "").split(/\s+/).filter(Boolean);
+    return (parts[0]?.[0] || "D") + (parts[1]?.[0] || "");
   }
 
-  async function confirmModalSend() {
-    if (!_portal || !_modalGroup) return;
+  function dateLabel(value) {
+    const s = (value || "").toString().slice(0, 10);
+    if (!s) return "—";
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return s;
+    return `${m[3]}/${m[2]}/${m[1]}`;
+  }
 
-    const items = selectedModalItems();
-    if (!items.length) {
-      setMsg("Aucune compétence sélectionnée.", "warning", "bfModalMsg");
+  function echeanceLabel(item) {
+    return item.echeance_souhaitee ? dateLabel(item.echeance_souhaitee) : (item.delai_souhaite || item.delai_recommande || "—");
+  }
+
+  function renderTabs(kpis) {
+    const counts = {
+      a_traiter: kpis?.a_traiter ?? 0,
+      validee: kpis?.validee ?? 0,
+      transmise_studio: kpis?.transmise_studio ?? 0,
+      tous: kpis?.total ?? 0
+    };
+    byId("bfTabs")?.querySelectorAll(".bf-tab").forEach(btn => {
+      const v = btn.getAttribute("data-bf-tab") || "";
+      btn.classList.toggle("is-active", (byId("bfStatutSelect")?.value || "a_traiter") === v);
+      const strong = btn.querySelector("strong");
+      if (strong) strong.textContent = String(counts[v] ?? 0);
+    });
+  }
+
+  function actionButtonHtml(item) {
+    const id = item.id_demande_rh || "";
+    if (item.statut === "a_valider" && id) {
+      return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-status="validee" data-id="${escapeHtml(id)}">Valider</button>`;
+    }
+    if (item.statut === "validee" && id && item.type_demande === "formation") {
+      return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-transmit="${escapeHtml(id)}">Transmettre</button>`;
+    }
+    if (item.statut === "validee") {
+      return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-follow="1">Plan d’action</button>`;
+    }
+    if (item.statut === "transmise_studio" || item.statut === "prise_en_charge" || item.statut === "action_creee") {
+      return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-follow="1">Voir le suivi</button>`;
+    }
+    return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-edit="${escapeHtml(id)}">Qualifier</button>`;
+  }
+
+  function renderRows() {
+    const wrap = byId("bfListWrap");
+    if (!wrap) return;
+    const rows = Array.isArray(_lastData?.items) ? _lastData.items : [];
+    if (!rows.length) {
+      wrap.innerHTML = `<div class="bf-empty">Aucune demande RH ne correspond aux filtres.</div>`;
+      byId("btnBfShowMore").style.display = "none";
+      renderDetail(null);
       return;
     }
 
-    const modal = byId("bfSendModal");
-    const modalites = modal
-      ? Array.from(modal.querySelectorAll(".bf-check-list input[type='checkbox']:checked")).map(cb => cb.value)
-      : [];
+    const visible = rows.slice(0, _visibleCount);
+    wrap.innerHTML = `
+      <div class="bf-table">
+        <div class="bf-table-row bf-table-row--head">
+          <div>Collaborateur</div>
+          <div>Origine</div>
+          <div>Type</div>
+          <div>Objet</div>
+          <div>Statut</div>
+          <div>Échéance</div>
+          <div>Actions</div>
+        </div>
+        ${visible.map((item, idx) => `
+          <div class="bf-table-row ${idx === 0 ? "is-suggested" : ""}" data-bf-row="${idx}">
+            <div class="bf-who">
+              <span class="bf-avatar">${escapeHtml(initials(item.collaborateur_nom_complet))}</span>
+              <div>
+                <strong>${escapeHtml(item.collaborateur_nom_complet || "Demande collective")}</strong>
+                <small>${escapeHtml(item.intitule_poste || "Poste non précisé")} · ${escapeHtml(item.nom_service || "Service non précisé")}</small>
+              </div>
+            </div>
+            <div><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
+            <div><span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span></div>
+            <div class="bf-object">
+              <strong>${escapeHtml(item.objet || "Demande RH")}</strong>
+              <small>${escapeHtml(item.intitule_competence || item.description || "À qualifier")}</small>
+            </div>
+            <div><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
+            <div class="bf-date"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
+            <div class="bf-row-actions">
+              <button type="button" class="sb-icon-btn" data-bf-view="${idx}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
+              <button type="button" class="sb-icon-btn" data-bf-edit="${escapeHtml(item.id_demande_rh || "")}" data-bf-index="${idx}" title="Qualifier" aria-label="Qualifier">${icon("edit")}</button>
+              ${actionButtonHtml(item)}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
 
-    const payload = {
-      items,
-      delai_souhaite: byId("bfModalDelai")?.value || "",
-      periode_souhaitee: byId("bfModalPeriode")?.value || "",
-      precision_periode: byId("bfModalPrecision")?.value || "",
+    const more = byId("btnBfShowMore");
+    if (more) {
+      more.style.display = rows.length > 8 ? "" : "none";
+      more.textContent = _visibleCount >= rows.length ? "Voir moins" : "Voir plus";
+    }
+
+    bindRowActions();
+    renderDetail(_selectedItem || visible[0] || null);
+  }
+
+  function bindRowActions() {
+    const wrap = byId("bfListWrap");
+    if (!wrap) return;
+    wrap.querySelectorAll("[data-bf-view]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.getAttribute("data-bf-view"));
+        const item = (_lastData?.items || [])[idx];
+        renderDetail(item || null);
+      });
+    });
+    wrap.querySelectorAll("[data-bf-edit]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idxRaw = btn.getAttribute("data-bf-index");
+        const idx = idxRaw === null ? -1 : Number(idxRaw);
+        const item = idx >= 0 ? (_lastData?.items || [])[idx] : findItem(btn.getAttribute("data-bf-edit"));
+        openDemandModal(item || null, item ? "qualify" : "create");
+      });
+    });
+    wrap.querySelectorAll("[data-bf-status]").forEach(btn => {
+      btn.addEventListener("click", () => changeStatus(btn.getAttribute("data-id"), btn.getAttribute("data-bf-status")));
+    });
+    wrap.querySelectorAll("[data-bf-transmit]").forEach(btn => {
+      btn.addEventListener("click", () => transmitDemand(btn.getAttribute("data-bf-transmit")));
+    });
+    wrap.querySelectorAll("[data-bf-follow]").forEach(btn => {
+      btn.addEventListener("click", () => setMsg("Le suivi détaillé remontera dans Plan d’actions quand le retour Studio sera câblé.", "info"));
+    });
+  }
+
+  function findItem(id) {
+    if (!id) return null;
+    return (_lastData?.items || []).find(x => String(x.id_demande_rh || "") === String(id));
+  }
+
+  function renderDetail(item) {
+    _selectedItem = item || null;
+    const panel = byId("bfDetailPanel");
+    const body = byId("bfDetailBody");
+    if (!panel || !body) return;
+    if (!item) {
+      panel.classList.remove("is-open");
+      setText("bfDetailSub", "Sélectionnez une demande.");
+      body.innerHTML = `<div class="bf-empty">Aucune demande sélectionnée.</div>`;
+      return;
+    }
+    panel.classList.add("is-open");
+    setText("bfDetailSub", `${item.collaborateur_nom_complet || "Demande collective"} · ${typeLabel(item.type_demande)}`);
+    const canValidate = item.id_demande_rh && item.statut === "a_valider";
+    const canTransmit = item.id_demande_rh && item.statut === "validee" && item.type_demande === "formation";
+    body.innerHTML = `
+      <div class="bf-detail-section">
+        <div class="bf-detail-topline">
+          <span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span>
+          <span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span>
+          <span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span>
+        </div>
+        <h3>${escapeHtml(item.objet || "Demande RH")}</h3>
+        <p>${escapeHtml(item.description || "Aucune justification détaillée pour le moment.")}</p>
+      </div>
+
+      <div class="bf-detail-section">
+        <h4>Collaborateur</h4>
+        <div class="bf-detail-person">
+          <span class="bf-avatar">${escapeHtml(initials(item.collaborateur_nom_complet))}</span>
+          <div><strong>${escapeHtml(item.collaborateur_nom_complet || "Demande collective")}</strong><small>${escapeHtml(item.intitule_poste || "Poste non précisé")} · ${escapeHtml(item.nom_service || "Service non précisé")}</small></div>
+        </div>
+      </div>
+
+      <div class="bf-detail-section">
+        <h4>Compétence ou sujet concerné</h4>
+        <div class="bf-detail-chips">
+          ${item.code_competence ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(item.code_competence)}</span>` : ""}
+          <span>${escapeHtml(item.intitule_competence || "Aucune compétence directement rattachée")}</span>
+        </div>
+      </div>
+
+      <div class="bf-detail-grid">
+        <div><span>Priorité</span><strong>${escapeHtml(priorityLabel(item.priorite))}</strong></div>
+        <div><span>Échéance</span><strong>${escapeHtml(echeanceLabel(item))}</strong></div>
+        <div><span>Score</span><strong>${escapeHtml(item.score_anticipation || 0)}%</strong></div>
+        <div><span>Criticité</span><strong>${escapeHtml(item.criticite || 0)}</strong></div>
+      </div>
+
+      <div class="bf-detail-section">
+        <h4>Commentaires</h4>
+        <p>${escapeHtml(item.commentaire_manager || item.commentaire_salarie || item.commentaire_client || "Aucun commentaire renseigné.")}</p>
+      </div>
+
+      <div class="bf-detail-actions">
+        <button type="button" class="sb-btn sb-btn--soft" id="btnBfDetailEdit">${icon("edit", 15)}<span>Qualifier</span></button>
+        ${canValidate ? `<button type="button" class="sb-btn sb-btn--accent" id="btnBfDetailValidate">${icon("check", 15)}<span>Valider</span></button>` : ""}
+        ${canTransmit ? `<button type="button" class="sb-btn sb-btn--accent" id="btnBfDetailTransmit">${icon("send", 15)}<span>Transmettre</span></button>` : ""}
+      </div>
+    `;
+    byId("btnBfDetailEdit")?.addEventListener("click", () => openDemandModal(item, "qualify"));
+    byId("btnBfDetailValidate")?.addEventListener("click", () => changeStatus(item.id_demande_rh, "validee"));
+    byId("btnBfDetailTransmit")?.addEventListener("click", () => transmitDemand(item.id_demande_rh));
+  }
+
+  function populateDemandRefs() {
+    const eff = byId("bfDemandEffectif");
+    const comp = byId("bfDemandCompetence");
+    if (eff) {
+      eff.innerHTML = `<option value="">Demande collective / non rattachée</option>` + (_refs.effectifs || []).map(e => {
+        const name = [e.prenom_effectif, e.nom_effectif].filter(Boolean).join(" ").trim() || "Collaborateur";
+        const sub = [e.intitule_poste, e.nom_service].filter(Boolean).join(" · ");
+        return `<option value="${escapeHtml(e.id_effectif)}">${escapeHtml(name)}${sub ? " — " + escapeHtml(sub) : ""}</option>`;
+      }).join("");
+    }
+    if (comp) {
+      comp.innerHTML = `<option value="">Aucune compétence directe</option>` + (_refs.competences || []).map(c => {
+        return `<option value="${escapeHtml(c.id_comp)}">${escapeHtml(c.code || "")}${c.code ? " · " : ""}${escapeHtml(c.intitule || "Compétence")}</option>`;
+      }).join("");
+    }
+  }
+
+  function openDemandModal(item, mode) {
+    _modalMode = mode || "create";
+    _modalItem = item || null;
+    populateDemandRefs();
+
+    const isCreate = !_modalItem;
+    setText("bfDemandModalTitle", isCreate ? "Créer une demande RH" : "Qualifier la demande RH");
+    setText("bfDemandModalSub", isCreate ? "Demande manager, renfort, mobilité, transmission ou formation." : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
+
+    const eff = byId("bfDemandEffectif");
+    if (eff) eff.value = _modalItem?.id_effectif_concerne || "";
+    const comp = byId("bfDemandCompetence");
+    if (comp) comp.value = _modalItem?.id_comp || "";
+    const type = byId("bfDemandType");
+    if (type) type.value = _modalItem?.type_demande || "formation";
+    const priority = byId("bfDemandPriority");
+    if (priority) priority.value = _modalItem?.priorite || "normale";
+    const objet = byId("bfDemandObjet");
+    if (objet) objet.value = _modalItem?.objet || "";
+    const desc = byId("bfDemandDescription");
+    if (desc) desc.value = _modalItem?.description || "";
+    const delai = byId("bfDemandDelai");
+    if (delai) delai.value = _modalItem?.delai_souhaite || _modalItem?.delai_recommande || "";
+    const echeance = byId("bfDemandEcheance");
+    if (echeance) echeance.value = (_modalItem?.echeance_souhaitee || "").slice(0, 10);
+    const comment = byId("bfDemandCommentaire");
+    if (comment) comment.value = _modalItem?.commentaire_manager || "";
+
+    const modalites = new Set(_modalItem?.modalites_souhaitees || []);
+    byId("bfDemandModalites")?.querySelectorAll("input[type='checkbox']").forEach(cb => {
+      cb.checked = modalites.has(cb.value);
+    });
+    setMsg("", "", "bfDemandModalMsg");
+    byId("bfDemandModal")?.classList.add("show");
+  }
+
+  function closeDemandModal() {
+    byId("bfDemandModal")?.classList.remove("show");
+    _modalMode = "create";
+    _modalItem = null;
+  }
+
+  function collectDemandPayload() {
+    const modalites = Array.from(byId("bfDemandModalites")?.querySelectorAll("input[type='checkbox']:checked") || []).map(cb => cb.value);
+    const isSignal = _modalItem && !_modalItem.id_demande_rh;
+    const statut = _modalItem ? "a_valider" : "a_qualifier";
+    return {
+      id_effectif_concerne: byId("bfDemandEffectif")?.value || _modalItem?.id_effectif_concerne || null,
+      id_comp: byId("bfDemandCompetence")?.value || _modalItem?.id_comp || null,
+      id_poste: _modalItem?.id_poste || null,
+      origine: isSignal ? (_modalItem.origine || "analyse") : (_modalItem?.origine || "manager"),
+      source_type: isSignal ? (_modalItem.source_type || "analyse_competences") : (_modalItem?.source_type || "manager"),
+      source_ref: _modalItem?.source_ref || _modalItem?.id_demande_rh || null,
+      type_demande: byId("bfDemandType")?.value || "formation",
+      objet: byId("bfDemandObjet")?.value || _modalItem?.objet || "Demande RH à qualifier",
+      description: byId("bfDemandDescription")?.value || _modalItem?.description || "",
+      statut,
+      priorite: byId("bfDemandPriority")?.value || "normale",
+      delai_souhaite: byId("bfDemandDelai")?.value || "",
+      echeance_souhaitee: byId("bfDemandEcheance")?.value || null,
       modalites_souhaitees: modalites,
-      commentaire_manager: byId("bfModalCommentaire")?.value || ""
+      commentaire_manager: byId("bfDemandCommentaire")?.value || "",
+      niveau_attendu: _modalItem?.niveau_attendu || null,
+      niveau_actuel: _modalItem?.niveau_actuel || null,
+      ecart_niveau: _modalItem?.ecart_niveau || 0,
+      criticite: _modalItem?.criticite || 0,
+      score_anticipation: _modalItem?.score_anticipation || 0,
+      payload_signal: _modalItem?.payload_signal || {}
     };
+  }
 
-    setMsg("Envoi au Studio…", "info", "bfModalMsg");
-
+  async function saveDemandFromModal() {
+    if (!_portal) return;
+    const payload = collectDemandPayload();
+    if (!payload.objet || !payload.objet.trim()) {
+      setMsg("Objet de demande obligatoire.", "warning", "bfDemandModalMsg");
+      return;
+    }
+    setMsg("Enregistrement…", "info", "bfDemandModalMsg");
     try {
-      const res = await _portal.apiJson(`${_portal.apiBase}/skills/besoins-formations/${encodeURIComponent(_portal.contactId)}/envoyer`, {
+      const existingId = _modalItem?.id_demande_rh || "";
+      const url = existingId
+        ? apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(existingId)}/qualifier`)
+        : apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}`);
+      const data = await _portal.apiJson(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
-      closeModal();
+      closeDemandModal();
       await refresh();
-      setMsg(res?.message || "Besoin envoyé au Studio.", "success");
+      renderDetail(data?.item || null);
+      setMsg(data?.message || "Demande RH enregistrée.", "success");
     } catch (e) {
-      setMsg(errMsg(e), "error", "bfModalMsg");
+      setMsg(errMsg(e), "error", "bfDemandModalMsg");
       console.error(e);
+    }
+  }
+
+  async function changeStatus(id, statut) {
+    if (!_portal || !id || !statut) return;
+    setMsg("Mise à jour du statut…", "info");
+    try {
+      const data = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/statut`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statut })
+      });
+      await refresh();
+      renderDetail(data?.item || null);
+      setMsg(data?.message || "Statut mis à jour.", "success");
+    } catch (e) {
+      setMsg(errMsg(e), "error");
+      console.error(e);
+    }
+  }
+
+  async function transmitDemand(id) {
+    if (!_portal || !id) return;
+    setMsg("Transmission au Studio…", "info");
+    try {
+      const data = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/transmettre-studio`), { method: "POST" });
+      await refresh();
+      renderDetail(data?.item || null);
+      setMsg(data?.message || "Demande transmise au Studio.", "success");
+    } catch (e) {
+      setMsg(errMsg(e), "error");
+      console.error(e);
+    }
+  }
+
+  async function loadRefs() {
+    if (!_portal) return;
+    try {
+      const f = getFilters();
+      const params = {};
+      if (f.id_service) params.id_service = f.id_service;
+      _refs = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/refs`, params));
+      populateDemandRefs();
+    } catch (e) {
+      console.warn("Référentiels Demandes RH indisponibles", e);
+      _refs = { effectifs: [], competences: [] };
     }
   }
 
   function render(data) {
     _lastData = data || {};
-    renderDestination(_lastData.destination || {});
-    renderMiniKpis(_lastData.kpis || {});
-
+    renderDestination(_lastData.destination || {}, _lastData.table_ready);
+    renderKpis(_lastData.kpis || {});
+    renderTabs(_lastData.kpis || {});
     const count = Array.isArray(_lastData.items) ? _lastData.items.length : 0;
     const scope = _lastData.scope?.nom_service || "Tous les services";
-    setText("bfMeta", `${count} besoin(s) individuel(s) affiché(s) · ${scope}`);
-    renderRows(_lastData.items || [], _lastData.destination || {});
+    setText("bfMeta", `${count} demande(s) affichée(s) · ${scope}`);
+    renderRows();
   }
 
   async function refresh() {
     if (!_portal || _loading) return;
     _loading = true;
-    setMsg("Chargement…", "info");
+    _visibleCount = 8;
     saveFilters();
-    applyFilterLabels();
-
+    setMsg("Chargement…", "info");
     try {
       const f = getFilters();
-      const qs = new URLSearchParams();
-      if (f.id_service) qs.set("id_service", f.id_service);
-      qs.set("statut", f.statut || "tous");
-      qs.set("fragilite_min", String(f.fragilite_min));
-      qs.set("criticite_min", String(f.criticite_min));
-      qs.set("limit", "300");
-
-      const data = await _portal.apiJson(`${_portal.apiBase}/skills/besoins-formations/${encodeURIComponent(_portal.contactId)}?${qs.toString()}`);
+      const params = {
+        statut: f.statut,
+        origine: f.origine,
+        type_demande: f.type_demande,
+        priorite: f.priorite,
+        limit: "400"
+      };
+      if (f.id_service) params.id_service = f.id_service;
+      if (f.q) params.q = f.q;
+      const data = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}`, params));
       render(data);
       setMsg("", "");
     } catch (e) {
-      setMsg("Erreur système, impossible de charger les besoins.", "error");
+      setMsg("Erreur système, impossible de charger les demandes RH.", "error");
       const wrap = byId("bfListWrap");
       if (wrap) wrap.innerHTML = `<div class="bf-empty">${escapeHtml(errMsg(e))}</div>`;
       console.error(e);
@@ -658,51 +678,57 @@
     if (_bound) return;
     _bound = true;
 
-    ["bfServiceSelect", "bfStatutSelect"].forEach(id => {
+    ["bfServiceSelect", "bfStatutSelect", "bfOriginSelect", "bfTypeSelect", "bfPrioritySelect"].forEach(id => {
       const el = byId(id);
-      if (el) el.addEventListener("change", refresh);
-    });
-
-    ["bfFragiliteRange", "bfCriticiteRange"].forEach(id => {
-      const el = byId(id);
-      if (el) {
-        el.addEventListener("input", applyFilterLabels);
-        el.addEventListener("change", refresh);
-      }
-    });
-
-    const btnReset = byId("btnBfReset");
-    if (btnReset) {
-      btnReset.addEventListener("click", async () => {
-        const selService = byId("bfServiceSelect");
-        if (selService) selService.value = window.portal.serviceFilter.ALL_ID || "__ALL__";
-
-        const selStatut = byId("bfStatutSelect");
-        if (selStatut) selStatut.value = "tous";
-
-        const frag = byId("bfFragiliteRange");
-        if (frag) frag.value = "0";
-
-        const crit = byId("bfCriticiteRange");
-        if (crit) crit.value = "70";
-
-        applyFilterLabels();
+      if (!el) return;
+      el.addEventListener("change", async () => {
+        if (id === "bfServiceSelect") await loadRefs();
         await refresh();
       });
-    }
+    });
 
-    const btnRefresh = byId("btnBfRefresh");
-    if (btnRefresh) btnRefresh.addEventListener("click", refresh);
+    byId("bfSearchInput")?.addEventListener("input", () => {
+      window.clearTimeout(_searchTimer);
+      _searchTimer = window.setTimeout(refresh, 350);
+    });
 
-    const btnConfirm = byId("btnBfConfirmSend");
-    if (btnConfirm) btnConfirm.addEventListener("click", confirmModalSend);
+    byId("btnBfReset")?.addEventListener("click", async () => {
+      const allId = window.portal.serviceFilter.ALL_ID || "__ALL__";
+      if (byId("bfServiceSelect")) byId("bfServiceSelect").value = allId;
+      if (byId("bfStatutSelect")) byId("bfStatutSelect").value = "a_traiter";
+      if (byId("bfOriginSelect")) byId("bfOriginSelect").value = "tous";
+      if (byId("bfTypeSelect")) byId("bfTypeSelect").value = "tous";
+      if (byId("bfPrioritySelect")) byId("bfPrioritySelect").value = "toutes";
+      if (byId("bfSearchInput")) byId("bfSearchInput").value = "";
+      await loadRefs();
+      await refresh();
+    });
+
+    byId("btnBfRefresh")?.addEventListener("click", refresh);
+    byId("btnBfCreateDemand")?.addEventListener("click", () => openDemandModal(null, "create"));
+    byId("btnBfSaveDemand")?.addEventListener("click", saveDemandFromModal);
+    byId("btnBfCloseDetail")?.addEventListener("click", () => renderDetail(null));
+
+    byId("btnBfShowMore")?.addEventListener("click", () => {
+      const total = (_lastData?.items || []).length;
+      _visibleCount = _visibleCount >= total ? 8 : Math.min(total, _visibleCount + 8);
+      renderRows();
+    });
+
+    byId("bfTabs")?.querySelectorAll(".bf-tab").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const v = btn.getAttribute("data-bf-tab") || "a_traiter";
+        if (byId("bfStatutSelect")) byId("bfStatutSelect").value = v;
+        await refresh();
+      });
+    });
 
     document.addEventListener("click", (e) => {
-      if (e.target && e.target.closest("[data-bf-close]")) closeModal();
+      if (e.target && e.target.closest("[data-bf-demand-close]")) closeDemandModal();
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && byId("bfSendModal")?.classList.contains("show")) closeModal();
+      if (e.key === "Escape" && byId("bfDemandModal")?.classList.contains("show")) closeDemandModal();
     });
   }
 
@@ -713,9 +739,10 @@
         bindOnce();
         if (!_servicesLoaded) await loadServices(portal);
         restoreFilters();
+        await loadRefs();
         await refresh();
       } catch (e) {
-        setMsg("Erreur besoins & formations : " + errMsg(e), "error");
+        setMsg("Erreur Demandes RH : " + errMsg(e), "error");
         console.error(e);
       }
     }
