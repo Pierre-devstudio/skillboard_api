@@ -69,16 +69,25 @@
   }
 
   function icon(name, size = 16) {
-    const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24"`;
+    const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
     const map = {
-      eye: `<svg ${attrs}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+      eye: `<svg ${attrs}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
       edit: `<svg ${attrs}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
       send: `<svg ${attrs}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`,
       check: `<svg ${attrs}><path d="M20 6 9 17l-5-5"/></svg>`,
       close: `<svg ${attrs}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
-      pdf: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 15h1"/><path d="M12 15h4"/></svg>`
+      pdf: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`
     };
     return map[name] || "";
+  }
+
+  function objectTitle(item) {
+    if (item?.type_demande === "formation" && item?.intitule_competence) return "Renforcer une compétence";
+    return item?.objet || "Demande RH";
+  }
+
+  function objectSub(item) {
+    return item?.intitule_competence || item?.description || "À qualifier";
   }
 
   function getRawService() {
@@ -328,12 +337,12 @@
       <div class="bf-table">
         <div class="bf-table-row bf-table-row--head">
           <div>Collaborateur</div>
-          <div>Origine</div>
-          <div>Type</div>
+          <div class="bf-cell--center">Origine</div>
+          <div class="bf-cell--center">Type</div>
           <div>Objet</div>
-          <div>Statut</div>
-          <div>Échéance</div>
-          <div>Actions</div>
+          <div class="bf-cell--center">Statut</div>
+          <div class="bf-cell--center">Échéance</div>
+          <div class="bf-cell--center">Actions</div>
         </div>
         ${visible.map((item, idx) => `
           <div class="bf-table-row ${idx === 0 ? "is-suggested" : ""}" data-bf-row="${idx}">
@@ -344,17 +353,17 @@
                 <small>${escapeHtml(item.intitule_poste || "Poste non précisé")} · ${escapeHtml(item.nom_service || "Service non précisé")}</small>
               </div>
             </div>
-            <div><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
-            <div><span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span></div>
+            <div class="bf-cell--center"><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
+            <div class="bf-cell--center"><span class="bf-badge ${badgeClass("type", item.type_demande)}">${escapeHtml(typeLabel(item.type_demande))}</span></div>
             <div class="bf-object">
-              <strong>${escapeHtml(item.objet || "Demande RH")}</strong>
-              <small>${escapeHtml(item.intitule_competence || item.description || "À qualifier")}</small>
+              <strong>${escapeHtml(objectTitle(item))}</strong>
+              <small>${escapeHtml(objectSub(item))}</small>
             </div>
-            <div><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
-            <div class="bf-date"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
+            <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
+            <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
             <div class="bf-row-actions">
-              <button type="button" class="sb-icon-btn" data-bf-view="${idx}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
-              <button type="button" class="sb-icon-btn" data-bf-edit="${escapeHtml(item.id_demande_rh || "")}" data-bf-index="${idx}" title="Qualifier" aria-label="Qualifier">${icon("edit")}</button>
+              <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${idx}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
+              <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-edit="${escapeHtml(item.id_demande_rh || "")}" data-bf-index="${idx}" title="Qualifier" aria-label="Qualifier">${icon("edit")}</button>
               ${actionButtonHtml(item)}
             </div>
           </div>
