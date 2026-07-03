@@ -477,7 +477,6 @@
             <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
             <div class="bf-row-actions">
               <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${idx}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
-              <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-edit="${escapeHtml(item.id_demande_rh || "")}" data-bf-index="${idx}" title="Qualifier" aria-label="Qualifier">${icon("edit")}</button>
               ${actionButtonHtml(item, idx)}
             </div>
           </div>
@@ -535,7 +534,6 @@
                       <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
                       <div class="bf-row-actions">
                         <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${index}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
-                        <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-edit="${escapeHtml(item.id_demande_rh || "")}" data-bf-index="${index}" title="Qualifier" aria-label="Qualifier">${icon("edit")}</button>
                         ${actionButtonHtml(item, index)}
                       </div>
                     </div>

@@ -30648,7 +30648,7 @@ body{
 
 #view-besoins-formations .bf-table-row{
   display:grid;
-  grid-template-columns:minmax(250px,1.10fr) 76px 128px minmax(300px,1.25fr) 104px 110px 132px;
+  grid-template-columns:minmax(250px,1.10fr) 76px 160px minmax(300px,1.25fr) 104px 110px 118px;
   gap:8px;
   align-items:center;
   min-height:58px;
@@ -30935,7 +30935,7 @@ body{
 
 #view-besoins-formations .bf-group-demand-row{
   display:grid;
-  grid-template-columns:78px 128px minmax(300px,1fr) 108px 110px 132px;
+  grid-template-columns:78px 160px minmax(300px,1fr) 108px 110px 118px;
   gap:8px;
   align-items:center;
   min-height:48px;
@@ -31167,7 +31167,7 @@ body{
   #view-besoins-formations .bf-table-row,
   #view-besoins-formations .bf-group-row,
   #view-besoins-formations .bf-group-demand-row{
-    min-width:980px;
+    min-width:1080px;
   }
 }
 
