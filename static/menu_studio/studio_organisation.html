@@ -1,60 +1,156 @@
-<section id="view-organisation" data-view="organisation">
-<div class="card">
-  <div class="org-card-head">
-    <div>
-      <div class="card-title">Votre organisation</div>
-      <div class="card-sub">Sélectionnez un service pour afficher la cartographie des postes et la fiche de poste associée.</div>
+<section id="view-organisation" data-view="organisation" class="studio-org-page">
+  <div class="card org-hero-card">
+    <div class="org-hero-main">
+      <div class="org-hero-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 3v4"/>
+          <path d="M6 21h12"/>
+          <path d="M6 8h12v13H6z"/>
+          <path d="M9 12h.01"/>
+          <path d="M12 12h.01"/>
+          <path d="M15 12h.01"/>
+          <path d="M9 16h.01"/>
+          <path d="M12 16h.01"/>
+          <path d="M15 16h.01"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title">Votre organisation</div>
+        <div class="card-sub">Parcourez les services de votre organisation et consultez les fiches de poste associées.</div>
+      </div>
     </div>
 
     <div class="sb-actions">
-      <button type="button" class="sb-btn sb-btn--doc" id="btnOpenOrgChart">Organigramme</button>
+      <button type="button" class="sb-btn sb-btn--doc" id="btnOpenOrgChart">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3v5"/><path d="M5 21h14"/><path d="M5 8h14v13H5z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+        </span>
+        Organigramme
+      </button>
     </div>
   </div>
-</div>
 
-  <div class="sb-layout-2col">
-<!-- COLONNE GAUCHE : SERVICES -->
-    <div class="card">
-      <div class="org-card-head">
-        <div style="width:100%;">
-          <div class="card-title" style="margin-bottom:2px;">Structure interne</div>
-          <div class="card-sub" style="margin:0;">Sélectionnez un service pour afficher les postes associés.</div>
+  <div class="org-shell">
+    <!-- COLONNE GAUCHE : SERVICES -->
+    <div class="card org-services-card">
+      <div class="org-section-head">
+        <div class="org-section-title-wrap">
+          <div class="org-section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 4 7l8 4 8-4-8-4z"/>
+              <path d="m4 12 8 4 8-4"/>
+              <path d="m4 17 8 4 8-4"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Services</div>
+            <div class="card-sub">Sélectionnez un service pour afficher les postes et les fiches associées.</div>
+          </div>
+        </div>
 
-          <div class="sb-actions" style="margin-top:10px;">
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">Ajouter</button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">Renommer</button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">Archiver</button>
+        <div class="sb-actions org-service-actions">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">Ajouter</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">Renommer</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">Archiver</button>
+        </div>
+      </div>
+
+      <div class="sb-list org-service-list" id="svcList"></div>
+    </div>
+
+    <!-- COLONNE DROITE : POSTES -->
+    <div class="org-main-stack">
+      <div class="card org-summary-card">
+        <div class="org-summary-main">
+          <div class="org-section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 20h16"/>
+              <path d="M6 20V8h12v12"/>
+              <path d="M9 8V4h6v4"/>
+              <path d="M9 13h.01"/>
+              <path d="M12 13h.01"/>
+              <path d="M15 13h.01"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title" id="posteBlockTitle">Tous les services</div>
+            <div class="card-sub" id="orgScopeSub">—</div>
+          </div>
+        </div>
+
+        <div class="org-summary-stats">
+          <div class="org-stat-card">
+            <div class="org-stat-icon org-stat-icon--poste" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M10 6h8"/><path d="M10 12h8"/><path d="M10 18h8"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/></svg>
+            </div>
+            <div>
+              <div class="org-stat-value" id="orgStatPostes">0</div>
+              <div class="org-stat-label">Postes</div>
+            </div>
+          </div>
+          <div class="org-stat-card">
+            <div class="org-stat-icon org-stat-icon--collab" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><path d="M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>
+              <div class="org-stat-value" id="orgStatCollabs">0</div>
+              <div class="org-stat-label">Collaborateurs</div>
+            </div>
+          </div>
+          <div class="org-stat-card">
+            <div class="org-stat-icon org-stat-icon--service" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M13 9h6v12"/><path d="M8 10h.01"/><path d="M8 14h.01"/><path d="M8 18h.01"/></svg>
+            </div>
+            <div>
+              <div class="org-stat-value" id="orgStatServices">0</div>
+              <div class="org-stat-label">Services concernés</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="sb-list" id="svcList"></div>
-    </div>
-
-<!-- COLONNE DROITE : POSTES -->
-    <div class="sb-stack sb-stack--md">
-      <div class="card">
-        <div class="org-card-head">
-          <div style="width:100%;">
-            <div class="card-title" id="posteBlockTitle" style="margin-bottom:2px;">Tous les postes</div>
-
-            <div class="sb-toolbar" style="margin-top:10px;">
-              <div class="sb-search">
-                <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
-                <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
-              </div>
-
-              <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
-                <input type="checkbox" id="posteShowArchived" />
-                <span>Voir les postes archivés</span>
-              </label>
-
-              <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">Ajouter un poste</button>
+      <div class="card org-postes-card">
+        <div class="org-postes-head">
+          <div class="org-section-title-wrap">
+            <div class="org-section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M10 6h8"/>
+                <path d="M10 12h8"/>
+                <path d="M10 18h8"/>
+                <path d="M4 6h.01"/>
+                <path d="M4 12h.01"/>
+                <path d="M4 18h.01"/>
+              </svg>
             </div>
+            <div>
+              <div class="card-title">Postes</div>
+              <div class="card-sub">Fiches de poste rattachées au service sélectionné.</div>
+            </div>
+          </div>
+
+          <div class="org-postes-tools">
+            <div class="sb-search org-poste-search">
+              <span class="org-search-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              </span>
+              <input type="text" id="posteSearch" placeholder="Rechercher un poste (code ou intitulé…)" />
+            </div>
+
+            <label class="sb-check org-archive-check">
+              <input type="checkbox" id="posteShowArchived" />
+              <span>Voir les postes archivés</span>
+            </label>
+
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">
+              <span class="sb-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </span>
+              Ajouter un poste
+            </button>
           </div>
         </div>
 
-        <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteList"></div>
+        <div class="sb-stack sb-stack--xxs org-poste-list" id="posteList"></div>
       </div>
     </div>
   </div>

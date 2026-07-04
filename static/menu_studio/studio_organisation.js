@@ -8,6 +8,7 @@
 
     let _selectedService = "__all__"; // "__all__", "__none__", ou id_service
     let _selectedServiceName = "Tous les services";
+    let _selectedServiceStats = { nb_postes: 0, nb_collabs: 0 };
 
     let _posteSearch = "";
     let _posteSearchTimer = null;
@@ -1706,20 +1707,58 @@ body {
 
     function getPosteBlockTitle(){
         if (!_selectedService || _selectedService === "__all__"){
-            return "Tous les postes";
+            return "Tous les services";
         }
 
         if (_selectedService === "__none__"){
-            return "Postes non liés";
+            return "Non lié";
         }
 
-        return `Postes du service ${_selectedServiceName || ""}`.trim();
+        return _selectedServiceName || "Service";
+    }
+
+    function getSelectedServiceStats(){
+        if (!_selectedService || _selectedService === "__all__"){
+            return {
+                nb_postes: Number(_totaux?.nb_postes || 0),
+                nb_collabs: Number(_totaux?.nb_collabs || 0),
+                nb_services: (_services || []).length
+            };
+        }
+
+        if (_selectedService === "__none__"){
+            return {
+                nb_postes: Number(_nonLie?.nb_postes || 0),
+                nb_collabs: Number(_nonLie?.nb_collabs || 0),
+                nb_services: 0
+            };
+        }
+
+        return {
+            nb_postes: Number(_selectedServiceStats?.nb_postes || 0),
+            nb_collabs: Number(_selectedServiceStats?.nb_collabs || 0),
+            nb_services: 1
+        };
     }
 
     function refreshPosteBlockTitle(){
-        const el = byId("posteBlockTitle");
-        if (!el) return;
-        el.textContent = getPosteBlockTitle();
+        const title = byId("posteBlockTitle");
+        if (title) title.textContent = getPosteBlockTitle();
+
+        const stats = getSelectedServiceStats();
+        const sub = byId("orgScopeSub");
+        if (sub){
+            sub.textContent = `${stats.nb_postes} poste(s) · ${stats.nb_collabs} collaborateur(s)`;
+        }
+
+        const statPostes = byId("orgStatPostes");
+        if (statPostes) statPostes.textContent = String(stats.nb_postes);
+
+        const statCollabs = byId("orgStatCollabs");
+        if (statCollabs) statCollabs.textContent = String(stats.nb_collabs);
+
+        const statServices = byId("orgStatServices");
+        if (statServices) statServices.textContent = String(stats.nb_services);
     }
 
     function renderServices(){
@@ -1742,7 +1781,7 @@ body {
 
     function buildSvcRow(id, name, depth, nbPostes, nbCollabs){
         const row = document.createElement("div");
-        row.className = "sb-list-item sb-list-item--clickable";
+        row.className = "sb-list-item sb-list-item--clickable org-service-row";
         row.dataset.sid = id;
 
         const left = document.createElement("div");
@@ -1750,7 +1789,13 @@ body {
         left.style.paddingLeft = `${Math.min(6, Math.max(0, depth)) * 14}px`;
         left.textContent = name;
 
+        const chevron = document.createElement("span");
+        chevron.className = "org-service-chevron";
+        chevron.setAttribute("aria-hidden", "true");
+        chevron.textContent = "›";
+
         row.appendChild(left);
+        row.appendChild(chevron);
 
         row.addEventListener("click", () => selectService(id, name, nbPostes, nbCollabs));
         return row;
@@ -1766,6 +1811,10 @@ body {
     function selectService(id, name, nbPostes, nbCollabs){
         _selectedService = id;
         _selectedServiceName = name;
+        _selectedServiceStats = {
+            nb_postes: Number(nbPostes || 0),
+            nb_collabs: Number(nbCollabs || 0)
+        };
 
         refreshPosteBlockTitle();
         applySvcActive();
@@ -1807,6 +1856,17 @@ body {
             }
 
             syncSelectedServiceContext();
+            if (!_selectedService || _selectedService === "__all__"){
+                _selectedServiceStats = { nb_postes: _totaux.nb_postes || 0, nb_collabs: _totaux.nb_collabs || 0 };
+            } else if (_selectedService === "__none__"){
+                _selectedServiceStats = { nb_postes: _nonLie.nb_postes || 0, nb_collabs: _nonLie.nb_collabs || 0 };
+            } else {
+                const selected = (_services || []).find(x => x.id_service === _selectedService);
+                _selectedServiceStats = {
+                    nb_postes: selected ? (selected.nb_postes || 0) : 0,
+                    nb_collabs: selected ? (selected.nb_collabs || 0) : 0
+                };
+            }
             renderServices();
             refreshPosteBlockTitle();
             updateAddButtonState();
@@ -1849,7 +1909,7 @@ body {
             const postes = data.postes || [];
             if (!postes.length) {
                 const empty = document.createElement("div");
-                empty.className = "card-sub";
+                empty.className = "org-empty-state";
                 empty.textContent = "Aucun poste à afficher.";
                 host.appendChild(empty);
 
