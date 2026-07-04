@@ -3,15 +3,13 @@
     <div class="org-hero-main">
       <div class="org-hero-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24">
-          <path d="M12 3v4"/>
-          <path d="M6 21h12"/>
-          <path d="M6 8h12v13H6z"/>
-          <path d="M9 12h.01"/>
-          <path d="M12 12h.01"/>
-          <path d="M15 12h.01"/>
-          <path d="M9 16h.01"/>
-          <path d="M12 16h.01"/>
-          <path d="M15 16h.01"/>
+          <path d="M4 20h16"/>
+          <path d="M7 20V8h10v12"/>
+          <path d="M9 12h2"/>
+          <path d="M13 12h2"/>
+          <path d="M9 16h2"/>
+          <path d="M13 16h2"/>
+          <path d="M9 4h6v4H9z"/>
         </svg>
       </div>
       <div>
@@ -23,7 +21,7 @@
     <div class="sb-actions">
       <button type="button" class="sb-btn sb-btn--doc" id="btnOpenOrgChart">
         <span class="sb-btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 3v5"/><path d="M5 21h14"/><path d="M5 8h14v13H5z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 4v5"/><path d="M6 20v-5"/><path d="M18 20v-5"/><path d="M6 15h12"/><path d="M12 9v6"/><rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="20" width="6" height="1" rx=".5"/><rect x="15" y="20" width="6" height="1" rx=".5"/></svg>
         </span>
         Organigramme
       </button>
@@ -49,9 +47,24 @@
         </div>
 
         <div class="sb-actions org-service-actions">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">Ajouter</button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">Renommer</button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">Archiver</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">
+            <span class="sb-btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </span>
+            Ajouter
+          </button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">
+            <span class="sb-btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            </span>
+            Renommer
+          </button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">
+            <span class="sb-btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+            </span>
+            Archiver
+          </button>
         </div>
       </div>
 

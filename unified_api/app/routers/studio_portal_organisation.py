@@ -134,11 +134,57 @@ def _resolve_org_scope_ent(cur, oid: str, request: Request) -> str:
     return scope_ent
 
 
+def _org_poste_owner_has_rows(cur, id_owner: str, id_ent: str) -> bool:
+    owner_id = (id_owner or "").strip()
+    ent_id = (id_ent or "").strip()
+    if not owner_id or not ent_id:
+        return False
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_fiche_poste
+        WHERE id_owner = %s
+          AND id_ent = %s
+        LIMIT 1
+        """,
+        (owner_id, ent_id),
+    )
+    return cur.fetchone() is not None
+
+
 def _resolve_org_poste_owner(cur, oid: str, scope_ent: str) -> str:
     owner_id = (oid or "").strip()
-    ent_id = (scope_ent or "").strip()
-    if ent_id and ent_id != owner_id:
-        return ent_id
+    ent_id = (scope_ent or "").strip() or owner_id
+
+    # Studio peut être ouvert directement par l'entreprise cliente alors que
+    # les fiches postes historiques restent portées par l'owner gestionnaire.
+    # On privilégie toujours les fiches existantes du scope courant, puis on
+    # bascule seulement si nécessaire. Pas de double moteur, juste le bon owner.
+    candidates = []
+    for candidate in (owner_id, ent_id):
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+
+    cur.execute(
+        """
+        SELECT id_owner_gestionnaire
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (ent_id,),
+    )
+    row = cur.fetchone() or {}
+    gestionnaire = (row.get("id_owner_gestionnaire") or "").strip()
+    if gestionnaire and gestionnaire not in candidates:
+        candidates.append(gestionnaire)
+
+    for candidate in candidates:
+        if _org_poste_owner_has_rows(cur, candidate, ent_id):
+            return candidate
+
     return owner_id
 
 

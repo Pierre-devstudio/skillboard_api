@@ -1840,7 +1840,7 @@ body {
         const ownerId = getOwnerId();
         if (!ownerId) throw new Error("Owner manquant (?id=...).");
 
-        const url = `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`);
         traceOrg("services:start", { url });
 
         try {
@@ -1887,11 +1887,12 @@ body {
         const ownerId = getOwnerId();
         if (!ownerId) throw new Error("Owner manquant (?id=...).");
 
-        const url =
+        const url = appendOrgScope(
             `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}` +
             `?service=${encodeURIComponent(_selectedService)}` +
             `&q=${encodeURIComponent(_posteSearch)}` +
-            `&include_archived=${_showArchivedPostes ? "1" : "0"}`;
+            `&include_archived=${_showArchivedPostes ? "1" : "0"}`
+        );
 
         traceOrg("postes:start", { url });
 
@@ -2537,7 +2538,7 @@ body {
             );
 
             try{
-            const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_draft`;
+            const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_draft`);
             let draft = await portal.apiJson(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -3175,7 +3176,7 @@ body {
             const pid = (_posteModalMode === "edit" && _editingPosteId) ? _editingPosteId : null;
 
             const res = await portal.apiJson(
-                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_prepare`,
+                appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_prepare`),
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -3298,7 +3299,7 @@ async function savePosteCompCreateModal(portal, addAfter){
             const recLevel = nsLevelKey(draftSrc.recommended_level) || "C";
 
             const created = await portal.apiJson(
-                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_create`,
+                appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_create`),
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -3601,7 +3602,7 @@ function renderPosteCompAiResults(){
 
         try{
             const ownerId = getOwnerId();
-            const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_search`;
+            const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_search`);
 
             const res = await portal.apiJson(url, {
                 method: "POST",
@@ -3645,7 +3646,7 @@ function renderPosteCompAiResults(){
 
         const pid = await ensureEditingPoste(portal);
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`);
 
         await portal.apiJson(url, {
             method: "POST",
@@ -3669,7 +3670,7 @@ function renderPosteCompAiResults(){
         if (!it) return;
         const pid = await ensureEditingPoste(portal);
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_create`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_create`);
         const r = await portal.apiJson(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -3687,7 +3688,7 @@ function renderPosteCompAiResults(){
         if (!_editingPosteId) return;
 
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`);
         const data = await portal.apiJson(url);
 
         const items = Array.isArray(data?.items) ? data.items.slice() : [];
@@ -4525,7 +4526,7 @@ function refreshPosteCompEditCritDisplay(){
         const im = parseInt(byId("posteCompEditImpact").value || "0", 10) || 0;
         const de = parseInt(byId("posteCompEditDep").value || "0", 10) || 0;
 
-        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`);
         await portal.apiJson(url, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
@@ -4547,7 +4548,7 @@ function refreshPosteCompEditCritDisplay(){
     async function removePosteCompetence(portal, id_comp){
         if (!_editingPosteId) return;
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}/${encodeURIComponent(id_comp)}/remove`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}/${encodeURIComponent(id_comp)}/remove`);
         await portal.apiJson(url, { method: "POST" });
         portal.showAlert("", "");
         await loadPosteCompetences(portal);
@@ -4596,7 +4597,7 @@ function refreshPosteCompEditCritDisplay(){
         if (!_editingPosteId) return;
 
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`);
         const data = await portal.apiJson(url);
         _posteCertItems = data.items || [];
         renderPosteCertifications();
@@ -5047,7 +5048,7 @@ function refreshPosteCompEditCritDisplay(){
         const niveau = (byId("posteCertEditLevel")?.value || "requis").trim();
         const commentaire = (byId("posteCertEditComment")?.value || "").trim() || null;
 
-        const url = `${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`);
         await portal.apiJson(url, {
             method: "POST",
             headers: { "Content-Type":"application/json" },
@@ -5067,7 +5068,7 @@ function refreshPosteCompEditCritDisplay(){
     async function removePosteCertification(portal, id_certification){
         if (!_editingPosteId) return;
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}/${encodeURIComponent(id_certification)}/remove`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}/${encodeURIComponent(id_certification)}/remove`);
         await portal.apiJson(url, { method: "POST" });
         portal.showAlert("", "");
         await loadPosteCertifications(portal);
@@ -5082,7 +5083,7 @@ function refreshPosteCompEditCritDisplay(){
         if (_posteDetailCache.has(pid)) return _posteDetailCache.get(pid);
 
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/poste_detail/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/poste_detail/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`);
         const data = await portal.apiJson(url);
         _posteDetailCache.set(pid, data);
         return data;
@@ -5374,7 +5375,7 @@ function refreshPosteCompEditCritDisplay(){
         }
 
         if (_posteModalMode === "create"){
-            const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}`;
+            const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}`);
             const r = await portal.apiJson(url, {
                 method: "POST",
                 headers: { "Content-Type":"application/json" },
@@ -5416,7 +5417,7 @@ function refreshPosteCompEditCritDisplay(){
             const pid = (_editingPosteId || "").trim();
             if (!pid) throw new Error("id_poste manquant (edit).");
 
-            const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`;
+            const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`);
             const r = await portal.apiJson(url, {
                 method: "POST",
                 headers: { "Content-Type":"application/json" },
@@ -5447,7 +5448,7 @@ function refreshPosteCompEditCritDisplay(){
         const isActif = !(poste && poste.actif === false);
         const wantArchive = isActif; // actif => archive ; archivé => restaure
 
-        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/archive`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/archive`);
         await portal.apiJson(url, {
             method: "POST",
             headers: { "Content-Type":"application/json" },
@@ -5470,7 +5471,7 @@ function refreshPosteCompEditCritDisplay(){
         const isActif = getPosteModalActif();
         const wantArchive = isActif; // si actif => on archive ; si archivé => on restaure
 
-        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/archive`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/archive`);
         const r = await portal.apiJson(url, {
             method: "POST",
             headers: { "Content-Type":"application/json" },
@@ -5499,7 +5500,7 @@ function refreshPosteCompEditCritDisplay(){
             return;
         }
 
-        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/duplicate`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/duplicate`);
         const r = await portal.apiJson(url, {
             method: "POST",
             headers: { "Content-Type":"application/json" },
@@ -5594,14 +5595,14 @@ function refreshPosteCompEditCritDisplay(){
 
         if (_serviceModalMode === "create") {
             const r = await portal.apiJson(
-                `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`,
+                appendOrgScope(`${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`),
                 { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify({ nom_service: name, id_service_parent: parent }) }
             );
             createdServiceId = r && r.id_service ? String(r.id_service) : null;
         } else {
             if (!_editingServiceId) return;
             await portal.apiJson(
-                `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingServiceId)}`,
+                appendOrgScope(`${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingServiceId)}`),
                 { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify({ nom_service: name, id_service_parent: parent }) }
             );
         }
@@ -5649,7 +5650,7 @@ function refreshPosteCompEditCritDisplay(){
         if (!sid || sid === "__all__" || sid === "__none__") return;
 
         await portal.apiJson(
-        `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}/${encodeURIComponent(sid)}/archive`,
+        appendOrgScope(`${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}/${encodeURIComponent(sid)}/archive`),
         { method: "POST" }
         );
 
@@ -5681,7 +5682,7 @@ function refreshPosteCompEditCritDisplay(){
 
     async function loadCatalog(portal){
         const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/postes_catalogue/${encodeURIComponent(ownerId)}?q=${encodeURIComponent(_catalogSearch)}`;
+        const url = appendOrgScope(`${portal.apiBase}/studio/org/postes_catalogue/${encodeURIComponent(ownerId)}?q=${encodeURIComponent(_catalogSearch)}`);
         const data = await portal.apiJson(url);
 
         const host = byId("catalogList");
@@ -5735,7 +5736,7 @@ function refreshPosteCompEditCritDisplay(){
         if (!sid || sid === "__all__" || sid === "__none__") return;
 
         await portal.apiJson(
-        `${portal.apiBase}/studio/org/postes/assign/${encodeURIComponent(ownerId)}`,
+        appendOrgScope(`${portal.apiBase}/studio/org/postes/assign/${encodeURIComponent(ownerId)}`),
         { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify({ id_poste: idPoste, id_service: sid }) }
         );
 
