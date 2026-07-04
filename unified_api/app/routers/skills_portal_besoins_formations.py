@@ -1233,6 +1233,18 @@ def get_demandes_rh(
                         rows.append(item)
                         seen.add(key)
 
+                rows_for_kpis = _demande_apply_filters(
+                    rows,
+                    "tous",
+                    origine,
+                    type_demande,
+                    finalite_terrain,
+                    priorite,
+                    q or "",
+                    fragilite_min,
+                    criticite_min,
+                )
+
                 rows = _demande_apply_filters(
                     rows,
                     _filter_demande_statut(statut),
@@ -1255,7 +1267,7 @@ def get_demandes_rh(
                     "scope": _scope_dict(scope),
                     "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
                     "destination": dest,
-                    "kpis": _demande_kpis(rows),
+                    "kpis": _demande_kpis(rows_for_kpis),
                     "items": rows[:limit],
                     "table_ready": _demande_table_exists(cur),
                 }
