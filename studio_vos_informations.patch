@@ -1,0 +1,1001 @@
+--- a/static/menu_studio/studio_data.html
++++ b/static/menu_studio/studio_data.html
+@@ -1,292 +1,419 @@
+-<section id="view-data">
+-  <!-- ENTREPRISE -->
+-  <div class="card" id="cardEntreprise">
+-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+-      <div>
+-        <div class="card-title" style="margin-bottom:2px;">Informations entreprise</div>
+-        <div class="card-sub" style="margin:0;">Le nom de l’entreprise n’est pas modifiable.</div>
++<section id="view-data" data-view="data">
++  <div class="card info-hero">
++    <div class="info-hero-icon" aria-hidden="true">
++      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
++    </div>
++    <div>
++      <div class="card-title">Vos informations</div>
++      <div class="card-sub">Mettez à jour vos informations entreprise, le logo utilisé dans les documents et vos informations de contact.</div>
++    </div>
++  </div>
++
++  <div class="card info-section-card" id="cardEntreprise">
++    <div class="info-section-head">
++      <div class="info-section-title-wrap">
++        <div class="info-section-icon" aria-hidden="true">
++          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M7 20V8h10v12"/><path d="M9 12h2"/><path d="M13 12h2"/><path d="M9 16h2"/><path d="M13 16h2"/><path d="M9 4h6v4H9z"/></svg>
++        </div>
++        <div>
++          <div class="card-title">Informations entreprise</div>
++          <div class="card-sub">Le nom de l’entreprise n’est pas modifiable.</div>
++        </div>
+       </div>
+       <div class="sb-actions">
+         <span class="sb-save-success" id="entSaveSuccess" aria-live="polite"></span>
+-        <button type="button" class="sb-btn sb-btn--accent" id="btnEditEntreprise">Modifier les informations</button>   
+-        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveEntreprise" style="display:none;">Enregistrer les informations</button>
+-        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelEntreprise" style="display:none;">Annuler</button>
++        <button type="button" class="sb-btn sb-btn--accent" id="btnEditEntreprise">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
++          <span>Modifier les informations</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveEntreprise" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></span>
++          <span>Enregistrer les informations</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelEntreprise" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg></span>
++          <span>Annuler</span>
++        </button>
+       </div>
+     </div>
+ 
+     <input type="file" id="entLogoFileInput" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden />
+ 
+-    <div class="row" style="margin-top:14px;">
+-      <div class="info-item" style="flex:1 1 100%;">
+-        <div class="label">Logo</div>
+-
+-        <div class="sb-logo-card">
+-          <div class="sb-logo-preview" id="entLogoPreview">
+-            <img id="entLogoImg" alt="Logo entreprise" style="display:none;" />
+-            <div class="sb-help" id="entLogoEmpty">Aucun logo enregistré.</div>
+-          </div>
+-
+-          <div class="sb-logo-meta">
+-            <div class="card-sub" id="entLogoMeta" style="margin:0;">
+-              Le logo enregistré sera réutilisé automatiquement dans les sorties PDF Studio.
++    <div class="info-section-body">
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 14l2.2-2.2a1 1 0 0 1 1.4 0L14 14"/><path d="m13 13 1.2-1.2a1 1 0 0 1 1.4 0L18 14"/><circle cx="9" cy="9" r="1"/></svg></span>
++          <span class="info-subsection-title">Logo</span>
++        </div>
++        <div class="info-logo-panel">
++          <div class="sb-logo-card">
++            <div class="sb-logo-preview" id="entLogoPreview">
++              <img id="entLogoImg" alt="Logo entreprise" style="display:none;" />
++              <div class="sb-help" id="entLogoEmpty">Aucun logo enregistré.</div>
+             </div>
+-
+-            <div class="sb-actions">
+-              <button type="button" class="sb-btn sb-btn--doc" id="btnUploadLogo">Importer votre logo</button>
+-              <button type="button" class="sb-btn sb-btn--danger-soft" id="btnRemoveLogo">Retirer le logo</button>
++            <div class="sb-logo-meta">
++              <div class="card-sub" id="entLogoMeta">Le logo enregistré sera réutilisé automatiquement dans les sorties PDF Studio.</div>
++              <div class="sb-actions">
++                <button type="button" class="sb-btn sb-btn--doc" id="btnUploadLogo">
++                  <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg></span>
++                  <span>Importer votre logo</span>
++                </button>
++                <button type="button" class="sb-btn sb-btn--danger-soft" id="btnRemoveLogo">
++                  <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span>
++                  <span>Retirer le logo</span>
++                </button>
++              </div>
+             </div>
+           </div>
+         </div>
+       </div>
+-    </div>
+-
+-    <div class="row">
+-      <div class="info-item" style="min-width:260px;">
+-        <div class="label">Nom entreprise</div>
+-        <input type="text" id="ent_nom_ent" disabled />
+-      </div>
+-      <div class="info-item" style="min-width:220px;">
+-        <div class="label">SIRET</div>
+-        <input type="text" id="ent_siret_ent" data-editable-ent="1" />
+-      </div>
+-      <div class="info-item" style="min-width:220px;">
+-        <div class="label">N° TVA</div>
+-        <input type="text" id="ent_num_tva_ent" data-editable-ent="1" />
+-      </div>
+-    </div>
+-
+-    <div class="row">
+-      <div class="info-item" style="flex:2; min-width:260px;">
+-        <div class="label">Adresse (ligne 1)</div>
+-        <input type="text" id="ent_adresse_ent" data-editable-ent="1" />
+-      </div>
+-      <div class="info-item" style="flex:2; min-width:260px;">
+-        <div class="label">Adresse (complément)</div>
+-        <input type="text" id="ent_adresse_cplt_ent" data-editable-ent="1" />
+-      </div>
+-    </div>
+ 
+-    <div class="row">
+-      <div class="info-item" style="min-width:120px;">
+-        <div class="label">Code postal</div>
+-        <input type="text" id="ent_cp_ent" maxlength="5" inputmode="numeric" data-editable-ent="1" />
+-      </div>
+-      <div class="info-item" style="min-width:220px;">
+-        <div class="label">Ville</div>
+-        <input type="text" id="ent_ville_ent" data-editable-ent="1" />
+-      </div>
+-      <div class="info-item" style="min-width:220px;">
+-        <div class="label">Pays</div>
+-        <input type="text" id="ent_pays_ent" data-editable-ent="1" />
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M7 20V8h10v12"/><path d="M9 4h6v4H9z"/></svg></span>
++          <span class="info-subsection-title">Identité</span>
++        </div>
++        <div class="info-grid info-grid--3">
++          <div class="info-field">
++            <div class="label">Nom entreprise</div>
++            <div class="info-input-wrap"><input type="text" id="ent_nom_ent" disabled /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">SIRET</div>
++            <div class="info-input-wrap"><input type="text" id="ent_siret_ent" data-editable-ent="1" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">N° TVA</div>
++            <div class="info-input-wrap"><input type="text" id="ent_num_tva_ent" data-editable-ent="1" /></div>
++          </div>
++        </div>
+       </div>
+-    </div>
+ 
+-    <div class="row">
+-      <div class="info-item" style="min-width:220px;">
+-        <div class="label">Téléphone</div>
+-        <input type="tel" id="ent_telephone_ent" inputmode="numeric" maxlength="14" data-editable-ent="1" />
+-      </div>
+-      <div class="info-item" style="flex:2; min-width:260px;">
+-        <div class="label">Email</div>
+-        <input type="email" id="ent_email_ent" data-editable-ent="1" />
+-      </div>
+-      <div class="info-item" style="flex:2; min-width:260px;">
+-        <div class="label">Site web</div>
+-        <input type="text" id="ent_site_web" data-editable-ent="1" />
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10Z"/><path d="M12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></span>
++          <span class="info-subsection-title">Coordonnées</span>
++        </div>
++        <div class="info-grid info-grid--3">
++          <div class="info-field" style="grid-column:span 2;">
++            <div class="label">Adresse (ligne 1)</div>
++            <div class="info-input-wrap"><input type="text" id="ent_adresse_ent" data-editable-ent="1" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">Adresse (complément)</div>
++            <div class="info-input-wrap"><input type="text" id="ent_adresse_cplt_ent" data-editable-ent="1" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">Code postal</div>
++            <div class="info-input-wrap"><input type="text" id="ent_cp_ent" maxlength="5" inputmode="numeric" data-editable-ent="1" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">Ville</div>
++            <div class="info-input-wrap"><input type="text" id="ent_ville_ent" data-editable-ent="1" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">Pays</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="text" id="ent_pays_ent" data-editable-ent="1" />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg></span>
++            </div>
++          </div>
++          <div class="info-field">
++            <div class="label">Téléphone</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="tel" id="ent_telephone_ent" inputmode="numeric" maxlength="14" data-editable-ent="1" />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07A19.5 19.5 0 0 1 5.15 12.8 19.8 19.8 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72l.32 2.57a2 2 0 0 1-.57 1.71l-1.2 1.2a16 16 0 0 0 6.38 6.38l1.2-1.2a2 2 0 0 1 1.71-.57l2.57.32A2 2 0 0 1 22 16.92Z"/></svg></span>
++            </div>
++          </div>
++          <div class="info-field">
++            <div class="label">Email</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="email" id="ent_email_ent" data-editable-ent="1" />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 8 8 6 8-6"/></svg></span>
++            </div>
++          </div>
++          <div class="info-field">
++            <div class="label">Site web</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="text" id="ent_site_web" data-editable-ent="1" />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg></span>
++            </div>
++          </div>
++        </div>
+       </div>
+-    </div>
+ 
+-    <div class="row">
+-      <div class="info-item" style="min-width:220px;">
+-        <div class="label">Code APE (NN.NN)</div>
+-        <input type="text" id="ent_code_ape_ent" maxlength="5" inputmode="numeric" data-editable-ent="1" />
+-        <div class="sb-hint" id="apeHint">—</div>
+-      </div>
+-
+-      <div class="info-item" style="min-width:220px;">
+-        <div class="label">IDCC</div>
+-        <input type="text" id="ent_idcc" inputmode="numeric" data-editable-ent="1" />
+-        <div class="sb-hint" id="idccHint">—</div>
+-      </div>
+-
+-      <div class="info-item" style="min-width:260px;">
+-        <div class="label">OPCO</div>
+-        <select id="ent_id_opco" data-editable-ent="1">
+-          <option value="">(Non renseigné)</option>
+-        </select>
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.57 3-3.5S17.66 4 16 4s-3 1.57-3 3.5S14.34 11 16 11Z"/><path d="M8 11c1.66 0 3-1.57 3-3.5S9.66 4 8 4 5 5.57 5 7.5 6.34 11 8 11Z"/><path d="M16 13c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4Z"/><path d="M8 13c-2.67 0-8 1.34-8 4v3h8"/></svg></span>
++          <span class="info-subsection-title">Référentiels sociaux</span>
++        </div>
++        <div class="info-grid info-grid--3">
++          <div class="info-field">
++            <div class="label">Code APE (NN.NN)</div>
++            <div class="info-input-wrap"><input type="text" id="ent_code_ape_ent" maxlength="5" inputmode="numeric" data-editable-ent="1" /></div>
++            <div class="sb-hint" id="apeHint">—</div>
++          </div>
++          <div class="info-field">
++            <div class="label">IDCC</div>
++            <div class="info-input-wrap"><input type="text" id="ent_idcc" inputmode="numeric" data-editable-ent="1" /></div>
++            <div class="sb-hint" id="idccHint">—</div>
++          </div>
++          <div class="info-field">
++            <div class="label">OPCO</div>
++            <div class="info-input-wrap"><select id="ent_id_opco" data-editable-ent="1"><option value="">(Non renseigné)</option></select></div>
++            <div class="sb-hint" id="opcoHint">—</div>
++          </div>
++        </div>
+       </div>
+     </div>
+   </div>
+ 
+-
+-  <!-- CONNEXIONS -->
+-
+-<!-- CONTACT -->
+-  <div class="card" id="cardContact">
+-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+-      <div>
+-        <div class="card-title" style="margin-bottom:2px;">Informations du contact</div>
+-        <div class="card-sub" style="margin:0;">Contact actuellement connecté.</div>
++  <div class="card info-section-card" id="cardContact">
++    <div class="info-section-head">
++      <div class="info-section-title-wrap">
++        <div class="info-section-icon" aria-hidden="true">
++          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
++        </div>
++        <div>
++          <div class="card-title">Informations du contact</div>
++          <div class="card-sub">Contact actuellement connecté.</div>
++        </div>
+       </div>
+       <div class="sb-actions">
+         <span class="sb-save-success" id="contactSaveSuccess" aria-live="polite"></span>
+-        <button type="button" class="sb-btn sb-btn--accent" id="btnEditContact">Modifier les informations</button>
+-        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveContact" style="display:none;">Enregistrer les informations</button>
+-        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelContact" style="display:none;">Annuler</button>
+-      </div>
+-    </div>
+-
+-    <div class="row" style="margin-top:14px;">
+-      <div class="info-item" style="min-width:160px;">
+-        <div class="label">Civilité</div>
+-          <select id="ct_civ_ca" data-editable-ct="1">
+-            <option value="">(Non précisé)</option>
+-            <option value="M.">M.</option>
+-            <option value="Mme">Mme</option>
+-          </select>
+-      </div>
+-      <div class="info-item">
+-        <div class="label">Prénom</div>
+-        <input type="text" id="ct_prenom_ca" data-editable-ct="1" />
+-      </div>
+-      <div class="info-item">
+-        <div class="label">Nom *</div>
+-        <input type="text" id="ct_nom_ca" data-editable-ct="1" />
++        <button type="button" class="sb-btn sb-btn--accent" id="btnEditContact">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
++          <span>Modifier les informations</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveContact" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></span>
++          <span>Enregistrer les informations</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelContact" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg></span>
++          <span>Annuler</span>
++        </button>
+       </div>
+     </div>
+ 
+-    <div class="row">
+-      <div class="info-item">
+-        <div class="label">Rôle</div>
+-        <!-- Lecture seule: vient de tbl_novoskill_user_access.role_code -->
+-        <input type="text" id="ct_role_ca" disabled />
+-        <div class="sb-hint">Géré par l’administrateur Studio.</div>
+-      </div>
+-      <div class="info-item">
+-        <div class="label">Téléphone</div>
+-        <input type="tel" id="ct_tel_ca" inputmode="numeric" maxlength="14" data-editable-ct="1" />
+-      </div>
+-      <div class="info-item">
+-        <div class="label">Téléphone (2)</div>
+-        <input type="tel" id="ct_tel2_ca" inputmode="numeric" maxlength="14" data-editable-ct="1" />
++    <div class="info-section-body">
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg></span>
++          <span class="info-subsection-title">Identité</span>
++        </div>
++        <div class="info-grid info-grid--4">
++          <div class="info-field">
++            <div class="label">Civilité</div>
++            <div class="info-input-wrap"><select id="ct_civ_ca" data-editable-ct="1"><option value="">(Non précisé)</option><option value="M.">M.</option><option value="Mme">Mme</option></select></div>
++          </div>
++          <div class="info-field">
++            <div class="label">Prénom</div>
++            <div class="info-input-wrap"><input type="text" id="ct_prenom_ca" data-editable-ct="1" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">Nom *</div>
++            <div class="info-input-wrap"><input type="text" id="ct_nom_ca" data-editable-ct="1" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label">Rôle Studio</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="text" id="ct_role_ca" disabled />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
++            </div>
++            <div class="info-role-note">Géré par l’administrateur Studio.</div>
++          </div>
++        </div>
+       </div>
+-    </div>
+ 
+-    <div class="row">
+-      <div class="info-item" style="flex:2; min-width:260px;">
+-        <div class="label">Email</div>
+-        <input type="email" id="ct_mail_ca" data-editable-ct="1" />
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07A19.5 19.5 0 0 1 5.15 12.8 19.8 19.8 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72l.32 2.57a2 2 0 0 1-.57 1.71l-1.2 1.2a16 16 0 0 0 6.38 6.38l1.2-1.2a2 2 0 0 1 1.71-.57l2.57.32A2 2 0 0 1 22 16.92Z"/></svg></span>
++          <span class="info-subsection-title">Coordonnées</span>
++        </div>
++        <div class="info-grid info-grid--3">
++          <div class="info-field">
++            <div class="label">Téléphone</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="tel" id="ct_tel_ca" inputmode="numeric" maxlength="14" data-editable-ct="1" />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07A19.5 19.5 0 0 1 5.15 12.8 19.8 19.8 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72l.32 2.57a2 2 0 0 1-.57 1.71l-1.2 1.2a16 16 0 0 0 6.38 6.38l1.2-1.2a2 2 0 0 1 1.71-.57l2.57.32A2 2 0 0 1 22 16.92Z"/></svg></span>
++            </div>
++          </div>
++          <div class="info-field">
++            <div class="label">Téléphone (2)</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="tel" id="ct_tel2_ca" inputmode="numeric" maxlength="14" data-editable-ct="1" />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07A19.5 19.5 0 0 1 5.15 12.8 19.8 19.8 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72l.32 2.57a2 2 0 0 1-.57 1.71l-1.2 1.2a16 16 0 0 0 6.38 6.38l1.2-1.2a2 2 0 0 1 1.71-.57l2.57.32A2 2 0 0 1 22 16.92Z"/></svg></span>
++            </div>
++          </div>
++          <div class="info-field">
++            <div class="label">Email</div>
++            <div class="info-input-wrap info-input-wrap--icon">
++              <input type="email" id="ct_mail_ca" data-editable-ct="1" />
++              <span class="info-field-addon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 8 8 6 8-6"/></svg></span>
++            </div>
++          </div>
++        </div>
+       </div>
+-    </div>
+ 
+-    <div class="row">
+-      <div class="info-item" style="flex:2; min-width:260px;">
+-        <div class="label">Observations</div>
+-        <textarea id="ct_obs_ca" data-editable-ct="1"></textarea>
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 17A2.5 2.5 0 0 0 4 19.5V5a2 2 0 0 1 2-2h14v18H6.5Z"/><path d="M8 7h8"/><path d="M8 11h8"/></svg></span>
++          <span class="info-subsection-title">Notes</span>
++        </div>
++        <div class="info-grid info-grid--2">
++          <div class="info-field" style="grid-column:1 / -1;">
++            <div class="label">Observations</div>
++            <div class="info-input-wrap"><textarea id="ct_obs_ca" data-editable-ct="1"></textarea></div>
++          </div>
++        </div>
+       </div>
+     </div>
+   </div>
+ 
+-<div class="card" id="cardConnexions" style="display:none;">
+-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+-      <div>
+-        <div class="card-title" style="margin-bottom:2px;">Connexions</div>
+-        <div class="card-sub" style="margin:0;">Mode de connexion des utilisateurs de votre structure.</div>
++  <div class="card info-section-card" id="cardConnexions" style="display:none;">
++    <div class="info-section-head">
++      <div class="info-section-title-wrap">
++        <div class="info-section-icon" aria-hidden="true">
++          <svg width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
++        </div>
++        <div>
++          <div class="card-title">Connexions</div>
++          <div class="card-sub">Mode de connexion des utilisateurs de votre structure.</div>
++        </div>
+       </div>
+       <div class="sb-actions">
+         <span class="sb-save-success" id="connexionSaveSuccess" aria-live="polite"></span>
+-<button type="button" class="sb-btn sb-btn--accent" id="btnEditConnexion">Modifier</button>
+-        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveConnexion" style="display:none;">Enregistrer</button>
+-        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelConnexion" style="display:none;">Annuler</button>
++        <button type="button" class="sb-btn sb-btn--accent" id="btnEditConnexion">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
++          <span>Modifier</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveConnexion" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></span>
++          <span>Enregistrer</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelConnexion" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg></span>
++          <span>Annuler</span>
++        </button>
+       </div>
+     </div>
+-    <div class="sb-connexion-mini" id="ownerSsoSchemaHint" style="margin-top:10px;"></div>
+-    <div class="row" style="margin-top:14px;">
+-      <label class="sb-check" style="min-width:260px;"><input type="checkbox" id="ownerSsoEnabled" data-editable-sso="1" /><span class="sb-label-help">Activer le SSO entreprise <button type="button" class="sb-help-dot" data-help="Active cette option uniquement si l’entreprise souhaite utiliser son propre système d’authentification. Le SSO devient actif après paramétrage complet et test validé.">?</button></span></label>
+-      <label class="sb-check" style="min-width:260px;"><input type="checkbox" id="ownerSsoPasswordAllowed" data-editable-sso="1" /><span class="sb-label-help">Mot de passe autorisé <button type="button" class="sb-help-dot" data-help="Conserve la connexion classique Novoskill en complément du SSO. À garder pendant la mise en place ou la transition.">?</button></span></label>
+-      <label class="sb-check" style="min-width:260px;"><input type="checkbox" id="ownerSsoMandatory" data-editable-sso="1" /><span class="sb-label-help">SSO obligatoire <button type="button" class="sb-help-dot" data-help="Force les utilisateurs concernés à passer par le SSO entreprise. À activer seulement après validation avec le client ou le service informatique.">?</button></span></label>
+-    </div>
+-    <div class="row">
+-      <div class="info-item" style="min-width:220px;"><div class="label sb-label-help">Domaine autorisé <button type="button" class="sb-help-dot" data-help="Domaine email de l’entreprise, par exemple entreprise.fr. Il sert à orienter l’utilisateur vers le bon SSO.">?</button></div><input type="text" id="ownerSsoDomain" data-editable-sso="1" placeholder="entreprise.fr" /></div>
+-      <div class="info-item" style="min-width:180px;"><div class="label sb-label-help">Type SSO <button type="button" class="sb-help-dot" data-help="Novoskill prépare le raccordement SSO entreprise avec le standard SAML 2.0.">?</button></div><input type="text" id="ownerSsoType" value="SAML 2.0" disabled /></div>
+-      <input type="hidden" id="ownerSsoProviderId" data-editable-sso="1"/>
+-</div>
+-    <div class="row">
+-      <div class="info-item" style="flex:1 1 320px;"><div class="label sb-label-help">Metadata URL <button type="button" class="sb-help-dot" data-help="URL fournie par le service informatique. Elle contient la configuration SAML du fournisseur d’identité. À privilégier si disponible.">?</button></div><input type="text" id="ownerSsoMetadataUrl" data-editable-sso="1" placeholder="https://..." /></div>
+-      <div class="info-item" style="min-width:220px;"><div class="label sb-label-help">Attribut email <button type="button" class="sb-help-dot" data-help="Nom du champ transmis par le SSO qui contient l’email utilisateur. Valeurs fréquentes : email, mail, emailaddress.">?</button></div><input type="text" id="ownerSsoEmailAttr" data-editable-sso="1" placeholder="email" /></div>
+-    </div>
+-    <div class="row">
+-      <div class="info-item" style="flex:1 1 100%;"><div class="label sb-label-help">Metadata XML <button type="button" class="sb-help-dot" data-help="À utiliser si le service informatique ne fournit pas de Metadata URL. Coller ici le XML de configuration SAML.">?</button></div><textarea id="ownerSsoMetadataXml" class="sb-connexion-technical" data-editable-sso="1"></textarea></div>
++
++    <div class="info-section-body">
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg></span>
++          <span class="info-subsection-title">SSO</span>
++        </div>
++        <div class="info-grid info-grid--3">
++          <div class="info-field" style="grid-column:1 / -1;">
++            <div class="sb-connexion-mini" id="ownerSsoSchemaHint"></div>
++          </div>
++          <label class="sb-check info-check-card"><input type="checkbox" id="ownerSsoEnabled" data-editable-sso="1" /><span class="sb-label-help">Activer le SSO entreprise <button type="button" class="sb-help-dot" data-help="Active cette option uniquement si l’entreprise souhaite utiliser son propre système d’authentification. Le SSO devient actif après paramétrage complet et test validé.">?</button></span></label>
++          <label class="sb-check info-check-card"><input type="checkbox" id="ownerSsoPasswordAllowed" data-editable-sso="1" /><span class="sb-label-help">Mot de passe autorisé <button type="button" class="sb-help-dot" data-help="Conserve la connexion classique Novoskill en complément du SSO. À garder pendant la mise en place ou la transition.">?</button></span></label>
++          <label class="sb-check info-check-card"><input type="checkbox" id="ownerSsoMandatory" data-editable-sso="1" /><span class="sb-label-help">SSO obligatoire <button type="button" class="sb-help-dot" data-help="Force les utilisateurs concernés à passer par le SSO entreprise. À activer seulement après validation avec le client ou le service informatique.">?</button></span></label>
++          <div class="info-field">
++            <div class="label sb-label-help">Domaine autorisé <button type="button" class="sb-help-dot" data-help="Domaine email de l’entreprise, par exemple entreprise.fr. Il sert à orienter l’utilisateur vers le bon SSO.">?</button></div>
++            <div class="info-input-wrap"><input type="text" id="ownerSsoDomain" data-editable-sso="1" placeholder="entreprise.fr" /></div>
++          </div>
++          <div class="info-field">
++            <div class="label sb-label-help">Type SSO <button type="button" class="sb-help-dot" data-help="Novoskill prépare le raccordement SSO entreprise avec le standard SAML 2.0.">?</button></div>
++            <div class="info-input-wrap"><input type="text" id="ownerSsoType" value="SAML 2.0" disabled /></div>
++          </div>
++          <input type="hidden" id="ownerSsoProviderId" data-editable-sso="1"/>
++          <div class="info-field">
++            <div class="label sb-label-help">Attribut email <button type="button" class="sb-help-dot" data-help="Nom du champ transmis par le SSO qui contient l’email utilisateur. Valeurs fréquentes : email, mail, emailaddress.">?</button></div>
++            <div class="info-input-wrap"><input type="text" id="ownerSsoEmailAttr" data-editable-sso="1" placeholder="email" /></div>
++          </div>
++          <div class="info-field" style="grid-column:span 2;">
++            <div class="label sb-label-help">Metadata URL <button type="button" class="sb-help-dot" data-help="URL fournie par le service informatique. Elle contient la configuration SAML du fournisseur d’identité. À privilégier si disponible.">?</button></div>
++            <div class="info-input-wrap"><input type="text" id="ownerSsoMetadataUrl" data-editable-sso="1" placeholder="https://..." /></div>
++          </div>
++          <div class="info-field" style="grid-column:1 / -1;">
++            <div class="label sb-label-help">Metadata XML <button type="button" class="sb-help-dot" data-help="À utiliser si le service informatique ne fournit pas de Metadata URL. Coller ici le XML de configuration SAML.">?</button></div>
++            <div class="info-input-wrap"><textarea id="ownerSsoMetadataXml" class="sb-connexion-technical" data-editable-sso="1"></textarea></div>
++          </div>
++          <div class="sb-actions info-actions-row">
++            <button type="button" class="sb-btn sb-btn--secondary" id="btnTestConnexion">
++              <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
++              <span>Tester la configuration</span>
++            </button>
++          </div>
++        </div>
++      </div>
+     </div>
+-    <div class="sb-actions" style="justify-content:flex-end; margin-top:10px;"><button type="button" class="sb-btn sb-btn--secondary" id="btnTestConnexion">Tester la configuration</button></div>
+   </div>
+ 
+-
+-  <div class="card sd-sirh-card" id="cardSirhConnectors" style="display:none;">
+-    <div class="sb-card-head">
+-      <div>
+-        <div class="card-title" style="margin-bottom:2px;">Connexion SIRH / Paie</div>
+-        <div class="card-sub" style="margin:0;">
+-          Sélectionnez le connecteur SIRH/paie et renseignez les identifiants fournis.
++  <div class="card info-section-card sd-sirh-card" id="cardSirhConnectors" style="display:none;">
++    <div class="info-section-head">
++      <div class="info-section-title-wrap">
++        <div class="info-section-icon" aria-hidden="true">
++          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M7 4v16"/></svg>
++        </div>
++        <div>
++          <div class="card-title">Connexion SIRH / Paie</div>
++          <div class="card-sub">Sélectionnez le connecteur SIRH/paie et renseignez les identifiants fournis.</div>
+         </div>
+       </div>
+       <div class="sb-actions">
+         <span class="sb-save-success" id="sirhSaveSuccess" aria-live="polite"></span>
+-        <button type="button" class="sb-btn sb-btn--accent" id="btnEditSirh">Modifier</button>
+-        <button type="button" class="sb-btn sb-btn--secondary" id="btnTestSirh" style="display:none;">Tester la connexion</button>
+-        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveSirh" style="display:none;">Enregistrer</button>
+-        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelSirh" style="display:none;">Annuler</button>
++        <button type="button" class="sb-btn sb-btn--accent" id="btnEditSirh">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
++          <span>Modifier</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--secondary" id="btnTestSirh" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
++          <span>Tester la connexion</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveSirh" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></span>
++          <span>Enregistrer</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelSirh" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg></span>
++          <span>Annuler</span>
++        </button>
+       </div>
+     </div>
+-    <div class="sd-sirh-grid">
+-      <div class="info-item">
+-        <div class="label sb-label-help">Connecteur <button type="button" class="sb-help-dot" data-help="Sélection du logiciel RH ou paie à raccorder. Le choix conditionne les champs demandés et le module technique utilisé.">?</button></div>
+-        <select id="sirhProvider" data-editable-sirh="1">
+-          <option value="manual">Aucun connecteur</option>
+-          <option value="ebp_paie">EBP Paie</option>
+-        </select>
+-      </div>
+-
+-      <div class="info-item sd-sirh-provider-field" style="display:none;">
+-        <div class="label sb-label-help">URL API / environnement <button type="button" class="sb-help-dot" data-help="Adresse fournie par l’éditeur ou l’intégrateur. Elle pointe vers l’environnement à interroger : production, préproduction ou sandbox.">?</button></div>
+-        <input type="text" id="sirhBaseUrl" data-editable-sirh="1" placeholder="https://..." />
+-      </div>
+-
+-      <div class="info-item sd-sirh-provider-field" style="display:none;">
+-        <div class="label sb-label-help">Identifiant client / tenant <button type="button" class="sb-help-dot" data-help="Identifiant du compte client chez l’éditeur. Selon l’outil, il peut être nommé tenant, client ID, code abonnement ou compte API.">?</button></div>
+-        <input type="text" id="sirhClientId" data-editable-sirh="1" placeholder="Identifiant fourni par l’éditeur ou l’intégrateur" />
+-      </div>
+-
+-      <div class="info-item sd-sirh-provider-field" style="display:none;">
+-        <div class="label sb-label-help">Identifiant dossier / entreprise <button type="button" class="sb-help-dot" data-help="Code du dossier paie, de la société ou de la base entreprise à lire dans le logiciel source.">?</button></div>
+-        <input type="text" id="sirhDossierCode" data-editable-sirh="1" placeholder="Code dossier, société ou base" />
+-      </div>
+-
+-      <div class="info-item sd-sirh-provider-field sd-sirh-secret-field" style="display:none;">
+-        <div class="label sb-label-help">Clé API <button type="button" class="sb-help-dot" data-help="Secret technique fourni par l’éditeur ou l’intégrateur. La valeur est chiffrée côté base et n’est jamais réaffichée après enregistrement.">?</button></div>
+-        <div class="sd-sirh-secret-box">
+-          <div class="sd-sirh-secret-icon" aria-hidden="true">
+-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+-              <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+-              <path d="M7 11V8a5 5 0 0 1 10 0v3"></path>
+-            </svg>
+-          </div>
+-          <div class="sd-sirh-secret-main">
+-            <input
+-              type="password"
+-              id="sirhApiKey"
+-              class="sd-sirh-secret-input"
+-              data-editable-sirh="1"
+-              autocomplete="new-password"
+-              placeholder="Coller une nouvelle clé ou laisser vide pour conserver"
+-            />
+-            <div class="sd-sirh-secret-hint" id="sirhSecretHint"></div>
++
++    <div class="info-section-body">
++      <div class="info-subsection">
++        <div class="info-subsection-side">
++          <span class="info-subsection-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M4 8h16"/><path d="M4 16h16"/></svg></span>
++          <span class="info-subsection-title">Connecteur</span>
++        </div>
++        <div class="sd-sirh-grid">
++          <div class="info-field">
++            <div class="label sb-label-help">Connecteur <button type="button" class="sb-help-dot" data-help="Sélection du logiciel RH ou paie à raccorder. Le choix conditionne les champs demandés et le module technique utilisé.">?</button></div>
++            <div class="info-input-wrap"><select id="sirhProvider" data-editable-sirh="1"><option value="manual">Aucun connecteur</option><option value="ebp_paie">EBP Paie</option></select></div>
++          </div>
++          <div class="info-field sd-sirh-provider-field" style="display:none;">
++            <div class="label sb-label-help">URL API / environnement <button type="button" class="sb-help-dot" data-help="Adresse fournie par l’éditeur ou l’intégrateur. Elle pointe vers l’environnement à interroger : production, préproduction ou sandbox.">?</button></div>
++            <div class="info-input-wrap"><input type="text" id="sirhBaseUrl" data-editable-sirh="1" placeholder="https://..." /></div>
+           </div>
++          <div class="info-field sd-sirh-provider-field" style="display:none;">
++            <div class="label sb-label-help">Identifiant client / tenant <button type="button" class="sb-help-dot" data-help="Identifiant du compte client chez l’éditeur. Selon l’outil, il peut être nommé tenant, client ID, code abonnement ou compte API.">?</button></div>
++            <div class="info-input-wrap"><input type="text" id="sirhClientId" data-editable-sirh="1" placeholder="Identifiant fourni par l’éditeur ou l’intégrateur" /></div>
++          </div>
++          <div class="info-field sd-sirh-provider-field" style="display:none;">
++            <div class="label sb-label-help">Identifiant dossier / entreprise <button type="button" class="sb-help-dot" data-help="Code du dossier paie, de la société ou de la base entreprise à lire dans le logiciel source.">?</button></div>
++            <div class="info-input-wrap"><input type="text" id="sirhDossierCode" data-editable-sirh="1" placeholder="Code dossier, société ou base" /></div>
++          </div>
++          <div class="info-field sd-sirh-provider-field sd-sirh-secret-field" style="display:none;">
++            <div class="label sb-label-help">Clé API <button type="button" class="sb-help-dot" data-help="Secret technique fourni par l’éditeur ou l’intégrateur. La valeur est chiffrée côté base et n’est jamais réaffichée après enregistrement.">?</button></div>
++            <div class="sd-sirh-secret-box">
++              <div class="sd-sirh-secret-icon" aria-hidden="true">
++                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V8a5 5 0 0 1 10 0v3"></path></svg>
++              </div>
++              <div class="sd-sirh-secret-main">
++                <input type="password" id="sirhApiKey" class="sd-sirh-secret-input" data-editable-sirh="1" autocomplete="new-password" placeholder="Coller une nouvelle clé ou laisser vide pour conserver" />
++                <div class="sd-sirh-secret-hint" id="sirhSecretHint"></div>
++              </div>
++            </div>
++          </div>
++          <div class="sd-sirh-status" id="sirhStatusBox" style="display:none;"></div>
+         </div>
+       </div>
+     </div>
+-
+-    <div class="sd-sirh-status" id="sirhStatusBox" style="display:none;"></div>
+   </div>
+-
+-</section>
+\ No newline at end of file
++</section>
+--- a/static/studio_portal_theme.css
++++ b/static/studio_portal_theme.css
+@@ -164,7 +164,301 @@
+   white-space:nowrap;
+ }
+ 
+-/* Studio > Vos informations : les champs en lecture restent lisibles */
++/* Studio > Vos informations */
++.sb-btn-icon{
++  display:inline-flex;
++  align-items:center;
++  justify-content:center;
++  width:14px;
++  height:14px;
++  flex:0 0 14px;
++}
++
++.sb-btn-icon svg{
++  width:14px !important;
++  height:14px !important;
++  display:block;
++  fill:none !important;
++  stroke:currentColor !important;
++  stroke-width:1.9 !important;
++  stroke-linecap:round;
++  stroke-linejoin:round;
++}
++
++#view-data .info-hero{
++  display:flex;
++  align-items:center;
++  gap:16px;
++}
++
++#view-data .info-hero-icon{
++  width:48px;
++  height:48px;
++  border-radius:16px;
++  display:flex;
++  align-items:center;
++  justify-content:center;
++  background:linear-gradient(180deg, rgba(var(--sb-accent-rgb), .22), rgba(var(--sb-accent-rgb), .08));
++  color:#111827;
++  flex:0 0 48px;
++  overflow:hidden;
++}
++
++#view-data .info-hero-icon svg,
++#view-data .info-section-icon svg,
++#view-data .info-subsection-icon svg,
++#view-data .info-field-addon svg{
++  display:block;
++  fill:none !important;
++  stroke:currentColor !important;
++  stroke-width:1.9 !important;
++  stroke-linecap:round;
++  stroke-linejoin:round;
++}
++
++#view-data .info-hero-icon svg{
++  width:22px !important;
++  height:22px !important;
++}
++
++#view-data .info-section-card{
++  padding:0;
++  overflow:hidden;
++}
++
++#view-data .info-section-head{
++  display:flex;
++  align-items:flex-start;
++  justify-content:space-between;
++  gap:16px;
++  padding:14px 16px;
++  border-bottom:1px solid var(--sb-gray-200);
++}
++
++#view-data .info-section-title-wrap{
++  display:flex;
++  align-items:flex-start;
++  gap:12px;
++  min-width:0;
++}
++
++#view-data .info-section-title-wrap .card-title{
++  margin-bottom:2px;
++}
++
++#view-data .info-section-title-wrap .card-sub{
++  margin:0;
++}
++
++#view-data .info-section-icon{
++  width:32px;
++  height:32px;
++  border-radius:12px;
++  display:flex;
++  align-items:center;
++  justify-content:center;
++  color:#111827;
++  background:rgba(var(--sb-accent-rgb), .16);
++  flex:0 0 32px;
++  overflow:hidden;
++}
++
++#view-data .info-section-icon svg{
++  width:18px !important;
++  height:18px !important;
++}
++
++#view-data .info-section-body{
++  padding:0 16px 16px;
++}
++
++#view-data .info-subsection{
++  display:grid;
++  grid-template-columns:160px 1fr;
++  gap:16px;
++  padding:16px 0;
++  border-top:1px solid var(--sb-gray-100);
++}
++
++#view-data .info-subsection:first-child{
++  border-top:none;
++}
++
++#view-data .info-subsection-side{
++  display:flex;
++  align-items:flex-start;
++  gap:10px;
++  color:#111827;
++  font-weight:700;
++}
++
++#view-data .info-subsection-icon{
++  width:22px;
++  height:22px;
++  display:inline-flex;
++  align-items:center;
++  justify-content:center;
++  color:#6b7280;
++  flex:0 0 22px;
++  margin-top:1px;
++  overflow:hidden;
++}
++
++#view-data .info-subsection-icon svg{
++  width:18px !important;
++  height:18px !important;
++}
++
++#view-data .info-subsection-title{
++  font-size:13px;
++  font-weight:700;
++  color:#111827;
++}
++
++#view-data .info-grid{
++  display:grid;
++  gap:12px;
++  min-width:0;
++}
++
++#view-data .info-grid--4{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
++#view-data .info-grid--3{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
++#view-data .info-grid--2{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
++
++#view-data .info-field{
++  display:flex;
++  flex-direction:column;
++  gap:6px;
++  min-width:0;
++}
++
++#view-data .info-field .label{
++  margin:0;
++}
++
++#view-data .info-input-wrap{
++  position:relative;
++  min-width:0;
++}
++
++#view-data .info-input-wrap input,
++#view-data .info-input-wrap select,
++#view-data .info-input-wrap textarea{
++  width:100%;
++}
++
++#view-data .info-input-wrap--icon input,
++#view-data .info-input-wrap--icon select{
++  padding-right:34px;
++}
++
++#view-data .info-field-addon{
++  position:absolute;
++  right:10px;
++  top:50%;
++  transform:translateY(-50%);
++  width:16px;
++  height:16px;
++  color:#9ca3af;
++  pointer-events:none;
++  overflow:hidden;
++}
++
++#view-data .info-field-addon svg{
++  width:16px !important;
++  height:16px !important;
++}
++
++#view-data .info-role-note{
++  margin-top:4px;
++  font-size:12px;
++  color:#6b7280;
++}
++
++#view-data textarea{
++  min-height:74px;
++  resize:vertical;
++}
++
++#view-data .sb-connexion-technical{
++  min-height:112px;
++  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++  font-size:12px;
++}
++
++#view-data .info-logo-panel{
++  min-width:0;
++}
++
++#view-data .sb-logo-card{
++  display:flex;
++  align-items:center;
++  gap:14px;
++  flex-wrap:wrap;
++}
++
++#view-data .sb-logo-preview{
++  width:220px;
++  height:88px;
++  padding:10px;
++  border:1px solid rgba(17,24,39,.10);
++  border-radius:14px;
++  background:#fff;
++  display:flex;
++  align-items:center;
++  justify-content:center;
++  overflow:hidden;
++  box-sizing:border-box;
++}
++
++#view-data .sb-logo-preview img{
++  max-width:100%;
++  max-height:100%;
++  object-fit:contain;
++  display:block;
++}
++
++#view-data .sb-logo-meta{
++  flex:1 1 280px;
++  min-width:260px;
++  display:flex;
++  flex-direction:column;
++  gap:8px;
++}
++
++#view-data .sb-logo-meta .card-sub{
++  margin:0;
++}
++
++#view-data .info-check-card{
++  min-height:40px;
++  padding:10px 12px;
++  border:1px solid rgba(17,24,39,.10);
++  border-radius:12px;
++  background:#fff;
++  box-sizing:border-box;
++}
++
++#view-data .info-actions-row{
++  grid-column:1 / -1;
++  justify-content:flex-end;
++}
++
++#view-data .sb-actions{
++  display:flex;
++  align-items:center;
++  gap:8px;
++  flex-wrap:wrap;
++}
++
++#view-data .sb-save-success{
++  min-height:32px;
++  max-width:360px;
++  white-space:normal;
++  font-size:12px;
++  font-weight:700;
++}
++
+ #view-data input:disabled,
+ #view-data select:disabled,
+ #view-data textarea:disabled{
+@@ -174,6 +468,35 @@
+   background:#ffffff;
+ }
+ 
++@media (max-width: 1100px){
++  #view-data .info-grid--4{
++    grid-template-columns:repeat(2, minmax(0, 1fr));
++  }
++}
++
++@media (max-width: 900px){
++  #view-data .info-section-head{
++    flex-direction:column;
++    align-items:stretch;
++  }
++
++  #view-data .info-subsection{
++    grid-template-columns:1fr;
++  }
++
++  #view-data .info-grid--4,
++  #view-data .info-grid--3,
++  #view-data .info-grid--2,
++  #view-data .sd-sirh-grid{
++    grid-template-columns:1fr;
++  }
++
++  #view-data .info-field[style*="grid-column"],
++  #view-data .info-actions-row{
++    grid-column:auto !important;
++  }
++}
++
+ .org-card-head{
+   display:flex;
+   justify-content:space-between;

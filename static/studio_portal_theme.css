@@ -164,7 +164,301 @@
   white-space:nowrap;
 }
 
-/* Studio > Vos informations : les champs en lecture restent lisibles */
+/* Studio > Vos informations */
+.sb-btn-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:14px;
+  height:14px;
+  flex:0 0 14px;
+}
+
+.sb-btn-icon svg{
+  width:14px !important;
+  height:14px !important;
+  display:block;
+  fill:none !important;
+  stroke:currentColor !important;
+  stroke-width:1.9 !important;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-data .info-hero{
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+
+#view-data .info-hero-icon{
+  width:48px;
+  height:48px;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(180deg, rgba(var(--sb-accent-rgb), .22), rgba(var(--sb-accent-rgb), .08));
+  color:#111827;
+  flex:0 0 48px;
+  overflow:hidden;
+}
+
+#view-data .info-hero-icon svg,
+#view-data .info-section-icon svg,
+#view-data .info-subsection-icon svg,
+#view-data .info-field-addon svg{
+  display:block;
+  fill:none !important;
+  stroke:currentColor !important;
+  stroke-width:1.9 !important;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-data .info-hero-icon svg{
+  width:22px !important;
+  height:22px !important;
+}
+
+#view-data .info-section-card{
+  padding:0;
+  overflow:hidden;
+}
+
+#view-data .info-section-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--sb-gray-200);
+}
+
+#view-data .info-section-title-wrap{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  min-width:0;
+}
+
+#view-data .info-section-title-wrap .card-title{
+  margin-bottom:2px;
+}
+
+#view-data .info-section-title-wrap .card-sub{
+  margin:0;
+}
+
+#view-data .info-section-icon{
+  width:32px;
+  height:32px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#111827;
+  background:rgba(var(--sb-accent-rgb), .16);
+  flex:0 0 32px;
+  overflow:hidden;
+}
+
+#view-data .info-section-icon svg{
+  width:18px !important;
+  height:18px !important;
+}
+
+#view-data .info-section-body{
+  padding:0 16px 16px;
+}
+
+#view-data .info-subsection{
+  display:grid;
+  grid-template-columns:160px 1fr;
+  gap:16px;
+  padding:16px 0;
+  border-top:1px solid var(--sb-gray-100);
+}
+
+#view-data .info-subsection:first-child{
+  border-top:none;
+}
+
+#view-data .info-subsection-side{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  color:#111827;
+  font-weight:700;
+}
+
+#view-data .info-subsection-icon{
+  width:22px;
+  height:22px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#6b7280;
+  flex:0 0 22px;
+  margin-top:1px;
+  overflow:hidden;
+}
+
+#view-data .info-subsection-icon svg{
+  width:18px !important;
+  height:18px !important;
+}
+
+#view-data .info-subsection-title{
+  font-size:13px;
+  font-weight:700;
+  color:#111827;
+}
+
+#view-data .info-grid{
+  display:grid;
+  gap:12px;
+  min-width:0;
+}
+
+#view-data .info-grid--4{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+#view-data .info-grid--3{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+#view-data .info-grid--2{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+
+#view-data .info-field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+}
+
+#view-data .info-field .label{
+  margin:0;
+}
+
+#view-data .info-input-wrap{
+  position:relative;
+  min-width:0;
+}
+
+#view-data .info-input-wrap input,
+#view-data .info-input-wrap select,
+#view-data .info-input-wrap textarea{
+  width:100%;
+}
+
+#view-data .info-input-wrap--icon input,
+#view-data .info-input-wrap--icon select{
+  padding-right:34px;
+}
+
+#view-data .info-field-addon{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  width:16px;
+  height:16px;
+  color:#9ca3af;
+  pointer-events:none;
+  overflow:hidden;
+}
+
+#view-data .info-field-addon svg{
+  width:16px !important;
+  height:16px !important;
+}
+
+#view-data .info-role-note{
+  margin-top:4px;
+  font-size:12px;
+  color:#6b7280;
+}
+
+#view-data textarea{
+  min-height:74px;
+  resize:vertical;
+}
+
+#view-data .sb-connexion-technical{
+  min-height:112px;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:12px;
+}
+
+#view-data .info-logo-panel{
+  min-width:0;
+}
+
+#view-data .sb-logo-card{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+#view-data .sb-logo-preview{
+  width:220px;
+  height:88px;
+  padding:10px;
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:14px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+
+#view-data .sb-logo-preview img{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+#view-data .sb-logo-meta{
+  flex:1 1 280px;
+  min-width:260px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+#view-data .sb-logo-meta .card-sub{
+  margin:0;
+}
+
+#view-data .info-check-card{
+  min-height:40px;
+  padding:10px 12px;
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  background:#fff;
+  box-sizing:border-box;
+}
+
+#view-data .info-actions-row{
+  grid-column:1 / -1;
+  justify-content:flex-end;
+}
+
+#view-data .sb-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#view-data .sb-save-success{
+  min-height:32px;
+  max-width:360px;
+  white-space:normal;
+  font-size:12px;
+  font-weight:700;
+}
+
 #view-data input:disabled,
 #view-data select:disabled,
 #view-data textarea:disabled{
@@ -172,6 +466,35 @@
   -webkit-text-fill-color:#111827;
   opacity:1;
   background:#ffffff;
+}
+
+@media (max-width: 1100px){
+  #view-data .info-grid--4{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px){
+  #view-data .info-section-head{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  #view-data .info-subsection{
+    grid-template-columns:1fr;
+  }
+
+  #view-data .info-grid--4,
+  #view-data .info-grid--3,
+  #view-data .info-grid--2,
+  #view-data .sd-sirh-grid{
+    grid-template-columns:1fr;
+  }
+
+  #view-data .info-field[style*="grid-column"],
+  #view-data .info-actions-row{
+    grid-column:auto !important;
+  }
 }
 
 .org-card-head{
