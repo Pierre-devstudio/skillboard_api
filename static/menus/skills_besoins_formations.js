@@ -750,17 +750,11 @@
   function setDemandDecision(value) {
     const decision = value === "reportee" ? "reportee" : "validee";
     const toggle = byId("bfDemandDecisionToggle");
-    const hint = byId("bfDemandDecisionHint");
     if (!toggle) return;
     toggle.classList.toggle("is-report", decision === "reportee");
     toggle.querySelectorAll("[data-bf-decision]").forEach(btn => {
       btn.classList.toggle("is-active", btn.getAttribute("data-bf-decision") === decision);
     });
-    if (hint) {
-      hint.textContent = decision === "reportee"
-        ? "La demande sera conservée dans les reportées, sans transmission immédiate."
-        : "La demande sera prête à transmettre au Studio.";
-    }
   }
 
   function openDemandModal(item, mode) {

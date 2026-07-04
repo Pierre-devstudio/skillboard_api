@@ -216,19 +216,17 @@
             <textarea id="bfDemandCommentaire" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Attente terrain, contrainte planning, niveau d’urgence réel, éléments à transmettre au Studio…"></textarea>
           </div>
 
-          <div class="bf-modal-card bf-modal-card--wide bf-decision-card" id="bfDemandDecisionCard" hidden>
-            <div class="bf-modal-card__title">Décision manager</div>
-            <div class="bf-decision-toggle" id="bfDemandDecisionToggle" role="group" aria-label="Décision manager">
-              <span class="bf-decision-thumb" aria-hidden="true"></span>
-              <button type="button" class="is-active" data-bf-decision="validee">Valider la demande</button>
-              <button type="button" data-bf-decision="reportee">Reporter</button>
-            </div>
-            <div class="bf-decision-hint" id="bfDemandDecisionHint">La demande sera prête à transmettre au Studio.</div>
-          </div>
         </div>
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer bf-demand-footer">
+        <div class="bf-footer-decision" id="bfDemandDecisionCard" hidden>
+          <div class="bf-decision-toggle" id="bfDemandDecisionToggle" role="group" aria-label="Décision manager">
+            <span class="bf-decision-thumb" aria-hidden="true"></span>
+            <button type="button" class="is-active" data-bf-decision="validee">Valider</button>
+            <button type="button" data-bf-decision="reportee">Reporter</button>
+          </div>
+        </div>
         <span id="bfDemandModalMsg" class="sb-inline-msg" aria-live="polite"></span>
         <button type="button" class="sb-btn sb-btn--soft" data-bf-demand-close>Annuler</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnBfSaveDemand">
