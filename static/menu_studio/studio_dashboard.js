@@ -6,37 +6,25 @@
   let _contextLoaded = false;
 
   const HELP = {
-    health: {
-      title: "Santé de la structure",
-      body: "Synthèse globale du périmètre affiché : fragilité des postes, criticité, couverture des compétences et capacité de transmission. La jauge reprend la lecture Insights : rouge, orange, vert."
-    },
     demandes: {
-      title: "Demandes terrain",
-      body: "Demandes remontées depuis le terrain : ouvertes, urgentes ou déjà prises en charge."
+      title: "Demandes RH par statut",
+      body: "Lecture consolidée des demandes remontées au Studio. Les volumes affichés viennent des données Studio / Insights, sans recalcul local des risques."
     },
-    entretiens: {
-      title: "Entretiens à relancer",
-      body: "Entretiens à réaliser, en cours ou en attente de signature."
+    alertes: {
+      title: "Alertes principales",
+      body: "Points d’attention à traiter côté RH : postes critiques, compétences à sécuriser, demandes à arbitrer ou données incomplètes."
     },
-    referentiel: {
-      title: "Qualité des référentiels",
-      body: "Contrôle les éléments qui fragilisent l’analyse : postes sans compétence, compétences sans domaine et collaborateurs sans poste."
+    consoles: {
+      title: "État des consoles",
+      body: "Vue de supervision des consoles Novoskill. Cette carte indique l’état opérationnel visible depuis les données disponibles dans Studio."
     },
-    transmission: {
-      title: "Capacité de transmission",
-      body: "Mesure la capacité de la structure à transmettre les savoir-faire critiques grâce aux relais disponibles et aux niveaux de maîtrise observés."
+    activite: {
+      title: "Activité récente",
+      body: "Synthèse courte des dernières priorités et demandes détectées sur le périmètre courant."
     },
-    fiabilite: {
-      title: "Fiabilité des données",
-      body: "Score de confiance des données utilisées par le dashboard. Plus le score est bas, plus les indicateurs doivent être lus avec prudence."
-    },
-    fragilite: {
-      title: "Indice de fragilité des services/postes",
-      body: "Classement du plus fragile au moins fragile. La hauteur donne l’indice, l’intensité de la couleur augmente avec le niveau de fragilité."
-    },
-    linked: {
-      title: "Sites / clients à surveiller",
-      body: "Sur les comptes multisites ou multiclients, cette carte isole les structures liées qui demandent une attention particulière."
+    raccourcis: {
+      title: "Accès rapides",
+      body: "Raccourcis vers les espaces de pilotage et d’action. Les pages non encore finalisées restent branchées sur l’espace en construction."
     }
   };
 
@@ -44,97 +32,12 @@
   function esc(v){ return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;"); }
   function n(v){ const x = Number(v || 0); return Number.isFinite(x) ? x : 0; }
   function clamp(v, min, max){ const x = Number(v); return Number.isFinite(x) ? Math.max(min, Math.min(max, x)) : min; }
-  function pct(v){ return `${Math.round(clamp(v, 0, 100))}%`; }
   function setText(id, value){ const el = byId(id); if (el) el.textContent = value == null || value === "" ? "—" : String(value); }
-
-  function riskColor(score, inverse){
-    const s = clamp(score, 0, 100) / 100;
-    const x = inverse ? (1 - s) : s;
-    const hue = Math.round(120 * (1 - x));
-    return `hsl(${hue} 70% 44%)`;
-  }
-
-
-  function dashboardLevelClass(value){
-    const v = clamp(value, 0, 100);
-    if (v <= 33) return "is-danger";
-    if (v <= 66) return "is-watch";
-    return "is-stable";
-  }
-
-  function dashboardLevelColor(value){
-    const cls = dashboardLevelClass(value);
-    if (cls === "is-danger") return "var(--studio-risk-danger)";
-    if (cls === "is-watch") return "var(--studio-risk-watch)";
-    return "var(--studio-risk-stable)";
-  }
-
-  function healthStatus(value){
-    const p = clamp(value, 0, 100);
-    if (p >= 92) return { label:"Robuste", cls:"sb-health-status--robust" };
-    if (p >= 80) return { label:"Solide", cls:"sb-health-status--solid" };
-    if (p >= 65) return { label:"Correct", cls:"sb-health-status--ok" };
-    if (p >= 50) return { label:"Sous vigilance", cls:"sb-health-status--watch" };
-    return { label:"Fragile", cls:"sb-health-status--danger" };
-  }
-
-  function polarToCartesian(cx, cy, r, angleDeg){
-    const a = (angleDeg - 90) * Math.PI / 180;
-    return { x: cx + (r * Math.cos(a)), y: cy + (r * Math.sin(a)) };
-  }
-
-  function describeArc(cx, cy, r, startAngle, endAngle){
-    const start = polarToCartesian(cx, cy, r, endAngle);
-    const end = polarToCartesian(cx, cy, r, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-    return ["M", start.x, start.y, "A", r, r, 0, largeArcFlag, 0, end.x, end.y].join(" ");
-  }
-
-  function renderHealthGauge(value){
-    const svg = byId("studioDashHealthGauge");
-    const pctEl = byId("studioDashHealthPct");
-    const statusEl = byId("studioDashHealthLabel");
-    if (!svg) return;
-
-    const p = clamp(value, 0, 100);
-    const color = riskColor(p, true);
-    const angle = -90 + (180 * p / 100);
-    const needle = polarToCartesian(130, 130, 82, angle);
-
-    svg.innerHTML = `
-      <path d="${describeArc(130, 130, 92, -90, -30)}" class="sb-health-arc sb-health-arc--bad"></path>
-      <path d="${describeArc(130, 130, 92, -30, 35)}" class="sb-health-arc sb-health-arc--mid"></path>
-      <path d="${describeArc(130, 130, 92, 35, 90)}" class="sb-health-arc sb-health-arc--good"></path>
-      <line x1="130" y1="130" x2="${needle.x.toFixed(1)}" y2="${needle.y.toFixed(1)}" class="sb-health-needle" style="stroke:${color}"></line>
-      <circle cx="130" cy="130" r="8" class="sb-health-dot"></circle>
-    `;
-
-    if (pctEl) pctEl.textContent = pct(p);
-    if (statusEl) {
-      const st = healthStatus(p);
-      statusEl.className = `sb-health-status ${st.cls}`;
-      statusEl.textContent = st.label;
-    }
-  }
-
-  function getOwnerId(){
-    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
-    if (pid) return pid;
-    return (new URL(window.location.href).searchParams.get("id") || "").trim();
-  }
+  function getOwnerId(){ return new URL(window.location.href).searchParams.get("id") || window.portal?.contactId || ""; }
 
   async function getToken(){
-    await (window.__studioAuthReady || Promise.resolve(null));
-    const session = await (window.PortalAuthCommon?.getSession?.() || Promise.resolve(null)).catch(() => null);
+    const session = await window.PortalAuthCommon?.getSession?.();
     return session?.access_token || "";
-  }
-
-  function getFilters(){
-    const criticite = Math.max(0, Math.min(100, Math.round(n(byId("studioDashCriticite")?.value || DEFAULT_CRITICITE))));
-    return {
-      id_service: (byId("studioDashService")?.value || "").toString().trim(),
-      criticite_min: criticite,
-    };
   }
 
   function setStatus(message, isError){
@@ -145,41 +48,16 @@
     el.style.display = message ? "block" : "none";
   }
 
-  function openClientSpace(idEnt){
-    const ownerId = getOwnerId();
-    if (!ownerId || !idEnt) return;
-    window.open(`/studio_client_space.html?id=${encodeURIComponent(ownerId)}&client=${encodeURIComponent(idEnt)}`, "_blank", "noopener");
-  }
-
-  function setServiceFilter(idService){
-    const select = byId("studioDashService");
-    if (!select) return;
-    select.value = idService || "";
-    load().catch(e => setStatus(e.message || String(e), true));
-  }
-
-  function setRing(id, value){
-    const el = byId(id);
-    if (!el) return;
-    const v = clamp(n(value), 0, 100);
-    const cls = dashboardLevelClass(v);
-    const deg = v <= 0 ? 360 : Math.max(4, Math.round(v * 3.6));
-    el.classList.remove("is-danger", "is-watch", "is-stable");
-    el.classList.add(cls);
-    el.style.setProperty("--studio-ring", `${deg}deg`);
-    el.style.setProperty("--studio-ring-color", dashboardLevelColor(v));
-  }
-
-  function badgeClass(priority){
-    const p = (priority || "").toString().toLowerCase();
-    if (p === "danger") return "studio-dash-badge--danger";
-    if (p === "surveillance") return "studio-dash-badge--watch";
-    if (p === "stable") return "studio-dash-badge--stable";
-    return "";
+  function getFilters(){
+    const criticite = clamp(byId("studioDashCriticite")?.value || DEFAULT_CRITICITE, 0, 100);
+    return {
+      id_service: (byId("studioDashService")?.value || "").trim(),
+      criticite_min: criticite
+    };
   }
 
   async function loadContext(ownerId, token){
-    if (_contextLoaded || !ownerId || !token) return;
+    if (_contextLoaded) return;
     _contextLoaded = true;
     try{
       const r = await fetch(`${API_BASE}/studio/context/${encodeURIComponent(ownerId)}`, {
@@ -187,8 +65,7 @@
         credentials: "same-origin"
       });
       const ctx = await r.json().catch(() => null);
-      if (!r.ok || !ctx) return;
-      const prenom = (ctx.prenom || "").toString().trim();
+      const prenom = (ctx?.prenom || "").toString().trim();
       setText("studioDashWelcome", prenom ? `Bienvenue ${prenom}` : "Bienvenue");
     }catch(_){
       setText("studioDashWelcome", "Bienvenue");
@@ -212,78 +89,172 @@
     select.value = valid ? current : "";
   }
 
-  function renderRiskBars(items){
-    const headerRight = document.querySelector("#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right");
-    if (headerRight){
-      headerRight.innerHTML = `<button type="button" class="studio-dash-help sb-dash-round-btn" data-help="fragilite" aria-label="Explication indice de fragilité">?</button>`;
-    }
-
-    const el = byId("studioDashRiskBars");
+  function renderSpark(id, tone){
+    const el = byId(id);
     if (!el) return;
+    el.className = `studio-dash-spark studio-dash-spark--${tone || "neutral"}`;
+    el.innerHTML = `<svg viewBox="0 0 110 42" aria-hidden="true"><path d="M4 30 L16 24 L27 28 L38 16 L50 22 L61 12 L72 21 L84 17 L96 24 L106 14"/></svg>`;
+  }
 
-    const riskValue = (row) => {
-      const candidates = [
-        row?.risk_pct,
-        row?.indice_fragilite,
-        row?.score_fragilite,
-        row?.fragilite_pct,
-        row?.fragilite,
-        row?.pct,
-        row?.valeur
-      ];
-      for (const raw of candidates){
-        if (raw === null || raw === undefined || raw === "") continue;
-        const parsed = Number(String(raw).replace("%", "").replace(",", ".").trim());
-        if (Number.isFinite(parsed)) return clamp(parsed, 0, 100);
-      }
-      return 0;
-    };
-
-    const riskLabel = (row) => (
-      row?.label ||
-      row?.nom_service ||
-      row?.service ||
-      row?.nom_poste ||
-      row?.intitule_poste ||
-      row?.poste ||
-      row?.nom ||
-      row?.libelle ||
-      "Élément"
-    );
-
-    const rows = Array.isArray(items)
-      ? items
-          .map((row, index) => ({ row, index, value: riskValue(row), label: riskLabel(row) }))
-          .sort((a, b) => (b.value - a.value) || String(a.label).localeCompare(String(b.label), "fr", { sensitivity: "base" }) || (a.index - b.index))
-          .slice(0, 120)
-      : [];
-
-    if (!rows.length){
-      el.innerHTML = `<div class="studio-dash-empty">Aucun indice de fragilité.</div>`;
+  function renderDonut(rows){
+    const donut = byId("studioDashDemandesDonut");
+    const total = rows.reduce((s, r) => s + n(r.value), 0);
+    if (!donut) return;
+    if (!total){
+      donut.style.background = "conic-gradient(#e5e7eb 0deg 360deg)";
+      donut.innerHTML = `<span>0</span><small>total</small>`;
       return;
     }
+    let start = 0;
+    const segments = rows.filter(r => n(r.value) > 0).map(r => {
+      const deg = n(r.value) / total * 360;
+      const part = `${r.color} ${start.toFixed(1)}deg ${(start + deg).toFixed(1)}deg`;
+      start += deg;
+      return part;
+    });
+    donut.style.background = `conic-gradient(${segments.join(", ")})`;
+    donut.innerHTML = `<span>${total}</span><small>total</small>`;
+  }
 
-    el.innerHTML = rows.map(({ row, value, label }) => {
-      const val = clamp(value, 0, 100);
-      const cleanLabel = esc(label);
-      const idService = row?.id_service ? esc(row.id_service) : "";
-      const attrs = idService ? `data-service="${idService}"` : "";
-      const alpha = (val / 100).toFixed(2);
-      const shadowAlpha = Math.min(0.22, Math.max(0, val / 100 * 0.22)).toFixed(2);
-      const height = val <= 0 ? 0 : Math.max(3, Math.round(val));
-      const rounded = Math.round(val);
-      const title = `${cleanLabel} : ${rounded}%`;
+  function renderDemandes(demandes){
+    const ouvertes = n(demandes?.ouvertes);
+    const aInstruire = n(demandes?.a_instruire);
+    const prises = n(demandes?.prises_en_charge);
+    const autres = Math.max(0, ouvertes - aInstruire - prises);
+    const urgentes = n(demandes?.urgentes);
+    const rows = [
+      { label:"Nouvelles", value:aInstruire, color:"#e6e421" },
+      { label:"En cours", value:prises, color:"#f59e0b" },
+      { label:"Autres ouvertes", value:autres, color:"#3b82f6" },
+      { label:"Signalées urgentes", value:urgentes, color:"#ef4444", note:"peut recouper les autres statuts" }
+    ];
+    const list = byId("studioDashDemandesStatusList");
+    if (list){
+      const totalBase = Math.max(ouvertes, 1);
+      list.innerHTML = rows.map(r => {
+        const percent = r.label === "Signalées urgentes" ? Math.round(n(r.value) / totalBase * 100) : (ouvertes ? Math.round(n(r.value) / ouvertes * 100) : 0);
+        return `<div class="studio-dash-status-row" title="${esc(r.note || "")}">
+          <span class="studio-dash-dot" style="background:${esc(r.color)}"></span>
+          <span>${esc(r.label)}</span>
+          <strong>${n(r.value)}</strong>
+          <em>${percent}%</em>
+        </div>`;
+      }).join("");
+    }
+    renderDonut(rows.slice(0, 3));
+  }
 
-      return `<button type="button" class="studio-dash-risk-bar" ${attrs} title="${title}" style="--studio-fragility-alpha:${alpha};--studio-fragility-height:${height}%;--studio-fragility-shadow:${shadowAlpha}">
-        <span class="studio-dash-risk-bar-value">${rounded}%</span>
-        <span class="studio-dash-risk-bar-track">
-          <span class="studio-dash-risk-bar-fill" style="height:var(--studio-fragility-height);background:rgba(209,51,188,${alpha}) !important;box-shadow:0 7px 16px rgba(209,51,188,${shadowAlpha}) !important;opacity:1 !important"></span>
-        </span>
-        <span class="studio-dash-risk-bar-label">${cleanLabel}</span>
-      </button>`;
-    }).join("");
+  function alertIcon(type){
+    if (type === "danger") return "!";
+    if (type === "watch") return "△";
+    if (type === "time") return "◷";
+    return "i";
+  }
 
-    el.querySelectorAll("[data-service]").forEach(btn => btn.addEventListener("click", () => setServiceFilter(btn.dataset.service || "")));
+  function renderAlerts(main){
+    const p = main?.portfolio || {};
+    const ref = main?.referentiel || {};
+    const demandes = main?.demandes_formation || {};
+    const tr = main?.transmission || {};
+    const alerts = [];
+
+    if (n(p.postes_critiques_danger) > 0) {
+      alerts.push({ type:"danger", title:`${n(p.postes_critiques_danger)} poste(s) critique(s) en danger`, sub:"Analyse issue du moteur Insights" });
+    }
+    if (n(tr.competences_risque) > 0) {
+      alerts.push({ type:"watch", title:`${n(tr.competences_risque)} compétence(s) à sécuriser`, sub:"Capacité de transmission insuffisante" });
+    }
+    if (n(demandes.a_instruire) > 0) {
+      alerts.push({ type:"time", title:`${n(demandes.a_instruire)} demande(s) RH en attente d’arbitrage`, sub:"À qualifier côté Studio" });
+    }
+    if (n(ref.collaborateurs_sans_poste) > 0) {
+      alerts.push({ type:"info", title:`${n(ref.collaborateurs_sans_poste)} collaborateur(s) sans poste`, sub:"Donnée structurante à compléter" });
+    }
+    const refIssues = n(ref.postes_sans_competence) + n(ref.competences_sans_domaine);
+    if (refIssues > 0) {
+      alerts.push({ type:"info", title:"Mise à jour des référentiels recommandée", sub:`${refIssues} élément(s) à compléter` });
+    }
+    if (!alerts.length) {
+      alerts.push({ type:"ok", title:"Aucune alerte majeure détectée", sub:"Le socle disponible est exploitable sur ce périmètre" });
+    }
+
+    const el = byId("studioDashAlertList");
+    if (!el) return;
+    el.innerHTML = alerts.slice(0, 4).map(a => `<button type="button" class="studio-dash-alert-row studio-dash-alert-row--${esc(a.type)}" data-dash-view="analyse_rh">
+      <span class="studio-dash-alert-icon" aria-hidden="true">${esc(alertIcon(a.type))}</span>
+      <span><strong>${esc(a.title)}</strong><small>${esc(a.sub)}</small></span>
+      <em aria-hidden="true">›</em>
+    </button>`).join("");
+  }
+
+  function consoleState(label, state, tone){
+    return `<div class="studio-dash-console-row">
+      <span class="studio-dash-console-icon" aria-hidden="true"></span>
+      <span>${esc(label)}</span>
+      <strong class="studio-dash-console-state studio-dash-console-state--${esc(tone || "muted")}">${esc(state)}</strong>
+    </div>`;
+  }
+
+  function renderConsoles(main){
+    const p = main?.portfolio || {};
+    const ref = main?.referentiel || {};
+    const demandes = main?.demandes_formation || {};
+    const insightsOk = n(p.postes_total) > 0 || n(p.health_pct) > 0;
+    const peopleOk = n(ref.collaborateurs_sans_poste) === 0;
+    const learnHasFlow = n(demandes.ouvertes) > 0;
+    const el = byId("studioDashConsoleList");
+    if (!el) return;
+    el.innerHTML = [
+      consoleState("Insights", insightsOk ? "Actif" : "À compléter", insightsOk ? "ok" : "watch"),
+      consoleState("People", peopleOk ? "Actif" : "À compléter", peopleOk ? "ok" : "watch"),
+      consoleState("Learn", learnHasFlow ? "Flux ouvert" : "Disponible", learnHasFlow ? "watch" : "ok"),
+      consoleState("Partner", "Non activé", "muted")
+    ].join("");
+  }
+
+  function whenLabel(value){
+    const raw = value ? new Date(value) : null;
+    if (!raw || Number.isNaN(raw.getTime())) return "";
+    const diff = Math.max(0, Date.now() - raw.getTime());
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "À l’instant";
+    if (minutes < 60) return `Il y a ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Il y a ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return `Il y a ${days} j`;
+  }
+
+  function renderActivity(main){
+    const actions = Array.isArray(main?.actions_prioritaires) ? main.actions_prioritaires : [];
+    const demandes = Array.isArray(main?.demandes_formation?.items) ? main.demandes_formation.items : [];
+    const items = [];
+
+    demandes.slice(0, 2).forEach(d => {
+      const comp = d.intitule_competence || d.intitule_poste || "demande RH";
+      items.push({ icon:"doc", title:"Nouvelle demande RH créée", sub:comp, when:whenLabel(d.created_at) });
+    });
+    actions.slice(0, 4).forEach(a => {
+      items.push({ icon:a.type_action || "act", title:a.title || "Action RH", sub:a.subtitle || "Priorité Studio", when:"" });
+    });
+    if (!items.length) {
+      items.push({ icon:"ok", title:"Aucune activité prioritaire", sub:"Le dashboard est à jour sur ce périmètre", when:"" });
+    }
+
+    const el = byId("studioDashActivityList");
+    if (!el) return;
+    el.innerHTML = items.slice(0, 4).map(it => `<div class="studio-dash-activity-row">
+      <span class="studio-dash-activity-icon studio-dash-activity-icon--${esc(it.icon)}" aria-hidden="true"></span>
+      <span><strong>${esc(it.title)}</strong><small>${esc(it.sub)}</small></span>
+      ${it.when ? `<em>${esc(it.when)}</em>` : ""}
+    </div>`).join("");
+  }
+
+  function badgeClass(priority){
+    const p = String(priority || "").toLowerCase();
+    if (p === "danger") return "studio-dash-badge--danger";
+    if (p === "surveillance") return "studio-dash-badge--watch";
+    return "studio-dash-badge--stable";
   }
 
   function renderLinkedStructures(items){
@@ -299,18 +270,9 @@
       const sub = `${Math.round(n(r.risk_pct))}% risque · ${n(r.postes_danger)} poste(s) en danger`;
       return `<div class="studio-dash-mini-row studio-dash-mini-row--click" data-client="${esc(r.id_ent)}"><div><strong>${label}</strong><span>${esc(sub)}</span></div><span class="studio-dash-badge ${badgeClass(r.priority)}">${esc(r.priority_label || "")}</span></div>`;
     }).join("");
-    el.querySelectorAll("[data-client]").forEach(row => row.addEventListener("click", () => openClientSpace(row.dataset.client)));
-  }
-
-  function renderSignal(value){
-    const el = byId("studioDashReliabilitySignal");
-    if (!el) return;
-    const v = clamp(n(value), 0, 100);
-    const active = v >= 100 ? 5 : Math.max(0, Math.floor(v / 20));
-    const cls = dashboardLevelClass(v);
-    el.classList.remove("is-danger", "is-watch", "is-stable");
-    el.classList.add(cls);
-    el.innerHTML = [1,2,3,4,5].map(i => `<span class="${i <= active ? "is-active" : ""}" style="height:${16 + i * 7}px"></span>`).join("");
+    el.querySelectorAll("[data-client]").forEach(row => row.addEventListener("click", () => {
+      if (window.portal?.switchView) window.portal.switchView("clients");
+    }));
   }
 
   function render(data){
@@ -319,36 +281,30 @@
     const main = data.main || {};
     const p = main.portfolio || {};
     const demandes = main.demandes_formation || {};
-    const entretiens = main.entretiens || {};
-    const ref = main.referentiel || {};
     const tr = main.transmission || {};
-    const reliability = main.reliability || {};
+    const health = p.health_pct || 0;
+    const healthObj = main.health || {};
+    const actions = Array.isArray(main.actions_prioritaires) ? main.actions_prioritaires : [];
     const linked = data.linked || {};
     const filters = getFilters();
 
     setStatus("");
-    renderHealthGauge(p.health_pct);
+    setText("studioDashPostesWatch", n(p.postes_danger) + n(p.postes_surveillance));
+    const compRisk = n(tr.competences_risque);
+    setText("studioDashCompetencesRisk", compRisk || n(healthObj.competences_fragilite_moyenne) || 0);
+    setText("studioDashDemandesPending", n(demandes.a_instruire));
+    setText("studioDashActionsCount", actions.length);
+    setText("studioDashCriticiteLabel", `≥ ${filters.criticite_min}`);
 
-    setText("studioDashDemandesOpen", n(demandes.ouvertes));
-    setText("studioDashDemandesUrgentes", n(demandes.urgentes));
-    setText("studioDashDemandesInProgress", n(demandes.prises_en_charge));
+    renderSpark("studioDashPostesSpark", "postes");
+    renderSpark("studioDashSkillsSpark", "skills");
+    renderSpark("studioDashDemandesSpark", "demandes");
+    renderSpark("studioDashActionsSpark", "actions");
 
-    setText("studioDashEntretiensTodo", n(entretiens.a_realiser));
-    setText("studioDashEntretiensProgress", n(entretiens.en_cours));
-    setText("studioDashEntretiensSign", n(entretiens.a_signer));
-
-    setText("studioDashPostesSansComp", n(ref.postes_sans_competence));
-    setText("studioDashCompSansDomaine", n(ref.competences_sans_domaine));
-    setText("studioDashCollabSansPoste", n(ref.collaborateurs_sans_poste));
-
-    setText("studioDashTransmissionPct", pct(tr.pct));
-    setRing("studioDashTransmissionRing", tr.pct);
-
-    setText("studioDashReliabilityPct", pct(reliability.pct));
-    renderSignal(reliability.pct);
-
-    setText("studioDashRiskTitle", filters.id_service ? "Indice de fragilité des postes" : "Indice de fragilité des services");
-    renderRiskBars(main.risk_items || []);
+    renderDemandes(demandes);
+    renderAlerts(main);
+    renderConsoles(main);
+    renderActivity(main);
 
     const linkedSection = byId("studioDashLinkedSection");
     const showLinked = !!linked.visible;
@@ -409,10 +365,16 @@
     byId("studioDashCriticite")?.addEventListener("input", () => setText("studioDashCriticiteLabel", `≥ ${getFilters().criticite_min}`));
     byId("studioDashCriticite")?.addEventListener("change", () => load().catch(e => setStatus(e.message || String(e), true)));
     byId("studioDashRefresh")?.addEventListener("click", () => load().catch(e => setStatus(e.message || String(e), true)));
-    document.addEventListener("click", (ev) => {
+    document.addEventListener("click", async (ev) => {
       const helpBtn = ev.target.closest?.(".studio-dash-help[data-help]");
       if (helpBtn){
         openHelp(helpBtn.dataset.help || "");
+        return;
+      }
+      const viewBtn = ev.target.closest?.("[data-dash-view]");
+      if (viewBtn){
+        const view = viewBtn.dataset.dashView || "";
+        if (view && window.portal?.switchView) await window.portal.switchView(view);
         return;
       }
       if (ev.target === byId("studioDashHelpModal")) closeHelp();

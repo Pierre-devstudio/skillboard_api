@@ -21,95 +21,140 @@
         <input id="studioDashCriticite" class="sb-dashboard-crit-range studio-dash-crit-range" type="range" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
       </div>
 
-      <button type="button" class="sb-btn sb-btn--init studio-dash-refresh" id="studioDashRefresh">Actualiser</button>
+      <button type="button" class="sb-btn sb-btn--init studio-dash-refresh" id="studioDashRefresh">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </span>
+        <span>Actualiser</span>
+      </button>
     </div>
   </div>
 
   <div id="studioDashStatus" class="studio-dash-status">Chargement…</div>
 
-  <div class="studio-dash-grid studio-dash-grid--row3">
-    <article class="card studio-dash-card studio-dash-card--health">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
-        <h2>Santé de la structure</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="health" aria-label="Explication santé de la structure">?</button>
+  <div class="studio-dash-kpi-grid">
+    <article class="card studio-dash-kpi-card studio-dash-kpi-card--postes">
+      <div class="studio-dash-kpi-icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.35-4.35"/></svg>
       </div>
-      <div class="sb-health-gauge-wrap studio-health-gauge-wrap">
-        <svg id="studioDashHealthGauge" class="sb-health-gauge" viewBox="0 0 260 170" aria-label="Jauge santé de la structure"></svg>
-        <div class="sb-health-pct" id="studioDashHealthPct">—%</div>
+      <div class="studio-dash-kpi-main">
+        <h2>Postes à surveiller</h2>
+        <div class="studio-dash-kpi-value" id="studioDashPostesWatch">—</div>
+        <div class="studio-dash-kpi-sub">issus du moteur Insights</div>
       </div>
-      <div class="sb-health-status" id="studioDashHealthLabel">—</div>
+      <div class="studio-dash-spark" id="studioDashPostesSpark" aria-hidden="true"></div>
     </article>
 
-    <article class="card studio-dash-card">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
-        <h2>Demandes terrain</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="demandes" aria-label="Explication demandes terrain">?</button>
+    <article class="card studio-dash-kpi-card studio-dash-kpi-card--skills">
+      <div class="studio-dash-kpi-icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2 7.5 14 3 9.6l6.2-.9z"/></svg>
       </div>
-      <div class="studio-dash-kpi-line"><span>Ouvertes</span><strong id="studioDashDemandesOpen">0</strong></div>
-      <div class="studio-dash-kpi-line"><span>Urgentes</span><strong id="studioDashDemandesUrgentes">0</strong></div>
-      <div class="studio-dash-kpi-line"><span>Prises en charge</span><strong id="studioDashDemandesInProgress">0</strong></div>
+      <div class="studio-dash-kpi-main">
+        <h2>Compétences sensibles</h2>
+        <div class="studio-dash-kpi-value" id="studioDashCompetencesRisk">—</div>
+        <div class="studio-dash-kpi-sub">à sécuriser / transmettre</div>
+      </div>
+      <div class="studio-dash-spark" id="studioDashSkillsSpark" aria-hidden="true"></div>
     </article>
 
-    <article class="card studio-dash-card">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
-        <h2>Entretiens à relancer</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="entretiens" aria-label="Explication entretiens à relancer">?</button>
+    <article class="card studio-dash-kpi-card studio-dash-kpi-card--demandes">
+      <div class="studio-dash-kpi-icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
       </div>
-      <div class="studio-dash-kpi-line"><span>À réaliser</span><strong id="studioDashEntretiensTodo">0</strong></div>
-      <div class="studio-dash-kpi-line"><span>En cours</span><strong id="studioDashEntretiensProgress">0</strong></div>
-      <div class="studio-dash-kpi-line"><span>À signer</span><strong id="studioDashEntretiensSign">0</strong></div>
-    </article>
-  </div>
-
-  <div class="studio-dash-grid studio-dash-grid--row3">
-    <article class="card studio-dash-card">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
-        <h2>Qualité des référentiels</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="referentiel" aria-label="Explication qualité des référentiels">?</button>
+      <div class="studio-dash-kpi-main">
+        <h2>Demandes RH en attente</h2>
+        <div class="studio-dash-kpi-value" id="studioDashDemandesPending">—</div>
+        <div class="studio-dash-kpi-sub">à arbitrer côté RH</div>
       </div>
-      <div class="studio-dash-kpi-line"><span>Postes sans compétence</span><strong id="studioDashPostesSansComp">0</strong></div>
-      <div class="studio-dash-kpi-line"><span>Compétences sans domaine</span><strong id="studioDashCompSansDomaine">0</strong></div>
-      <div class="studio-dash-kpi-line"><span>Collaborateurs sans poste</span><strong id="studioDashCollabSansPoste">0</strong></div>
+      <div class="studio-dash-spark" id="studioDashDemandesSpark" aria-hidden="true"></div>
     </article>
 
-    <article class="card studio-dash-card">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
-        <h2>Capacité de transmission</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="transmission" aria-label="Explication capacité de transmission">?</button>
+    <article class="card studio-dash-kpi-card studio-dash-kpi-card--actions">
+      <div class="studio-dash-kpi-icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
       </div>
-      <div class="studio-dash-ring" id="studioDashTransmissionRing"><span id="studioDashTransmissionPct">—</span></div>
-    </article>
-
-    <article class="card studio-dash-card">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
-        <h2>Fiabilité des données</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="fiabilite" aria-label="Explication fiabilité des données">?</button>
+      <div class="studio-dash-kpi-main">
+        <h2>Actions en cours</h2>
+        <div class="studio-dash-kpi-value" id="studioDashActionsCount">—</div>
+        <div class="studio-dash-kpi-sub">priorités à suivre</div>
       </div>
-      <div class="studio-dash-signal" id="studioDashReliabilitySignal"></div>
-      <div class="studio-dash-big-number studio-dash-big-number--sm" id="studioDashReliabilityPct">—</div>
+      <div class="studio-dash-spark" id="studioDashActionsSpark" aria-hidden="true"></div>
     </article>
   </div>
 
-  <div class="studio-dash-grid studio-dash-grid--full">
-    <article class="card studio-dash-card studio-dash-card--large">
-      <div class="studio-dash-card-head studio-dash-card-head--inline studio-dash-card-head--risk">
-        <h2 id="studioDashRiskTitle">Indice de fragilité des services</h2>
-        <div class="studio-dash-head-right">
-          <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="fragilite" aria-label="Explication indice de fragilité">?</button>
-        </div>
+  <div class="studio-dash-main-grid">
+    <article class="card studio-dash-panel studio-dash-panel--demandes">
+      <div class="studio-dash-panel-head">
+        <h2>Demandes RH par statut</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="demandes" aria-label="Explication demandes RH">?</button>
       </div>
-      <div class="studio-dash-risk-bars" id="studioDashRiskBars"></div>
+      <div class="studio-dash-demandes-layout">
+        <div class="studio-dash-donut" id="studioDashDemandesDonut"><span>—</span><small>total</small></div>
+        <div class="studio-dash-status-list" id="studioDashDemandesStatusList"></div>
+      </div>
+      <button type="button" class="studio-dash-link" data-dash-view="demandes_rh">Voir toutes les demandes <span aria-hidden="true">›</span></button>
+    </article>
+
+    <article class="card studio-dash-panel studio-dash-panel--alerts">
+      <div class="studio-dash-panel-head">
+        <h2>Alertes principales</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="alertes" aria-label="Explication alertes principales">?</button>
+      </div>
+      <div class="studio-dash-alert-list" id="studioDashAlertList"></div>
+      <button type="button" class="studio-dash-link" data-dash-view="analyse_rh">Voir toutes les alertes <span aria-hidden="true">›</span></button>
+    </article>
+  </div>
+
+  <div class="studio-dash-bottom-grid">
+    <article class="card studio-dash-panel studio-dash-panel--console">
+      <div class="studio-dash-panel-head">
+        <h2>État des consoles</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="consoles" aria-label="Explication état des consoles">?</button>
+      </div>
+      <div class="studio-dash-console-list" id="studioDashConsoleList"></div>
+      <button type="button" class="studio-dash-link" data-dash-view="console_status">Voir le détail des consoles <span aria-hidden="true">›</span></button>
+    </article>
+
+    <article class="card studio-dash-panel studio-dash-panel--activity">
+      <div class="studio-dash-panel-head">
+        <h2>Activité récente</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="activite" aria-label="Explication activité récente">?</button>
+      </div>
+      <div class="studio-dash-activity-list" id="studioDashActivityList"></div>
+      <button type="button" class="studio-dash-link" data-dash-view="arbitrages_rh">Voir toute l’activité <span aria-hidden="true">›</span></button>
+    </article>
+
+    <article class="card studio-dash-panel studio-dash-panel--quick">
+      <div class="studio-dash-panel-head">
+        <h2>Accès rapides</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="raccourcis" aria-label="Explication accès rapides">?</button>
+      </div>
+      <div class="studio-dash-quick-grid">
+        <button type="button" class="studio-dash-quick" data-dash-view="demandes_rh">
+          <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+          Créer une demande RH
+        </button>
+        <button type="button" class="studio-dash-quick" data-dash-view="analyse_rh">
+          <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M21 21H3"/><path d="M7 17V9"/><path d="M12 17V5"/><path d="M17 17v-6"/></svg></span>
+          Lancer une analyse RH
+        </button>
+        <button type="button" class="studio-dash-quick" data-dash-view="simulateur_rh">
+          <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 7h4v4H4z"/><path d="M16 13h4v4h-4z"/><path d="M8 9h4a4 4 0 0 1 4 4v2"/></svg></span>
+          Simuler un scénario
+        </button>
+        <button type="button" class="studio-dash-quick" data-dash-view="plan_actions">
+          <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M20 7 9 18l-5-5"/></svg></span>
+          Consulter le plan d’actions
+        </button>
+      </div>
     </article>
   </div>
 
   <div class="studio-dash-linked" id="studioDashLinkedSection" style="display:none;">
-    <article class="card studio-dash-card studio-dash-card--large">
-      <div class="studio-dash-card-head studio-dash-card-head--inline studio-dash-card-head--with-count">
+    <article class="card studio-dash-panel studio-dash-panel--linked">
+      <div class="studio-dash-panel-head">
         <h2>Sites / clients à surveiller</h2>
-        <div class="studio-dash-head-right">
-          <span class="studio-dash-count" id="studioDashLinkedCount">0</span>
-          <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="linked" aria-label="Explication sites et clients à surveiller">?</button>
-        </div>
+        <span class="studio-dash-count" id="studioDashLinkedCount">0</span>
       </div>
       <div class="studio-dash-mini-list" id="studioDashLinkedStructureItems"></div>
     </article>
