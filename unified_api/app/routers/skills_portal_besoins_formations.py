@@ -24,6 +24,7 @@ STATUTS = {STATUT_ENVOYE, STATUT_PRIS_EN_CHARGE, STATUT_TRAITE}
 DEMANDE_STATUT_A_QUALIFIER = "a_qualifier"
 DEMANDE_STATUT_A_VALIDER = "a_valider"
 DEMANDE_STATUT_VALIDEE = "validee"
+DEMANDE_STATUT_REPORTEE = "reportee"
 DEMANDE_STATUT_TRANSMISE = "transmise_studio"
 DEMANDE_STATUT_PRISE_EN_CHARGE = "prise_en_charge"
 DEMANDE_STATUT_ACTION_CREEE = "action_creee"
@@ -33,6 +34,7 @@ DEMANDE_STATUTS = {
     DEMANDE_STATUT_A_QUALIFIER,
     DEMANDE_STATUT_A_VALIDER,
     DEMANDE_STATUT_VALIDEE,
+    DEMANDE_STATUT_REPORTEE,
     DEMANDE_STATUT_TRANSMISE,
     DEMANDE_STATUT_PRISE_EN_CHARGE,
     DEMANDE_STATUT_ACTION_CREEE,
@@ -140,8 +142,9 @@ def _label_demande_statut(statut: str) -> str:
     s = _s(statut)
     return {
         DEMANDE_STATUT_A_QUALIFIER: "À qualifier",
-        DEMANDE_STATUT_A_VALIDER: "À valider",
-        DEMANDE_STATUT_VALIDEE: "Validée",
+        DEMANDE_STATUT_A_VALIDER: "À qualifier",
+        DEMANDE_STATUT_VALIDEE: "Prête à transmettre",
+        DEMANDE_STATUT_REPORTEE: "Reportée",
         DEMANDE_STATUT_TRANSMISE: "Transmise au Studio",
         DEMANDE_STATUT_PRISE_EN_CHARGE: "Prise en charge",
         DEMANDE_STATUT_ACTION_CREEE: "Action créée",
@@ -156,6 +159,8 @@ def _filter_demande_statut(statut: str) -> str:
         return "tous"
     if s == "a_traiter":
         return "a_traiter"
+    if s in ("reportees", "reportées", "reportee", "reportée", "reporter"):
+        return DEMANDE_STATUT_REPORTEE
     if s in ("transmises", "transmise", "envoye_studio"):
         return DEMANDE_STATUT_TRANSMISE
     if s in ("pris_en_charge", "prise_en_charge"):
@@ -825,6 +830,7 @@ def _demande_kpis(rows: List[Dict[str, Any]]) -> Dict[str, int]:
         "a_qualifier": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_A_QUALIFIER),
         "a_valider": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_A_VALIDER),
         "validee": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_VALIDEE),
+        "reportee": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_REPORTEE),
         "transmise_studio": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_TRANSMISE),
         "prise_en_charge": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_PRISE_EN_CHARGE),
         "action_creee": sum(1 for x in rows if x.get("statut") == DEMANDE_STATUT_ACTION_CREEE),
@@ -1091,9 +1097,10 @@ def _insert_demande_rh(cur, id_ent: str, id_contact: str, payload: DemandeRhPayl
     origine = _normalise_demande_origine(payload.origine)
     type_demande = _normalise_demande_type(payload.type_demande)
     priorite = _normalise_demande_priorite(payload.priorite)
-    statut = _filter_demande_statut(payload.statut or DEMANDE_STATUT_A_QUALIFIER)
+    statut_default = DEMANDE_STATUT_VALIDEE if origine == "manager" else DEMANDE_STATUT_A_QUALIFIER
+    statut = _filter_demande_statut(payload.statut or statut_default)
     if statut in ("", "tous", "a_traiter"):
-        statut = DEMANDE_STATUT_A_QUALIFIER
+        statut = statut_default
 
     objet = _s(payload.objet)
     if not objet:
@@ -1378,9 +1385,9 @@ def qualifier_demande_rh(id_contact: str, id_demande: str, payload: DemandeRhPay
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
                 existing = _fetch_demande_by_id(cur, id_ent, id_demande)
                 ref = _lookup_demande_refs(cur, id_ent, payload)
-                statut = _filter_demande_statut(payload.statut or DEMANDE_STATUT_A_VALIDER)
+                statut = _filter_demande_statut(payload.statut or DEMANDE_STATUT_VALIDEE)
                 if statut in ("", "tous", "a_traiter"):
-                    statut = DEMANDE_STATUT_A_VALIDER
+                    statut = DEMANDE_STATUT_VALIDEE
                 modalites_json = json.dumps(_json_list(payload.modalites_souhaitees), ensure_ascii=False)
                 payload_signal = existing.get("payload_signal") or {}
                 if isinstance(payload_signal, str):

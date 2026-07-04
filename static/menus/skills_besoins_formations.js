@@ -194,10 +194,10 @@
 
   function renderKpis(kpis) {
     const values = [
-      ["À qualifier", kpis?.a_qualifier ?? 0, "bf-kpi-icon--red", "?"],
-      ["À valider", kpis?.a_valider ?? 0, "bf-kpi-icon--orange", "✓"],
+      ["À traiter", kpis?.a_traiter ?? 0, "bf-kpi-icon--red", "?"],
+      ["Prêtes à transmettre", kpis?.validee ?? 0, "bf-kpi-icon--green", "✓"],
       ["Transmises au Studio", kpis?.transmise_studio ?? 0, "bf-kpi-icon--violet", "↗"],
-      ["Actions créées", kpis?.action_creee ?? 0, "bf-kpi-icon--green", "✓"],
+      ["Reportées", kpis?.reportee ?? 0, "bf-kpi-icon--orange", "⏸"],
     ];
     const el = byId("bfKpiGrid");
     if (!el) return;
@@ -281,6 +281,7 @@
         transmise_studio: "bf-badge--blue",
         prise_en_charge: "bf-badge--violet",
         action_creee: "bf-badge--green",
+        reportee: "bf-badge--orange",
         refusee: "bf-badge--gray",
         classee: "bf-badge--gray"
       }[value] || "bf-badge--gray";
@@ -339,6 +340,7 @@
       a_traiter: kpis?.a_traiter ?? 0,
       validee: kpis?.validee ?? 0,
       transmise_studio: kpis?.transmise_studio ?? 0,
+      reportee: kpis?.reportee ?? 0,
       tous: kpis?.total ?? 0
     };
     byId("bfTabs")?.querySelectorAll(".bf-tab").forEach(btn => {
@@ -349,22 +351,33 @@
     });
   }
 
+  function isToQualify(item) {
+    return !item?.id_demande_rh || item?.statut === "a_qualifier" || item?.statut === "a_valider";
+  }
+
+  function isTransmittedStatus(statut) {
+    return statut === "transmise_studio" || statut === "prise_en_charge" || statut === "action_creee";
+  }
+
   function actionButtonHtml(item, index) {
     const id = item.id_demande_rh || "";
     const idxAttr = Number.isInteger(index) ? ` data-bf-index="${index}"` : "";
-    if (item.statut === "a_valider" && id) {
-      return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-status="validee" data-id="${escapeHtml(id)}">Valider</button>`;
+    if (isToQualify(item)) {
+      return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-edit="${escapeHtml(id)}"${idxAttr}>Qualifier</button>`;
     }
     if (item.statut === "validee" && id && item.id_comp && item.id_effectif_concerne) {
       return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-transmit="${escapeHtml(id)}">Transmettre</button>`;
     }
-    if (item.statut === "validee") {
-      return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-follow="1">Plan d’action</button>`;
+    if (item.statut === "validee" && id) {
+      return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-edit="${escapeHtml(id)}"${idxAttr}>Modifier</button>`;
     }
-    if (item.statut === "transmise_studio" || item.statut === "prise_en_charge" || item.statut === "action_creee") {
+    if (item.statut === "reportee" && id) {
+      return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-status="validee" data-id="${escapeHtml(id)}">Réactiver</button>`;
+    }
+    if (isTransmittedStatus(item.statut)) {
       return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-follow="1">Voir le suivi</button>`;
     }
-    return `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-bf-edit="${escapeHtml(id)}"${idxAttr}>Qualifier</button>`;
+    return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-edit="${escapeHtml(id)}"${idxAttr}>Modifier</button>`;
   }
 
   function itemStableKey(item, index) {
@@ -383,8 +396,9 @@
       transmise_studio: 4,
       prise_en_charge: 5,
       action_creee: 6,
-      refusee: 7,
-      classee: 8
+      reportee: 7,
+      refusee: 8,
+      classee: 9
     }[statut] || 9;
   }
 
@@ -427,7 +441,7 @@
 
   function groupMainStatusLabel(group) {
     const first = [...group.items].sort((a, b) => statusOrder(a.item.statut) - statusOrder(b.item.statut))[0]?.item || {};
-    return first.statut_label || { a_qualifier: "À qualifier", a_valider: "À valider", validee: "Validée", transmise_studio: "Transmise", prise_en_charge: "Prise en charge", action_creee: "Action créée", refusee: "Refusée", classee: "Classée" }[first.statut] || "À qualifier";
+    return first.statut_label || { a_qualifier: "À qualifier", a_valider: "À qualifier", validee: "Prête à transmettre", transmise_studio: "Transmise", prise_en_charge: "Prise en charge", action_creee: "Action créée", reportee: "Reportée", refusee: "Refusée", classee: "Classée" }[first.statut] || "À qualifier";
   }
 
   function groupMainEcheance(group) {
@@ -642,7 +656,9 @@
     }
     panel.classList.add("is-open");
     setText("bfDetailSub", `${item.collaborateur_nom_complet || "Demande collective"} · ${finalityLabel(item)}`);
-    const canValidate = item.id_demande_rh && item.statut === "a_valider";
+    const canEdit = item.id_demande_rh && !isTransmittedStatus(item.statut);
+    const canQualify = isToQualify(item);
+    const canReactivate = item.id_demande_rh && item.statut === "reportee";
     const canTransmit = item.id_demande_rh && item.statut === "validee" && item.id_comp && item.id_effectif_concerne;
     body.innerHTML = `
       <div class="bf-detail-section">
@@ -690,13 +706,13 @@
       </div>
 
       <div class="bf-detail-actions">
-        <button type="button" class="sb-btn sb-btn--soft" id="btnBfDetailEdit">${icon("edit", 15)}<span>Qualifier</span></button>
-        ${canValidate ? `<button type="button" class="sb-btn sb-btn--accent" id="btnBfDetailValidate">${icon("check", 15)}<span>Valider</span></button>` : ""}
+        ${canEdit || canQualify ? `<button type="button" class="sb-btn sb-btn--soft" id="btnBfDetailEdit">${icon("edit", 15)}<span>${canQualify ? "Qualifier" : "Modifier"}</span></button>` : ""}
+        ${canReactivate ? `<button type="button" class="sb-btn sb-btn--soft" id="btnBfDetailReactivate">${icon("check", 15)}<span>Réactiver</span></button>` : ""}
         ${canTransmit ? `<button type="button" class="sb-btn sb-btn--accent" id="btnBfDetailTransmit">${icon("send", 15)}<span>Transmettre</span></button>` : ""}
       </div>
     `;
-    byId("btnBfDetailEdit")?.addEventListener("click", () => openDemandModal(item, "qualify"));
-    byId("btnBfDetailValidate")?.addEventListener("click", () => changeStatus(item.id_demande_rh, "validee"));
+    byId("btnBfDetailEdit")?.addEventListener("click", () => openDemandModal(item, canQualify ? "qualify" : "edit"));
+    byId("btnBfDetailReactivate")?.addEventListener("click", () => changeStatus(item.id_demande_rh, "validee"));
     byId("btnBfDetailTransmit")?.addEventListener("click", () => transmitDemand(item.id_demande_rh));
   }
 
@@ -717,14 +733,47 @@
     }
   }
 
+  function demandDecisionMode(item) {
+    if (!item) return "validee";
+    if (item.statut === "reportee") return "reportee";
+    return "validee";
+  }
+
+  function shouldShowDecision(item) {
+    return !!item && (!item.id_demande_rh || item.statut === "a_qualifier" || item.statut === "a_valider" || item.statut === "reportee");
+  }
+
+  function getDemandDecision() {
+    return byId("bfDemandDecisionToggle")?.classList.contains("is-report") ? "reportee" : "validee";
+  }
+
+  function setDemandDecision(value) {
+    const decision = value === "reportee" ? "reportee" : "validee";
+    const toggle = byId("bfDemandDecisionToggle");
+    const hint = byId("bfDemandDecisionHint");
+    if (!toggle) return;
+    toggle.classList.toggle("is-report", decision === "reportee");
+    toggle.querySelectorAll("[data-bf-decision]").forEach(btn => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-bf-decision") === decision);
+    });
+    if (hint) {
+      hint.textContent = decision === "reportee"
+        ? "La demande sera conservée dans les reportées, sans transmission immédiate."
+        : "La demande sera prête à transmettre au Studio.";
+    }
+  }
+
   function openDemandModal(item, mode) {
     _modalMode = mode || "create";
     _modalItem = item || null;
     populateDemandRefs();
 
     const isCreate = !_modalItem;
-    setText("bfDemandModalTitle", isCreate ? "Créer une demande RH" : "Qualifier la demande RH");
-    setText("bfDemandModalSub", isCreate ? "Décrivez le besoin terrain. Le traitement se fera ensuite côté Studio puis Plan d’actions." : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
+    const isQualify = shouldShowDecision(_modalItem);
+    setText("bfDemandModalTitle", isCreate ? "Créer une demande RH" : (isQualify ? "Qualifier la demande RH" : "Modifier la demande RH"));
+    setText("bfDemandModalSub", isCreate
+      ? "Décrivez le besoin terrain. La demande sera directement prête à transmettre."
+      : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
 
     const eff = byId("bfDemandEffectif");
     if (eff) eff.value = _modalItem?.id_effectif_concerne || "";
@@ -745,6 +794,10 @@
     const comment = byId("bfDemandCommentaire");
     if (comment) comment.value = _modalItem?.commentaire_manager || "";
 
+    const decisionCard = byId("bfDemandDecisionCard");
+    if (decisionCard) decisionCard.hidden = !isQualify;
+    setDemandDecision(demandDecisionMode(_modalItem));
+
     setMsg("", "", "bfDemandModalMsg");
     byId("bfDemandModal")?.classList.add("show");
   }
@@ -758,7 +811,9 @@
   function collectDemandPayload() {
     const finaliteTerrain = byId("bfDemandFinalite")?.value || finalityValue(_modalItem);
     const isSignal = _modalItem && !_modalItem.id_demande_rh;
-    const statut = _modalItem ? "a_valider" : "a_qualifier";
+    const statut = !_modalItem
+      ? "validee"
+      : (shouldShowDecision(_modalItem) ? getDemandDecision() : (_modalItem.statut || "validee"));
     return {
       id_effectif_concerne: byId("bfDemandEffectif")?.value || _modalItem?.id_effectif_concerne || null,
       id_comp: byId("bfDemandCompetence")?.value || _modalItem?.id_comp || null,
@@ -933,6 +988,9 @@
       renderRows();
     });
     byId("btnBfCreateDemand")?.addEventListener("click", () => openDemandModal(null, "create"));
+    byId("bfDemandDecisionToggle")?.querySelectorAll("[data-bf-decision]").forEach(btn => {
+      btn.addEventListener("click", () => setDemandDecision(btn.getAttribute("data-bf-decision")));
+    });
     byId("btnBfSaveDemand")?.addEventListener("click", saveDemandFromModal);
     byId("btnBfCloseDetail")?.addEventListener("click", () => renderDetail(null));
 

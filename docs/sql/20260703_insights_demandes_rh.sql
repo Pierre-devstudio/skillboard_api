@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS public.tbl_insights_demande_rh (
   CONSTRAINT chk_insights_demande_rh_type
     CHECK (type_demande IN ('formation', 'transmission', 'renfort', 'recrutement', 'mobilite', 'tutorat', 'entretien', 'documentation', 'organisation', 'autre')),
   CONSTRAINT chk_insights_demande_rh_statut
-    CHECK (statut IN ('a_qualifier', 'a_valider', 'validee', 'transmise_studio', 'prise_en_charge', 'action_creee', 'refusee', 'classee')),
+    CHECK (statut IN ('a_qualifier', 'a_valider', 'validee', 'reportee', 'transmise_studio', 'prise_en_charge', 'action_creee', 'refusee', 'classee')),
   CONSTRAINT chk_insights_demande_rh_priorite
     CHECK (priorite IN ('basse', 'normale', 'haute', 'critique'))
 );

@@ -22,10 +22,10 @@
     </div>
 
     <div class="bf-kpi-grid" id="bfKpiGrid">
-      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--red">?</span><div><div class="bf-kpi-label">À qualifier</div><div class="bf-kpi-value">—</div></div></div>
-      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--orange">✓</span><div><div class="bf-kpi-label">À valider</div><div class="bf-kpi-value">—</div></div></div>
+      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--red">?</span><div><div class="bf-kpi-label">À traiter</div><div class="bf-kpi-value">—</div></div></div>
+      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--green">✓</span><div><div class="bf-kpi-label">Prêtes à transmettre</div><div class="bf-kpi-value">—</div></div></div>
       <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--violet">↗</span><div><div class="bf-kpi-label">Transmises au Studio</div><div class="bf-kpi-value">—</div></div></div>
-      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--green">✓</span><div><div class="bf-kpi-label">Actions créées</div><div class="bf-kpi-value">—</div></div></div>
+      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--orange">⏸</span><div><div class="bf-kpi-label">Reportées</div><div class="bf-kpi-value">—</div></div></div>
     </div>
   </div>
 
@@ -66,15 +66,10 @@
         <label class="sb-label" for="bfStatutSelect">Statut</label>
         <select id="bfStatutSelect" class="sb-select">
           <option value="a_traiter">À traiter</option>
-          <option value="tous">Toutes les demandes</option>
-          <option value="a_qualifier">À qualifier</option>
-          <option value="a_valider">À valider</option>
-          <option value="validee">Validées</option>
+          <option value="validee">Prêtes à transmettre</option>
           <option value="transmise_studio">Transmises</option>
-          <option value="prise_en_charge">Prises en charge</option>
-          <option value="action_creee">Actions créées</option>
-          <option value="refusee">Refusées</option>
-          <option value="classee">Classées</option>
+          <option value="reportee">Reportées</option>
+          <option value="tous">Toutes les demandes</option>
         </select>
       </div>
       <div class="bf-field">
@@ -119,8 +114,9 @@
 
     <div class="bf-tabs" id="bfTabs">
       <button type="button" class="bf-tab is-active" data-bf-tab="a_traiter"><span>À traiter</span><strong>—</strong></button>
-      <button type="button" class="bf-tab" data-bf-tab="validee"><span>Validées</span><strong>—</strong></button>
+      <button type="button" class="bf-tab" data-bf-tab="validee"><span>Prêtes à transmettre</span><strong>—</strong></button>
       <button type="button" class="bf-tab" data-bf-tab="transmise_studio"><span>Transmises</span><strong>—</strong></button>
+      <button type="button" class="bf-tab" data-bf-tab="reportee"><span>Reportées</span><strong>—</strong></button>
       <button type="button" class="bf-tab" data-bf-tab="tous"><span>Historique</span><strong>—</strong></button>
     </div>
 
@@ -218,6 +214,16 @@
           <div class="bf-modal-card bf-modal-card--wide">
             <div class="bf-modal-card__title">Commentaire manager</div>
             <textarea id="bfDemandCommentaire" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Attente terrain, contrainte planning, niveau d’urgence réel, éléments à transmettre au Studio…"></textarea>
+          </div>
+
+          <div class="bf-modal-card bf-modal-card--wide bf-decision-card" id="bfDemandDecisionCard" hidden>
+            <div class="bf-modal-card__title">Décision manager</div>
+            <div class="bf-decision-toggle" id="bfDemandDecisionToggle" role="group" aria-label="Décision manager">
+              <span class="bf-decision-thumb" aria-hidden="true"></span>
+              <button type="button" class="is-active" data-bf-decision="validee">Valider la demande</button>
+              <button type="button" data-bf-decision="reportee">Reporter</button>
+            </div>
+            <div class="bf-decision-hint" id="bfDemandDecisionHint">La demande sera prête à transmettre au Studio.</div>
           </div>
         </div>
       </div>
