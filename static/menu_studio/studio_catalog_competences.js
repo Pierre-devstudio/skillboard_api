@@ -407,6 +407,16 @@
     if (el) el.textContent = msg || "—";
   }
 
+  function iconSvg(kind){
+    if (kind === "edit") {
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.5L19 9.5a2.1 2.1 0 0 0-3-3L5.5 17H4v3Z"></path><path d="M14.5 7 17 9.5"></path></svg>`;
+    }
+    if (kind === "archive") {
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M6 7l1 13h10l1-13"></path><path d="M9 7V4h6v3"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>`;
+    }
+    return "";
+  }
+
   function openModal(id){
     const el = byId(id);
     if (el) el.style.display = "flex";
@@ -503,13 +513,13 @@
       left.appendChild(title);
 
       const right = document.createElement("div");
-      right.className = "sb-actions";
+      right.className = "sb-actions studio-catalog-actions";
 
         // --- Badge Domaine (remplace UUID + active/archivé)
         const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
         if (domLabel){
             const dom = document.createElement("span");
-            dom.className = "sb-badge sb-badge--comp-domain";
+            dom.className = "sb-badge sb-badge--comp-domain studio-catalog-scope";
 
             const dot = document.createElement("span");
             dot.className = "sb-dot";
@@ -525,26 +535,35 @@
         }
 
       if (isSupervisor()) {
+        const iconActions = document.createElement("div");
+        iconActions.className = "sb-icon-actions";
+
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
-        btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
-        btnEdit.textContent = "Modifier";
+        btnEdit.className = "sb-icon-btn";
+        btnEdit.title = "Modifier";
+        btnEdit.setAttribute("aria-label", "Modifier la compétence");
+        btnEdit.innerHTML = iconSvg("edit");
         btnEdit.addEventListener("click", () => openEdit(portal, it));
-        right.appendChild(btnEdit);
+        iconActions.appendChild(btnEdit);
 
         if (!it.masque) {
           const btnArch = document.createElement("button");
           btnArch.type = "button";
-          btnArch.className = "sb-btn sb-btn--soft sb-btn--xs";
-          btnArch.textContent = "Archiver";
+          btnArch.className = "sb-icon-btn sb-icon-btn--danger";
+          btnArch.title = "Archiver";
+          btnArch.setAttribute("aria-label", "Archiver la compétence");
+          btnArch.innerHTML = iconSvg("archive");
           btnArch.addEventListener("click", () => openArchive(it));
-          right.appendChild(btnArch);
+          iconActions.appendChild(btnArch);
         } else {
           const arch = document.createElement("span");
-          arch.className = "sb-badge sb-badge--poste";
+          arch.className = "sb-badge sb-badge--poste studio-catalog-archive-badge";
           arch.textContent = "Archivée";
-          right.appendChild(arch);
+          iconActions.appendChild(arch);
         }
+
+        right.appendChild(iconActions);
       }
 
       row.appendChild(left);

@@ -3299,3 +3299,224 @@
   }
 }
 
+
+
+/* ======================================================
+   Patch Studio 2026-07 - socle visuel compact
+   ====================================================== */
+#view-dashboard.studio-dash .studio-dashboard-logo-wrap{
+  margin:0 0 10px;
+}
+
+#view-dashboard.studio-dash .studio-dashboard-logo-wrap .sb-logo{
+  max-width:260px;
+}
+
+#view-dashboard.studio-dash .studio-dash-hero{
+  margin-bottom:10px;
+  padding:12px 14px;
+  border-color:#e7eaf0;
+  box-shadow:0 1px 2px rgba(15,23,42,.035);
+}
+
+#view-dashboard.studio-dash .studio-dash-hero .card-title{
+  font-size:14px;
+  font-weight:650;
+}
+
+#view-dashboard.studio-dash .studio-dash-grid{
+  gap:10px;
+  margin-bottom:10px;
+}
+
+#view-dashboard.studio-dash .studio-dash-card{
+  padding:12px;
+  border-color:#e7eaf0;
+  box-shadow:0 1px 2px rgba(15,23,42,.035);
+}
+
+#view-dashboard.studio-dash .studio-dash-card-head{
+  padding-bottom:7px;
+  margin-bottom:8px;
+}
+
+#view-dashboard.studio-dash .studio-dash-card-head h2{
+  font-size:12.5px;
+  font-weight:650;
+}
+
+#view-dashboard.studio-dash .studio-dash-kpi-line{
+  padding:7px 0;
+  font-size:12.5px;
+}
+
+#view-dashboard.studio-dash .studio-dash-kpi-line strong{
+  font-size:16px;
+  font-weight:700;
+}
+
+#view-dashboard.studio-dash .studio-health-gauge-wrap{
+  min-height:148px;
+}
+
+#view-dashboard.studio-dash .studio-health-gauge-wrap .sb-health-gauge{
+  max-width:220px;
+}
+
+#view-dashboard.studio-dash .sb-health-pct{
+  font-size:22px;
+  margin-top:-18px;
+}
+
+#view-dashboard.studio-dash .studio-dash-ring{
+  width:92px;
+  height:92px;
+  margin:14px auto 6px;
+}
+
+#view-dashboard.studio-dash .studio-dash-ring span{
+  font-size:20px;
+}
+
+#view-dashboard.studio-dash .studio-dash-signal{
+  height:62px;
+  margin-top:8px;
+}
+
+#view-dashboard.studio-dash .studio-dash-risk-bars{
+  min-height:152px;
+  max-height:206px;
+  gap:10px;
+  padding:10px 2px 0;
+}
+
+#view-dashboard.studio-dash .studio-dash-risk-bar{
+  flex-basis:62px;
+  height:152px;
+  padding:20px 0 24px;
+}
+
+#view-dashboard.studio-dash .studio-dash-risk-bar-track{
+  width:30px;
+  height:98px;
+}
+
+#view-dashboard.studio-dash .studio-dash-risk-bar-value{
+  font-size:11.5px;
+}
+
+#view-dashboard.studio-dash .studio-dash-risk-bar-label{
+  font-size:10.5px;
+}
+
+#view-catalog_postes > .card,
+#view-catalog_competences > .card{
+  padding:14px;
+  margin-bottom:12px;
+  border-color:#e7eaf0;
+  box-shadow:0 1px 2px rgba(15,23,42,.035);
+}
+
+#view-catalog_postes .card-title,
+#view-catalog_competences .card-title{
+  font-size:15px;
+  font-weight:650;
+}
+
+#view-catalog_postes .card-sub,
+#view-catalog_competences .card-sub{
+  font-size:12.5px;
+}
+
+#view-catalog_postes .sb-toolbar,
+#view-catalog_competences .sb-toolbar{
+  gap:10px;
+}
+
+#view-catalog_postes .sb-row-card,
+#view-catalog_competences .sb-row-card{
+  min-height:46px;
+  padding:8px 10px;
+  border-color:#e7eaf0;
+  border-radius:10px;
+}
+
+#view-catalog_postes .sb-row-card:hover,
+#view-catalog_competences .sb-row-card:hover{
+  background:#f8fafc;
+}
+
+#view-catalog_postes .sb-row-left,
+#view-catalog_competences .sb-row-left{
+  flex:1 1 auto;
+  min-width:0;
+}
+
+#view-catalog_postes .sb-row-title,
+#view-catalog_competences .sb-row-title{
+  max-width:none;
+  font-size:13px;
+  font-weight:600;
+}
+
+.studio-catalog-actions{
+  flex:0 0 auto;
+  justify-content:flex-end;
+  flex-wrap:nowrap;
+  gap:8px;
+}
+
+.studio-catalog-actions .sb-icon-actions{
+  flex:0 0 auto;
+}
+
+.studio-catalog-scope{
+  max-width:190px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.studio-catalog-archive-badge{
+  min-height:30px;
+  padding:0 9px;
+  align-items:center;
+}
+
+#modalPosteEdit .sb-modal-card,
+#modalPosteArchive .sb-modal-card,
+#modalCompEdit .sb-modal-card,
+#modalCompArchive .sb-modal-card,
+#modalCompAi .sb-modal-card{
+  border-radius:14px;
+  border:1px solid #e7eaf0;
+  box-shadow:0 22px 60px rgba(15,23,42,.18);
+}
+
+#modalPosteEdit .sb-modal-head,
+#modalPosteArchive .sb-modal-head,
+#modalCompEdit .sb-modal-head,
+#modalCompArchive .sb-modal-head,
+#modalCompAi .sb-modal-head{
+  padding-bottom:8px;
+  border-bottom:1px solid #eef2f7;
+}
+
+#modalPosteEdit .sb-modal-foot,
+#modalPosteArchive .sb-modal-foot,
+#modalCompEdit .sb-modal-foot,
+#modalCompArchive .sb-modal-foot,
+#modalCompAi .sb-modal-foot{
+  padding-top:10px;
+  border-top:1px solid #eef2f7;
+}
+
+@media (max-width:760px){
+  #view-dashboard.studio-dash .studio-dashboard-logo-wrap .sb-logo{
+    max-width:220px;
+  }
+
+  .studio-catalog-actions{
+    width:100%;
+    justify-content:space-between;
+  }
+}
