@@ -1525,7 +1525,18 @@
 
 #posteCertTable th:nth-child(1),
 #posteCertTable td:nth-child(1){
-  width:150px;
+  width:320px;
+}
+
+#posteCertTable th:nth-child(2),
+#posteCertTable td:nth-child(2){
+  width:140px;
+}
+
+#posteCertTable td:nth-child(2){
+  font-size:12px;
+  line-height:1.25;
+  color:#64748b;
 }
 
 #posteCertTable th:nth-child(3),
