@@ -4932,8 +4932,13 @@
    Studio - modal préévaluation compétence poste
    ====================================================== */
 #modalPosteCompEdit .studio-poste-comp-edit-card{
-  width:min(1180px, calc(100vw - 32px));
-  max-width:1180px;
+  width:min(980px, calc(100vw - 32px));
+  max-width:980px;
+}
+
+#modalPosteCompEdit .sb-modal-body > .card{
+  border:1px solid #e7eaf0;
+  box-shadow:0 12px 28px rgba(15,23,42,.08);
 }
 
 #modalPosteCompEdit .sb-level-grid{
@@ -4943,6 +4948,11 @@
 
 #modalPosteCompEdit .sb-level-card{
   min-width:0;
+  min-height:142px;
+}
+
+#modalPosteCompEdit .sb-level-text{
+  min-height:86px;
 }
 
 #modalPosteCompEdit .sb-level-titleline{
