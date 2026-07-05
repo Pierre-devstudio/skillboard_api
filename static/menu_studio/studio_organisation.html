@@ -190,94 +190,128 @@
 
   <!-- MODAL : Poste (create/edit/archive/duplicate) -->
   <div class="sb-modal" id="modalPoste" style="display:none;">
-    <div class="sb-modal-card" data-id-poste="">
+    <div class="sb-modal-card studio-poste-modal-card" data-id-poste="">
 
-      <div class="sb-modal-head">
-        <div style="min-width:0; flex:1;">
-          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+      <div class="sb-modal-head studio-poste-modal-head">
+        <div class="sb-modal-headstack studio-poste-headstack">
+          <div class="sb-modal-titleline studio-poste-titleline">
             <span id="posteModalBadge" class="sb-badge sb-badge--poste" style="display:none;"></span>
-            <div class="card-title" id="posteModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Poste</div>
+            <div class="sb-title-text" id="posteModalTitle">Poste</div>
           </div>
-          <div class="card-sub" id="posteModalSub" style="margin:4px 0 0 0;">—</div>
+          <div class="card-sub" id="posteModalSub">—</div>
 
-          <div class="sb-segbar" id="posteTabbar" style="margin-top:10px;">
-            <button type="button" class="sb-btn sb-btn--soft" data-tab="def">Définition</button>
-            <button type="button" class="sb-btn sb-btn--soft" data-tab="exi">Exigences</button>
-            <button type="button" class="sb-btn sb-btn--soft" data-tab="rh">Paramétrage RH</button>
+          <div class="studio-poste-modal-nav" id="posteTabbar" role="tablist" aria-label="Navigation fiche poste">
+            <button type="button" class="studio-poste-nav-btn is-active" data-tab="def" role="tab" aria-selected="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
+              <span>Définition</span>
+            </button>
+            <button type="button" class="studio-poste-nav-btn" data-tab="exi" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
+              <span>Exigences</span>
+            </button>
+            <button type="button" class="studio-poste-nav-btn" data-tab="rh" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
+              <span>Paramétrage RH</span>
+            </button>
           </div>
         </div>
 
         <button type="button" class="sb-modal-x" id="btnClosePoste" aria-label="Fermer">&times;</button>
       </div>
 
-      <div class="sb-modal-body">
+      <div class="sb-modal-body studio-poste-modal-body">
         <!-- Définition -->
         <div class="sb-tab-panel is-active" data-panel="def">
-          <div class="row">
-            <div class="info-item" style="flex:2; min-width:260px;">
-              <div class="label">Attaché au service</div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <select id="posteService" style="flex:1; min-width:0;"></select>
-                <button type="button" class="sb-icon-btn" id="btnPosteServiceAdd" title="Créer un service" aria-label="Créer un service">+</button>
+          <div class="card sb-card-compact studio-poste-card studio-poste-def-card">
+            <div class="studio-section-titleline">
+              <span class="studio-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
+              </span>
+              <div>
+                <div class="card-title" style="margin:0;">Définition du poste</div>
+                <div class="card-sub" style="margin:4px 0 0 0;">Rattachement, intitulé, mission et responsabilités.</div>
               </div>
             </div>
 
-            <div class="info-item" style="flex:1; min-width:220px;">
-              <div class="label">Code client</div>
-              <input type="text" id="posteCodifClient" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="info-item" style="flex:3; min-width:260px;">
-              <div class="label">Intitulé du poste</div>
-              <input type="text" id="posteIntitule" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="info-item" style="flex:3; min-width:260px;">
-              <div class="label">Mission principale</div>
-              <textarea id="posteMission" rows="2"></textarea>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="info-item" style="flex:3; min-width:260px;">
-              <div class="label">Responsabilités</div>
-              <div class="sb-help sb-richtext-help">
-                Structure attendue : ajoutez une activité principale, puis détaillez ses sous-activités associées.
-              </div>
-
-              <div class="sb-richtext" data-rt="posteResp">
-                <div class="sb-richtext-bar">
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="bold" title="Gras"><b>G</b></button>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="italic" title="Italique"><i>I</i></button>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="underline" title="Souligner"><u>S</u></button>
-
-                  <span class="sb-richtext-sep"></span>
-
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-richtext-struct-btn" data-rt-action="main-activity" title="Ajouter une activité principale numérotée">
-                    Activité principale
+            <div class="sb-form-grid studio-poste-def-grid">
+              <div class="sb-field">
+                <div class="label">Attaché au service</div>
+                <div class="studio-field-with-action">
+                  <select id="posteService"></select>
+                  <button type="button" class="sb-icon-btn" id="btnPosteServiceAdd" title="Créer un service" aria-label="Créer un service">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                   </button>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-richtext-struct-btn" data-rt-action="sub-activity" title="Ajouter une sous-activité en puce sous l’activité principale">
-                    Sous-activité
-                  </button>
-                  
                 </div>
-
-                <div class="sb-richtext-editor" id="posteResp" contenteditable="true"></div>
               </div>
+
+              <div class="sb-field">
+                <div class="label">Code client</div>
+                <input type="text" id="posteCodifClient" />
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <div class="label">Intitulé du poste</div>
+                <input type="text" id="posteIntitule" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card sb-card-compact studio-poste-card studio-poste-def-card">
+            <div class="studio-section-titleline">
+              <span class="studio-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg>
+              </span>
+              <div class="card-title" style="margin:0;">Mission principale</div>
+            </div>
+
+            <div class="studio-poste-section-body">
+              <textarea id="posteMission" rows="3"></textarea>
+            </div>
+          </div>
+
+          <div class="card sb-card-compact studio-poste-card studio-poste-def-card">
+            <div class="studio-section-titleline">
+              <span class="studio-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
+              </span>
+              <div>
+                <div class="card-title" style="margin:0;">Responsabilités</div>
+                <div class="card-sub" style="margin:4px 0 0 0;">Ajoutez une activité principale, puis ses sous-activités associées.</div>
+              </div>
+            </div>
+
+            <div class="sb-richtext studio-poste-richtext" data-rt="posteResp">
+              <div class="sb-richtext-bar">
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="bold" title="Gras"><b>G</b></button>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="italic" title="Italique"><i>I</i></button>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="underline" title="Souligner"><u>S</u></button>
+
+                <span class="sb-richtext-sep"></span>
+
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-richtext-struct-btn" data-rt-action="main-activity" title="Ajouter une activité principale numérotée">
+                  Activité principale
+                </button>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-richtext-struct-btn" data-rt-action="sub-activity" title="Ajouter une sous-activité en puce sous l’activité principale">
+                  Sous-activité
+                </button>
+              </div>
+
+              <div class="sb-richtext-editor" id="posteResp" contenteditable="true"></div>
             </div>
           </div>
         </div>
 
         <!-- Exigences -->
         <div class="sb-tab-panel" data-panel="exi">
-          <div class="card org-bloc" id="posteBlocContraintes">
-            <div class="card-title">Contraintes</div>
+          <div class="card sb-card-compact studio-poste-card studio-exi-card" id="posteBlocContraintes">
+            <div class="studio-section-titleline">
+              <span class="studio-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
+              </span>
+              <div class="card-title" style="margin:0;">Contraintes</div>
+            </div>
 
-            <div class="sb-form-grid">
+            <div class="sb-form-grid studio-exi-constraints-grid">
               <div class="sb-field">
                 <div class="label">Niveau d’étude minimum requis</div>
                 <select id="posteCtrEduMin"></select>
@@ -288,7 +322,7 @@
                 <select id="posteCtrNsfGroupe"></select>
               </div>
 
-              <div class="sb-field sb-span-2">
+              <div class="sb-field sb-span-2 studio-check-field">
                 <label class="sb-check">
                   <input type="checkbox" id="posteCtrNsfOblig" />
                   <span>Correspondance du diplôme impérative</span>
@@ -324,83 +358,131 @@
             </div>
           </div>
 
-          <div class="card org-bloc" id="posteBlocCompetences" style="margin-top:12px;">
-            <div class="sb-block-head">
-              <div class="card-title" style="margin:0;">Compétences requises</div>
+          <div class="card sb-card-compact studio-poste-card studio-exi-card studio-exi-table-card" id="posteBlocCompetences">
+            <div class="studio-exi-card-head">
+              <div class="studio-section-titleline">
+                <span class="studio-section-titleline__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                </span>
+                <div>
+                  <div class="card-title" style="margin:0;">Compétences requises</div>
+                  <div class="card-sub" style="margin:4px 0 0 0;">Compétences et niveaux attendus pour ce poste.</div>
+                </div>
+              </div>
 
-              <div class="sb-toolbar sb-toolbar--nowrap">
+              <div class="sb-toolbar sb-toolbar--nowrap studio-exi-toolbar">
                 <div class="sb-search sb-search--inline">
                   <input type="text" id="posteCompSearch" placeholder="Code ou intitulé…" />
                 </div>
 
-                <button type="button" class="sb-btn sb-btn--ai sb-btn--xs" id="btnPosteCompAi">Rechercher avec l’IA</button>
-                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompAdd">Ajouter</button>
+                <button type="button" class="sb-btn sb-btn--ai sb-btn--xs" id="btnPosteCompAi">
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16z"/></svg>
+                  </span>
+                  <span>Rechercher avec l’IA</span>
+                </button>
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompAdd">
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  </span>
+                  <span>Ajouter</span>
+                </button>
               </div>
             </div>
 
-            <div class="table-wrap" style="margin-top:14px;">
+            <div class="table-wrap studio-exi-table-wrap">
               <table class="sb-table" id="posteCompTable">
                 <thead>
                   <tr>
                     <th>Compétence</th>
-                    <th><span class="sb-table-th-2l">Niveau<br>requis</span></th>
-                    <th>Criticité</th>
-                    <th>Actions</th>
+                    <th style="width:120px; text-align:center;"><span class="sb-table-th-2l">Niveau<br>requis</span></th>
+                    <th style="width:90px; text-align:center;">Criticité</th>
+                    <th style="width:92px;"></th>
                   </tr>
                 </thead>
                 <tbody id="posteCompTbody"></tbody>
               </table>
 
-              <div class="card-sub" id="posteCompEmpty" style="margin-top:8px; display:none;">
-                Aucune compétence rattachée à ce poste.
+              <div class="studio-exi-empty" id="posteCompEmpty" style="display:none;">
+                <span class="studio-exi-empty__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                </span>
+                <span>Aucune compétence rattachée à ce poste.</span>
               </div>
             </div>
           </div>
 
-          <div class="card org-bloc" id="posteBlocCertifications" style="margin-top:10px;">
-            <div class="sb-block-head">
-              <div class="card-title" style="margin:0;">Certification/Habilitations requises</div>
+          <div class="card sb-card-compact studio-poste-card studio-exi-card studio-exi-table-card" id="posteBlocCertifications">
+            <div class="studio-exi-card-head">
+              <div class="studio-section-titleline">
+                <span class="studio-section-titleline__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+                </span>
+                <div>
+                  <div class="card-title" style="margin:0;">Certifications requises</div>
+                  <div class="card-sub" style="margin:4px 0 0 0;">Habilitations et certifications attendues sur le poste.</div>
+                </div>
+              </div>
 
-              <div class="sb-toolbar sb-toolbar--nowrap">
+              <div class="sb-toolbar sb-toolbar--nowrap studio-exi-toolbar">
                 <div class="sb-search sb-search--inline">
                   <input type="text" id="posteCertSearch" placeholder="Nom ou catégorie…" />
                 </div>
 
-                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCertAdd">Ajouter</button>
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCertAdd">
+                  <span class="sb-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  </span>
+                  <span>Ajouter</span>
+                </button>
               </div>
             </div>
 
-            <div class="table-wrap" style="margin-top:14px;">
+            <div class="table-wrap studio-exi-table-wrap">
               <table class="sb-table" id="posteCertTable">
                 <thead>
                   <tr>
-                    <th>Catégorie</th>
+                    <th style="width:190px;">Catégorie</th>
                     <th>Certification</th>
-                    <th>Validité</th>
-                    <th>Exigence</th>
-                    <th>Actions</th>
+                    <th style="width:120px; text-align:center;">Validité</th>
+                    <th style="width:120px; text-align:center;">Exigence</th>
+                    <th style="width:92px;"></th>
                   </tr>
                 </thead>
                 <tbody id="posteCertTbody"></tbody>
               </table>
-              <div class="card-sub" id="posteCertEmpty" style="margin-top:8px; display:none;">
-                Aucune certification rattachée à ce poste.
+              <div class="studio-exi-empty" id="posteCertEmpty" style="display:none;">
+                <span class="studio-exi-empty__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+                </span>
+                <span>Aucune certification rattachée à ce poste.</span>
               </div>
             </div>
           </div>
         </div>
 
-        
-
         <!-- Paramétrage RH -->
         <div class="sb-tab-panel" data-panel="rh">
-          <div class="card org-bloc" id="posteBlocRh">
-            <div class="card-title">Paramétrage RH</div>
-            <div class="card-sub" style="margin:4px 0 0 0;">
-              Paramètres métier du poste. Le verrouillage est indicatif seulement.
+          <div class="card sb-card-compact studio-poste-card studio-rh-card" id="posteBlocRh">
+            <div class="studio-section-titleline">
+              <span class="studio-section-titleline__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
+              </span>
+              <div>
+                <div class="card-title" style="margin:0;">Paramétrage RH</div>
+                <div class="card-sub" style="margin:4px 0 0 0;">Paramètres métier du poste. Le verrouillage est indicatif seulement.</div>
+              </div>
             </div>
 
-            <div class="sb-form-grid" style="margin-top:10px;">
+            <div class="studio-rh-lock-row">
+              <label class="sb-check">
+                <input type="checkbox" id="posteRhVerrouille" />
+                <span>Paramétrage RH verrouillé (indication seulement)</span>
+              </label>
+              <div class="sb-help">Cette case n’empêche pas la modification dans Studio. Elle sert à signaler qu’il vaut mieux éviter d’y retoucher.</div>
+            </div>
+
+            <div class="sb-form-grid studio-rh-grid">
               <div class="sb-field">
                 <div class="label">Statut du poste</div>
                 <select id="posteRhStatut"></select>
@@ -437,16 +519,6 @@
                 <div class="sb-help" id="posteRhCriticiteHelp"></div>
               </div>
 
-              <div class="sb-field sb-span-2">
-                <label class="sb-check">
-                  <input type="checkbox" id="posteRhVerrouille" />
-                  <span>Paramétrage RH verrouillé (indication seulement)</span>
-                </label>
-                <div class="sb-help" style="margin-top:6px;">
-                  Cette case n’empêche pas la modification dans Studio. Elle sert à signaler qu’il vaut mieux éviter d’y retoucher.
-                </div>
-              </div>
-
               <div class="sb-field">
                 <div class="label">Source</div>
                 <input type="text" id="posteRhSource" readonly />
@@ -463,25 +535,54 @@
               </div>
 
               <div id="posteCcnSlot" class="sb-span-2"></div>
-
             </div>
           </div>
         </div>
       </div>
 
-      <div class="sb-modal-foot">
-        <div class="sb-foot-split">
+      <div class="sb-modal-foot studio-poste-modal-foot">
+        <div class="sb-foot-split studio-poste-foot-split">
           <div class="sb-actions">
-            <button type="button" class="sb-btn sb-btn--danger-soft" id="btnPosteArchive">Archiver</button>
-            <button type="button" class="sb-btn sb-btn--secondary" id="btnPosteDuplicate">Dupliquer</button>
+            <button type="button" class="sb-btn sb-btn--danger-soft" id="btnPosteArchive">
+              <span class="sb-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              </span>
+              <span class="sb-btn-label">Archiver</span>
+            </button>
+            <button type="button" class="sb-btn sb-btn--secondary" id="btnPosteDuplicate">
+              <span class="sb-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+              </span>
+              <span class="sb-btn-label">Dupliquer</span>
+            </button>
           </div>
 
-          <div class="sb-actions" style="align-items:center;">
+          <div class="sb-actions studio-poste-save-actions">
             <span id="posteSaveInlineMsg" class="sb-save-inline-msg is-hidden" aria-live="polite"></span>
-            <button type="button" class="sb-btn sb-btn--doc" id="btnPosteImport">Importer</button>
-            <button type="button" class="sb-btn sb-btn--ai" id="btnPosteAi">Générer avec l’IA</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
-            <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
+            <button type="button" class="sb-btn sb-btn--doc" id="btnPosteImport">
+              <span class="sb-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 12v6"/><path d="M9 15l3 3 3-3"/></svg>
+              </span>
+              <span class="sb-btn-label">Importer</span>
+            </button>
+            <button type="button" class="sb-btn sb-btn--ai" id="btnPosteAi">
+              <span class="sb-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16z"/></svg>
+              </span>
+              <span class="sb-btn-label">Générer avec l’IA</span>
+            </button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">
+              <span class="sb-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+              </span>
+              <span class="sb-btn-label">Annuler</span>
+            </button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">
+              <span class="sb-btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+              </span>
+              <span class="sb-btn-label">Enregistrer</span>
+            </button>
           </div>
         </div>
       </div>

@@ -226,6 +226,14 @@
         return document.getElementById(id);
     }
 
+    function setBtnLabel(btnOrId, label){
+        const btn = (typeof btnOrId === "string") ? byId(btnOrId) : btnOrId;
+        if (!btn) return;
+        const span = btn.querySelector(".sb-btn-label");
+        if (span) span.textContent = label;
+        else btn.textContent = label;
+    }
+
 
 
     function nsLevelKey(v){
@@ -1036,7 +1044,7 @@ function refreshPosteCompNivCards(){
             bA.disabled = isCreate;
             bA.style.opacity = isCreate ? ".6" : "";
             bA.title = "";
-            if (isCreate) bA.textContent = "Archiver";
+            if (isCreate) setBtnLabel(bA, "Archiver");
         }
 
         if (bD){
@@ -2044,8 +2052,8 @@ body {
 
         modal.querySelectorAll("#posteTabbar [data-tab]").forEach(btn => {
             const isOn = (btn.getAttribute("data-tab") === tab);
-            btn.classList.toggle("sb-btn--accent", isOn);
-            btn.classList.toggle("sb-btn--soft", !isOn);
+            btn.classList.toggle("is-active", isOn);
+            btn.setAttribute("aria-selected", isOn ? "true" : "false");
         });
 
         modal.querySelectorAll(".sb-tab-panel[data-panel]").forEach(p => {
@@ -5098,7 +5106,7 @@ function refreshPosteCompEditCritDisplay(){
             bA.disabled = false;
             bA.style.opacity = "";
             bA.title = "";
-            bA.textContent = isActif ? "Archiver" : "Restaurer";
+            setBtnLabel(bA, isActif ? "Archiver" : "Restaurer");
         }
     }
 
@@ -5163,7 +5171,7 @@ function refreshPosteCompEditCritDisplay(){
         refreshPosteFooterActions();
 
         const bS = byId("btnPosteSave");
-        if (bS) bS.textContent = "Créer";
+        if (bS) setBtnLabel(bS, "Créer");
 
         fillPosteContraintesTab({});
         resetPosteCcnUi(true);
@@ -5233,7 +5241,7 @@ function refreshPosteCompEditCritDisplay(){
         setPosteModalActif((p && p.actif !== false));
 
         const bS = byId("btnPosteSave");
-        if (bS) bS.textContent = "Enregistrer";
+        if (bS) setBtnLabel(bS, "Enregistrer");
         fillPosteRhTab({}, false);
         resetPosteCcnUi(false);
 
@@ -5401,7 +5409,7 @@ function refreshPosteCompEditCritDisplay(){
                 }
                 refreshPosteFooterActions();
                 const bS = byId("btnPosteSave");
-                if (bS) bS.textContent = "Enregistrer";
+                if (bS) setBtnLabel(bS, "Enregistrer");
                 setPosteModalActif(true);
                 seedPosteAiModalFromCurrent();
                 await refreshPosteCcnContextAfterSave(portal);
