@@ -1375,7 +1375,7 @@ function refreshPosteCompNivCards(){
         const ownerId = getOwnerId();
         if (!ownerId) throw new Error("Owner introuvable.");
 
-        const compId = String(item?.id_comp || "").trim();
+        const compId = String(item?.id_comp || item?.id_competence || "").trim();
         if (!compId) throw new Error("Compétence introuvable.");
 
         const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
@@ -3758,6 +3758,17 @@ function renderPosteCompAiResults(){
             </svg>
         `;
 
+        const iconPdf = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/>
+                <path d="M13 13v3"/>
+                <path d="M13 13h3"/>
+                <path d="M16 13v3"/>
+            </svg>
+        `;
+
         const iconTrash = `
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/>
@@ -3805,13 +3816,22 @@ function renderPosteCompAiResults(){
             title.title = it.intitule || "";
 
             const statutEval = (it.statut_eval || "proposition").toString().trim().toLowerCase();
-            if (statutEval === "proposition"){
+            const isProposal = statutEval === "proposition";
+            if (isProposal){
                 title.classList.add("sb-comp-cell__title--proposal");
-                title.title = `${it.intitule || ""} — préévaluée par le système`;
+                title.title = `${it.intitule || ""} — compétence préévaluée, à confirmer par l’enregistrement de l’évaluation.`;
             }
 
             compWrap.appendChild(code);
             compWrap.appendChild(title);
+            if (isProposal){
+                const hint = document.createElement("span");
+                hint.className = "sb-comp-cell__proposal-hint";
+                hint.textContent = "?";
+                hint.title = "Compétence préévaluée : l’intitulé reste orange jusqu’à l’enregistrement complet de l’évaluation.";
+                hint.setAttribute("aria-label", hint.title);
+                compWrap.appendChild(hint);
+            }
             tdComp.appendChild(compWrap);
 
             const tdNiv = document.createElement("td");
@@ -3845,6 +3865,30 @@ function renderPosteCompAiResults(){
                 btnEdit.innerHTML = iconEdit;
                 btnEdit.addEventListener("click", () => openPosteCompEditModal(it));
 
+                const btnPdf = document.createElement("button");
+                btnPdf.type = "button";
+                btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
+                btnPdf.title = "Voir la fiche compétence PDF";
+                btnPdf.setAttribute("aria-label", "Voir la fiche compétence PDF");
+                btnPdf.innerHTML = iconPdf;
+                btnPdf.addEventListener("click", async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const titlePdf = `Fiche compétence - ${String(it.code || "").trim() ? `${String(it.code).trim()} - ` : ""}${String(it.intitule || "").trim() || "Compétence"}`;
+                    let popupWin = null;
+
+                    try{
+                        popupWin = openPdfLoadingWindow(titlePdf);
+                        await openOrgSkillSheetPdf(window.portal, it, popupWin);
+                    } catch(err){
+                        if (popupWin && !popupWin.closed){
+                            try { popupWin.close(); } catch(_){}
+                        }
+                        window.portal.showAlert("error", err?.message || String(err));
+                    }
+                });
+
                 const btnRem = document.createElement("button");
                 btnRem.type = "button";
                 btnRem.className = "sb-icon-btn sb-icon-btn--danger";
@@ -3858,6 +3902,7 @@ function renderPosteCompAiResults(){
                 });
 
                 actions.appendChild(btnEdit);
+                actions.appendChild(btnPdf);
                 actions.appendChild(btnRem);
                 tdAct.appendChild(actions);
             } else {
