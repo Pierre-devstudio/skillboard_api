@@ -2279,6 +2279,13 @@
   min-height:92px;
 }
 
+#modalPoste #posteRhSource[readonly]{
+  background:#f1f5f9;
+  border-color:#d9e0ea;
+  color:#64748b;
+  box-shadow:none;
+}
+
 #modalPoste #posteMission{
   min-height:138px;
 }
