@@ -966,29 +966,46 @@ def _initialiser_referentiel_studio_client(cur, id_ent: str) -> dict:
 
     cur.execute(
         """
-        SELECT DISTINCT
-            c.id_comp,
-            c.id_owner,
-            c.code,
-            c.intitule,
-            c.description,
-            c.domaine,
-            c.niveaua,
-            c.niveaub,
-            c.niveauc,
-            c.niveaud,
-            c.grille_evaluation,
-            COALESCE(c.etat, 'valide') AS etat
-        FROM public.tbl_fiche_poste p
-        JOIN public.tbl_fiche_poste_competence pc
-          ON pc.id_poste = p.id_poste
-         AND COALESCE(pc.masque, FALSE) = FALSE
-        JOIN public.tbl_competence c
-          ON c.id_comp = pc.id_competence
-         AND COALESCE(c.masque, FALSE) = FALSE
-        WHERE p.id_ent = %s
-          AND COALESCE(c.id_owner, '') <> %s
-        ORDER BY lower(COALESCE(c.code, '')), lower(COALESCE(c.intitule, ''))
+        SELECT
+            id_comp,
+            id_owner,
+            code,
+            intitule,
+            description,
+            domaine,
+            niveaua,
+            niveaub,
+            niveauc,
+            niveaud,
+            grille_evaluation,
+            etat
+        FROM (
+            SELECT DISTINCT
+                c.id_comp,
+                c.id_owner,
+                c.code,
+                c.intitule,
+                c.description,
+                c.domaine,
+                c.niveaua,
+                c.niveaub,
+                c.niveauc,
+                c.niveaud,
+                c.grille_evaluation,
+                COALESCE(c.etat, 'valide') AS etat,
+                lower(COALESCE(c.code, '')) AS sort_code,
+                lower(COALESCE(c.intitule, '')) AS sort_intitule
+            FROM public.tbl_fiche_poste p
+            JOIN public.tbl_fiche_poste_competence pc
+              ON pc.id_poste = p.id_poste
+             AND COALESCE(pc.masque, FALSE) = FALSE
+            JOIN public.tbl_competence c
+              ON c.id_comp = pc.id_competence
+             AND COALESCE(c.masque, FALSE) = FALSE
+            WHERE p.id_ent = %s
+              AND COALESCE(c.id_owner, '') <> %s
+        ) src
+        ORDER BY sort_code, sort_intitule
         """,
         (ent_id, ent_id),
     )
