@@ -468,79 +468,82 @@
 
         <!-- Paramétrage RH -->
         <div class="sb-tab-panel" data-panel="rh">
-          <div class="card sb-card-compact studio-poste-card studio-rh-card" id="posteBlocRh">
-            <div class="studio-section-titleline">
-              <span class="studio-section-titleline__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
-              </span>
-              <div>
-                <div class="card-title" style="margin:0;">Paramétrage RH</div>
-                <div class="card-sub" style="margin:4px 0 0 0;">Paramètres métier du poste. Le verrouillage est indicatif seulement.</div>
-              </div>
-            </div>
-
-            <div class="studio-rh-lock-row">
-              <label class="sb-check">
-                <input type="checkbox" id="posteRhVerrouille" />
-                <span>Paramétrage RH verrouillé (indication seulement)</span>
-              </label>
-              <div class="sb-help">Cette case n’empêche pas la modification dans Studio. Elle sert à signaler qu’il vaut mieux éviter d’y retoucher.</div>
-            </div>
-
-            <div class="sb-form-grid studio-rh-grid">
-              <div class="sb-field">
-                <div class="label">Statut du poste</div>
-                <select id="posteRhStatut"></select>
+          <div class="studio-rh-shell" id="posteBlocRh">
+            <section class="studio-rh-panel studio-rh-panel--main">
+              <div class="studio-rh-panel-head">
+                <span class="studio-rh-panel-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 15h.01"/><path d="M12 15h.01"/><path d="M16 15h.01"/></svg>
+                </span>
+                <div>
+                  <div class="studio-rh-panel-title">1. Paramètres RH du poste</div>
+                </div>
               </div>
 
-              <div class="sb-field">
-                <div class="label">Stratégie de pourvoi</div>
-                <select id="posteRhStrategie"></select>
-              </div>
+              <div class="sb-form-grid studio-rh-grid studio-rh-main-grid">
+                <div class="sb-field">
+                  <div class="label">Statut du poste</div>
+                  <select id="posteRhStatut"></select>
+                </div>
 
-              <div class="sb-field">
-                <div class="label">Début de validité</div>
-                <input type="date" id="posteRhDateDebut" class="sb-date" />
-              </div>
+                <div class="sb-field">
+                  <div class="label">Stratégie de pourvoi</div>
+                  <select id="posteRhStrategie"></select>
+                </div>
 
-              <div class="sb-field" id="posteRhDateFinWrap">
-                <div class="label">Fin de validité</div>
-                <input type="date" id="posteRhDateFin" class="sb-date" />
-                <div class="sb-help">Utilisée surtout pour les statuts Gelé / Temporaire.</div>
-              </div>
+                <div class="sb-field">
+                  <div class="label">Début de validité</div>
+                  <input type="date" id="posteRhDateDebut" class="sb-date" />
+                </div>
 
-              <div class="sb-field">
-                <div class="label">Nb titulaires cible</div>
-                <div class="sb-stepper">
-                  <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="-1" aria-label="Diminuer le nombre de titulaires cible">−</button>
-                  <input type="number" id="posteRhNbTitulaires" min="1" step="1" inputmode="numeric" />
-                  <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="1" aria-label="Augmenter le nombre de titulaires cible">+</button>
+                <div class="sb-field" id="posteRhDateFinWrap">
+                  <div class="label">Fin de validité</div>
+                  <input type="date" id="posteRhDateFin" class="sb-date" />
+                  <div class="sb-help">Utilisée surtout pour les statuts Gelé / Temporaire.</div>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Nb titulaires cible</div>
+                  <div class="sb-stepper studio-rh-stepper">
+                    <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="-1" aria-label="Diminuer le nombre de titulaires cible">−</button>
+                    <input type="number" id="posteRhNbTitulaires" min="1" step="1" inputmode="numeric" />
+                    <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="1" aria-label="Augmenter le nombre de titulaires cible">+</button>
+                  </div>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Criticité du poste</div>
+                  <select id="posteRhCriticite"></select>
+                  <div class="sb-help" id="posteRhCriticiteHelp"></div>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Source</div>
+                  <input type="text" id="posteRhSource" class="studio-rh-auto-field" readonly />
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Dernière mise à jour</div>
+                  <input type="text" id="posteRhDateMaj" class="studio-rh-auto-field" readonly />
+                </div>
+              </div>
+            </section>
+
+            <section class="studio-rh-panel studio-rh-panel--comment">
+              <div class="studio-rh-panel-head">
+                <span class="studio-rh-panel-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+                </span>
+                <div>
+                  <div class="studio-rh-panel-title">2. Commentaire RH</div>
                 </div>
               </div>
 
               <div class="sb-field">
-                <div class="label">Criticité du poste</div>
-                <select id="posteRhCriticite"></select>
-                <div class="sb-help" id="posteRhCriticiteHelp"></div>
-              </div>
-
-              <div class="sb-field">
-                <div class="label">Source</div>
-                <input type="text" id="posteRhSource" readonly />
-              </div>
-
-              <div class="sb-field">
-                <div class="label">Dernière mise à jour</div>
-                <input type="text" id="posteRhDateMaj" readonly />
-              </div>
-
-              <div class="sb-field sb-span-2">
-                <div class="label">Commentaire RH</div>
                 <textarea id="posteRhCommentaire" rows="4" placeholder="Commentaire interne sur le paramétrage RH du poste"></textarea>
               </div>
+            </section>
 
-              <div id="posteCcnSlot" class="sb-span-2"></div>
-            </div>
+            <div id="posteCcnSlot"></div>
           </div>
         </div>
       </div>

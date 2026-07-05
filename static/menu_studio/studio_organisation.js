@@ -2396,7 +2396,6 @@ body {
         _setValue("posteRhDateFin", detail?.date_fin_validite || "");
         _setValue("posteRhNbTitulaires", detail?.nb_titulaires_cible ?? 1);
         _selectByValue("posteRhCriticite", detail?.criticite_poste ?? 2);
-        _setChecked("posteRhVerrouille", detail?.param_rh_verrouille);
         _setValue("posteRhCommentaire", detail?.param_rh_commentaire || "");
 
         const src = detail?.param_rh_source || (isCreate ? "studio" : "");
@@ -5418,7 +5417,7 @@ function refreshPosteCompEditCritDisplay(){
             nb_titulaires_cible: null,
             criticite_poste: null,
             strategie_pourvoi: (byId("posteRhStrategie")?.value || "mixte").trim(),
-            param_rh_verrouille: !!byId("posteRhVerrouille")?.checked,
+            param_rh_verrouille: false,
             param_rh_commentaire: (byId("posteRhCommentaire")?.value || "").trim() || null,
         };
 

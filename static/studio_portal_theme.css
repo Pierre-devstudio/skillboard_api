@@ -2133,7 +2133,7 @@
   color:#111827;
   font-size:16px;
   line-height:1.2;
-  font-weight:800;
+  font-weight:650;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -2262,6 +2262,82 @@
   margin-top:0;
 }
 
+#modalPoste .studio-rh-shell{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#modalPoste .studio-rh-panel{
+  padding:14px 16px 16px;
+  border:1px solid #e7eaf0;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(15,23,42,.06);
+}
+
+#modalPoste .studio-rh-panel-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+#modalPoste .studio-rh-panel-head--split{
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+}
+
+#modalPoste .studio-rh-panel-titlewrap{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  min-width:0;
+}
+
+#modalPoste .studio-rh-panel-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:32px;
+  height:32px;
+  border-radius:999px;
+  background:rgba(var(--sb-accent-rgb), .13);
+  color:#111827;
+}
+
+#modalPoste .studio-rh-panel-icon svg{
+  width:17px;
+  height:17px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.85;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalPoste .studio-rh-panel-title{
+  margin:0;
+  color:#111827;
+  font-size:15px;
+  font-weight:750;
+  line-height:1.25;
+}
+
+#modalPoste .studio-rh-panel-sub{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:12px;
+  line-height:1.35;
+}
+
+#modalPoste .studio-rh-main-grid,
+#modalPoste .studio-rh-ccn-grid{
+  margin-top:0;
+}
+
 #modalPoste .studio-field-with-action{
   display:flex;
   align-items:center;
@@ -2277,13 +2353,6 @@
 #modalPoste #posteCtrDetailContrainte,
 #modalPoste #posteRhCommentaire{
   min-height:92px;
-}
-
-#modalPoste #posteRhSource[readonly]{
-  background:#f1f5f9;
-  border-color:#d9e0ea;
-  color:#64748b;
-  box-shadow:none;
 }
 
 #modalPoste #posteMission{
@@ -2475,15 +2544,51 @@
   padding:6px 0 2px;
 }
 
-#modalPoste .studio-rh-lock-row{
-  display:flex;
-  flex-direction:column;
-  gap:5px;
-  margin:2px 0 14px;
-  padding:11px 12px;
-  border:1px solid #eef2f7;
-  border-radius:13px;
-  background:#fbfcfe;
+#modalPoste .studio-rh-stepper{
+  min-height:38px;
+}
+
+#modalPoste .studio-rh-stepper input{
+  background:#fff;
+}
+
+#modalPoste .studio-rh-panel--comment textarea{
+  min-height:92px;
+  resize:vertical;
+}
+
+#modalPoste .studio-rh-panel--ccn .studio-rh-panel-head{
+  margin-bottom:12px;
+}
+
+#modalPoste .studio-rh-ccn-action{
+  flex:0 0 auto;
+}
+
+#modalPoste .studio-rh-ccn-action .sb-btn-icon svg{
+  width:15px;
+  height:15px;
+}
+
+#modalPoste .studio-rh-panel--ccn textarea{
+  min-height:86px;
+}
+
+#modalPoste .studio-rh-auto-field[readonly],
+#modalPoste .studio-rh-panel input[readonly],
+#modalPoste .studio-rh-panel textarea[readonly]{
+  background:#f1f5f9;
+  border-color:#d9e0ea;
+  color:#64748b;
+  box-shadow:none;
+}
+
+#modalPoste .studio-rh-panel textarea[readonly]{
+  resize:none;
+}
+
+#modalPoste .studio-poste-save-actions #btnPosteCancel{
+  background:#fff;
 }
 
 #modalPoste .studio-poste-modal-foot{

@@ -1,45 +1,53 @@
 <template id="tplStudioOrganisationCcnBlock">
-  <div class="card org-bloc sb-span-2" id="posteBlocCcn" style="margin-top:10px;">
-    <div class="sb-block-head">
-      <div>
-        <div class="card-title" style="margin:0;">Cotation conventionnelle</div>
-        <div class="card-sub" id="posteCcnSub" style="margin:4px 0 0 0;">
-          Assistant dédié à la cotation de l’emploi selon la convention collective détectée.
+  <section class="studio-rh-panel studio-rh-panel--ccn" id="posteBlocCcn">
+    <div class="studio-rh-panel-head studio-rh-panel-head--split">
+      <div class="studio-rh-panel-titlewrap">
+        <span class="studio-rh-panel-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
+        </span>
+        <div>
+          <div class="studio-rh-panel-title">3. Cotation conventionnelle</div>
+          <div class="studio-rh-panel-sub" id="posteCcnSub">
+            Assistant dédié à la cotation de l’emploi selon la convention collective détectée.
+          </div>
         </div>
       </div>
 
-      <div class="sb-actions">
-        <button type="button" class="sb-btn sb-btn--doc" id="btnPosteCcnOpen">Assistant cotation conventionnelle</button>
-      </div>
+      <button type="button" class="sb-btn sb-btn--doc studio-rh-ccn-action" id="btnPosteCcnOpen">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16z"/></svg>
+        </span>
+        <span>Assistant cotation conventionnelle</span>
+      </button>
     </div>
 
-    <div class="sb-form-grid" style="margin-top:10px;">
+    <div class="sb-form-grid studio-rh-grid studio-rh-ccn-grid">
       <div class="sb-field">
         <div class="label">Convention détectée</div>
-        <input type="text" id="posteCcnConvention" readonly />
+        <input type="text" id="posteCcnConvention" class="studio-rh-auto-field" readonly />
       </div>
 
       <div class="sb-field">
         <div class="label">Statut</div>
-        <input type="text" id="posteCcnStatus" class="sb-ccn-topval" readonly />
+        <input type="text" id="posteCcnStatus" class="sb-ccn-topval studio-rh-auto-field" readonly />
       </div>
 
       <div class="sb-field">
-        <div class="label" id="posteCcnResultLabel">Coefficient / palier retenu</div>
-        <input type="text" id="posteCcnResult" readonly />
+        <div class="label" id="posteCcnResultLabel">Groupe / Niveau retenu</div>
+        <input type="text" id="posteCcnResult" class="studio-rh-auto-field" readonly />
       </div>
 
       <div class="sb-field">
-        <div class="label" id="posteCcnCategoryLabel">Catégorie retenue</div>
-        <input type="text" id="posteCcnCategory" readonly />
+        <div class="label" id="posteCcnCategoryLabel">Positionnement retenu</div>
+        <input type="text" id="posteCcnCategory" class="studio-rh-auto-field" readonly />
       </div>
 
       <div class="sb-field sb-span-2">
         <div class="label">Synthèse</div>
-        <textarea id="posteCcnSummary" class="sb-textarea--compact sb-ccn-text" rows="4" readonly></textarea>
+        <textarea id="posteCcnSummary" class="sb-textarea--compact sb-ccn-text studio-rh-auto-field" rows="4" readonly></textarea>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <template id="tplStudioOrganisationCcnModal">
