@@ -2347,6 +2347,43 @@
   vertical-align:middle;
 }
 
+#modalPoste #posteBlocCompetences .studio-exi-table-wrap{
+  overflow:visible;
+  max-height:none;
+}
+
+#modalPoste .studio-exi-more{
+  width:100%;
+  min-height:34px;
+  margin:4px 0 0 0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:0;
+  border-top:1px solid #e5e7eb;
+  background:#fff;
+  color:#111827;
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+#modalPoste .studio-exi-more:hover{
+  color:var(--accent);
+}
+
+#modalPoste .studio-exi-more__chev{
+  font-size:15px;
+  line-height:1;
+  transition:transform .12s ease;
+}
+
+#modalPoste .studio-exi-more.is-expanded .studio-exi-more__chev{
+  transform:rotate(180deg);
+}
+
 #modalPoste .studio-exi-empty{
   display:flex;
   align-items:center;

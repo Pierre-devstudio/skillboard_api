@@ -29,6 +29,8 @@
     let _posteCompItems = [];
     let _posteCompSearch = "";
     let _posteCompSearchTimer = null;
+    let _posteCompExpanded = false;
+    const POSTE_COMP_COLLAPSED_LIMIT = 7;
 
     let _posteCompAddItems = [];
     let _posteCompAddSearch = "";
@@ -3722,12 +3724,15 @@ function renderPosteCompAiResults(){
         });
 
         _posteCompItems = items;
+        _posteCompExpanded = false;
         renderPosteCompetences();
     }
     
     function renderPosteCompetences(){
         const tb = byId("posteCompTbody");
         const empty = byId("posteCompEmpty");
+        const more = byId("posteCompMore");
+        const moreText = byId("posteCompMoreText");
         if (!tb) return;
 
         const levelMeta = (niv) => {
@@ -3774,11 +3779,16 @@ function renderPosteCompAiResults(){
 
         if (!items.length){
             if (empty) empty.style.display = "";
+            if (more) more.style.display = "none";
             return;
         }
         if (empty) empty.style.display = "none";
 
-        items.forEach(it => {
+        const limit = POSTE_COMP_COLLAPSED_LIMIT;
+        const hidden = Math.max(0, items.length - limit);
+        const visibleItems = _posteCompExpanded ? items : items.slice(0, limit);
+
+        visibleItems.forEach(it => {
             const tr = document.createElement("tr");
 
             const tdComp = document.createElement("td");
@@ -3861,6 +3871,17 @@ function renderPosteCompAiResults(){
 
             tb.appendChild(tr);
         });
+
+        if (more){
+            more.style.display = hidden > 0 ? "flex" : "none";
+            more.classList.toggle("is-expanded", !!_posteCompExpanded);
+            more.setAttribute("aria-expanded", _posteCompExpanded ? "true" : "false");
+            if (moreText){
+                moreText.textContent = _posteCompExpanded
+                    ? "Voir moins de compétences"
+                    : `Voir plus de compétences (${hidden})`;
+            }
+        }
     }
 
 
@@ -5179,6 +5200,7 @@ function refreshPosteCompEditCritDisplay(){
 
         _posteCompItems = [];
         _posteCompSearch = "";
+        _posteCompExpanded = false;
         if (byId("posteCompSearch")) byId("posteCompSearch").value = "";
         renderPosteCompetences();
 
@@ -5246,6 +5268,7 @@ function refreshPosteCompEditCritDisplay(){
         resetPosteCcnUi(false);
 
         _posteCompItems = [];
+        _posteCompExpanded = false;
         renderPosteCompetences();
 
         _posteCertItems = [];
@@ -5787,10 +5810,19 @@ function refreshPosteCompEditCritDisplay(){
         _posteSearchTimer = setTimeout(() => loadPostes(portal).catch(() => {}), 250);
         });
 
+        const pcm = byId("posteCompMore");
+        if (pcm){
+          pcm.addEventListener("click", () => {
+            _posteCompExpanded = !_posteCompExpanded;
+            renderPosteCompetences();
+          });
+        }
+
         const pcs = byId("posteCompSearch");
         if (pcs){
           pcs.addEventListener("input", () => {
             _posteCompSearch = (pcs.value || "").trim();
+            _posteCompExpanded = false;
             if (_posteCompSearchTimer) clearTimeout(_posteCompSearchTimer);
             _posteCompSearchTimer = setTimeout(() => renderPosteCompetences(), 200);
           });
