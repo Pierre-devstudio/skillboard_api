@@ -4926,3 +4926,138 @@
     min-width:100%;
   }
 }
+
+
+/* ======================================================
+   Studio - modal préévaluation compétence poste
+   ====================================================== */
+#modalPosteCompEdit .studio-poste-comp-edit-card{
+  width:min(1180px, calc(100vw - 32px));
+  max-width:1180px;
+}
+
+#modalPosteCompEdit .sb-level-grid{
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:10px;
+}
+
+#modalPosteCompEdit .sb-level-card{
+  min-width:0;
+}
+
+#modalPosteCompEdit .sb-level-titleline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+#modalPosteCompEdit .sb-level-titleline input[type="radio"]{
+  flex:0 0 auto;
+  margin:0;
+  accent-color:#c97a12;
+}
+
+#modalPosteCompEdit .sb-level-name{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalPosteCompEdit .sb-crit-grid{
+  grid-template-columns: minmax(0, 1fr) 190px;
+  align-items:center;
+}
+
+#modalPosteCompEdit .sb-crit-row .label{
+  font-weight:600;
+  color:#1f2937;
+}
+
+#modalPosteCompEdit .sb-crit-row input[type="range"]{
+  width:100%;
+  height:8px;
+  appearance:none;
+  -webkit-appearance:none;
+  border-radius:999px;
+  background:rgba(201,122,18,.15);
+  accent-color:#c97a12;
+}
+
+#modalPosteCompEdit .sb-crit-row input[type="range"]::-webkit-slider-runnable-track{
+  height:8px;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(201,122,18,.22), rgba(201,122,18,.10));
+}
+
+#modalPosteCompEdit .sb-crit-row input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:18px;
+  height:18px;
+  margin-top:-5px;
+  border-radius:999px;
+  border:3px solid #fff;
+  background:#c97a12;
+  box-shadow:0 8px 18px rgba(201,122,18,.28);
+}
+
+#modalPosteCompEdit .sb-crit-row input[type="range"]::-moz-range-track{
+  height:8px;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(201,122,18,.22), rgba(201,122,18,.10));
+}
+
+#modalPosteCompEdit .sb-crit-row input[type="range"]::-moz-range-thumb{
+  width:14px;
+  height:14px;
+  border-radius:999px;
+  border:3px solid #fff;
+  background:#c97a12;
+  box-shadow:0 8px 18px rgba(201,122,18,.28);
+}
+
+#modalPosteCompEdit .sb-ring{
+  width:188px;
+  height:188px;
+  filter:drop-shadow(0 14px 26px rgba(15,23,42,.12));
+}
+
+#modalPosteCompEdit .sb-ring-bg{
+  stroke:rgba(201,122,18,.13);
+}
+
+#modalPosteCompEdit .sb-ring-prog{
+  stroke:#c97a12;
+}
+
+#modalPosteCompEdit .sb-ring--low,
+#modalPosteCompEdit .sb-ring--mid,
+#modalPosteCompEdit .sb-ring--high{
+  --sb-ring-color:#c97a12;
+}
+
+#modalPosteCompEdit .studio-poste-comp-cancel{
+  background:#fff;
+}
+
+#modalPosteCompEdit #btnPosteCompEditSave .sb-btn-icon svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+@media (max-width: 1080px){
+  #modalPosteCompEdit .sb-level-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px){
+  #modalPosteCompEdit .sb-level-grid,
+  #modalPosteCompEdit .sb-crit-grid{
+    grid-template-columns: 1fr;
+  }
+}

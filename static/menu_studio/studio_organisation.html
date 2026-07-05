@@ -1001,7 +1001,7 @@
 
   <!-- MODAL : Éditer compétence rattachée -->
   <div class="sb-modal" id="modalPosteCompEdit" style="display:none;">
-    <div class="sb-modal-card">
+    <div class="sb-modal-card studio-poste-comp-edit-card">
       <div class="sb-modal-head">
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
@@ -1009,11 +1009,6 @@
             <div class="card-title" id="posteCompEditTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
           </div>
 
-          <div style="margin-top:6px;">
-            <span id="posteCompEditDomain" class="sb-badge sb-badge--comp-domain" style="display:none;">
-              <span class="sb-dot"></span><span id="posteCompEditDomainTxt"></span>
-            </span>
-          </div>
         </div>
 
         <button type="button" class="sb-modal-x" id="btnClosePosteCompEdit" aria-label="Fermer">&times;</button>
@@ -1029,37 +1024,33 @@
 
           <div class="sb-level-grid" id="posteCompNivGrid">
             <label class="sb-level-card" data-niv="A">
-              <div class="sb-level-name">Débutant</div>
-              <div class="sb-level-radio">
+              <div class="sb-level-titleline">
                 <input type="radio" name="posteCompEditNiv" id="posteCompEditNivA" value="A" />
-                <span class="card-sub" style="margin:0;">Niveau A - Débutant</span>
+                <span class="sb-level-name">Débutant</span>
               </div>
               <div class="sb-level-text" id="posteCompRefA">—</div>
             </label>
 
             <label class="sb-level-card" data-niv="B">
-              <div class="sb-level-name">Intermédiaire</div>
-              <div class="sb-level-radio">
+              <div class="sb-level-titleline">
                 <input type="radio" name="posteCompEditNiv" id="posteCompEditNivB" value="B" />
-                <span class="card-sub" style="margin:0;">Niveau B - Intermédiaire</span>
+                <span class="sb-level-name">Intermédiaire</span>
               </div>
               <div class="sb-level-text" id="posteCompRefB">—</div>
             </label>
 
             <label class="sb-level-card" data-niv="C">
-              <div class="sb-level-name">Avancé</div>
-              <div class="sb-level-radio">
+              <div class="sb-level-titleline">
                 <input type="radio" name="posteCompEditNiv" id="posteCompEditNivC" value="C" />
-                <span class="card-sub" style="margin:0;">Niveau C - Avancé</span>
+                <span class="sb-level-name">Avancé</span>
               </div>
               <div class="sb-level-text" id="posteCompRefC">—</div>
             </label>
 
             <label class="sb-level-card" data-niv="D">
-              <div class="sb-level-name">Expert</div>
-              <div class="sb-level-radio">
+              <div class="sb-level-titleline">
                 <input type="radio" name="posteCompEditNiv" id="posteCompEditNivD" value="D" />
-                <span class="card-sub" style="margin:0;">Niveau D - Expert</span>
+                <span class="sb-level-name">Expert</span>
               </div>
               <div class="sb-level-text" id="posteCompRefD">—</div>
             </label>
@@ -1081,13 +1072,13 @@
                 </div>
 
                 <div class="sb-crit-row">
-                  <div class="label">Impact résultat</div>
+                  <div class="label">Impact sur le résultat</div>
                   <input type="range" id="posteCompEditImpact" min="0" max="10" step="1" />
                   <div class="sb-crit-val" id="posteCompEditImpactTxt">0/10</div>
                 </div>
 
                 <div class="sb-crit-row">
-                  <div class="label">Dépendance</div>
+                  <div class="label">Dépendance au poste</div>
                   <input type="range" id="posteCompEditDep" min="0" max="10" step="1" />
                   <div class="sb-crit-val" id="posteCompEditDepTxt">0/10</div>
                 </div>
@@ -1112,8 +1103,13 @@
       </div>
 
       <div class="sb-modal-foot">
-        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompEditCancel">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompEditSave">Enregistrer</button>        
+        <button type="button" class="sb-btn sb-btn--soft studio-poste-comp-cancel" id="btnPosteCompEditCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompEditSave">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          </span>
+          Enregistrer
+        </button>
       </div>
     </div>
   </div>
