@@ -2163,13 +2163,21 @@
 }
 
 #modalPoste .studio-poste-card{
-  border-color:#e7eaf0;
-  border-radius:14px;
-  box-shadow:0 1px 2px rgba(15,23,42,.035);
+  border:0;
+  border-bottom:1px solid #e7eaf0;
+  border-radius:0;
+  box-shadow:none;
+  padding:16px 0 18px;
+  background:transparent;
 }
 
 #modalPoste .sb-tab-panel .studio-poste-card + .studio-poste-card{
-  margin-top:12px;
+  margin-top:0;
+}
+
+#modalPoste .sb-tab-panel .studio-poste-card:last-child{
+  border-bottom:0;
+  padding-bottom:4px;
 }
 
 #modalPoste .studio-section-titleline{
@@ -2226,6 +2234,10 @@
   min-height:92px;
 }
 
+#modalPoste #posteMission{
+  min-height:138px;
+}
+
 #modalPoste .studio-poste-richtext{
   border-color:#dbe3ef;
   border-radius:14px;
@@ -2244,6 +2256,54 @@
   padding:14px 16px;
   font-size:13px;
   line-height:1.55;
+}
+
+#modalPoste .studio-poste-richtext .sb-richtext-editor > ol{
+  margin:0;
+  padding-left:0;
+  list-style:none;
+  counter-reset:poste-main-activity;
+}
+
+#modalPoste .studio-poste-richtext .sb-richtext-editor > ol > li{
+  position:relative;
+  counter-increment:poste-main-activity;
+  margin:10px 0 12px;
+  padding-left:34px;
+  font-size:13px;
+  font-weight:800;
+}
+
+#modalPoste .studio-poste-richtext .sb-richtext-editor > ol > li::before{
+  content:counter(poste-main-activity);
+  position:absolute;
+  left:0;
+  top:-1px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  border:0;
+  border-radius:999px;
+  background:var(--accent);
+  color:#111827;
+  font-size:13px;
+  font-weight:800;
+  line-height:1;
+}
+
+#modalPoste .studio-poste-richtext .sb-richtext-editor > ol > li > ul{
+  margin:6px 0 0;
+  padding-left:18px;
+  list-style:circle;
+  font-size:13px;
+  font-weight:400;
+}
+
+#modalPoste .studio-poste-richtext .sb-richtext-editor > ol > li > ul > li{
+  margin:3px 0;
+  padding-left:0;
 }
 
 #modalPoste .studio-exi-card-head{
