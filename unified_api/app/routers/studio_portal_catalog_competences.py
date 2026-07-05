@@ -109,29 +109,54 @@ def _competence_code_exists_owner(cur, oid: str, code: str, exclude_id: Optional
 
 
 def _next_comp_code(cur, oid: str) -> str:
-    # Sérialise les créations pour un owner (évite doublons)
-    lock_key = f"comp_code:{oid}:CO"
+    # Sérialise les créations pour un owner (évite doublons).
+    # Le code est un repère humain, pas l'identifiant métier : on conserve
+    # les codes importés et on attribue ensuite le premier numéro disponible.
+    owner_id = (oid or "").strip()
+    lock_key = f"comp_code:{owner_id}"
     cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
 
     cur.execute(
         """
-        SELECT COALESCE(
-          MAX( (regexp_match(code, '^CO([0-9]{5})$'))[1]::int ),
-          0
-        ) AS max_n
+        SELECT upper(substring(code from '^(CO?)[0-9]{5}$')) AS prefix, COUNT(*) AS nb
         FROM public.tbl_competence
         WHERE id_owner = %s
-          AND code ~ '^CO[0-9]{5}$'
+          AND upper(COALESCE(code, '')) ~ '^CO?[0-9]{5}$'
+        GROUP BY 1
+        ORDER BY COUNT(*) DESC,
+                 CASE WHEN upper(substring(code from '^(CO?)[0-9]{5}$')) = 'CO' THEN 0 ELSE 1 END
+        LIMIT 1
         """,
-        (oid,),
+        (owner_id,),
     )
-    r = cur.fetchone() or {}
-    max_n_raw = r.get("max_n")
-    max_n = int(max_n_raw) if max_n_raw is not None else 0
-    nxt = max_n + 1
-    if nxt > 99999:
-        raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (CO99999).")
-    return f"CO{nxt:05d}"
+    row = cur.fetchone() or {}
+    prefix = (row.get("prefix") or "CO").strip().upper() or "CO"
+    if prefix not in ("C", "CO"):
+        prefix = "CO"
+
+    cur.execute(
+        """
+        SELECT code
+        FROM public.tbl_competence
+        WHERE id_owner = %s
+          AND upper(COALESCE(code, '')) ~ %s
+        """,
+        (owner_id, f"^{prefix}[0-9]{{5}}$"),
+    )
+    rows = cur.fetchall() or []
+
+    used = set()
+    rx = re.compile(rf"^{re.escape(prefix)}([0-9]{{5}})$", re.I)
+    for r in rows:
+        m = rx.match(str((r.get("code") or "")).strip())
+        if m:
+            used.add(int(m.group(1)))
+
+    for nxt in range(1, 100000):
+        if nxt not in used:
+            return f"{prefix}{nxt:05d}"
+
+    raise HTTPException(status_code=400, detail=f"Limite de numérotation atteinte ({prefix}99999).")
 
 def _level_score(txt: Optional[str]) -> int:
     t = (txt or "").lower()

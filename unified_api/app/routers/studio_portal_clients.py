@@ -928,6 +928,331 @@ def _sync_client_skills_eligibility(cur, id_ent: str) -> bool:
     )
     return eligible
 
+
+def _initialiser_referentiel_studio_client(cur, id_ent: str) -> dict:
+    """
+    Initialise une seule fois le référentiel exploitable d'un client qui devient Studio.
+
+    Règle métier :
+    - les postes rattachés à l'entreprise cliente deviennent portés par son owner ;
+    - les compétences externes utilisées dans ses postes sont copiées dans son owner ;
+    - les codes compétences sont conservés ;
+    - les liens opérationnels basculent vers les copies client ;
+    - les données source du gestionnaire restent intactes.
+
+    La fonction est idempotente : si les liens pointent déjà vers des compétences client,
+    elle ne recopie rien. En cas de downgrade puis réactivation Studio, la propriété reste
+    donc stable et aucune nouvelle copie n'est déclenchée.
+    """
+    ent_id = _normalize_text(id_ent)
+    if not ent_id:
+        raise HTTPException(status_code=400, detail="Structure obligatoire.")
+
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"studio_referentiel:{ent_id}",))
+
+    cur.execute(
+        """
+        SELECT id_owner_gestionnaire
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (ent_id,),
+    )
+    ent_row = cur.fetchone() or {}
+    if not ent_row:
+        raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+    cur.execute(
+        """
+        SELECT DISTINCT
+            c.id_comp,
+            c.id_owner,
+            c.code,
+            c.intitule,
+            c.description,
+            c.domaine,
+            c.niveaua,
+            c.niveaub,
+            c.niveauc,
+            c.niveaud,
+            c.grille_evaluation,
+            COALESCE(c.etat, 'valide') AS etat
+        FROM public.tbl_fiche_poste p
+        JOIN public.tbl_fiche_poste_competence pc
+          ON pc.id_poste = p.id_poste
+         AND COALESCE(pc.masque, FALSE) = FALSE
+        JOIN public.tbl_competence c
+          ON c.id_comp = pc.id_competence
+         AND COALESCE(c.masque, FALSE) = FALSE
+        WHERE p.id_ent = %s
+          AND COALESCE(c.id_owner, '') <> %s
+        ORDER BY lower(COALESCE(c.code, '')), lower(COALESCE(c.intitule, ''))
+        """,
+        (ent_id, ent_id),
+    )
+    source_rows = cur.fetchall() or []
+
+    comp_map: Dict[str, str] = {}
+    copied_count = 0
+    reused_count = 0
+
+    for src in source_rows:
+        source_id = _normalize_text(src.get("id_comp"))
+        if not source_id:
+            continue
+
+        code = _normalize_text(src.get("code")) or source_id
+        intitule = _normalize_text(src.get("intitule")) or code
+
+        cur.execute(
+            """
+            SELECT id_comp
+            FROM public.tbl_competence
+            WHERE id_owner = %s
+              AND lower(COALESCE(code, '')) = lower(%s)
+              AND lower(COALESCE(intitule, '')) = lower(%s)
+            ORDER BY COALESCE(masque, FALSE), date_creation DESC NULLS LAST, id_comp DESC
+            LIMIT 1
+            """,
+            (ent_id, code, intitule),
+        )
+        existing = cur.fetchone() or {}
+        target_id = _normalize_text(existing.get("id_comp"))
+
+        if target_id:
+            reused_count += 1
+        else:
+            target_id = str(uuid4())
+            cur.execute(
+                """
+                INSERT INTO public.tbl_competence (
+                    id_comp,
+                    id_owner,
+                    code,
+                    intitule,
+                    description,
+                    domaine,
+                    niveaua,
+                    niveaub,
+                    niveauc,
+                    niveaud,
+                    grille_evaluation,
+                    etat,
+                    masque,
+                    date_creation,
+                    date_modification
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s,
+                    FALSE, NOW(), NOW()
+                )
+                """,
+                (
+                    target_id,
+                    ent_id,
+                    code,
+                    intitule,
+                    src.get("description"),
+                    src.get("domaine"),
+                    src.get("niveaua"),
+                    src.get("niveaub"),
+                    src.get("niveauc"),
+                    src.get("niveaud"),
+                    src.get("grille_evaluation"),
+                    _normalize_text(src.get("etat")) or "valide",
+                ),
+            )
+            copied_count += 1
+
+        if target_id != source_id:
+            comp_map[source_id] = target_id
+
+    updated_poste_links = 0
+    masked_poste_links = 0
+    updated_effectif_links = 0
+    archived_effectif_links = 0
+    updated_demandes = 0
+    updated_contenus = 0
+
+    for source_id, target_id in comp_map.items():
+        cur.execute(
+            """
+            UPDATE public.tbl_fiche_poste_competence pc
+            SET id_competence = %s,
+                date_modification = NOW()
+            WHERE pc.id_competence = %s
+              AND COALESCE(pc.masque, FALSE) = FALSE
+              AND EXISTS (
+                    SELECT 1
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_poste = pc.id_poste
+                      AND p.id_ent = %s
+              )
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM public.tbl_fiche_poste_competence pc2
+                    WHERE pc2.id_poste = pc.id_poste
+                      AND pc2.id_competence = %s
+              )
+            """,
+            (target_id, source_id, ent_id, target_id),
+        )
+        updated_poste_links += cur.rowcount or 0
+
+        cur.execute(
+            """
+            UPDATE public.tbl_fiche_poste_competence pc
+            SET masque = TRUE,
+                date_modification = NOW()
+            WHERE pc.id_competence = %s
+              AND COALESCE(pc.masque, FALSE) = FALSE
+              AND EXISTS (
+                    SELECT 1
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_poste = pc.id_poste
+                      AND p.id_ent = %s
+              )
+              AND EXISTS (
+                    SELECT 1
+                    FROM public.tbl_fiche_poste_competence pc2
+                    WHERE pc2.id_poste = pc.id_poste
+                      AND pc2.id_competence = %s
+                      AND COALESCE(pc2.masque, FALSE) = FALSE
+              )
+            """,
+            (source_id, ent_id, target_id),
+        )
+        masked_poste_links += cur.rowcount or 0
+
+        cur.execute(
+            """
+            UPDATE public.tbl_effectif_client_competence ecc
+            SET id_comp = %s
+            WHERE ecc.id_comp = %s
+              AND COALESCE(ecc.archive, FALSE) = FALSE
+              AND EXISTS (
+                    SELECT 1
+                    FROM public.tbl_effectif_client ec
+                    WHERE ec.id_effectif = ecc.id_effectif_client
+                      AND ec.id_ent = %s
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+              )
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM public.tbl_effectif_client_competence ecc2
+                    WHERE ecc2.id_effectif_client = ecc.id_effectif_client
+                      AND ecc2.id_comp = %s
+                      AND COALESCE(ecc2.archive, FALSE) = FALSE
+              )
+            """,
+            (target_id, source_id, ent_id, target_id),
+        )
+        updated_effectif_links += cur.rowcount or 0
+
+        cur.execute(
+            """
+            UPDATE public.tbl_effectif_client_competence ecc
+            SET archive = TRUE,
+                actif = FALSE
+            WHERE ecc.id_comp = %s
+              AND COALESCE(ecc.archive, FALSE) = FALSE
+              AND EXISTS (
+                    SELECT 1
+                    FROM public.tbl_effectif_client ec
+                    WHERE ec.id_effectif = ecc.id_effectif_client
+                      AND ec.id_ent = %s
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+              )
+              AND EXISTS (
+                    SELECT 1
+                    FROM public.tbl_effectif_client_competence ecc2
+                    WHERE ecc2.id_effectif_client = ecc.id_effectif_client
+                      AND ecc2.id_comp = %s
+                      AND COALESCE(ecc2.archive, FALSE) = FALSE
+              )
+            """,
+            (source_id, ent_id, target_id),
+        )
+        archived_effectif_links += cur.rowcount or 0
+
+        cur.execute(
+            """
+            UPDATE public.tbl_insights_besoin_formation
+            SET id_comp = %s,
+                updated_at = NOW()
+            WHERE id_ent_source = %s
+              AND id_comp = %s
+              AND COALESCE(archive, FALSE) = FALSE
+            """,
+            (target_id, ent_id, source_id),
+        )
+        updated_demandes += cur.rowcount or 0
+
+        cur.execute(
+            """
+            UPDATE public.tbl_contenu_ligne
+            SET id_competence = %s,
+                date_modification = NOW()
+            WHERE id_owner = %s
+              AND id_competence = %s
+              AND COALESCE(archive, FALSE) = FALSE
+            """,
+            (target_id, ent_id, source_id),
+        )
+        updated_contenus += cur.rowcount or 0
+
+        cur.execute(
+            """
+            UPDATE public.tbl_contenu_ligne
+            SET competences_liees = (
+                    SELECT COALESCE(
+                        jsonb_agg(
+                            CASE
+                              WHEN src.value = %s THEN to_jsonb(%s::text)
+                              ELSE to_jsonb(src.value)
+                            END
+                            ORDER BY src.ord
+                        ),
+                        '[]'::jsonb
+                    )
+                    FROM jsonb_array_elements_text(COALESCE(competences_liees, '[]'::jsonb)) WITH ORDINALITY AS src(value, ord)
+                ),
+                date_modification = NOW()
+            WHERE id_owner = %s
+              AND COALESCE(archive, FALSE) = FALSE
+              AND COALESCE(competences_liees, '[]'::jsonb) @> %s::jsonb
+            """,
+            (source_id, target_id, ent_id, json.dumps([source_id])),
+        )
+        updated_contenus += cur.rowcount or 0
+
+    cur.execute(
+        """
+        UPDATE public.tbl_fiche_poste
+        SET id_owner = %s,
+            date_maj = NOW()
+        WHERE id_ent = %s
+          AND COALESCE(id_owner, '') <> %s
+        """,
+        (ent_id, ent_id, ent_id),
+    )
+    updated_postes = cur.rowcount or 0
+
+    return {
+        "competences_source": len(source_rows),
+        "competences_copiees": copied_count,
+        "competences_reutilisees": reused_count,
+        "liens_postes_mis_a_jour": updated_poste_links,
+        "liens_postes_masques": masked_poste_links,
+        "evaluations_mises_a_jour": updated_effectif_links,
+        "evaluations_archivees": archived_effectif_links,
+        "demandes_mises_a_jour": updated_demandes,
+        "contenus_mis_a_jour": updated_contenus,
+        "postes_transferes": updated_postes,
+    }
+
 def _fetch_client_commercial(cur, id_ent: str) -> dict:
     cur.execute(
         """
@@ -1575,9 +1900,17 @@ def upsert_studio_client_commercial(id_owner: str, id_ent: str, payload: Commerc
                         ),
                     )
 
+                referentiel_studio = None
+                if studio_actif:
+                    referentiel_studio = _initialiser_referentiel_studio_client(cur, id_ent)
+
                 _sync_client_skills_eligibility(cur, id_ent)
                 conn.commit()
-                return _fetch_client_commercial(cur, id_ent)
+
+                detail = _fetch_client_commercial(cur, id_ent)
+                if referentiel_studio is not None:
+                    detail["referentiel_studio"] = referentiel_studio
+                return detail
 
     except HTTPException:
         raise
