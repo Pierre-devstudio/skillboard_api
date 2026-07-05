@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from psycopg.rows import dict_row
+from psycopg.types.json import Json
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
 import re
@@ -1077,7 +1078,7 @@ def _initialiser_referentiel_studio_client(cur, id_ent: str) -> dict:
                     src.get("niveaub"),
                     src.get("niveauc"),
                     src.get("niveaud"),
-                    src.get("grille_evaluation"),
+                    Json(src.get("grille_evaluation")) if src.get("grille_evaluation") is not None else None,
                     _normalize_text(src.get("etat")) or "valide",
                 ),
             )
