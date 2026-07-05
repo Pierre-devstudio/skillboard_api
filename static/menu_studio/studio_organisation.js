@@ -4719,14 +4719,7 @@ function refreshPosteCompEditCritDisplay(){
 
             const tdCat = document.createElement("td");
             const cat = (it.categorie || "").toString().trim();
-            if (cat){
-                const b = document.createElement("span");
-                b.className = "sb-badge sb-badge--poste-soft";
-                b.textContent = cat;
-                tdCat.appendChild(b);
-            } else {
-                tdCat.textContent = "—";
-            }
+            tdCat.textContent = cat || "—";
 
             const tdNom = document.createElement("td");
             const certWrap = document.createElement("div");
@@ -4787,8 +4780,8 @@ function refreshPosteCompEditCritDisplay(){
                 tdAct.textContent = "—";
             }
 
-            tr.appendChild(tdCat);
             tr.appendChild(tdNom);
+            tr.appendChild(tdCat);
             tr.appendChild(tdVal);
             tr.appendChild(tdLvl);
             tr.appendChild(tdAct);
