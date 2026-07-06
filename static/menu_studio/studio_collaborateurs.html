@@ -74,62 +74,84 @@
     </div>
   </div>
 
-  <div class="card collab-list-card">
-    <div class="sb-card-head">
-      <div>
-        <div class="card-title" style="margin-bottom:2px;">Liste des collaborateurs</div>
-        <div class="card-sub" id="collabStatus" style="margin:0;">—</div>
+  <div class="card collab-list-card" id="collabListCard">
+    <div class="collab-list-head">
+      <div class="collab-list-titleline">
+        <span class="collab-list-title-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M21 11h-6"/><path d="M18 8v6"/></svg>
+        </span>
+        <div>
+          <div class="card-title">Liste des collaborateurs</div>
+          <div class="card-sub" id="collabStatus">Retrouvez et filtrez vos collaborateurs.</div>
+        </div>
+      </div>
+
+      <div class="sb-actions collab-list-head-actions">
+        <button type="button" class="sb-btn sb-btn--secondary" id="btnCollabResetFilters">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.1-6.6"/><path d="M18 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.1 6.6"/><path d="M6 21v-5h5"/></svg>
+          </span>
+          <span class="sb-btn-label">Réinitialiser les filtres</span>
+        </button>
+        <button type="button" class="collab-list-filter-toggle" id="btnCollabFiltersToggle" aria-expanded="true" aria-controls="collabFilterBody" title="Replier les filtres" aria-label="Replier les filtres">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+        </button>
       </div>
     </div>
 
-    <div class="sb-toolbar sb-mt-10" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
-        <div class="sb-search" style="flex:0 0 300px; max-width:300px;">
-            <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+    <div class="collab-filter-body" id="collabFilterBody">
+      <div class="collab-filter-grid">
+        <div class="sb-field collab-filter-search">
+          <div class="label">Recherche</div>
+          <div class="collab-search-field">
+            <span class="collab-search-field__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </span>
             <input type="text" id="collabSearch" placeholder="Nom, prénom, email, code, matricule…" />
+          </div>
         </div>
 
-        <div class="info-item" style="width:170px; min-width:170px; flex:0 0 170px;">
-            <div class="label">Statut</div>
-            <select id="collabFilterActive">
+        <div class="sb-field">
+          <div class="label">Statut</div>
+          <select id="collabFilterActive">
             <option value="all">Tous</option>
             <option value="active" selected>Actifs</option>
             <option value="inactive">Inactifs</option>
-            </select>
+          </select>
         </div>
 
-        <div style="display:flex; align-items:center; gap:16px; min-height:38px; padding-bottom:2px; flex:0 0 auto; flex-wrap:wrap;">
-            <label class="sb-check" style="margin:0;">
+        <div id="collabServiceField" class="sb-field">
+          <div class="label">Service</div>
+          <select id="collabFilterService"></select>
+        </div>
+
+        <div id="collabPosteField" class="sb-field">
+          <div class="label">Poste</div>
+          <select id="collabFilterPoste"></select>
+        </div>
+
+        <div class="collab-filter-checks">
+          <label class="sb-check">
             <input type="checkbox" id="collabFilterManager" />
             <span>Managers</span>
-            </label>
+          </label>
 
-            <label class="sb-check" style="margin:0;">
+          <label class="sb-check">
             <input type="checkbox" id="collabFilterFormateur" />
             <span>Formateurs</span>
-            </label>
+          </label>
 
-            <label class="sb-check" style="margin:0;">
+          <label class="sb-check">
             <input type="checkbox" id="collabShowArchived" />
             <span>Voir les archivés</span>
-            </label>
+          </label>
         </div>
-
-        <div id="collabServiceField" class="info-item" style="display:none; min-width:220px;">
-            <div class="label">Service</div>
-            <select id="collabFilterService"></select>
-        </div>
-
-        <div id="collabPosteField" class="info-item" style="display:none; min-width:220px;">
-            <div class="label">Poste</div>
-            <select id="collabFilterPoste"></select>
-        </div>
-
-        <div style="flex:1 1 auto;"></div>
+      </div>
     </div>
 
-    <div class="sb-stack sb-stack--xxs sb-mt-10" id="collabList"></div>
+    <div class="collab-table-wrap" id="collabList"></div>
 
-    <div class="card-sub" id="collabEmpty" style="display:none; margin-top:10px;">
+    <div class="card-sub collab-empty" id="collabEmpty" style="display:none;">
       Aucun collaborateur trouvé.
     </div>
   </div>

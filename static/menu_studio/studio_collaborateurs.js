@@ -2001,7 +2001,9 @@
 
   function setStatus(msg){
     const el = byId("collabStatus");
-    if (el) el.textContent = msg || "—";
+    if (!el) return;
+    const txt = String(msg || "").trim();
+    el.textContent = (!txt || txt === "—") ? "Retrouvez et filtrez vos collaborateurs." : txt;
   }
 
     function htmlEsc(s){
@@ -2514,6 +2516,99 @@
     return arr;
   }
 
+
+  function collabInitials(firstName, lastName){
+    const first = String(firstName || '').trim();
+    const last = String(lastName || '').trim();
+    const letters = `${first.charAt(0)}${last.charAt(0)}`.trim();
+    return (letters || '–').toUpperCase();
+  }
+
+  function collabAvatarTone(value){
+    const tones = ['lime', 'violet', 'sky', 'mint', 'peach', 'cyan', 'rose', 'amber'];
+    const raw = String(value || '');
+    let sum = 0;
+    for (let i = 0; i < raw.length; i += 1) sum += raw.charCodeAt(i);
+    return tones[sum % tones.length];
+  }
+
+  function splitPosteLabel(label){
+    const raw = String(label || '').trim();
+    if (!raw || raw === '—') return { code: '', title: '—' };
+
+    const parts = raw.split('·');
+    if (parts.length >= 2) {
+      return {
+        code: parts.shift().trim(),
+        title: parts.join('·').trim() || '—'
+      };
+    }
+
+    return { code: '', title: raw };
+  }
+
+  function renderPosteCell(posteLabel){
+    const p = splitPosteLabel(posteLabel);
+    return `
+      <div class="collab-poste-cell">
+        ${p.code ? `<span class="sb-badge sb-badge--poste collab-poste-code">${esc(p.code)}</span>` : ''}
+        <span class="collab-poste-title">${esc(p.title)}</span>
+      </div>
+    `;
+  }
+
+  function renderStatusRoles(it){
+    const archived = !!it?.archive;
+    const active = !!it?.actif && !archived;
+    const statusLabel = archived ? 'Archivé' : (active ? 'Actif' : 'Inactif');
+    const statusClass = archived ? 'is-archived' : (active ? 'is-active' : 'is-inactive');
+
+    return `
+      <div class="collab-status-stack">
+        <span class="collab-status-dot ${statusClass}">${esc(statusLabel)}</span>
+        <span class="collab-role-line">
+          ${it?.ismanager ? '<span class="collab-role-badge collab-role-badge--manager">Manager</span>' : ''}
+          ${it?.isformateur ? '<span class="collab-role-badge collab-role-badge--formateur">Formateur</span>' : ''}
+        </span>
+      </div>
+    `;
+  }
+
+  function setCollabFiltersCollapsed(collapsed){
+    const card = byId('collabListCard') || document.querySelector('#view-collaborateurs .collab-list-card');
+    const body = byId('collabFilterBody');
+    const btn = byId('btnCollabFiltersToggle');
+    const isCollapsed = !!collapsed;
+
+    if (card) card.classList.toggle('is-filters-collapsed', isCollapsed);
+    if (body) body.style.display = isCollapsed ? 'none' : '';
+    if (btn) {
+      btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      btn.title = isCollapsed ? 'Déplier les filtres' : 'Replier les filtres';
+      btn.setAttribute('aria-label', isCollapsed ? 'Déplier les filtres' : 'Replier les filtres');
+    }
+  }
+
+  function resetCollaborateurFilters(portal){
+    _search = '';
+    _filterActive = 'active';
+    _filterService = '__all__';
+    _filterPoste = '__all__';
+    _filterManager = false;
+    _filterFormateur = false;
+    _showArchived = false;
+
+    if (byId('collabSearch')) byId('collabSearch').value = '';
+    if (byId('collabFilterActive')) byId('collabFilterActive').value = 'active';
+    if (byId('collabFilterService')) byId('collabFilterService').value = '__all__';
+    if (byId('collabFilterPoste')) byId('collabFilterPoste').value = '__all__';
+    if (byId('collabFilterManager')) byId('collabFilterManager').checked = false;
+    if (byId('collabFilterFormateur')) byId('collabFilterFormateur').checked = false;
+    if (byId('collabShowArchived')) byId('collabShowArchived').checked = false;
+
+    loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
+  }
+
   function renderList(){
     const host = byId("collabList");
     const empty = byId("collabEmpty");
@@ -2554,40 +2649,40 @@
       </svg>
     `;
 
-    host.innerHTML = _items.map(it => {
+    const rows = _items.map(it => {
       const cid = String(it.id_collaborateur || '').trim();
       const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
       const email = it.email || "—";
-      const posteActuel = it.poste_label || "—";
+      const service = String(it.nom_service || '').trim() || '—';
       const accessSummary = Array.isArray(it.access_summary) ? it.access_summary : [];
       const selectedForSend = _bulkSendSelectedIds.has(cid);
+      const avatarTone = collabAvatarTone(cid || fullName);
 
       return `
-        <div class="sb-row-card ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}">
-          <div
-            class="sb-row-left"
-            style="display:grid; grid-template-columns:34px minmax(180px,220px) minmax(260px,1.35fr) minmax(220px,1fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;"
-          >
+        <div class="collab-table-row ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}">
+          <div class="collab-table-cell collab-table-cell--check">
             <label class="sb-collab-send-check" title="Sélectionner pour l’envoi des accès">
               <input type="checkbox" data-select-collab="${esc(cid)}" ${selectedForSend ? 'checked' : ''} />
             </label>
-
-            <div class="sb-row-title">${esc(fullName)}</div>
-
-            <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              ${esc(email)}
-            </div>
-
-            <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              ${esc(posteActuel)}
-            </div>
           </div>
 
-          <div class="sb-row-right" style="flex:0 0 auto; gap:14px;">
-            <div style="display:flex; align-items:center; justify-content:flex-end; min-width:120px;">
-              ${renderConsoleIcons(accessSummary)}
-            </div>
+          <div class="collab-table-cell collab-table-cell--identity">
+            <span class="collab-avatar collab-avatar--${esc(avatarTone)}" aria-hidden="true">${esc(collabInitials(it.prenom, it.nom))}</span>
+            <span class="collab-identity-text">
+              <span class="collab-identity-name">${esc(fullName)}</span>
+              <span class="collab-identity-mail">${esc(email)}</span>
+            </span>
+          </div>
 
+          <div class="collab-table-cell collab-table-cell--service">${esc(service)}</div>
+          <div class="collab-table-cell collab-table-cell--poste">${renderPosteCell(it.poste_label)}</div>
+          <div class="collab-table-cell collab-table-cell--roles">${renderStatusRoles(it)}</div>
+
+          <div class="collab-table-cell collab-table-cell--access">
+            ${renderConsoleIcons(accessSummary)}
+          </div>
+
+          <div class="collab-table-cell collab-table-cell--actions">
             <div class="sb-icon-actions">
               <button
                 type="button"
@@ -2631,6 +2726,24 @@
         </div>
       `;
     }).join("");
+
+    host.innerHTML = `
+      <div class="collab-table">
+        <div class="collab-table-row collab-table-head">
+          <div class="collab-table-cell collab-table-cell--check"></div>
+          <div class="collab-table-cell">Collaborateur</div>
+          <div class="collab-table-cell">Service</div>
+          <div class="collab-table-cell">Poste</div>
+          <div class="collab-table-cell">Statut & rôles</div>
+          <div class="collab-table-cell">Accès</div>
+          <div class="collab-table-cell collab-table-cell--actions">Actions</div>
+        </div>
+        ${rows}
+      </div>
+      <div class="collab-table-foot">
+        <span>Affichage de 1 à ${_items.length} sur ${_items.length} collaborateur${_items.length > 1 ? 's' : ''}</span>
+      </div>
+    `;
 
     refreshBulkSendButton();
   }
@@ -3891,6 +4004,15 @@
       } catch (e) {
         portal.showAlert('error', getErrorMessage(e));
       }
+    });
+
+    byId('btnCollabResetFilters')?.addEventListener('click', () => {
+      resetCollaborateurFilters(portal);
+    });
+
+    byId('btnCollabFiltersToggle')?.addEventListener('click', () => {
+      const card = byId('collabListCard') || document.querySelector('#view-collaborateurs .collab-list-card');
+      setCollabFiltersCollapsed(!(card?.classList.contains('is-filters-collapsed')));
     });
 
     byId('collabSearch')?.addEventListener('input', (e) => {
