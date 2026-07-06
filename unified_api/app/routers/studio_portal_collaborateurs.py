@@ -5572,6 +5572,18 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
         if not cid:
             raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
 
+        months = None
+        months_raw = (request.query_params.get("months") or "").strip()
+        if months_raw:
+            try:
+                months = int(months_raw)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Paramètre months invalide.")
+            if months < 1 or months > 120:
+                raise HTTPException(status_code=400, detail="Paramètre months hors limite.")
+
+        include_archived = (request.query_params.get("include_archived") or "").strip().lower() in {"1", "true", "yes", "on"}
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
@@ -5580,19 +5592,39 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
-                id_effectif_ids = _collab_history_effectif_ids(scope, cid)
-                if not id_effectif_ids:
-                    return {"id_collaborateur": cid, "items": []}
 
-                # Les formations JMB sont rattachées directement à l'effectif via
-                # tbl_action_formation_effectif.id_effectif. Le scope collaborateur a déjà
-                # été validé juste au-dessus ; on ne rejoint donc pas tbl_effectif_client ici,
-                # sinon les utilisateurs Studio sans miroir effectif exploitable perdent leur historique.
-                cur.execute(
+                id_effectif = (scope.get("id_effectif_data") or cid or "").strip()
+                if not id_effectif:
+                    return {"id_collaborateur": cid, "id_effectif": None, "items": []}
+
+                where_arch = ""
+                params: List[Any] = [id_effectif]
+
+                if not include_archived:
+                    where_arch = """
+                      AND COALESCE(acfe.archive, FALSE) = FALSE
+                      AND COALESCE(af.archive, FALSE) = FALSE
                     """
+
+                where_period = ""
+                if months is not None:
+                    where_period = """
+                      AND COALESCE(af.date_fin_formation, af.date_debut_formation, af.date_creation::date)
+                          >= (CURRENT_DATE - make_interval(months => %s))::date
+                    """
+                    params.append(months)
+
+                # Même principe qu'Insights : les formations JMB sont portées par
+                # tbl_action_formation_effectif.id_effectif. Le scope Studio valide
+                # le collaborateur juste au-dessus ; la requête ne doit pas filtrer
+                # une seconde fois via tbl_effectif_client, sinon l'historique peut
+                # disparaître alors que l'inscription existe bien dans acfe.
+                cur.execute(
+                    f"""
                     SELECT
                       acfe.id_action_formation_effectif,
                       acfe.id_action_formation,
+                      acfe.id_effectif,
                       COALESCE(acfe.archive, FALSE) AS archive_inscription,
                       af.code_action_formation,
                       af.etat_action,
@@ -5607,10 +5639,10 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                       ON af.id_action_formation = acfe.id_action_formation
                     LEFT JOIN public.tbl_fiche_formation ff
                       ON ff.id_form = af.id_form
-                    WHERE acfe.id_effectif = ANY(%s)
+                    WHERE acfe.id_effectif = %s
                       AND acfe.id_action_formation IS NOT NULL
-                      AND COALESCE(acfe.archive, FALSE) = FALSE
-                      AND COALESCE(af.archive, FALSE) = FALSE
+                      {where_arch}
+                      {where_period}
                       AND (ff.id_form IS NULL OR COALESCE(ff.masque, FALSE) = FALSE)
                     ORDER BY
                       af.date_fin_formation DESC NULLS LAST,
@@ -5618,7 +5650,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                       af.date_creation DESC NULLS LAST,
                       acfe.id_action_formation_effectif DESC
                     """,
-                    (id_effectif_ids,),
+                    tuple(params),
                 )
                 rows = cur.fetchall() or []
 
@@ -5628,6 +5660,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 {
                     "id_action_formation_effectif": r.get("id_action_formation_effectif"),
                     "id_action_formation": r.get("id_action_formation"),
+                    "id_effectif": r.get("id_effectif"),
                     "code_action_formation": r.get("code_action_formation"),
                     "etat_action": r.get("etat_action"),
                     "date_debut_formation": r.get("date_debut_formation").isoformat() if r.get("date_debut_formation") else None,
@@ -5640,7 +5673,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 }
             )
 
-        return {"id_collaborateur": cid, "items": items}
+        return {"id_collaborateur": cid, "id_effectif": id_effectif, "items": items}
     except HTTPException:
         raise
     except Exception as e:
