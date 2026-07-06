@@ -2270,8 +2270,15 @@
     if (!btn) return;
 
     const count = _bulkSendSelectedIds.size;
+    const label = btn.querySelector('.sb-btn-label');
     btn.disabled = count === 0;
-    btn.textContent = count > 0 ? `Envoyer les accès (${count})` : 'Envoyer les accès';
+
+    const text = count > 0 ? `Envoyer les accès (${count})` : 'Envoyer les accès';
+    if (label) {
+      label.textContent = text;
+    } else {
+      btn.textContent = text;
+    }
   }
 
   function refreshModalSendButton(){

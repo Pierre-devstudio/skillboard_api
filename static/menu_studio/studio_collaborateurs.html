@@ -1,41 +1,80 @@
-<section id="view-collaborateurs" data-view="collaborateurs" class="sb-stack sb-stack--md">
-  <div class="card">
-    <div class="sb-card-head">
-      <div style="min-width:0;">
-        <div class="card-title" id="collabPageTitle" style="margin-bottom:2px;">Vos collaborateurs</div>
-        <div class="card-sub" id="collabPageSub" style="margin:0;">
-          Enregistrez, gérez et archivez vos collaborateurs.
+<section id="view-collaborateurs" data-view="collaborateurs" class="sb-stack sb-stack--md studio-collab-page">
+  <div class="card collab-hero-card">
+    <div class="collab-hero-top">
+      <div class="collab-hero-main">
+        <div class="collab-hero-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <div style="min-width:0;">
+          <div class="card-title" id="collabPageTitle">Vos collaborateurs</div>
+          <div class="card-sub" id="collabPageSub">
+            Enregistrez, gérez et archivez vos collaborateurs.
+          </div>
         </div>
       </div>
 
-      <div class="sb-actions">
-        <button type="button" class="sb-btn sb-btn--secondary" id="btnCollabSendBulk" disabled>Envoyer les accès</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnCollabAdd">Ajouter un collaborateur</button>
+      <div class="sb-actions collab-hero-actions">
+        <button type="button" class="sb-btn sb-btn--secondary" id="btnCollabSendBulk" disabled>
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg>
+          </span>
+          <span class="sb-btn-label">Envoyer les accès</span>
+        </button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCollabAdd">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+          </span>
+          <span class="sb-btn-label">Ajouter un collaborateur</span>
+        </button>
       </div>
     </div>
 
-    <div class="sb-kpi-grid sb-mt-10">
-      <div class="sb-kpi-card">
-        <div class="sb-kpi-label">Total</div>
-        <div class="sb-kpi-value" id="kpiTotalVal">0</div>
+    <div class="sb-kpi-grid collab-hero-kpis">
+      <div class="sb-kpi-card collab-kpi-card">
+        <div class="collab-kpi-icon collab-kpi-icon--total" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <div class="sb-kpi-label">Total</div>
+          <div class="sb-kpi-value" id="kpiTotalVal">0</div>
+        </div>
       </div>
-      <div class="sb-kpi-card">
-        <div class="sb-kpi-label">Actifs</div>
-        <div class="sb-kpi-value" id="kpiActifsVal">0</div>
+      <div class="sb-kpi-card collab-kpi-card">
+        <div class="collab-kpi-icon collab-kpi-icon--active" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+        </div>
+        <div>
+          <div class="sb-kpi-label">Actifs</div>
+          <div class="sb-kpi-value" id="kpiActifsVal">0</div>
+        </div>
       </div>
-      <div class="sb-kpi-card">
-        <div class="sb-kpi-label">Inactifs</div>
-        <div class="sb-kpi-value" id="kpiInactifsVal">0</div>
+      <div class="sb-kpi-card collab-kpi-card">
+        <div class="collab-kpi-icon collab-kpi-icon--inactive" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="10" cy="7" r="4"/><path d="M3.5 21a6.5 6.5 0 0 1 10.5-5.1"/><path d="M18 16v5"/><path d="M20.5 18.5H15.5"/></svg>
+        </div>
+        <div>
+          <div class="sb-kpi-label">Inactifs</div>
+          <div class="sb-kpi-value" id="kpiInactifsVal">0</div>
+        </div>
       </div>
-      <div class="sb-kpi-card">
-        <div class="sb-kpi-label">Archivés</div>
-        <div class="sb-kpi-value" id="kpiArchivesVal">0</div>
+      <div class="sb-kpi-card collab-kpi-card">
+        <div class="collab-kpi-icon collab-kpi-icon--archived" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+        </div>
+        <div>
+          <div class="sb-kpi-label">Archivés</div>
+          <div class="sb-kpi-value" id="kpiArchivesVal">0</div>
+        </div>
       </div>
     </div>
-    
   </div>
 
-  <div class="card">
+  <div class="card collab-list-card">
     <div class="sb-card-head">
       <div>
         <div class="card-title" style="margin-bottom:2px;">Liste des collaborateurs</div>
