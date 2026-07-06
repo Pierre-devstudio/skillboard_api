@@ -2954,10 +2954,13 @@
 
   function setCollabRetraiteEstimee(value){
     const chk = byId("collabHaveDateFin");
-    if (!chk) return;
-
+    const retraite = byId("collabRetraiteEstimee");
     const n = parseInt(value, 10);
-    chk.dataset.retraiteEstimee = (Number.isFinite(n) && n > 1900) ? String(n) : "";
+    const label = (Number.isFinite(n) && n > 1900) ? String(n) : "";
+
+    if (chk) chk.dataset.retraiteEstimee = label;
+    if (retraite) retraite.value = label;
+
     refreshSortieVisibility();
   }
 
@@ -2988,7 +2991,7 @@
       "collabPrenom","collabNom","collabEmail","collabTel","collabAdresse",
       "collabCodePostal","collabVille","collabPays","collabObservations","collabMatricule",
       "collabNiveauEdu","collabDomaineEdu","collabDateNaissance","collabDateEntree",
-      "collabDateDebutPoste","collabDateSortie","collabMotifSortie"
+      "collabDateDebutPoste","collabDateSortie","collabMotifSortie","collabRetraiteEstimee"
     ].forEach(id => {
       const el = byId(id);
       if (el) el.value = "";
