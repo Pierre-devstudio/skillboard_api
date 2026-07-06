@@ -4918,6 +4918,136 @@ def studio_collab_create_certification_catalogue(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications_catalogue create error: {e}")
 
+
+@router.post("/studio/collaborateurs/certifications/sync-poste/{id_owner}/{id_collaborateur}")
+def studio_collab_sync_certifications_from_poste(
+    id_owner: str,
+    id_collaborateur: str,
+    payload: SyncPosteCompetencesPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid, request)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
+
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                id_poste = _norm_text(payload.id_poste_actuel) or _norm_text(scope.get("id_poste_actuel"))
+                if not id_poste:
+                    raise HTTPException(status_code=400, detail="Aucun poste actuel sélectionné.")
+
+                _fetch_poste_service(cur, oid, scope_ent, id_poste)
+
+                cur.execute(
+                    """
+                    SELECT COALESCE(intitule_poste, '') AS intitule_poste
+                    FROM public.tbl_fiche_poste
+                    WHERE id_poste = %s
+                      AND id_owner = %s
+                      AND id_ent = %s
+                      AND COALESCE(actif, TRUE) = TRUE
+                    LIMIT 1
+                    """,
+                    (id_poste, oid, scope_ent),
+                )
+                poste_row = cur.fetchone() or {}
+                intitule_poste = (poste_row.get("intitule_poste") or "").strip() or None
+
+                cur.execute(
+                    """
+                    SELECT
+                      fpc.id_certification
+                    FROM public.tbl_fiche_poste_certification fpc
+                    JOIN public.tbl_certification c
+                      ON c.id_certification = fpc.id_certification
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    WHERE fpc.id_poste = %s
+                    ORDER BY lower(COALESCE(c.categorie, '')), lower(COALESCE(c.nom_certification, ''))
+                    """,
+                    (id_poste,),
+                )
+                req_rows = cur.fetchall() or []
+
+                inserted = 0
+                skipped_existing = 0
+
+                for r in req_rows:
+                    cert_id = (r.get("id_certification") or "").strip()
+                    if not cert_id:
+                        continue
+
+                    cur.execute(
+                        """
+                        SELECT 1
+                        FROM public.tbl_effectif_client_certification
+                        WHERE id_effectif = %s
+                          AND id_certification = %s
+                          AND COALESCE(archive, FALSE) = FALSE
+                        LIMIT 1
+                        """,
+                        (id_effectif_data, cert_id),
+                    )
+                    if cur.fetchone():
+                        skipped_existing += 1
+                        continue
+
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_effectif_client_certification (
+                          id_effectif_certification,
+                          id_effectif,
+                          id_certification,
+                          date_obtention,
+                          date_expiration,
+                          organisme,
+                          reference,
+                          commentaire,
+                          id_preuve_doc,
+                          etat,
+                          archive,
+                          date_creation,
+                          date_maj
+                        ) VALUES (
+                          %s, %s, %s, NULL, NULL, NULL, NULL, NULL, NULL, 'a_obtenir', FALSE, CURRENT_DATE, NOW()
+                        )
+                        """,
+                        (str(uuid.uuid4()), id_effectif_data, cert_id),
+                    )
+                    inserted += 1
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "id_collaborateur": cid,
+            "id_effectif_data": id_effectif_data,
+            "id_poste_actuel": id_poste,
+            "intitule_poste": intitule_poste,
+            "inserted": inserted,
+            "skipped_existing": skipped_existing,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications/sync-poste error: {e}")
+
+
 @router.post("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}/add")
 def studio_collab_certification_add(
     id_owner: str,

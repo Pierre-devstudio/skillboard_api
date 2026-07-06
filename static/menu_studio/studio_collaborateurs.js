@@ -378,7 +378,8 @@
       medal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>',
       calendar: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
       org: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="8.5" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v2a2 2 0 0 0 2 2H12"/><path d="M17.5 10v2a2 2 0 0 1-2 2H12"/></svg>',
-      school: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>'
+      school: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>',
+      import: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/><path d="M5 17v4"/><path d="M19 17v4"/></svg>'
     };
     return icons[name] || icons.contract;
   }
@@ -490,11 +491,11 @@
     if (!poste.id) throw new Error("Sélectionnez un poste actuel.");
 
     const btn = byId('btnSyncCollabSkillsFromPoste');
-    const previousText = btn ? btn.textContent : '';
+    const previousHtml = btn ? btn.innerHTML : '';
 
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'Import…';
+      btn.innerHTML = '<span>Import…</span>';
     }
 
     try {
@@ -517,10 +518,47 @@
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = previousText || 'Importer les compétences du poste';
+        btn.innerHTML = previousHtml || `<span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les compétences du poste</span>`;
       }
     }
   }
+
+  async function syncCertificationsFromSelectedPoste(portal){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner introuvable.");
+
+    const poste = getCurrentPosteForSkills();
+    if (!poste.id) throw new Error("Sélectionnez un poste actuel.");
+
+    const btn = byId('btnSyncCollabCertsFromPoste');
+    const previousHtml = btn ? btn.innerHTML : '';
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span>Import…</span>';
+    }
+
+    try {
+      await portal.apiJson(
+        `${portal.apiBase}/studio/collaborateurs/certifications/sync-poste/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_poste_actuel: poste.id })
+        }
+      );
+
+      _tabLoaded.certs = false;
+      await loadTabIfNeeded(portal, 'certs');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = previousHtml || `<span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les certifications du poste</span>`;
+      }
+    }
+  }
+
 
   async function removeCompetenceFromCollaborateur(portal, idComp){
     if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
@@ -3316,8 +3354,6 @@
     `;
 
     host.innerHTML = `
-      <div class="card-sub sb-collab-tab-context">Poste actuel : <strong>${esc(posteLabel)}</strong></div>
-
       <div class="sb-collab-metrics">
         <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('contract')}</span><strong>${requiredOwned.length}</strong><em>Compétences requises<br>détenues</em></div>
         <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('skills')}</span><strong>${validatedCount}</strong><em>Compétences validées<br>au niveau requis ou supérieur</em></div>
@@ -3325,6 +3361,7 @@
       </div>
 
       <div class="sb-collab-tab-actions">
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnSyncCollabSkillsFromPoste"><span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les compétences du poste</span></button>` : ``}
         ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCompAdd"><span class="sb-btn-icon" aria-hidden="true">${iconPlus}</span><span>Ajouter une compétence</span></button>` : ``}
       </div>
 
@@ -3346,6 +3383,12 @@
         };
         renderCompetences(data, portal);
       });
+    });
+
+    const btnSyncSkills = byId('btnSyncCollabSkillsFromPoste');
+    if (btnSyncSkills) btnSyncSkills.addEventListener('click', async () => {
+      try { await syncCompetencesFromSelectedPoste(portal); }
+      catch(e){ if (portal.showAlert) portal.showAlert('error', getErrorMessage(e)); }
     });
 
     const btnAdd = byId('btnCollabCompAdd');
@@ -3425,7 +3468,6 @@
     `).join('');
 
     host.innerHTML = `
-      <div class="card-sub sb-collab-tab-context">Poste actuel : <strong>${esc(posteLabel)}</strong></div>
       <div class="sb-collab-metrics">
         <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('medal')}</span><strong>${requiredCount}</strong><em>Certifications<br>requises / souhaitées</em></div>
         <div class="sb-collab-metric sb-collab-metric--green"><span aria-hidden="true">${collabModalSvg('certs')}</span><strong>${acquiredCount}</strong><em>Certifications<br>obtenues</em></div>
@@ -3433,7 +3475,8 @@
       </div>
 
       <div class="sb-collab-tab-actions">
-        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCertAdd">Ajouter une certification</button>` : ``}
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnSyncCollabCertsFromPoste"><span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les certifications du poste</span></button>` : ``}
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCertAdd"><span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('medal')}</span><span>Ajouter une certification</span></button>` : ``}
       </div>
 
       <div class="sb-collab-cert-section">
@@ -3450,6 +3493,12 @@
           </div>` : `<div class="sb-collab-empty-card">Aucune certification enregistrée pour ce collaborateur.</div>`}
       </div>
     `;
+
+    const btnSyncCerts = byId('btnSyncCollabCertsFromPoste');
+    if (btnSyncCerts) btnSyncCerts.addEventListener('click', async () => {
+      try { await syncCertificationsFromSelectedPoste(portal); }
+      catch(e){ if (portal.showAlert) portal.showAlert('error', getErrorMessage(e)); }
+    });
 
     const btnAdd = byId('btnCollabCertAdd');
     if (btnAdd) btnAdd.addEventListener('click', async () => {
