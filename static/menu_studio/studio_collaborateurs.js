@@ -29,6 +29,7 @@
   let _hiddenIsTemp = false;
   let _hiddenTempRole = null;
   let _hiddenTelephone2 = null;
+  let _hiddenNoteCommentaire = null;
 
   let _nsfGroupes = [];
   let _nsfGroupesLoaded = false;
@@ -2987,7 +2988,7 @@
       "collabPrenom","collabNom","collabEmail","collabTel","collabAdresse",
       "collabCodePostal","collabVille","collabPays","collabObservations","collabMatricule",
       "collabNiveauEdu","collabDomaineEdu","collabDateNaissance","collabDateEntree",
-      "collabDateDebutPoste","collabDateSortie","collabMotifSortie","collabNote"
+      "collabDateDebutPoste","collabDateSortie","collabMotifSortie"
     ].forEach(id => {
       const el = byId(id);
       if (el) el.value = "";
@@ -2998,6 +2999,7 @@
     _hiddenIsTemp = false;
     _hiddenTempRole = null;
     _hiddenTelephone2 = null;
+    _hiddenNoteCommentaire = null;
 
     if (byId("collabCivilite")) byId("collabCivilite").value = "";
     if (byId("collabService")) {
@@ -3111,7 +3113,7 @@
       niveau_education: byId("collabNiveauEdu")?.value || null,
       domaine_education: byId("collabDomaineEdu")?.value || null,
       motif_sortie: byId("collabMotifSortie")?.value || null,
-      note_commentaire: byId("collabNote")?.value || null,
+      note_commentaire: byId("collabNote") ? (byId("collabNote")?.value || null) : _hiddenNoteCommentaire,
       havedatefin: !!byId("collabHaveDateFin")?.checked,
       ismanager: !!byId("collabManager")?.checked,
       isformateur: !!byId("collabFormateur")?.checked,
@@ -3993,7 +3995,8 @@
     if (byId('collabDateSortie')) byId('collabDateSortie').value = data?.date_sortie_prevue || '';
     if (byId('collabMotifSortie')) byId('collabMotifSortie').value = data?.motif_sortie || '';
     if (byId('collabObservations')) byId('collabObservations').value = data?.observations || '';
-    if (byId('collabNote')) byId('collabNote').value = data?.note_commentaire || '';
+    _hiddenNoteCommentaire = data?.note_commentaire || null;
+    if (byId('collabNote')) byId('collabNote').value = _hiddenNoteCommentaire || '';
     if (byId('collabHaveDateFin')) byId('collabHaveDateFin').checked = !!data?.havedatefin || !!data?.date_sortie_prevue;
     if (byId('collabManager')) byId('collabManager').checked = !!data?.ismanager;
     if (byId('collabFormateur')) byId('collabFormateur').checked = !!data?.isformateur;
@@ -4427,7 +4430,7 @@
     });
 
     bindPhoneMask(byId('collabTel'));
-    bindPhoneMask(byId('collabTel2'));
+    if (byId('collabTel2')) bindPhoneMask(byId('collabTel2'));
     bindCollabPostalAssist(portal);
 
     byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);

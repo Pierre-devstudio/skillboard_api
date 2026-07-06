@@ -283,7 +283,7 @@
             <div class="sb-collab-block-head sb-collab-block-head--split">
               <div class="sb-collab-block-titleline">
                 <span class="sb-collab-block-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span>
-                <div class="card-title" style="margin:0;">Contrat & affectation</div>
+                <div class="card-title" style="margin:0;">Situation dans l’entreprise</div>
               </div>
 
               <label class="sb-collab-status-toggle">
@@ -294,33 +294,33 @@
             </div>
 
             <div class="sb-grid-12 sb-collab-form-grid">
-              <div class="sb-field sb-col-9">
-                <div class="label">Type de contrat</div>
-                <select id="collabTypeContrat"></select>
+              <div class="sb-field sb-col-4">
+                <div class="label">Matricule</div>
+                <input type="text" id="collabMatricule" />
               </div>
 
-              <div class="sb-field sb-col-3">
-                <div class="label">Date d’entrée</div>
-                <input type="date" id="collabDateEntree" class="sb-collab-date" />
-              </div>
-
-              <div class="sb-field sb-col-6">
+              <div class="sb-field sb-col-4">
                 <div class="label">Service</div>
                 <select id="collabService"></select>
               </div>
 
-              <div class="sb-field sb-col-6">
-                <div class="label">Matricule interne</div>
-                <input type="text" id="collabMatricule" />
-              </div>
-
-              <div class="sb-field sb-col-9">
+              <div class="sb-field sb-col-4">
                 <div class="label">Poste actuel</div>
                 <select id="collabPoste"></select>
               </div>
 
-              <div class="sb-field sb-col-3">
-                <div class="label">Début poste actuel</div>
+              <div class="sb-field sb-col-4">
+                <div class="label">Date entrée entreprise</div>
+                <input type="date" id="collabDateEntree" class="sb-collab-date" />
+              </div>
+
+              <div class="sb-field sb-col-4">
+                <div class="label">Type de contrat</div>
+                <select id="collabTypeContrat"></select>
+              </div>
+
+              <div class="sb-field sb-col-4">
+                <div class="label">Date début poste actuel</div>
                 <input type="date" id="collabDateDebutPoste" class="sb-collab-date" />
               </div>
 
@@ -346,44 +346,48 @@
                   </label>
                 </div>
               </div>
-
-              <div class="sb-field sb-col-9 is-hidden" id="collabMotifSortieField">
-                <div class="label">Motif de sortie</div>
-                <input type="text" id="collabMotifSortie" />
-              </div>
-
-              <div class="sb-field sb-col-3 is-hidden" id="collabDateSortieField">
-                <div class="label">Date de sortie prévue</div>
-                <input type="date" id="collabDateSortie" class="sb-collab-date" />
-              </div>
             </div>
           </div>
 
-          <div class="card sb-collab-form-card" style="margin:0;">
-            <div class="sb-collab-block-head">
-              <span class="sb-collab-block-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15Z"/></svg></span>
-              <div class="card-title" style="margin:0;">Parcours & notes RH</div>
+          <div class="sb-collab-insights-grid">
+            <div class="card sb-collab-form-card" style="margin:0;">
+              <div class="sb-collab-block-head">
+                <span class="sb-collab-block-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></span>
+                <div class="card-title" style="margin:0;">Parcours / projection</div>
+              </div>
+
+              <div class="sb-grid-12 sb-collab-form-grid">
+                <div class="sb-field sb-col-4">
+                  <div class="label">Dernier diplôme obtenu</div>
+                  <select id="collabNiveauEdu"></select>
+                </div>
+
+                <div class="sb-field sb-col-8">
+                  <div class="label">Domaine d’éducation</div>
+                  <select id="collabDomaineEdu"></select>
+                </div>
+
+                <div class="sb-field sb-col-8 is-hidden" id="collabMotifSortieField">
+                  <div class="label">Motif de sortie</div>
+                  <input type="text" id="collabMotifSortie" />
+                </div>
+
+                <div class="sb-field sb-col-4 is-hidden" id="collabDateSortieField">
+                  <div class="label">Date de sortie prévue</div>
+                  <input type="date" id="collabDateSortie" class="sb-collab-date" />
+                </div>
+              </div>
             </div>
 
-            <div class="sb-grid-12 sb-collab-form-grid">
-              <div class="sb-field sb-col-6">
-                <div class="label">Niveau d’éducation</div>
-                <select id="collabNiveauEdu"></select>
+            <div class="card sb-collab-form-card" style="margin:0;">
+              <div class="sb-collab-block-head">
+                <span class="sb-collab-block-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg></span>
+                <div class="card-title" style="margin:0;">Commentaires</div>
               </div>
 
-              <div class="sb-field sb-col-6">
-                <div class="label">Domaine d’éducation</div>
-                <select id="collabDomaineEdu"></select>
-              </div>
-
-              <div class="sb-field sb-col-6">
+              <div class="sb-field sb-collab-comments-field">
                 <div class="label">Observations</div>
-                <textarea id="collabObservations" rows="3" class="sb-textarea--md"></textarea>
-              </div>
-
-              <div class="sb-field sb-col-6">
-                <div class="label">Commentaire RH</div>
-                <textarea id="collabNote" rows="3" class="sb-textarea--md"></textarea>
+                <textarea id="collabObservations" rows="5" class="sb-textarea--md"></textarea>
               </div>
             </div>
           </div>
