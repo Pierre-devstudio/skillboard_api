@@ -6145,9 +6145,19 @@
   line-height:1.25;
 }
 
+#modalCollaborateur .sb-collab-dynamic-panel{
+  margin:0;
+  padding:0;
+}
+
 #modalCollaborateur .sb-collab-skill-section,
 #modalCollaborateur .sb-collab-cert-section{
-  margin-top:14px;
+  border:1px solid #e7eaf0;
+  border-radius:15px;
+  background:#fff;
+  overflow:hidden;
+  margin-top:12px;
+  box-shadow:0 8px 20px rgba(15,23,42,.03);
 }
 
 #modalCollaborateur .sb-collab-skill-section:first-of-type,
@@ -6160,8 +6170,9 @@
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  margin:0 0 8px 0;
-  padding:0;
+  padding:12px 14px;
+  border-bottom:1px solid #e7eaf0;
+  background:#fbfcfe;
 }
 
 #modalCollaborateur .sb-collab-skill-section-title{
