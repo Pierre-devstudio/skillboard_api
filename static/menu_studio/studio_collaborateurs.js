@@ -13,6 +13,10 @@
   let _filterManager = false;
   let _filterFormateur = false;
   let _showArchived = false;
+  let _sortKey = 'collaborateur';
+  let _sortDir = 'asc';
+  let _page = 1;
+  let _pageSize = 25;
   let _bulkSendSelectedIds = new Set();
 
   let _modalMode = "create";
@@ -2517,6 +2521,138 @@
   }
 
 
+  function normalizeCollabSortValue(value){
+    return String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  function collabFullName(it){
+    return `${it?.prenom || ''} ${it?.nom || ''}`.trim() || 'Collaborateur sans nom';
+  }
+
+  function getCollabSortValue(it, key){
+    if (key === 'collaborateur') return normalizeCollabSortValue(collabFullName(it));
+    if (key === 'service') return normalizeCollabSortValue(it?.nom_service || '');
+    if (key === 'poste') return normalizeCollabSortValue(splitPosteLabel(it?.poste_label).title || it?.poste_label || '');
+    if (key === 'roles') {
+      const archived = !!it?.archive;
+      const active = !!it?.actif && !archived;
+      const status = archived ? 'archive' : (active ? 'actif' : 'inactif');
+      return normalizeCollabSortValue(`${status} ${it?.ismanager ? 'manager' : ''} ${it?.isformateur ? 'formateur' : ''}`);
+    }
+    if (key === 'access') {
+      const summary = Array.isArray(it?.access_summary) ? it.access_summary : [];
+      return normalizeCollabSortValue(summary.map(x => `${x?.console || ''} ${x?.actif ? '1' : '0'}`).join(' '));
+    }
+    return '';
+  }
+
+  function getSortedCollaborateurs(items){
+    const arr = Array.isArray(items) ? items.slice() : [];
+    const dir = _sortDir === 'desc' ? -1 : 1;
+    const key = _sortKey || 'collaborateur';
+
+    arr.sort((a, b) => {
+      const va = getCollabSortValue(a, key);
+      const vb = getCollabSortValue(b, key);
+      const cmp = va.localeCompare(vb, 'fr', { sensitivity: 'base', numeric: true });
+      if (cmp !== 0) return cmp * dir;
+      return normalizeCollabSortValue(collabFullName(a)).localeCompare(normalizeCollabSortValue(collabFullName(b)), 'fr', { sensitivity: 'base', numeric: true });
+    });
+
+    return arr;
+  }
+
+  function getCollabPageData(items){
+    const list = Array.isArray(items) ? items : [];
+    const total = list.length;
+    const size = Math.max(1, Number(_pageSize) || 25);
+    const totalPages = Math.max(1, Math.ceil(total / size));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+
+    const start = total ? ((_page - 1) * size) : 0;
+    const end = Math.min(start + size, total);
+    return {
+      total,
+      totalPages,
+      page: _page,
+      pageSize: size,
+      start,
+      end,
+      items: list.slice(start, end)
+    };
+  }
+
+  function buildCollabPaginationTokens(totalPages, page){
+    if (totalPages <= 5) {
+      const all = [];
+      for (let i = 1; i <= totalPages; i += 1) all.push(i);
+      return all;
+    }
+
+    const tokens = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+
+    if (start > 2) tokens.push('ellipsis-left');
+    for (let i = start; i <= end; i += 1) tokens.push(i);
+    if (end < totalPages - 1) tokens.push('ellipsis-right');
+    tokens.push(totalPages);
+    return tokens;
+  }
+
+  function renderCollabSortHead(key, label){
+    const active = _sortKey === key;
+    const dir = active ? _sortDir : '';
+    const ariaSort = active ? (_sortDir === 'desc' ? 'descending' : 'ascending') : 'none';
+    return `
+      <button type="button" class="collab-sort-head${active ? ' is-active' : ''}" data-sort-collab="${esc(key)}" aria-sort="${ariaSort}">
+        <span>${esc(label)}</span>
+        <span class="collab-sort-arrows" aria-hidden="true">
+          <span class="collab-sort-arrow collab-sort-arrow--up${active && dir === 'asc' ? ' is-active' : ''}">▲</span>
+          <span class="collab-sort-arrow collab-sort-arrow--down${active && dir === 'desc' ? ' is-active' : ''}">▼</span>
+        </span>
+      </button>
+    `;
+  }
+
+  function renderCollabPagination(pageData){
+    const total = pageData.total || 0;
+    const totalPages = pageData.totalPages || 1;
+    const page = pageData.page || 1;
+    const prevDisabled = page <= 1 ? ' disabled' : '';
+    const nextDisabled = page >= totalPages ? ' disabled' : '';
+    const tokens = buildCollabPaginationTokens(totalPages, page);
+    const range = total ? `${pageData.start + 1} – ${pageData.end} sur ${total}` : '0 sur 0';
+
+    return `
+      <div class="collab-page-size-wrap">
+        <select class="sb-select collab-page-size-select" data-collab-page-size aria-label="Nombre d'éléments par page">
+          <option value="25"${_pageSize === 25 ? ' selected' : ''}>25 par page</option>
+          <option value="50"${_pageSize === 50 ? ' selected' : ''}>50 par page</option>
+          <option value="100"${_pageSize === 100 ? ' selected' : ''}>100 par page</option>
+        </select>
+      </div>
+      <div class="collab-pagination" aria-label="Pagination collaborateurs">
+        <button type="button" class="sb-icon-btn collab-page-nav" data-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+        </button>
+        ${tokens.map(t => {
+          if (typeof t === 'string') return '<span class="collab-page-ellipsis" aria-hidden="true">…</span>';
+          return `<button type="button" class="collab-page-btn${t === page ? ' is-active' : ''}" data-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? 'page' : 'false'}">${t}</button>`;
+        }).join('')}
+        <button type="button" class="sb-icon-btn collab-page-nav" data-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+        </button>
+      </div>
+      <div class="collab-range-label">${esc(range)}</div>
+    `;
+  }
+
   function collabInitials(firstName, lastName){
     const first = String(firstName || '').trim();
     const last = String(lastName || '').trim();
@@ -2597,6 +2733,7 @@
     _filterManager = false;
     _filterFormateur = false;
     _showArchived = false;
+    _page = 1;
 
     if (byId('collabSearch')) byId('collabSearch').value = '';
     if (byId('collabFilterActive')) byId('collabFilterActive').value = 'active';
@@ -2649,9 +2786,13 @@
       </svg>
     `;
 
-    const rows = _items.map(it => {
+    const sortedItems = getSortedCollaborateurs(_items);
+    const pageData = getCollabPageData(sortedItems);
+    const pageItems = pageData.items;
+
+    const rows = pageItems.map(it => {
       const cid = String(it.id_collaborateur || '').trim();
-      const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
+      const fullName = collabFullName(it);
       const email = it.email || "—";
       const service = String(it.nom_service || '').trim() || '—';
       const accessSummary = Array.isArray(it.access_summary) ? it.access_summary : [];
@@ -2731,17 +2872,17 @@
       <div class="collab-table">
         <div class="collab-table-row collab-table-head">
           <div class="collab-table-cell collab-table-cell--check"></div>
-          <div class="collab-table-cell">Collaborateur</div>
-          <div class="collab-table-cell">Service</div>
-          <div class="collab-table-cell">Poste</div>
-          <div class="collab-table-cell">Statut & rôles</div>
-          <div class="collab-table-cell">Accès</div>
+          <div class="collab-table-cell">${renderCollabSortHead('collaborateur', 'Collaborateur')}</div>
+          <div class="collab-table-cell">${renderCollabSortHead('service', 'Service')}</div>
+          <div class="collab-table-cell">${renderCollabSortHead('poste', 'Poste')}</div>
+          <div class="collab-table-cell">${renderCollabSortHead('roles', 'Statut & rôles')}</div>
+          <div class="collab-table-cell">${renderCollabSortHead('access', 'Accès')}</div>
           <div class="collab-table-cell collab-table-cell--actions">Actions</div>
         </div>
         ${rows}
       </div>
       <div class="collab-table-foot">
-        <span>Affichage de 1 à ${_items.length} sur ${_items.length} collaborateur${_items.length > 1 ? 's' : ''}</span>
+        ${renderCollabPagination(pageData)}
       </div>
     `;
 
@@ -2799,6 +2940,7 @@
     let items = Array.isArray(data?.items) ? data.items : [];
     items = applyExtraFrontFilters(items);
     _items = items;
+    _page = 1;
     purgeBulkSendSelection();
     renderList();
   }
@@ -3932,6 +4074,15 @@
     const host = byId('collabList');
 
     host?.addEventListener('change', (e) => {
+      const pageSizeSelect = e.target.closest('[data-collab-page-size]');
+      if (pageSizeSelect) {
+        const nextSize = parseInt(pageSizeSelect.value, 10);
+        _pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 25;
+        _page = 1;
+        renderList();
+        return;
+      }
+
       const cb = e.target.closest('input[data-select-collab]');
       if (!cb) return;
 
@@ -3947,6 +4098,37 @@
 
     host?.addEventListener('click', async (e) => {
       if (e.target.closest('input[data-select-collab]')) return;
+
+      const sortBtn = e.target.closest('[data-sort-collab]');
+      if (sortBtn) {
+        const key = String(sortBtn.getAttribute('data-sort-collab') || '').trim();
+        if (key) {
+          if (_sortKey === key) _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+          else {
+            _sortKey = key;
+            _sortDir = 'asc';
+          }
+          _page = 1;
+          renderList();
+        }
+        return;
+      }
+
+      const pageBtn = e.target.closest('[data-page], [data-page-nav]');
+      if (pageBtn) {
+        const sortedItems = getSortedCollaborateurs(_items);
+        const pageData = getCollabPageData(sortedItems);
+        const nav = pageBtn.getAttribute('data-page-nav') || '';
+        const rawPage = pageBtn.getAttribute('data-page') || '';
+        if (nav === 'prev') _page = Math.max(1, pageData.page - 1);
+        else if (nav === 'next') _page = Math.min(pageData.totalPages, pageData.page + 1);
+        else {
+          const nextPage = parseInt(rawPage, 10);
+          if (Number.isFinite(nextPage)) _page = Math.min(Math.max(1, nextPage), pageData.totalPages);
+        }
+        renderList();
+        return;
+      }
 
       const btn = e.target.closest('button[data-act]');
       if (!btn) return;
