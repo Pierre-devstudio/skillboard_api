@@ -5562,7 +5562,8 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
-                _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
+                id_effectif_data = scope["id_effectif_data"]
 
                 cur.execute(
                     """
@@ -5594,7 +5595,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                       af.date_creation DESC NULLS LAST,
                       acfe.id_action_formation_effectif DESC
                     """,
-                    (cid,),
+                    (id_effectif_data,),
                 )
                 rows = cur.fetchall() or []
 
@@ -5621,6 +5622,93 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/historique/formations-jmb error: {e}")
+
+@router.get("/studio/collaborateurs/historique/evolutions/{id_owner}/{id_collaborateur}")
+def studio_collab_historique_evolutions(id_owner: str, id_collaborateur: str, request: Request):
+    # Même source que l'historique des postes, renommée côté Studio pour coller au modal Insights.
+    return studio_collab_history_postes(id_owner, id_collaborateur, request)
+
+@router.get("/studio/collaborateurs/historique/audits/{id_owner}/{id_collaborateur}")
+def studio_collab_historique_audits(id_owner: str, id_collaborateur: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid, request)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
+
+                cur.execute(
+                    """
+                    SELECT
+                      a.id_audit_competence,
+                      a.id_effectif_competence,
+                      a.date_audit,
+                      a.methode_eval,
+                      a.resultat_eval,
+                      a.observation,
+                      a.nom_evaluateur,
+                      ecc.niveau_actuel,
+                      COALESCE(NULLIF(BTRIM(c.code_comp), ''), '') AS code_competence,
+                      COALESCE(NULLIF(BTRIM(c.intitule_comp), ''), 'Compétence') AS intitule_competence
+                    FROM public.tbl_effectif_client_audit_competence a
+                    JOIN public.tbl_effectif_client_competence ecc
+                      ON ecc.id_effectif_competence = a.id_effectif_competence
+                     AND ecc.id_effectif_client = %s
+                     AND COALESCE(ecc.archive, FALSE) = FALSE
+                    LEFT JOIN public.tbl_competence c
+                      ON c.id_comp = ecc.id_comp
+                     AND COALESCE(c.archive, FALSE) = FALSE
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    ORDER BY
+                      a.date_audit DESC NULLS LAST,
+                      a.id_audit_competence DESC
+                    """,
+                    (scope["id_effectif_data"],),
+                )
+                rows = cur.fetchall() or []
+
+        level_labels = {
+            "debutant": "Débutant",
+            "intermediaire": "Intermédiaire",
+            "avance": "Avancé",
+            "expert": "Expert",
+        }
+
+        items = []
+        for r in rows:
+            niveau = (r.get("niveau_actuel") or "").strip()
+            items.append(
+                {
+                    "id_audit_competence": r.get("id_audit_competence"),
+                    "id_effectif_competence": r.get("id_effectif_competence"),
+                    "date_audit": r.get("date_audit").isoformat() if r.get("date_audit") else None,
+                    "methode_eval": r.get("methode_eval"),
+                    "resultat_eval": float(r.get("resultat_eval")) if r.get("resultat_eval") is not None else None,
+                    "observation": r.get("observation"),
+                    "nom_evaluateur": r.get("nom_evaluateur"),
+                    "niveau_actuel": niveau,
+                    "niveau_label": level_labels.get(niveau.lower(), niveau or None),
+                    "code_competence": (r.get("code_competence") or "").strip(),
+                    "intitule_competence": (r.get("intitule_competence") or "").strip(),
+                }
+            )
+
+        return {"id_collaborateur": cid, "items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/historique/audits error: {e}")
 
 @router.get("/studio/collaborateurs/acces/{id_owner}/{id_collaborateur}")
 def studio_collab_acces(id_owner: str, id_collaborateur: str, request: Request):

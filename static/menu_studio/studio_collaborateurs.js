@@ -3527,10 +3527,13 @@
     const host = byId('collabHistoryPanel');
     if (!host) return;
 
-    const posteItems = Array.isArray(data?.postes?.items) ? data.postes.items : (Array.isArray(data?.items) ? data.items : []);
+    const evolutionItems = Array.isArray(data?.evolutions?.items)
+      ? data.evolutions.items
+      : (Array.isArray(data?.postes?.items) ? data.postes.items : []);
     const formationItems = Array.isArray(data?.formations_jmb?.items) ? data.formations_jmb.items : [];
+    const auditItems = Array.isArray(data?.audits?.items) ? data.audits.items : [];
 
-    const postRows = posteItems.length ? posteItems.map(x => {
+    const evolutionRows = evolutionItems.length ? evolutionItems.map(x => {
       const code = (x.code_poste || '').toString().trim();
       const intitule = (x.intitule_poste || '').toString().trim() || 'Poste';
       const service = (x.nom_service || '').toString().trim();
@@ -3543,7 +3546,7 @@
           <td class="col-center"><span class="sb-badge sb-collab-history-status--neutral">${esc(x.source_changement_label || historyPosteSourceLabel(x.source_changement))}</span></td>
         </tr>
       `;
-    }).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucun historique de poste trouvé.</td></tr>`;
+    }).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune évolution structurante enregistrée.</td></tr>`;
 
     const formationRows = formationItems.length ? formationItems.map(x => `
       <tr>
@@ -3555,33 +3558,58 @@
       </tr>
     `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune formation JMB enregistrée.</td></tr>`;
 
+    const auditRows = auditItems.length ? auditItems.map(x => `
+      <tr>
+        <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_competence || '–')}</span></td>
+        <td><div class="sb-collab-history-formation">${esc(x.intitule_competence || 'Compétence')}</div>${x.methode_eval ? `<div class="sb-collab-history-code">${esc(x.methode_eval)}</div>` : ''}</td>
+        <td class="col-center">${esc(formatDateFR(x.date_audit))}</td>
+        <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.niveau_label || x.niveau_actuel || '—')}</span></td>
+        <td class="col-center">${esc(x.nom_evaluateur || '—')}</td>
+      </tr>
+    `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucun audit de compétence enregistré.</td></tr>`;
+
     host.innerHTML = `
       <div class="sb-history-accordion-list">
-        <div class="sb-accordion sb-history-accordion is-open" id="studioHistAccPostes">
-          <button type="button" class="sb-acc-head is-open" data-acc="postes" aria-expanded="true">
-            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('org')}</span><span>Postes tenus</span></span>
+        <div class="sb-accordion sb-history-accordion is-open" id="studioHistAccJmb">
+          <button type="button" class="sb-acc-head is-open" data-acc="jmb" aria-expanded="true">
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('school')}</span><span>Formations effectuées avec JMBCONSULTANT</span></span>
             <span class="sb-acc-chevron">▾</span>
           </button>
-          <div class="sb-acc-body" data-acc-body="postes">
+          <div class="sb-acc-body" data-acc-body="jmb">
             <div class="sb-table-wrap">
               <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
-                <thead><tr><th class="col-center" style="width:110px;">Code</th><th>Poste</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">Source</th></tr></thead>
-                <tbody>${postRows}</tbody>
+                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>Formation</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">État</th></tr></thead>
+                <tbody>${formationRows}</tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <div class="sb-accordion sb-history-accordion" id="studioHistAccJmb">
-          <button type="button" class="sb-acc-head" data-acc="jmb" aria-expanded="false">
-            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('school')}</span><span>Formations effectuées avec JMBCONSULTANT</span></span>
+        <div class="sb-accordion sb-history-accordion" id="studioHistAccMoves">
+          <button type="button" class="sb-acc-head" data-acc="moves" aria-expanded="false">
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('trend')}</span><span>Évolutions structurantes</span></span>
             <span class="sb-acc-chevron">▾</span>
           </button>
-          <div class="sb-acc-body" data-acc-body="jmb" style="display:none;">
+          <div class="sb-acc-body" data-acc-body="moves" style="display:none;">
             <div class="sb-table-wrap">
               <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
-                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>Formation</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">État</th></tr></thead>
-                <tbody>${formationRows}</tbody>
+                <thead><tr><th class="col-center" style="width:110px;">Code</th><th>Poste</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">Source</th></tr></thead>
+                <tbody>${evolutionRows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-accordion sb-history-accordion" id="studioHistAccAudits">
+          <button type="button" class="sb-acc-head" data-acc="audits" aria-expanded="false">
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('audit')}</span><span>Audits des compétences</span></span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body" data-acc-body="audits" style="display:none;">
+            <div class="sb-table-wrap">
+              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
+                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>Compétence</th><th class="col-center" style="width:120px;">Date</th><th class="col-center" style="width:150px;">Niveau</th><th class="col-center" style="width:170px;">Évaluateur</th></tr></thead>
+                <tbody>${auditRows}</tbody>
               </table>
             </div>
           </div>
@@ -3742,11 +3770,12 @@
 
     if (tab === 'history') {
       setPanelMessage('collabHistoryPanel', 'Chargement…');
-      const [postes, formationsJmb] = await Promise.all([
-        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
-        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`)
+      const [formationsJmb, evolutions, audits] = await Promise.all([
+        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
+        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/evolutions/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
+        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/audits/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`)
       ]);
-      renderHistory({ postes, formations_jmb: formationsJmb });
+      renderHistory({ formations_jmb: formationsJmb, evolutions, audits });
       return;
     }
 
