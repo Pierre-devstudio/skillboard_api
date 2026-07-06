@@ -6147,12 +6147,7 @@
 
 #modalCollaborateur .sb-collab-skill-section,
 #modalCollaborateur .sb-collab-cert-section{
-  border:1px solid #e7eaf0;
-  border-radius:15px;
-  background:#fff;
-  overflow:hidden;
-  margin-top:12px;
-  box-shadow:0 8px 20px rgba(15,23,42,.03);
+  margin-top:14px;
 }
 
 #modalCollaborateur .sb-collab-skill-section:first-of-type,
@@ -6165,9 +6160,8 @@
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  padding:12px 14px;
-  border-bottom:1px solid #e7eaf0;
-  background:#fbfcfe;
+  margin:0 0 8px 0;
+  padding:0;
 }
 
 #modalCollaborateur .sb-collab-skill-section-title{
