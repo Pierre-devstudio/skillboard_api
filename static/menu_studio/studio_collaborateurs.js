@@ -2958,7 +2958,6 @@
     const n = parseInt(value, 10);
     const label = (Number.isFinite(n) && n > 1900) ? String(n) : "";
 
-    if (chk) chk.dataset.retraiteEstimee = label;
     if (retraite) retraite.value = label;
 
     refreshSortieVisibility();
@@ -2968,21 +2967,10 @@
     const wrapDate = byId("collabDateSortieField");
     const wrapMotif = byId("collabMotifSortieField");
     const chk = byId("collabHaveDateFin");
-    const label = byId("collabHaveDateFinLabel");
-
     const show = !!(chk && chk.checked);
 
     if (wrapDate) wrapDate.classList.toggle("is-hidden", !show);
     if (wrapMotif) wrapMotif.classList.toggle("is-hidden", !show);
-
-    if (label){
-      const retraite = (chk?.dataset?.retraiteEstimee || "").trim();
-      if (show || !retraite){
-        label.textContent = "Sortie prévue";
-      } else {
-        label.textContent = `Sortie prévue (retraite estimée : ${retraite})`;
-      }
-    }
   }
 
   function clearForm(){

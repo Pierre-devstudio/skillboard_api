@@ -2938,14 +2938,8 @@
   margin:2px 0 0 0;
   padding:0;
   border-bottom:1px solid #e7eaf0;
-  overflow-x:auto;
-  overflow-y:hidden;
-  scrollbar-width:none;
-  flex-wrap:nowrap;
-}
-
-.sb-collab-tabbar::-webkit-scrollbar{
-  display:none;
+  overflow:visible;
+  flex-wrap:wrap;
 }
 
 .sb-collab-tab{
@@ -2953,7 +2947,6 @@
   display:inline-flex;
   align-items:center;
   gap:8px;
-  flex:0 0 auto;
   min-height:42px;
   padding:0 0 12px 0;
   border:0;
@@ -3094,6 +3087,29 @@
 
 #modalCollaborateur .sb-collab-grid--identity{
   grid-template-columns:minmax(120px, .7fr) minmax(0, 1.15fr) minmax(0, 1.15fr);
+  align-items:end;
+}
+
+#modalCollaborateur .sb-collab-grid--company{
+  grid-template-columns:repeat(12, minmax(0, 1fr));
+}
+
+#modalCollaborateur .sb-collab-company-field--matricule{
+  grid-column:1 / 4;
+}
+
+#modalCollaborateur .sb-collab-company-field--service{
+  grid-column:4 / 8;
+}
+
+#modalCollaborateur .sb-collab-company-field--poste{
+  grid-column:8 / 13;
+}
+
+#modalCollaborateur .sb-collab-company-field--date-entree,
+#modalCollaborateur .sb-collab-company-field--contrat,
+#modalCollaborateur .sb-collab-company-field--date-poste{
+  grid-column:span 4;
 }
 
 #modalCollaborateur .sb-collab-grid > *,
@@ -3111,7 +3127,15 @@
 #modalCollaborateur .sb-collab-grid select,
 #modalCollaborateur .sb-collab-grid textarea{
   width:100%;
+  min-height:38px;
   box-sizing:border-box;
+}
+
+#modalCollaborateur .sb-collab-auto-field[readonly]{
+  background:#f1f5f9;
+  border-color:#d9e0ea;
+  color:#64748b;
+  box-shadow:none;
 }
 
 #modalCollaborateur .sb-collab-date{
@@ -3237,15 +3261,15 @@
 #modalCollaborateur .sb-collab-projection-field--exit-check{
   grid-column:5 / 7;
   align-self:end;
-  min-height:37px;
+  min-height:38px;
 }
 
 #modalCollaborateur .sb-collab-projection-field--exit-date{
-  grid-column:7 / 13;
+  grid-column:7 / 10;
 }
 
 #modalCollaborateur .sb-collab-projection-field--exit-reason{
-  grid-column:1 / 13;
+  grid-column:10 / 13;
 }
 
 #modalCollaborateur .sb-collab-comment-card{
@@ -3276,7 +3300,8 @@
   }
 
   #modalCollaborateur .sb-collab-projection-grid > .sb-field,
-  #modalCollaborateur .sb-collab-projection-field--exit-check{
+  #modalCollaborateur .sb-collab-projection-field--exit-check,
+  #modalCollaborateur .sb-collab-grid--company > .sb-field{
     grid-column:1 / -1;
   }
 }

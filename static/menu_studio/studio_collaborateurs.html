@@ -193,7 +193,7 @@
             <span>Historique</span>
           </button>
           <button type="button" class="sb-collab-tab" data-tab="rights" aria-selected="false">
-            <span class="sb-collab-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+            <span class="sb-collab-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="14.5" r="3.5"/><path d="M10 12l8-8"/><path d="M15 7l2 2"/><path d="M17 5l2 2"/></svg></span>
             <span>Droits</span>
           </button>
         </div>
@@ -290,33 +290,33 @@
               </label>
             </div>
 
-            <div class="sb-collab-grid">
-              <div class="sb-field">
+            <div class="sb-collab-grid sb-collab-grid--company">
+              <div class="sb-field sb-collab-company-field--matricule">
                 <div class="label">Matricule</div>
                 <input type="text" id="collabMatricule" />
               </div>
 
-              <div class="sb-field">
+              <div class="sb-field sb-collab-company-field--service">
                 <div class="label">Service</div>
                 <select id="collabService"></select>
               </div>
 
-              <div class="sb-field">
+              <div class="sb-field sb-collab-company-field--poste">
                 <div class="label">Poste actuel</div>
                 <select id="collabPoste"></select>
               </div>
 
-              <div class="sb-field">
+              <div class="sb-field sb-collab-company-field--date-entree">
                 <div class="label">Date entrée entreprise</div>
                 <input type="date" id="collabDateEntree" class="sb-collab-date" />
               </div>
 
-              <div class="sb-field">
+              <div class="sb-field sb-collab-company-field--contrat">
                 <div class="label">Type de contrat</div>
                 <select id="collabTypeContrat"></select>
               </div>
 
-              <div class="sb-field">
+              <div class="sb-field sb-collab-company-field--date-poste">
                 <div class="label">Date début poste actuel</div>
                 <input type="date" id="collabDateDebutPoste" class="sb-collab-date" />
               </div>
@@ -360,12 +360,12 @@
 
                 <div class="sb-field sb-collab-projection-field--retirement">
                   <div class="label">Retraite estimée</div>
-                  <input type="text" id="collabRetraiteEstimee" readonly />
+                  <input type="text" id="collabRetraiteEstimee" class="sb-collab-auto-field" readonly />
                 </div>
 
                 <label class="sb-check sb-collab-sortie-check sb-collab-projection-field--exit-check">
                   <input type="checkbox" id="collabHaveDateFin" />
-                  <span id="collabHaveDateFinLabel">Sortie prévue</span>
+                  <span>Sortie prévue</span>
                 </label>
 
                 <div class="sb-field sb-collab-projection-field--exit-date is-hidden" id="collabDateSortieField">
@@ -375,7 +375,13 @@
 
                 <div class="sb-field sb-collab-projection-field--exit-reason is-hidden" id="collabMotifSortieField">
                   <div class="label">Motif de sortie</div>
-                  <input type="text" id="collabMotifSortie" />
+                  <select id="collabMotifSortie">
+                    <option value=""></option>
+                    <option value="Volontaire">Volontaire</option>
+                    <option value="Subi">Subi</option>
+                    <option value="Légal">Légal</option>
+                    <option value="Non renseigné">Non renseigné</option>
+                  </select>
                 </div>
               </div>
             </div>
