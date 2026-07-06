@@ -5658,8 +5658,8 @@ def studio_collab_historique_audits(id_owner: str, id_collaborateur: str, reques
                       a.observation,
                       a.nom_evaluateur,
                       ecc.niveau_actuel,
-                      COALESCE(NULLIF(BTRIM(c.code_comp), ''), '') AS code_competence,
-                      COALESCE(NULLIF(BTRIM(c.intitule_comp), ''), 'Compétence') AS intitule_competence
+                      COALESCE(NULLIF(BTRIM(c.code), ''), '') AS code_competence,
+                      COALESCE(NULLIF(BTRIM(c.intitule), ''), 'Compétence') AS intitule_competence
                     FROM public.tbl_effectif_client_audit_competence a
                     JOIN public.tbl_effectif_client_competence ecc
                       ON ecc.id_effectif_competence = a.id_effectif_competence
@@ -5667,8 +5667,8 @@ def studio_collab_historique_audits(id_owner: str, id_collaborateur: str, reques
                      AND COALESCE(ecc.archive, FALSE) = FALSE
                     LEFT JOIN public.tbl_competence c
                       ON c.id_comp = ecc.id_comp
-                     AND COALESCE(c.archive, FALSE) = FALSE
                      AND COALESCE(c.masque, FALSE) = FALSE
+                     AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
                     ORDER BY
                       a.date_audit DESC NULLS LAST,
                       a.id_audit_competence DESC
