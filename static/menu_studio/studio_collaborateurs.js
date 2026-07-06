@@ -365,6 +365,20 @@
     return String(err);
   }
 
+
+  function collabModalSvg(name){
+    const icons = {
+      contract: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h6"/></svg>',
+      skills: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>',
+      certs: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
+      medal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
+      org: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="8.5" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v2a2 2 0 0 0 2 2H12"/><path d="M17.5 10v2a2 2 0 0 1-2 2H12"/></svg>',
+      school: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>'
+    };
+    return icons[name] || icons.contract;
+  }
+
   function formatDateFR(value){
     const s = String(value || "").trim();
     if (!s) return "–";
@@ -3182,389 +3196,160 @@
     };
 
     const critValue = (item) => {
-      const n = parseInt(
-        item?.poids_criticite ??
-        item?.poidsCriticite ??
-        item?.criticite ??
-        0,
-        10
-      );
+      const n = parseInt(item?.poids_criticite ?? item?.poidsCriticite ?? item?.criticite ?? 0, 10);
       return Number.isFinite(n) ? n : 0;
     };
 
     const sortByCriticite = (a, b) => {
       const diff = critValue(b) - critValue(a);
       if (diff !== 0) return diff;
-
-      return String(a?.intitule || '').localeCompare(
-        String(b?.intitule || ''),
-        'fr',
-        { sensitivity: 'base' }
-      );
+      return String(a?.intitule || '').localeCompare(String(b?.intitule || ''), 'fr', { sensitivity: 'base' });
     };
 
+    const requiredOwned = ownedItems.filter(x => !!x?.is_required).sort(sortByCriticite);
+    const otherOwned = ownedItems.filter(x => !x?.is_required).sort(sortByCriticite);
     const sortedMissingItems = missingItems.slice().sort(sortByCriticite);
+
+    const validatedCount = requiredOwned.filter(x => {
+      const cur = nsLevelKey(x?.niveau_actuel);
+      const req = nsLevelKey(x?.niveau_requis || x?.niveau_attendu || x?.niveau_actuel);
+      const order = { A:1, B:2, C:3, D:4 };
+      return cur && req && (order[cur] || 0) >= (order[req] || 0);
+    }).length;
 
     const buildCompCell = (code, intitule) => {
       const title = String(intitule || '').trim();
       return `
-        <div class="sb-comp-cell">
+        <div class="sb-collab-skill-titleline">
           ${code ? `<span class="sb-badge sb-badge--comp">${esc(code)}</span>` : ''}
-          <div class="sb-comp-cell__title" title="${esc(title)}">${esc(title)}</div>
+          <span class="sb-collab-skill-title" title="${esc(title)}">${esc(title || 'Compétence')}</span>
         </div>
       `;
     };
 
-    const iconPdf = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/>
-        <path d="M14 2v6h6"/>
-        <path d="M8.5 15.5h7"/>
-        <path d="M8.5 18.5h5"/>
-      </svg>
+    const iconPdf = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
+    const iconEval = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;
+    const iconTrash = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+    const renderOwnedRows = (rows) => {
+      if (!rows.length) return `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
+      return rows.map(x => {
+        const lastEval = formatDateFR(x.date_derniere_eval);
+        const idComp = (x.id_comp || '').toString().trim();
+        const idEffectifComp = (x.id_effectif_competence || '').toString().trim();
+        const lvl = levelMeta(x.niveau_actuel);
+        const rowAttrs = idEffectifComp ? `class="sb-table-row-clickable" data-act="open-skill-eval" data-id-effectif-comp="${esc(idEffectifComp)}" tabindex="0"` : '';
+        return `
+          <tr ${rowAttrs}>
+            <td>${buildCompCell(x.code || '', x.intitule || '')}</td>
+            <td class="col-center"><span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span></td>
+            <td class="col-center">${esc(lastEval)}</td>
+            <td class="col-center">${x.is_required ? '<span class="sb-badge sb-collab-required-badge">Requis</span>' : '<span class="sb-badge sb-collab-soft-badge">Hors poste</span>'}</td>
+            <td class="sb-table-action-cell">
+              <div class="sb-icon-actions">
+                ${idComp ? `<button type="button" class="sb-icon-btn" data-act="open-skill-sheet-btn" data-id-comp="${esc(idComp)}" title="Voir la fiche" aria-label="Voir la fiche">${iconPdf}</button>` : ``}
+                ${idEffectifComp ? `<button type="button" class="sb-icon-btn" data-act="open-skill-eval-btn" data-id-effectif-comp="${esc(idEffectifComp)}" title="Évaluer la compétence" aria-label="Évaluer la compétence">${iconEval}</button>` : ``}
+                ${idComp ? `<button type="button" class="sb-icon-btn sb-icon-btn--danger" data-act="remove-skill" data-id-comp="${esc(idComp)}" title="Retirer la compétence" aria-label="Retirer la compétence">${iconTrash}</button>` : ``}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const renderMissingRows = (rows) => {
+      if (!rows.length) return `<tr><td colspan="3" class="sb-collab-skill-empty">Aucune compétence requise manquante.</td></tr>`;
+      return rows.map(x => {
+        const lvl = levelMeta(x.niveau_requis);
+        const idComp = (x.id_comp || '').toString().trim();
+        return `
+          <tr>
+            <td>${buildCompCell(x.code || '', x.intitule || '')}</td>
+            <td class="col-center"><span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span></td>
+            <td class="col-center"><button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-act="add-missing-skill" data-id-comp="${esc(idComp)}" data-niveau-requis="${esc(x.niveau_requis || '')}">Ajouter</button></td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const renderOwnedSection = (title, rows, modifier) => `
+      <div class="sb-collab-skill-section ${modifier || ''}">
+        <div class="sb-collab-skill-section-head">
+          <div class="sb-collab-skill-section-title">${esc(title)}</div>
+          <span class="sb-badge">${rows.length}</span>
+        </div>
+        <div class="sb-table-wrap">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--owned">
+            <thead>
+              <tr>
+                <th>Compétence</th>
+                <th class="col-center" style="width:120px;">Niveau actuel</th>
+                <th class="col-center" style="width:130px;">Dernière éval.</th>
+                <th class="col-center" style="width:110px;">Poste</th>
+                <th class="col-center" style="width:118px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>${renderOwnedRows(rows)}</tbody>
+          </table>
+        </div>
+      </div>
     `;
-
-    const iconEval = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 11l3 3L22 4"/>
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-      </svg>
-    `;
-
-    const iconTrash = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="3 6 5 6 21 6"/>
-        <path d="M19 6l-1 14H6L5 6"/>
-        <path d="M10 11v6"/>
-        <path d="M14 11v6"/>
-        <path d="M9 6V4h6v2"/>
-      </svg>
-    `;
-
-    const ownedRows = ownedItems.map(x => {
-      const lastEval = formatDateFR(x.date_derniere_eval);
-      const idComp = (x.id_comp || '').toString().trim();
-      const idEffectifComp = (x.id_effectif_competence || '').toString().trim();
-      const lvl = levelMeta(x.niveau_actuel);
-      const isRequiredByPoste = !!x.is_required;
-
-      const rowAttrs = idEffectifComp
-        ? `class="sb-table-row-clickable" data-act="open-skill-eval" data-id-effectif-comp="${esc(idEffectifComp)}" tabindex="0"`
-        : '';
-
-      return `
-        <tr ${rowAttrs}>
-          <td class="sb-collab-skill-col-indicator">
-            ${
-              isRequiredByPoste
-                ? `
-                  <div class="sb-collab-skill-indicator">
-                    <span
-                      class="sb-collab-skill-required-dot"
-                      title="Requis par le poste actuel"
-                      aria-label="Requis par le poste actuel"
-                    ></span>
-                  </div>
-                `
-                : ``
-            }
-          </td>
-          <td class="sb-collab-skill-col-competence">
-            ${buildCompCell(x.code || '', x.intitule || '')}
-          </td>
-          <td class="sb-collab-skill-col-level">
-            <span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span>
-          </td>
-          <td class="sb-collab-skill-col-date">
-            <span class="sb-collab-skill-date-sm">${esc(lastEval)}</span>
-          </td>
-          <td class="sb-collab-skill-col-actions sb-table-action-cell">
-            <div class="sb-icon-actions">
-              ${
-                idComp
-                  ? `
-                    <button
-                      type="button"
-                      class="sb-icon-btn"
-                      data-act="open-skill-sheet-btn"
-                      data-id-comp="${esc(idComp)}"
-                      title="Voir la fiche"
-                      aria-label="Voir la fiche"
-                    >
-                      ${iconPdf}
-                    </button>
-                  `
-                  : ``
-              }
-              ${
-                idEffectifComp
-                  ? `
-                    <button
-                      type="button"
-                      class="sb-icon-btn"
-                      data-act="open-skill-eval-btn"
-                      data-id-effectif-comp="${esc(idEffectifComp)}"
-                      title="Évaluer la compétence"
-                      aria-label="Évaluer la compétence"
-                    >
-                      ${iconEval}
-                    </button>
-                  `
-                  : ``
-              }
-              ${
-                idComp
-                  ? `
-                    <button
-                      type="button"
-                      class="sb-icon-btn sb-icon-btn--danger"
-                      data-act="remove-skill"
-                      data-id-comp="${esc(idComp)}"
-                      title="Retirer la compétence"
-                      aria-label="Retirer la compétence"
-                    >
-                      ${iconTrash}
-                    </button>
-                  `
-                  : ``
-              }
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    const missingRows = sortedMissingItems.map(x => {
-      const lvl = levelMeta(x.niveau_requis);
-      const idComp = (x.id_comp || '').toString().trim();
-
-      return `
-        <tr>
-          <td class="sb-collab-skill-col-competence">
-            ${buildCompCell(x.code || '', x.intitule || '')}
-          </td>
-          <td class="sb-collab-skill-col-required">
-            <span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span>
-          </td>
-          <td class="sb-collab-skill-col-action">
-            <button
-              type="button"
-              class="sb-btn sb-btn--accent sb-btn--xs"
-              data-act="add-missing-skill"
-              data-id-comp="${esc(idComp)}"
-              data-niveau-requis="${esc(x.niveau_requis || '')}"
-              title="Ajouter cette compétence au collaborateur"
-              aria-label="Ajouter cette compétence au collaborateur"
-            >
-              Ajouter
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
 
     host.innerHTML = `
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 10px 0;">
-        <div class="card-sub" style="margin:0;">
-          Poste actuel : <strong>${esc(posteLabel)}</strong>
-        </div>
-        ${canSync ? `
-          <button
-            type="button"
-            class="sb-btn sb-btn--poste-soft"
-            id="btnSyncCollabSkillsFromPoste"
-          >
-            Importer toutes les compétences manquantes (${sortedMissingItems.length})
-          </button>
-        ` : ``}
+      <div class="card-sub sb-collab-tab-context">Poste actuel : <strong>${esc(posteLabel)}</strong></div>
+
+      <div class="sb-collab-metrics">
+        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('contract')}</span><strong>${requiredOwned.length + sortedMissingItems.length}</strong><em>Compétences requises<br>par le poste</em></div>
+        <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('skills')}</span><strong>${validatedCount}</strong><em>Compétences validées<br>au niveau requis ou supérieur</em></div>
+        <div class="sb-collab-metric sb-collab-metric--green"><span aria-hidden="true">${collabModalSvg('certs')}</span><strong>${otherOwned.length}</strong><em>Autres compétences<br>détenues</em></div>
       </div>
 
-      <div class="card" style="margin:0;">
-        <div class="sb-block-head" style="margin:0 0 14px 0;">
-          <div class="card-title" style="margin:0;">Compétences détenues par le collaborateur</div>
-
-          ${
-            canAdd
-              ? `
-                <div class="sb-actions" style="justify-content:flex-end; width:100%;">
-                  <button
-                    type="button"
-                    class="sb-btn sb-btn--accent sb-btn--xs"
-                    id="btnCollabCompAdd"
-                  >
-                    Ajouter une compétence
-                  </button>
-                </div>
-              `
-              : ``
-          }
-        </div>
-
-        ${
-          ownedItems.length
-            ? `
-              <div class="sb-table-wrap">
-                <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--owned">
-                  <thead>
-                    <tr>
-                      <th class="sb-collab-skill-col-indicator"></th>
-                      <th class="sb-collab-skill-col-competence">Compétence</th>
-                      <th class="sb-collab-skill-col-level"><span class="sb-table-th-2l">Niv.<br>actuel</span></th>
-                      <th class="sb-collab-skill-col-date"><span class="sb-table-th-2l">Dernière<br>éval.</span></th>
-                      <th class="sb-collab-skill-col-actions">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>${ownedRows}</tbody>
-                </table>
-              </div>
-            `
-            : `<div class="card-sub" style="margin:0;">Aucune compétence détenue.</div>`
-        }
+      <div class="sb-collab-tab-actions">
+        ${canSync ? `<button type="button" class="sb-btn sb-btn--poste-soft" id="btnSyncCollabSkillsFromPoste">Importer toutes les compétences manquantes (${sortedMissingItems.length})</button>` : ``}
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCompAdd">Ajouter une compétence</button>` : ``}
       </div>
 
-      <div class="card" style="margin:12px 0 0 0;">
-        <div class="card-title" style="margin:0 0 14px 0;">Compétences requises par le poste non importées</div>
-        ${
-          posteId
-            ? (
-              sortedMissingItems.length
-                ? `
-                  <div class="sb-table-wrap">
-                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--required">
-                      <thead>
-                        <tr>
-                          <th class="sb-collab-skill-col-competence">Compétence</th>
-                          <th class="sb-collab-skill-col-required"><span class="sb-table-th-2l">Niveau<br>requis</span></th>
-                          <th class="sb-collab-skill-col-action">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>${missingRows}</tbody>
-                    </table>
-                  </div>
-                `
-                : `<div class="card-sub" style="margin:0;">Toutes les compétences requises du poste sont déjà détenues par le collaborateur.</div>`
-            )
-            : `<div class="card-sub" style="margin:0;">Aucun poste actuel sélectionné.</div>`
-        }
+      ${renderOwnedSection('Compétences requises par le poste', requiredOwned, 'sb-collab-skill-section--required')}
+      ${renderOwnedSection('Autres compétences détenues', otherOwned, 'sb-collab-skill-section--other')}
+
+      <div class="sb-collab-skill-section sb-collab-skill-section--missing">
+        <div class="sb-collab-skill-section-head">
+          <div class="sb-collab-skill-section-title">Compétences requises manquantes</div>
+          <span class="sb-badge">${sortedMissingItems.length}</span>
+        </div>
+        <div class="sb-table-wrap">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--required">
+            <thead><tr><th>Compétence</th><th class="col-center" style="width:130px;">Niveau requis</th><th class="col-center" style="width:100px;">Action</th></tr></thead>
+            <tbody>${renderMissingRows(sortedMissingItems)}</tbody>
+          </table>
+        </div>
       </div>
     `;
 
     const btnSync = byId('btnSyncCollabSkillsFromPoste');
-    if (btnSync) {
-      btnSync.addEventListener('click', async () => {
-        try {
-          await syncCompetencesFromSelectedPoste(portal);
-        } catch (e) {
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
-        }
-      });
-    }
-
-    const btnAdd = byId('btnCollabCompAdd');
-    if (btnAdd) {
-      btnAdd.addEventListener('click', async () => {
-        try {
-          await openCollabCompAddModal(portal);
-        } catch (e) {
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
-        }
-      });
-    }
-
-    host.querySelectorAll('[data-act="add-missing-skill"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        try {
-          btn.disabled = true;
-          await addCompetenceToCollaborateur(portal, btn.getAttribute('data-id-comp'), {
-            niveau_actuel: btn.getAttribute('data-niveau-requis'),
-            closeModal: false,
-          });
-        } catch (e2) {
-          btn.disabled = false;
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e2));
-        }
-      });
+    if (btnSync) btnSync.addEventListener('click', async () => {
+      try { await syncCollabSkillsFromPoste(portal); }
+      catch(e){ if (portal.showAlert) portal.showAlert('error', getErrorMessage(e)); }
     });
 
-    host.querySelectorAll('[data-act="remove-skill"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        try {
-          btn.disabled = true;
-          await removeCompetenceFromCollaborateur(portal, btn.getAttribute('data-id-comp'));
-        } catch (e2) {
-          btn.disabled = false;
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e2));
-        }
-      });
+    const btnAdd = byId('btnCollabCompAdd');
+    if (btnAdd) btnAdd.addEventListener('click', async () => {
+      try { await openCollabCompAddModal(portal); }
+      catch(e){ if (portal.showAlert) portal.showAlert('error', getErrorMessage(e)); }
     });
 
     host.querySelectorAll('[data-act="open-skill-sheet-btn"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const row = (_collabSkillItems || []).find(
-          x => String(x?.id_comp || '').trim() === String(btn.getAttribute('data-id-comp') || '').trim()
-        ) || null;
-
-        const title = row
-          ? `Fiche compétence - ${String(row.code || '').trim() ? `${row.code} - ` : ''}${String(row.intitule || '').trim() || 'Compétence'}`
-          : 'Fiche compétence';
-
-        let popupWin = null;
-
-        try {
-          popupWin = openPdfLoadingWindow(title);
-          await openCollabSkillSheetPdf(portal, btn.getAttribute('data-id-comp'), popupWin);
-        } catch (err) {
-          if (popupWin && !popupWin.closed) {
-            try { popupWin.close(); } catch (_) {}
-          }
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
-        }
-      });
+      btn.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); await openCollabSkillSheetPdf(portal, btn.getAttribute('data-id-comp')); });
     });
-
-    host.querySelectorAll('[data-act="open-skill-eval-btn"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        try {
-          await openCollabSkillEvalModal(portal, btn.getAttribute('data-id-effectif-comp'));
-        } catch (err) {
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
-        }
-      });
+    host.querySelectorAll('[data-act="open-skill-eval"], [data-act="open-skill-eval-btn"]').forEach(el => {
+      el.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); await openCollabSkillEvalModal(portal, el.getAttribute('data-id-effectif-comp')); });
+      el.addEventListener('keydown', async (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); await openCollabSkillEvalModal(portal, el.getAttribute('data-id-effectif-comp')); } });
     });
-
-    host.querySelectorAll('[data-act="open-skill-eval"]').forEach(row => {
-      row.addEventListener('click', async (e) => {
-        if (e.target.closest('button')) return;
-
-        try {
-          await openCollabSkillEvalModal(portal, row.getAttribute('data-id-effectif-comp'));
-        } catch (err) {
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
-        }
-      });
-
-      row.addEventListener('keydown', async (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();
-
-        try {
-          await openCollabSkillEvalModal(portal, row.getAttribute('data-id-effectif-comp'));
-        } catch (err) {
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
-        }
-      });
+    host.querySelectorAll('[data-act="remove-skill"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); await removeSkillFromCollaborateur(portal, btn.getAttribute('data-id-comp')); });
+    });
+    host.querySelectorAll('[data-act="add-missing-skill"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); await addSkillToCollaborateur(portal, btn.getAttribute('data-id-comp'), btn.getAttribute('data-niveau-requis')); });
     });
   }
 
@@ -3579,152 +3364,99 @@
     const posteLabel = poste.label || data?.intitule_poste || '–';
     const canAdd = !!_editingId;
 
-    const iconPen = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 20h9"/>
-        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-      </svg>
-    `;
+    const iconPen = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
+    const iconTrash = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
 
-    const iconTrash = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="3 6 5 6 21 6"/>
-        <path d="M19 6l-1 14H6L5 6"/>
-        <path d="M10 11v6"/>
-        <path d="M14 11v6"/>
-        <path d="M9 6V4h6v2"/>
-      </svg>
-    `;
+    const requiredCount = items.filter(x => !!x.is_required_poste || !!x.is_wanted_poste).length;
+    const acquiredCount = items.filter(x => String(x.etat || '').toLowerCase() === 'obtenue' || String(x.etat || '').toLowerCase() === 'valide' || !!x.date_obtention).length;
+    const watchCount = items.filter(x => {
+      const state = String(x.etat || '').toLowerCase();
+      return state.includes('renouvel') || state.includes('expire') || !!x.date_expiration_effective || !!x.date_expiration_calculee;
+    }).length;
 
-    const rows = items.map(x => {
-      const indicator = x.is_required_poste
-        ? `<span class="sb-collab-cert-poste-dot sb-collab-cert-poste-dot--required" title="Certification requise actuellement par le poste"></span>`
-        : (
-            x.is_wanted_poste
-              ? `<span class="sb-collab-cert-poste-dot sb-collab-cert-poste-dot--wanted" title="Certification souhaitée actuellement par le poste"></span>`
-              : ''
-          );
+    const stateBadge = (x) => {
+      const label = x.etat_label || certificationStateLabel(x.etat);
+      const raw = String(x.etat || '').toLowerCase();
+      let cls = 'sb-collab-cert-status--neutral';
+      if (raw.includes('obten') || raw.includes('valide')) cls = 'sb-collab-cert-status--ok';
+      if (raw.includes('renouvel')) cls = 'sb-collab-cert-status--warn';
+      if (raw.includes('expire')) cls = 'sb-collab-cert-status--danger';
+      return `<span class="sb-badge sb-collab-cert-status ${cls}">${esc(label || '—')}</span>`;
+    };
 
-      return `
-        <tr>
-          <td class="sb-collab-cert-col-indicator">
-            <div class="sb-collab-cert-indicator">${indicator}</div>
-          </td>
-          <td class="sb-collab-cert-col-name">
-            <div style="font-weight:700; color:#111827;">${esc(x.nom_certification || '')}</div>
-          </td>
-          <td class="sb-collab-cert-col-validity">${esc(certificationMonthLabel(x.validite_attendue))}</td>
-          <td class="sb-collab-cert-col-state">${esc(x.etat_label || certificationStateLabel(x.etat))}</td>
-          <td class="sb-collab-cert-col-obtention">${esc(formatDateFR(x.date_obtention))}</td>
-          <td class="sb-collab-cert-col-expiration">${esc(formatDateFR(x.date_expiration_effective || x.date_expiration || x.date_expiration_calculee))}</td>
-          <td class="sb-collab-cert-col-actions sb-table-action-cell">
-            <div class="sb-icon-actions">
-              <button
-                type="button"
-                class="sb-icon-btn"
-                data-act="edit-cert"
-                data-id-effectif-certification="${esc(x.id_effectif_certification || '')}"
-                title="Modifier la certification"
-                aria-label="Modifier la certification"
-              >
-                ${iconPen}
-              </button>
+    const requirementBadge = (x) => {
+      if (x.is_required_poste) return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--required">Requis</span>`;
+      if (x.is_wanted_poste) return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--wanted">Souhaité</span>`;
+      return `<span class="sb-badge sb-collab-cert-badge">Hors poste</span>`;
+    };
 
-              <button
-                type="button"
-                class="sb-icon-btn sb-icon-btn--danger"
-                data-act="archive-cert"
-                data-id-effectif-certification="${esc(x.id_effectif_certification || '')}"
-                title="Archiver la certification"
-                aria-label="Archiver la certification"
-              >
-                ${iconTrash}
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    const rows = items.map(x => `
+      <tr>
+        <td>
+          <div class="sb-collab-cert-title">${esc(x.nom_certification || 'Certification')}</div>
+          <div class="sb-collab-cert-badges">
+            ${x.categorie ? `<span class="sb-badge sb-collab-cert-badge">${esc(x.categorie)}</span>` : ``}
+            ${requirementBadge(x)}
+          </div>
+        </td>
+        <td class="col-center"><strong>${esc(certificationMonthLabel(x.validite_attendue))}</strong></td>
+        <td class="col-center">${stateBadge(x)}</td>
+        <td class="col-center"><strong>${esc(formatDateFR(x.date_obtention))}</strong><span class="sb-collab-cert-sub">Exp. ${esc(formatDateFR(x.date_expiration_effective || x.date_expiration || x.date_expiration_calculee))}</span></td>
+        <td class="sb-table-action-cell">
+          <div class="sb-icon-actions">
+            <button type="button" class="sb-icon-btn" data-act="edit-cert" data-id-effectif-certification="${esc(x.id_effectif_certification || '')}" title="Modifier la certification" aria-label="Modifier la certification">${iconPen}</button>
+            <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-act="archive-cert" data-id-effectif-certification="${esc(x.id_effectif_certification || '')}" title="Archiver la certification" aria-label="Archiver la certification">${iconTrash}</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
 
     host.innerHTML = `
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 10px 0;">
-        <div class="card-sub" style="margin:0;">Poste actuel : <strong>${esc(posteLabel)}</strong></div>
-        ${
-          canAdd
-            ? `
-              <button
-                type="button"
-                class="sb-btn sb-btn--accent sb-btn--xs"
-                id="btnCollabCertAdd"
-              >
-                Ajouter une certification
-              </button>
-            `
-            : ``
-        }
+      <div class="card-sub sb-collab-tab-context">Poste actuel : <strong>${esc(posteLabel)}</strong></div>
+      <div class="sb-collab-metrics">
+        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('medal')}</span><strong>${requiredCount}</strong><em>Certifications<br>requises / souhaitées</em></div>
+        <div class="sb-collab-metric sb-collab-metric--green"><span aria-hidden="true">${collabModalSvg('certs')}</span><strong>${acquiredCount}</strong><em>Certifications<br>obtenues</em></div>
+        <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('calendar')}</span><strong>${watchCount}</strong><em>À surveiller<br>ou renouveler</em></div>
       </div>
 
-      ${
-        items.length
-          ? `
-            <div class="sb-table-wrap">
-              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-certs-table">
-                <thead>
-                  <tr>
-                    <th class="sb-collab-cert-col-indicator"></th>
-                    <th class="sb-collab-cert-col-name">Certification</th>
-                    <th class="sb-collab-cert-col-validity">Validité</th>
-                    <th class="sb-collab-cert-col-state">État</th>
-                    <th class="sb-collab-cert-col-obtention">Obtention</th>
-                    <th class="sb-collab-cert-col-expiration">Expiration</th>
-                    <th class="sb-collab-cert-col-actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-              </table>
-            </div>
-          `
-          : `<div class="card-sub" style="margin:0;">Aucune certification enregistrée pour ce collaborateur.</div>`
-      }
+      <div class="sb-collab-tab-actions">
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCertAdd">Ajouter une certification</button>` : ``}
+      </div>
+
+      <div class="sb-collab-cert-section">
+        <div class="sb-collab-skill-section-head">
+          <div class="sb-collab-skill-section-title">Certifications du collaborateur</div>
+          <span class="sb-badge">${items.length}</span>
+        </div>
+        ${items.length ? `
+          <div class="sb-table-wrap">
+            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-certs-table">
+              <thead><tr><th>Certification</th><th class="col-center" style="width:130px;">Validité</th><th class="col-center" style="width:140px;">État</th><th class="col-center" style="width:170px;">Dates</th><th class="col-center" style="width:94px;">Actions</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>` : `<div class="sb-collab-empty-card">Aucune certification enregistrée pour ce collaborateur.</div>`}
+      </div>
     `;
 
     const btnAdd = byId('btnCollabCertAdd');
-    if (btnAdd) {
-      btnAdd.addEventListener('click', async () => {
-        try {
-          await openCollabCertAddModal(portal);
-        } catch (e) {
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
-        }
-      });
-    }
+    if (btnAdd) btnAdd.addEventListener('click', async () => {
+      try { await openCollabCertAddModal(portal); }
+      catch(e){ if (portal.showAlert) portal.showAlert('error', getErrorMessage(e)); }
+    });
 
     host.querySelectorAll('[data-act="edit-cert"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
+        e.preventDefault(); e.stopPropagation();
         const id = String(btn.getAttribute('data-id-effectif-certification') || '').trim();
         const item = (_collabCertItems || []).find(x => String(x?.id_effectif_certification || '').trim() === id) || null;
-        if (!item) return;
-
-        openCollabCertEditModal(item);
+        if (item) openCollabCertEditModal(item);
       });
     });
-
     host.querySelectorAll('[data-act="archive-cert"]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        try {
-          await archiveCertificationForCollaborateur(
-            portal,
-            btn.getAttribute('data-id-effectif-certification')
-          );
-        } catch (err) {
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
-        }
+        e.preventDefault(); e.stopPropagation();
+        try { await archiveCertificationForCollaborateur(portal, btn.getAttribute('data-id-effectif-certification')); }
+        catch(err){ if (portal.showAlert) portal.showAlert('error', getErrorMessage(err)); }
       });
     });
   }
@@ -3733,50 +3465,78 @@
     const host = byId('collabHistoryPanel');
     if (!host) return;
 
-    const items = Array.isArray(data?.items) ? data.items : [];
+    const posteItems = Array.isArray(data?.postes?.items) ? data.postes.items : (Array.isArray(data?.items) ? data.items : []);
+    const formationItems = Array.isArray(data?.formations_jmb?.items) ? data.formations_jmb.items : [];
 
-    if (!items.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun historique de poste trouvé.</div>`;
-      return;
-    }
-
-    const rows = items.map(x => {
+    const postRows = posteItems.length ? posteItems.map(x => {
       const code = (x.code_poste || '').toString().trim();
       const intitule = (x.intitule_poste || '').toString().trim() || 'Poste';
       const service = (x.nom_service || '').toString().trim();
-      const badgeCurrent = '';
-
       return `
         <tr>
-          <td style="white-space:nowrap; text-align:center;">${esc(code || '–')}</td>
-          <td>
-            <div style="font-weight:700; color:#111827;">${esc(intitule)}</div>
-            ${service ? `<div class="card-sub" style="margin:6px 0 0 0;">${esc(service)}</div>` : ''}
-          </td>
-          <td style="text-align:center;">${esc(formatDateFR(x.date_debut))}</td>
-          <td style="text-align:center;">${esc(formatDateFR(x.date_fin))}</td>
-          <td style="text-align:center;">${esc(x.source_changement_label || historyPosteSourceLabel(x.source_changement))}</td>
+          <td class="col-center"><span class="sb-collab-history-action-code">${esc(code || '–')}</span></td>
+          <td><div class="sb-collab-history-formation">${esc(intitule)}</div>${service ? `<div class="sb-collab-history-code">${esc(service)}</div>` : ''}</td>
+          <td class="col-center">${esc(formatDateFR(x.date_debut))}</td>
+          <td class="col-center">${esc(formatDateFR(x.date_fin))}</td>
+          <td class="col-center"><span class="sb-badge sb-collab-history-status--neutral">${esc(x.source_changement_label || historyPosteSourceLabel(x.source_changement))}</span></td>
         </tr>
       `;
-    }).join('');
+    }).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucun historique de poste trouvé.</td></tr>`;
+
+    const formationRows = formationItems.length ? formationItems.map(x => `
+      <tr>
+        <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_action_formation || x.code_formation || '–')}</span></td>
+        <td><div class="sb-collab-history-formation">${esc(x.titre_formation || 'Formation')}</div>${x.code_formation ? `<div class="sb-collab-history-code">${esc(x.code_formation)}</div>` : ''}</td>
+        <td class="col-center">${esc(formatDateFR(x.date_debut_formation))}</td>
+        <td class="col-center">${esc(formatDateFR(x.date_fin_formation))}</td>
+        <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.etat_action || '—')}</span></td>
+      </tr>
+    `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune formation JMB enregistrée.</td></tr>`;
 
     host.innerHTML = `
-      <div class="card-sub" style="margin:0 0 10px 0;">Historique des postes tenus.</div>
-      <div class="sb-table-wrap">
-        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-          <thead>
-            <tr>
-              <th style="width:110px; text-align:center;">Code</th>
-              <th>Poste</th>
-              <th style="width:120px; text-align:center;">Début</th>
-              <th style="width:120px; text-align:center;">Fin</th>
-              <th style="width:120px; text-align:center;">Source</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
+      <div class="sb-history-accordion-list">
+        <div class="sb-accordion sb-history-accordion is-open" id="studioHistAccPostes">
+          <button type="button" class="sb-acc-head is-open" data-acc="postes" aria-expanded="true">
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('org')}</span><span>Postes tenus</span></span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body" data-acc-body="postes">
+            <div class="sb-table-wrap">
+              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
+                <thead><tr><th class="col-center" style="width:110px;">Code</th><th>Poste</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">Source</th></tr></thead>
+                <tbody>${postRows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-accordion sb-history-accordion" id="studioHistAccJmb">
+          <button type="button" class="sb-acc-head" data-acc="jmb" aria-expanded="false">
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('school')}</span><span>Formations effectuées avec JMBCONSULTANT</span></span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body" data-acc-body="jmb" style="display:none;">
+            <div class="sb-table-wrap">
+              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
+                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>Formation</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">État</th></tr></thead>
+                <tbody>${formationRows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     `;
+
+    host.querySelectorAll('.sb-history-accordion .sb-acc-head').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const acc = btn.getAttribute('data-acc') || '';
+        const body = host.querySelector(`[data-acc-body="${acc}"]`);
+        const open = btn.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.closest('.sb-history-accordion')?.classList.toggle('is-open', open);
+        if (body) body.style.display = open ? '' : 'none';
+      });
+    });
   }
 
   function renderRights(data, portal){
@@ -3920,8 +3680,11 @@
 
     if (tab === 'history') {
       setPanelMessage('collabHistoryPanel', 'Chargement…');
-      const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
-      renderHistory(data);
+      const [postes, formationsJmb] = await Promise.all([
+        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
+        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`)
+      ]);
+      renderHistory({ postes, formations_jmb: formationsJmb });
       return;
     }
 
