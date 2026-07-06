@@ -28,6 +28,7 @@
   let _hiddenBusinessTravel = null;
   let _hiddenIsTemp = false;
   let _hiddenTempRole = null;
+  let _hiddenTelephone2 = null;
 
   let _nsfGroupes = [];
   let _nsfGroupesLoaded = false;
@@ -2983,7 +2984,7 @@
   function clearForm(){
     setCollabSaveMsg("");
     [
-      "collabPrenom","collabNom","collabEmail","collabTel","collabTel2","collabAdresse",
+      "collabPrenom","collabNom","collabEmail","collabTel","collabAdresse",
       "collabCodePostal","collabVille","collabPays","collabObservations","collabMatricule",
       "collabNiveauEdu","collabDomaineEdu","collabDateNaissance","collabDateEntree",
       "collabDateDebutPoste","collabDateSortie","collabMotifSortie","collabNote"
@@ -2996,6 +2997,7 @@
     _hiddenBusinessTravel = null;
     _hiddenIsTemp = false;
     _hiddenTempRole = null;
+    _hiddenTelephone2 = null;
 
     if (byId("collabCivilite")) byId("collabCivilite").value = "";
     if (byId("collabService")) {
@@ -3022,8 +3024,42 @@
     if (btnArchive) btnArchive.style.display = "none";
   }
 
-  function setModalHeader(title){
-    if (byId("collabModalTitle")) byId("collabModalTitle").textContent = title || "Collaborateur";
+  function modalCollabInitials(prenom, nom){
+    const p = String(prenom || "").trim();
+    const n = String(nom || "").trim();
+    const raw = `${p ? p[0] : ""}${n ? n[0] : ""}`.trim();
+    return raw ? raw.toUpperCase() : "--";
+  }
+
+  function getSelectedLabel(id){
+    const el = byId(id);
+    if (!el) return "";
+    const opt = el.options?.[el.selectedIndex];
+    return String(opt?.textContent || el.value || "").trim();
+  }
+
+  function normalizeModalContextLabel(value){
+    return String(value || "")
+      .replace(/^—\s*/, "")
+      .replace(/^Tous\s+/i, "")
+      .trim();
+  }
+
+  function setModalHeader(title, data){
+    const prenom = data?.prenom || byId("collabPrenom")?.value || "";
+    const nom = data?.nom || byId("collabNom")?.value || "";
+    const fullTitle = title || `${prenom || ""} ${nom || ""}`.trim() || "Collaborateur";
+
+    if (byId("collabModalTitle")) byId("collabModalTitle").textContent = fullTitle;
+    if (byId("collabModalAvatar")) byId("collabModalAvatar").textContent = modalCollabInitials(prenom, nom);
+
+    const sub = byId("collabModalSubline");
+    if (sub){
+      const poste = normalizeModalContextLabel(data?.poste_label || data?.poste_actuel || getSelectedLabel("collabPoste"));
+      const service = normalizeModalContextLabel(data?.service_label || data?.service || getSelectedLabel("collabService"));
+      const line = [poste, service].filter(Boolean).join(" · ");
+      sub.textContent = line || (_modalMode === "create" ? "Création d’un collaborateur" : "Collaborateur sans poste renseigné");
+    }
   }
 
   function setModalBadges(data){
@@ -3055,7 +3091,7 @@
       nom: byId("collabNom")?.value || null,
       email: byId("collabEmail")?.value || null,
       telephone: formatPhoneFr(byId("collabTel")?.value || null),
-      telephone2: formatPhoneFr(byId("collabTel2")?.value || null),
+      telephone2: byId("collabTel2") ? formatPhoneFr(byId("collabTel2")?.value || null) : _hiddenTelephone2,
       adresse: byId("collabAdresse")?.value || null,
       code_postal: normalizeCollabPostalCode(byId("collabCodePostal")?.value || null) || null,
       ville: normalizeCollabCity(byId("collabVille")?.value || null) || null,
@@ -3908,7 +3944,7 @@
     _editingId = null;
     clearForm();
     setModalBadges({ actif: true, archive: false });
-    setModalHeader('Nouveau collaborateur');
+    setModalHeader('Nouveau collaborateur', { prenom: '', nom: '' });
     activateModalTab('ident');
     resetDetailPanels();
     refreshModalSendButton();
@@ -3931,7 +3967,8 @@
     if (byId('collabNom')) byId('collabNom').value = data?.nom || '';
     if (byId('collabEmail')) byId('collabEmail').value = data?.email || '';
     if (byId('collabTel')) byId('collabTel').value = formatPhoneFr(data?.telephone || '');
-    if (byId('collabTel2')) byId('collabTel2').value = formatPhoneFr(data?.telephone2 || '');
+    _hiddenTelephone2 = formatPhoneFr(data?.telephone2 || null);
+    if (byId('collabTel2')) byId('collabTel2').value = _hiddenTelephone2 || '';
     if (byId('collabAdresse')) byId('collabAdresse').value = data?.adresse || '';
     if (byId('collabCodePostal')) byId('collabCodePostal').value = data?.code_postal || '';
     if (byId('collabVille')) byId('collabVille').value = data?.ville || '';
@@ -3971,7 +4008,7 @@
     if (btnArchive) btnArchive.style.display = data?.archive ? 'none' : '';
 
     const fullName = `${data?.prenom || ''} ${data?.nom || ''}`.trim();
-    setModalHeader(fullName || 'Collaborateur');
+    setModalHeader(fullName || 'Collaborateur', data || {});
     setModalBadges(data || {});
     activateModalTab('ident');
     resetDetailPanels();
@@ -4002,7 +4039,7 @@
     if (_modalMode === 'create' && data?.id_collaborateur) {
       _modalMode = 'edit';
       _editingId = data.id_collaborateur;
-      setModalHeader(`${payload.prenom || ''} ${payload.nom || ''}`.trim() || 'Collaborateur');
+      setModalHeader(`${payload.prenom || ''} ${payload.nom || ''}`.trim() || 'Collaborateur', { prenom: payload.prenom, nom: payload.nom });
       setModalBadges({
         actif: !!payload.actif,
         archive: false,
@@ -4233,6 +4270,11 @@
     byId('collabShowArchived')?.addEventListener('change', (e) => {
       _showArchived = !!e.target.checked;
       loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
+    });
+
+    ["collabPrenom", "collabNom", "collabService", "collabPoste"].forEach((id) => {
+      byId(id)?.addEventListener('input', () => setModalHeader(null));
+      byId(id)?.addEventListener('change', () => setModalHeader(null));
     });
 
     byId('btnCloseCollaborateur')?.addEventListener('click', () => closeModal('modalCollaborateur'));

@@ -162,21 +162,40 @@
     <div class="sb-modal-head sb-collab-modal-head">
       <div class="sb-collab-modal-head-main">
         <div class="sb-collab-modal-head-top">
-          <div style="min-width:0; flex:1;">
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <div class="card-title" id="collabModalTitle" style="margin:0;">Collaborateur</div>
-              <div class="sb-actions" id="collabModalBadges"></div>
+          <div class="sb-collab-profile-head">
+            <div class="sb-collab-profile-avatar" id="collabModalAvatar" aria-hidden="true">--</div>
+            <div class="sb-collab-profile-text">
+              <div class="sb-collab-profile-titleline">
+                <div class="card-title" id="collabModalTitle" style="margin:0;">Collaborateur</div>
+                <div class="sb-actions" id="collabModalBadges"></div>
+              </div>
+              <div class="sb-collab-profile-sub" id="collabModalSubline">Création d’un collaborateur</div>
             </div>
           </div>
           <button type="button" class="sb-modal-x" id="btnCloseCollaborateur" aria-label="Fermer">&times;</button>
         </div>
 
-        <div class="sb-actions sb-collab-tabbar" role="tablist" aria-label="Onglets collaborateur">
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="ident" aria-selected="true">Identification</button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="skills" aria-selected="false">Compétences</button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="certs" aria-selected="false">Certifications</button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="history" aria-selected="false">Historique</button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="rights" aria-selected="false">Droits</button>
+        <div class="sb-collab-tabbar" role="tablist" aria-label="Onglets collaborateur">
+          <button type="button" class="sb-collab-tab is-active" data-tab="ident" aria-selected="true">
+            <span class="sb-collab-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span>Identification</span>
+          </button>
+          <button type="button" class="sb-collab-tab" data-tab="skills" aria-selected="false">
+            <span class="sb-collab-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg></span>
+            <span>Compétences</span>
+          </button>
+          <button type="button" class="sb-collab-tab" data-tab="certs" aria-selected="false">
+            <span class="sb-collab-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+            <span>Certifications</span>
+          </button>
+          <button type="button" class="sb-collab-tab" data-tab="history" aria-selected="false">
+            <span class="sb-collab-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/><path d="M12 7v5l3 2"/></svg></span>
+            <span>Historique</span>
+          </button>
+          <button type="button" class="sb-collab-tab" data-tab="rights" aria-selected="false">
+            <span class="sb-collab-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+            <span>Droits</span>
+          </button>
         </div>
       </div>
     </div>
@@ -188,7 +207,8 @@
 
           <div class="card sb-collab-form-card" style="margin:0;">
             <div class="sb-collab-block-head">
-              <div class="card-title" style="margin:0;">Informations personnelles</div>
+              <span class="sb-collab-block-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+              <div class="card-title" style="margin:0;">Identité & coordonnées</div>
             </div>
 
             <div class="sb-grid-12 sb-collab-form-grid">
@@ -242,17 +262,12 @@
               <datalist id="collabCodePostalList"></datalist>
               <datalist id="collabVilleList"></datalist>
 
-              <div class="sb-field sb-col-6">
+              <div class="sb-field sb-col-3">
                 <div class="label">Téléphone</div>
                 <input type="text" id="collabTel" />
               </div>
 
               <div class="sb-field sb-col-6">
-                <div class="label">Téléphone 2</div>
-                <input type="text" id="collabTel2" />
-              </div>
-
-              <div class="sb-field sb-col-9">
                 <div class="label">Email</div>
                 <input type="email" id="collabEmail" />
               </div>
@@ -266,11 +281,15 @@
 
           <div class="card sb-collab-form-card" style="margin:0;">
             <div class="sb-collab-block-head sb-collab-block-head--split">
-              <div class="card-title" style="margin:0;">Informations contrat</div>
+              <div class="sb-collab-block-titleline">
+                <span class="sb-collab-block-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span>
+                <div class="card-title" style="margin:0;">Contrat & affectation</div>
+              </div>
 
-              <label class="sb-check sb-collab-head-check">
+              <label class="sb-collab-status-toggle">
+                <span>Statut collaborateur</span>
                 <input type="checkbox" id="collabActif" checked />
-                <span>Actif</span>
+                <strong>Actif</strong>
               </label>
             </div>
 
@@ -305,25 +324,27 @@
                 <input type="date" id="collabDateDebutPoste" class="sb-collab-date" />
               </div>
 
-              <div class="sb-field sb-col-6">
-                <label class="sb-check sb-collab-check">
-                  <input type="checkbox" id="collabFormateur" />
-                  <span>Formateur</span>
-                </label>
-              </div>
+              <div class="sb-col-12 sb-collab-role-box">
+                <div class="sb-collab-role-title">Rôles & situation RH</div>
+                <div class="sb-collab-role-grid">
+                  <label class="sb-collab-role-chip sb-collab-role-chip--manager">
+                    <input type="checkbox" id="collabManager" />
+                    <span class="sb-collab-role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                    <span>Manager</span>
+                  </label>
 
-              <div class="sb-field sb-col-6">
-                <label class="sb-check sb-collab-check">
-                  <input type="checkbox" id="collabManager" />
-                  <span>Manager</span>
-                </label>
-              </div>
+                  <label class="sb-collab-role-chip sb-collab-role-chip--formateur">
+                    <input type="checkbox" id="collabFormateur" />
+                    <span class="sb-collab-role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></span>
+                    <span>Formateur</span>
+                  </label>
 
-              <div class="sb-field sb-col-12">
-                <label class="sb-check sb-collab-check">
-                  <input type="checkbox" id="collabHaveDateFin" />
-                  <span id="collabHaveDateFinLabel">Sortie prévue</span>
-                </label>
+                  <label class="sb-collab-role-chip sb-collab-role-chip--sortie">
+                    <input type="checkbox" id="collabHaveDateFin" />
+                    <span class="sb-collab-role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
+                    <span id="collabHaveDateFinLabel">Sortie prévue</span>
+                  </label>
+                </div>
               </div>
 
               <div class="sb-field sb-col-9 is-hidden" id="collabMotifSortieField">
@@ -340,7 +361,8 @@
 
           <div class="card sb-collab-form-card" style="margin:0;">
             <div class="sb-collab-block-head">
-              <div class="card-title" style="margin:0;">Informations parcours</div>
+              <span class="sb-collab-block-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15Z"/></svg></span>
+              <div class="card-title" style="margin:0;">Parcours & notes RH</div>
             </div>
 
             <div class="sb-grid-12 sb-collab-form-grid">
@@ -354,14 +376,14 @@
                 <select id="collabDomaineEdu"></select>
               </div>
 
-              <div class="sb-field sb-col-12">
+              <div class="sb-field sb-col-6">
                 <div class="label">Observations</div>
                 <textarea id="collabObservations" rows="3" class="sb-textarea--md"></textarea>
               </div>
 
-              <div class="sb-field sb-col-12">
+              <div class="sb-field sb-col-6">
                 <div class="label">Commentaire RH</div>
-                <textarea id="collabNote" rows="4" class="sb-textarea--md"></textarea>
+                <textarea id="collabNote" rows="3" class="sb-textarea--md"></textarea>
               </div>
             </div>
           </div>
@@ -402,8 +424,14 @@
         </div>
         <div class="sb-actions">
           <span id="collabSaveMsg" class="sb-save-inline-msg" style="display:none;">Enregistré avec succès</span>
-          <button type="button" class="sb-btn sb-btn--soft" id="btnCollabCancel">Annuler</button>
-          <button type="button" class="sb-btn sb-btn--accent" id="btnCollabSave">Enregistrer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnCollabCancel">
+            <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+            <span class="sb-btn-label">Annuler</span>
+          </button>
+          <button type="button" class="sb-btn sb-btn--accent" id="btnCollabSave">
+            <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></span>
+            <span class="sb-btn-label">Enregistrer</span>
+          </button>
         </div>
       </div>
     </div>
