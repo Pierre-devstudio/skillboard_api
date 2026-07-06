@@ -1934,6 +1934,23 @@ def _get_collab_scope(cur, oid: str, source_kind: str, cid: str, scope_ent: Opti
     }
 
 
+
+def _collab_history_effectif_ids(scope: dict, cid: str) -> List[str]:
+    """
+    Retourne les identifiants à consulter pour l'historique collaborateur.
+
+    Studio peut afficher un collaborateur issu directement de tbl_effectif_client
+    ou d'un utilisateur Studio avec miroir effectif. Les historiques terrain
+    (formations, audits, évolutions) sont rattachés à l'effectif. On consulte
+    donc l'id résolu par le scope ET l'id demandé, sans doublon.
+    """
+    ids: List[str] = []
+    for raw in (scope.get("id_effectif_data"), cid):
+        val = (raw or "").strip()
+        if val and val not in ids:
+            ids.append(val)
+    return ids
+
 def _days_in_month(year: int, month: int) -> int:
     if month == 2:
         is_leap = (year % 4 == 0) and ((year % 100 != 0) or (year % 400 == 0))
@@ -5563,7 +5580,9 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
-                id_effectif_data = scope["id_effectif_data"]
+                id_effectif_ids = _collab_history_effectif_ids(scope, cid)
+                if not id_effectif_ids:
+                    return {"id_collaborateur": cid, "items": []}
 
                 cur.execute(
                     """
@@ -5584,7 +5603,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                       ON af.id_action_formation = acfe.id_action_formation
                     LEFT JOIN public.tbl_fiche_formation ff
                       ON ff.id_form = af.id_form
-                    WHERE acfe.id_effectif = %s
+                    WHERE acfe.id_effectif = ANY(%s)
                       AND acfe.id_action_formation IS NOT NULL
                       AND COALESCE(acfe.archive, FALSE) = FALSE
                       AND COALESCE(af.archive, FALSE) = FALSE
@@ -5595,7 +5614,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                       af.date_creation DESC NULLS LAST,
                       acfe.id_action_formation_effectif DESC
                     """,
-                    (id_effectif_data,),
+                    (id_effectif_ids,),
                 )
                 rows = cur.fetchall() or []
 
@@ -5625,8 +5644,94 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
 
 @router.get("/studio/collaborateurs/historique/evolutions/{id_owner}/{id_collaborateur}")
 def studio_collab_historique_evolutions(id_owner: str, id_collaborateur: str, request: Request):
-    # Même source que l'historique des postes, renommée côté Studio pour coller au modal Insights.
-    return studio_collab_history_postes(id_owner, id_collaborateur, request)
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid, request)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
+                id_effectif_ids = _collab_history_effectif_ids(scope, cid)
+                if not id_effectif_ids:
+                    return {
+                        "id_collaborateur": cid,
+                        "id_poste_actuel": scope.get("id_poste_actuel"),
+                        "intitule_poste": scope.get("intitule_poste"),
+                        "items": [],
+                    }
+
+                cur.execute(
+                    """
+                    SELECT
+                      h.id_effectif_historique_poste,
+                      h.id_poste,
+                      h.date_debut,
+                      h.date_fin,
+                      h.commentaire,
+                      h.source_changement,
+                      COALESCE(NULLIF(BTRIM(COALESCE(p.codif_client, '')), ''), NULLIF(BTRIM(COALESCE(p.codif_poste, '')), ''), '') AS code_poste,
+                      COALESCE(p.intitule_poste, '') AS intitule_poste,
+                      COALESCE(s.nom_service, '') AS nom_service
+                    FROM public.tbl_effectif_client_historique_poste h
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = h.id_poste
+                     AND p.id_ent = %s
+                     AND COALESCE(p.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme s
+                      ON s.id_service = p.id_service
+                     AND s.id_ent = %s
+                     AND COALESCE(s.archive, FALSE) = FALSE
+                    WHERE h.id_effectif = ANY(%s)
+                      AND COALESCE(h.archive, FALSE) = FALSE
+                    ORDER BY
+                      CASE WHEN h.date_fin IS NULL THEN 0 ELSE 1 END,
+                      COALESCE(h.date_debut, DATE '1900-01-01') DESC,
+                      COALESCE(h.date_fin, DATE '2999-12-31') DESC,
+                      h.date_creation DESC,
+                      h.id_effectif_historique_poste DESC
+                    """,
+                    (scope_ent, scope_ent, id_effectif_ids),
+                )
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append(
+                {
+                    "id_effectif_historique_poste": r.get("id_effectif_historique_poste"),
+                    "id_poste": r.get("id_poste"),
+                    "code_poste": (r.get("code_poste") or "").strip(),
+                    "intitule_poste": (r.get("intitule_poste") or "").strip(),
+                    "nom_service": (r.get("nom_service") or "").strip(),
+                    "date_debut": r.get("date_debut").isoformat() if r.get("date_debut") else None,
+                    "date_fin": r.get("date_fin").isoformat() if r.get("date_fin") else None,
+                    "commentaire": r.get("commentaire"),
+                    "source_changement": _normalize_poste_history_source(r.get("source_changement"), default="manuel"),
+                    "source_changement_label": _poste_history_source_label(r.get("source_changement")),
+                    "is_current": r.get("date_fin") is None,
+                }
+            )
+
+        return {
+            "id_collaborateur": cid,
+            "id_poste_actuel": scope.get("id_poste_actuel"),
+            "intitule_poste": scope.get("intitule_poste"),
+            "items": items,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/historique/evolutions error: {e}")
 
 @router.get("/studio/collaborateurs/historique/audits/{id_owner}/{id_collaborateur}")
 def studio_collab_historique_audits(id_owner: str, id_collaborateur: str, request: Request):
@@ -5646,6 +5751,9 @@ def studio_collab_historique_audits(id_owner: str, id_collaborateur: str, reques
                 src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
+                id_effectif_ids = _collab_history_effectif_ids(scope, cid)
+                if not id_effectif_ids:
+                    return {"id_collaborateur": cid, "items": []}
 
                 cur.execute(
                     """
@@ -5663,7 +5771,7 @@ def studio_collab_historique_audits(id_owner: str, id_collaborateur: str, reques
                     FROM public.tbl_effectif_client_audit_competence a
                     JOIN public.tbl_effectif_client_competence ecc
                       ON ecc.id_effectif_competence = a.id_effectif_competence
-                     AND ecc.id_effectif_client = %s
+                     AND ecc.id_effectif_client = ANY(%s)
                      AND COALESCE(ecc.archive, FALSE) = FALSE
                     LEFT JOIN public.tbl_competence c
                       ON c.id_comp = ecc.id_comp
@@ -5673,7 +5781,7 @@ def studio_collab_historique_audits(id_owner: str, id_collaborateur: str, reques
                       a.date_audit DESC NULLS LAST,
                       a.id_audit_competence DESC
                     """,
-                    (scope["id_effectif_data"],),
+                    (id_effectif_ids,),
                 )
                 rows = cur.fetchall() or []
 
@@ -6436,7 +6544,7 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
 
-                old_state = _fetch_effectif_current_poste_state(cur, oid, cid)
+                old_state = _fetch_effectif_current_poste_state(cur, scope_ent, cid)
 
                 user_poste = _norm_text(payload.id_poste_actuel) or _norm_text(payload.fonction)
                 if user_poste:
