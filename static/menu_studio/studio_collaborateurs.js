@@ -35,6 +35,10 @@
   let _nsfGroupesLoaded = false;
 
   let _collabSkillItems = [];
+  let _collabSkillSorts = {
+    required: { key: 'competence', dir: 'asc' },
+    other: { key: 'competence', dir: 'asc' }
+  };
   let _collabCompAddItems = [];
   let _collabCompAddItemsAll = [];
   let _collabCompAddSearch = "";
@@ -3177,16 +3181,10 @@
       ? data.owned_items.slice()
       : (Array.isArray(data?.items) ? data.items.slice() : []);
 
-    const missingItems = Array.isArray(data?.missing_required_items)
-      ? data.missing_required_items.slice()
-      : [];
-
     _collabSkillItems = ownedItems.slice();
 
     const poste = getCurrentPosteForSkills();
-    const posteId = (poste.id || data?.id_poste_actuel || '').toString().trim();
     const posteLabel = poste.label || data?.intitule_poste || '–';
-    const canSync = !!_editingId && !!posteId && missingItems.length > 0;
     const canAdd = !!_editingId;
 
     const levelMeta = (niv) => {
@@ -3195,20 +3193,44 @@
       return { text: '—', cls: 'sb-badge--outline-accent' };
     };
 
-    const critValue = (item) => {
-      const n = parseInt(item?.poids_criticite ?? item?.poidsCriticite ?? item?.criticite ?? 0, 10);
-      return Number.isFinite(n) ? n : 0;
+    const levelRank = (niv) => {
+      const key = nsLevelKey(niv);
+      const order = { A:1, B:2, C:3, D:4 };
+      return order[key] || 0;
     };
 
-    const sortByCriticite = (a, b) => {
-      const diff = critValue(b) - critValue(a);
-      if (diff !== 0) return diff;
-      return String(a?.intitule || '').localeCompare(String(b?.intitule || ''), 'fr', { sensitivity: 'base' });
+    const parseDateValue = (value) => {
+      const raw = String(value || '').trim();
+      if (!raw) return 0;
+      const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return Number(`${iso[1]}${iso[2]}${iso[3]}`) || 0;
+      const fr = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (fr) return Number(`${fr[3]}${fr[2]}${fr[1]}`) || 0;
+      const d = Date.parse(raw);
+      return Number.isFinite(d) ? d : 0;
     };
 
-    const requiredOwned = ownedItems.filter(x => !!x?.is_required).sort(sortByCriticite);
-    const otherOwned = ownedItems.filter(x => !x?.is_required).sort(sortByCriticite);
-    const sortedMissingItems = missingItems.slice().sort(sortByCriticite);
+    const skillSortValue = (item, key) => {
+      if (key === 'niveau') return levelRank(item?.niveau_actuel);
+      if (key === 'date_eval') return parseDateValue(item?.date_derniere_eval);
+      return String(item?.intitule || item?.code || '').toLocaleLowerCase('fr');
+    };
+
+    const compareSkillRows = (a, b, scope) => {
+      const state = _collabSkillSorts[scope] || { key:'competence', dir:'asc' };
+      const av = skillSortValue(a, state.key);
+      const bv = skillSortValue(b, state.key);
+      let res = 0;
+      if (typeof av === 'number' && typeof bv === 'number') res = av - bv;
+      else res = String(av).localeCompare(String(bv), 'fr', { sensitivity:'base', numeric:true });
+      if (res === 0) {
+        res = String(a?.intitule || '').localeCompare(String(b?.intitule || ''), 'fr', { sensitivity:'base', numeric:true });
+      }
+      return state.dir === 'desc' ? -res : res;
+    };
+
+    const requiredOwned = ownedItems.filter(x => !!x?.is_required).sort((a, b) => compareSkillRows(a, b, 'required'));
+    const otherOwned = ownedItems.filter(x => !x?.is_required).sort((a, b) => compareSkillRows(a, b, 'other'));
 
     const validatedCount = requiredOwned.filter(x => {
       const cur = nsLevelKey(x?.niveau_actuel);
@@ -3230,9 +3252,24 @@
     const iconPdf = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
     const iconEval = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;
     const iconTrash = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+    const iconPlus = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`;
+
+    const sortHead = (scope, key, label, cls = '') => {
+      const state = _collabSkillSorts[scope] || { key:'competence', dir:'asc' };
+      const active = state.key === key;
+      const arrow = active ? (state.dir === 'asc' ? '▲' : '▼') : '↕';
+      return `
+        <th class="${cls}">
+          <button type="button" class="sb-collab-sort-head${active ? ' is-active' : ''}" data-skill-sort="${esc(scope)}" data-skill-sort-key="${esc(key)}" aria-label="Trier par ${esc(label)}">
+            <span>${esc(label)}</span>
+            <span class="sb-collab-sort-indicator" aria-hidden="true">${arrow}</span>
+          </button>
+        </th>
+      `;
+    };
 
     const renderOwnedRows = (rows) => {
-      if (!rows.length) return `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
+      if (!rows.length) return `<tr><td colspan="4" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
       return rows.map(x => {
         const lastEval = formatDateFR(x.date_derniere_eval);
         const idComp = (x.id_comp || '').toString().trim();
@@ -3244,7 +3281,6 @@
             <td>${buildCompCell(x.code || '', x.intitule || '')}</td>
             <td class="col-center"><span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span></td>
             <td class="col-center">${esc(lastEval)}</td>
-            <td class="col-center">${x.is_required ? '<span class="sb-badge sb-collab-required-badge">Requis</span>' : '<span class="sb-badge sb-collab-soft-badge">Hors poste</span>'}</td>
             <td class="sb-table-action-cell">
               <div class="sb-icon-actions">
                 ${idComp ? `<button type="button" class="sb-icon-btn" data-act="open-skill-sheet-btn" data-id-comp="${esc(idComp)}" title="Voir la fiche" aria-label="Voir la fiche">${iconPdf}</button>` : ``}
@@ -3257,22 +3293,7 @@
       }).join('');
     };
 
-    const renderMissingRows = (rows) => {
-      if (!rows.length) return `<tr><td colspan="3" class="sb-collab-skill-empty">Aucune compétence requise manquante.</td></tr>`;
-      return rows.map(x => {
-        const lvl = levelMeta(x.niveau_requis);
-        const idComp = (x.id_comp || '').toString().trim();
-        return `
-          <tr>
-            <td>${buildCompCell(x.code || '', x.intitule || '')}</td>
-            <td class="col-center"><span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span></td>
-            <td class="col-center"><button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-act="add-missing-skill" data-id-comp="${esc(idComp)}" data-niveau-requis="${esc(x.niveau_requis || '')}">Ajouter</button></td>
-          </tr>
-        `;
-      }).join('');
-    };
-
-    const renderOwnedSection = (title, rows, modifier) => `
+    const renderOwnedSection = (title, rows, modifier, scope) => `
       <div class="sb-collab-skill-section ${modifier || ''}">
         <div class="sb-collab-skill-section-head">
           <div class="sb-collab-skill-section-title">${esc(title)}</div>
@@ -3282,11 +3303,10 @@
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--owned">
             <thead>
               <tr>
-                <th>Compétence</th>
-                <th class="col-center" style="width:120px;">Niveau actuel</th>
-                <th class="col-center" style="width:130px;">Dernière éval.</th>
-                <th class="col-center" style="width:110px;">Poste</th>
-                <th class="col-center" style="width:118px;">Actions</th>
+                ${sortHead(scope, 'competence', 'Compétence')}
+                ${sortHead(scope, 'niveau', 'Niveau actuel', 'col-center sb-collab-skill-col-level')}
+                ${sortHead(scope, 'date_eval', 'Dernière éval.', 'col-center sb-collab-skill-col-date')}
+                <th class="col-center sb-collab-skill-col-actions">Actions</th>
               </tr>
             </thead>
             <tbody>${renderOwnedRows(rows)}</tbody>
@@ -3299,37 +3319,33 @@
       <div class="card-sub sb-collab-tab-context">Poste actuel : <strong>${esc(posteLabel)}</strong></div>
 
       <div class="sb-collab-metrics">
-        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('contract')}</span><strong>${requiredOwned.length + sortedMissingItems.length}</strong><em>Compétences requises<br>par le poste</em></div>
+        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('contract')}</span><strong>${requiredOwned.length}</strong><em>Compétences requises<br>détenues</em></div>
         <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('skills')}</span><strong>${validatedCount}</strong><em>Compétences validées<br>au niveau requis ou supérieur</em></div>
         <div class="sb-collab-metric sb-collab-metric--green"><span aria-hidden="true">${collabModalSvg('certs')}</span><strong>${otherOwned.length}</strong><em>Autres compétences<br>détenues</em></div>
       </div>
 
       <div class="sb-collab-tab-actions">
-        ${canSync ? `<button type="button" class="sb-btn sb-btn--poste-soft" id="btnSyncCollabSkillsFromPoste">Importer toutes les compétences manquantes (${sortedMissingItems.length})</button>` : ``}
-        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCompAdd">Ajouter une compétence</button>` : ``}
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCompAdd"><span class="sb-btn-icon" aria-hidden="true">${iconPlus}</span><span>Ajouter une compétence</span></button>` : ``}
       </div>
 
-      ${renderOwnedSection('Compétences requises par le poste', requiredOwned, 'sb-collab-skill-section--required')}
-      ${renderOwnedSection('Autres compétences détenues', otherOwned, 'sb-collab-skill-section--other')}
-
-      <div class="sb-collab-skill-section sb-collab-skill-section--missing">
-        <div class="sb-collab-skill-section-head">
-          <div class="sb-collab-skill-section-title">Compétences requises manquantes</div>
-          <span class="sb-badge">${sortedMissingItems.length}</span>
-        </div>
-        <div class="sb-table-wrap">
-          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--required">
-            <thead><tr><th>Compétence</th><th class="col-center" style="width:130px;">Niveau requis</th><th class="col-center" style="width:100px;">Action</th></tr></thead>
-            <tbody>${renderMissingRows(sortedMissingItems)}</tbody>
-          </table>
-        </div>
-      </div>
+      ${renderOwnedSection('Compétences requises détenues par le collaborateur', requiredOwned, 'sb-collab-skill-section--required', 'required')}
+      ${renderOwnedSection('Autres compétences détenues', otherOwned, 'sb-collab-skill-section--other', 'other')}
     `;
 
-    const btnSync = byId('btnSyncCollabSkillsFromPoste');
-    if (btnSync) btnSync.addEventListener('click', async () => {
-      try { await syncCollabSkillsFromPoste(portal); }
-      catch(e){ if (portal.showAlert) portal.showAlert('error', getErrorMessage(e)); }
+    host.querySelectorAll('[data-skill-sort]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const scope = String(btn.getAttribute('data-skill-sort') || '').trim();
+        const key = String(btn.getAttribute('data-skill-sort-key') || '').trim();
+        if (!scope || !key) return;
+        const current = _collabSkillSorts[scope] || { key:'competence', dir:'asc' };
+        _collabSkillSorts[scope] = {
+          key,
+          dir: current.key === key && current.dir === 'asc' ? 'desc' : 'asc'
+        };
+        renderCompetences(data, portal);
+      });
     });
 
     const btnAdd = byId('btnCollabCompAdd');
@@ -3347,9 +3363,6 @@
     });
     host.querySelectorAll('[data-act="remove-skill"]').forEach(btn => {
       btn.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); await removeSkillFromCollaborateur(portal, btn.getAttribute('data-id-comp')); });
-    });
-    host.querySelectorAll('[data-act="add-missing-skill"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); await addSkillToCollaborateur(portal, btn.getAttribute('data-id-comp'), btn.getAttribute('data-niveau-requis')); });
     });
   }
 

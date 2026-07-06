@@ -3042,6 +3042,7 @@
 }
 
 #modalCollaborateur .sb-collab-projection-field--exit-check input[type="checkbox"]{
+  appearance:auto;
   width:16px;
   height:16px;
   min-width:16px;
@@ -6182,6 +6183,50 @@
   font-weight:600;
   font-size:12px;
   background:#fff;
+}
+
+#modalCollaborateur .sb-collab-sort-head{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color:inherit;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:100%;
+  padding:0;
+  font:inherit;
+  cursor:pointer;
+}
+
+#modalCollaborateur .sb-collab-sort-head:hover,
+#modalCollaborateur .sb-collab-sort-head.is-active{
+  color:#111827;
+}
+
+#modalCollaborateur .sb-collab-sort-indicator{
+  color:#94a3b8;
+  font-size:10px;
+  line-height:1;
+}
+
+#modalCollaborateur .sb-collab-sort-head.is-active .sb-collab-sort-indicator{
+  color:var(--accent);
+}
+
+#modalCollaborateur .sb-collab-skills-table--owned th:first-child .sb-collab-sort-head{
+  justify-content:flex-start;
+}
+
+#modalCollaborateur .sb-collab-skill-col-level,
+#modalCollaborateur .sb-collab-skill-col-date{
+  width:130px;
+}
+
+#modalCollaborateur .sb-collab-skill-col-actions{
+  width:118px;
+  text-align:center;
 }
 
 #modalCollaborateur .sb-collab-skills-table tbody td,
