@@ -5591,9 +5591,13 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
+                _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
-                id_effectif = (scope.get("id_effectif_data") or cid or "").strip()
+                # Historique JMB : la fiche collaborateur Studio manipule déjà
+                # l'identifiant effectif à consulter. On interroge donc directement
+                # tbl_action_formation_effectif.id_effectif avec l'id en cours
+                # de visualisation, sans le remplacer par une résolution de scope.
+                id_effectif = cid
                 if not id_effectif:
                     return {"id_collaborateur": cid, "id_effectif": None, "items": []}
 
@@ -5615,10 +5619,9 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                     params.append(months)
 
                 # Même principe qu'Insights : les formations JMB sont portées par
-                # tbl_action_formation_effectif.id_effectif. Le scope Studio valide
-                # le collaborateur juste au-dessus ; la requête ne doit pas filtrer
-                # une seconde fois via tbl_effectif_client, sinon l'historique peut
-                # disparaître alors que l'inscription existe bien dans acfe.
+                # tbl_action_formation_effectif.id_effectif. Pour cette route, la
+                # seule clé métier utilisée pour lire l'historique est l'id_effectif
+                # affiché dans la fiche collaborateur.
                 cur.execute(
                     f"""
                     SELECT
