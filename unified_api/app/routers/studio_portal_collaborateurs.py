@@ -5599,6 +5599,9 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                       ff.code AS code_formation,
                       ff.titre AS titre_formation
                     FROM public.tbl_action_formation_effectif acfe
+                    JOIN public.tbl_effectif_client ec
+                      ON ec.id_effectif = acfe.id_effectif
+                     AND ec.id_ent = %s
                     LEFT JOIN public.tbl_action_formation af
                       ON af.id_action_formation = acfe.id_action_formation
                     LEFT JOIN public.tbl_fiche_formation ff
@@ -5614,7 +5617,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                       af.date_creation DESC NULLS LAST,
                       acfe.id_action_formation_effectif DESC
                     """,
-                    (id_effectif_ids,),
+                    (scope_ent, id_effectif_ids),
                 )
                 rows = cur.fetchall() or []
 
