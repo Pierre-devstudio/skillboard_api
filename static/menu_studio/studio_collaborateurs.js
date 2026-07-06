@@ -828,6 +828,18 @@
     return url.toString();
   }
 
+  async function collabApiJson(portal, url, options = {}){
+    return await portal.apiJson(applyCollabScopeToUrl(url), options);
+  }
+
+  async function loadHistorySection(portal, url){
+    try {
+      return await collabApiJson(portal, url);
+    } catch (e) {
+      return { items: [], error: getErrorMessage(e) };
+    }
+  }
+
   async function fetchAuthJson(url, options = {}){
     const headers = new Headers(options.headers || {});
     const token = await getPortalAccessToken();
@@ -3548,15 +3560,18 @@
       `;
     }).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune évolution structurante enregistrée.</td></tr>`;
 
-    const formationRows = formationItems.length ? formationItems.map(x => `
-      <tr>
-        <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_action_formation || x.code_formation || '–')}</span></td>
-        <td><div class="sb-collab-history-formation">${esc(x.titre_formation || 'Formation')}</div>${x.code_formation ? `<div class="sb-collab-history-code">${esc(x.code_formation)}</div>` : ''}</td>
-        <td class="col-center">${esc(formatDateFR(x.date_debut_formation))}</td>
-        <td class="col-center">${esc(formatDateFR(x.date_fin_formation))}</td>
-        <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.etat_action || '—')}</span></td>
-      </tr>
-    `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune formation JMB enregistrée.</td></tr>`;
+    const formationError = (data?.formations_jmb?.error || '').toString().trim();
+    const formationRows = formationError
+      ? `<tr><td colspan="5" class="sb-collab-skill-empty">Impossible de charger les formations JMB : ${esc(formationError)}</td></tr>`
+      : (formationItems.length ? formationItems.map(x => `
+        <tr>
+          <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_action_formation || x.code_formation || '–')}</span></td>
+          <td><div class="sb-collab-history-formation">${esc(x.titre_formation || 'Formation')}</div>${x.code_formation ? `<div class="sb-collab-history-code">${esc(x.code_formation)}</div>` : ''}</td>
+          <td class="col-center">${esc(formatDateFR(x.date_debut_formation))}</td>
+          <td class="col-center">${esc(formatDateFR(x.date_fin_formation))}</td>
+          <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.etat_action || '—')}</span></td>
+        </tr>
+      `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune formation JMB enregistrée.</td></tr>`);
 
     const auditRows = auditItems.length ? auditItems.map(x => `
       <tr>
@@ -3771,9 +3786,9 @@
     if (tab === 'history') {
       setPanelMessage('collabHistoryPanel', 'Chargement…');
       const [formationsJmb, evolutions, audits] = await Promise.all([
-        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
-        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/evolutions/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
-        portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/audits/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`)
+        loadHistorySection(portal, `${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
+        loadHistorySection(portal, `${portal.apiBase}/studio/collaborateurs/historique/evolutions/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
+        loadHistorySection(portal, `${portal.apiBase}/studio/collaborateurs/historique/audits/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`)
       ]);
       renderHistory({ formations_jmb: formationsJmb, evolutions, audits });
       return;
