@@ -4,6 +4,8 @@
   let _bootstrap = null;
   let _items = [];
   let _currentType = "indisponibilite";
+  let _page = 1;
+  let _pageSize = 25;
 
   function root(){ return document.querySelector('#view-planification_rh[data-view="planification_rh"]'); }
   function byId(id){ return document.getElementById(id); }
@@ -177,36 +179,142 @@
     renderItems();
   }
 
+  function getPlanRhPageData(items){
+    const list = Array.isArray(items) ? items : [];
+    const total = list.length;
+    const size = Math.max(1, Number(_pageSize) || 25);
+    const totalPages = Math.max(1, Math.ceil(total / size));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+
+    const start = total ? ((_page - 1) * size) : 0;
+    const end = Math.min(start + size, total);
+    return { total, totalPages, page:_page, pageSize:size, start, end, items:list.slice(start, end) };
+  }
+
+  function buildPlanRhPaginationTokens(totalPages, page){
+    if (totalPages <= 5) {
+      const all = [];
+      for (let i = 1; i <= totalPages; i += 1) all.push(i);
+      return all;
+    }
+
+    const tokens = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+    if (start > 2) tokens.push("ellipsis-left");
+    for (let i = start; i <= end; i += 1) tokens.push(i);
+    if (end < totalPages - 1) tokens.push("ellipsis-right");
+    tokens.push(totalPages);
+    return tokens;
+  }
+
+  function renderPlanRhPagination(pageData){
+    const total = pageData.total || 0;
+    const totalPages = pageData.totalPages || 1;
+    const page = pageData.page || 1;
+    const prevDisabled = page <= 1 ? " disabled" : "";
+    const nextDisabled = page >= totalPages ? " disabled" : "";
+    const tokens = buildPlanRhPaginationTokens(totalPages, page);
+    const range = total ? `${pageData.start + 1} – ${pageData.end} sur ${total}` : "0 sur 0";
+
+    return `
+      <div class="studio-rh-page-size-wrap">
+        <select class="sb-select studio-rh-page-size-select" data-plan-page-size aria-label="Nombre d'événements par page">
+          <option value="25"${_pageSize === 25 ? " selected" : ""}>25 par page</option>
+          <option value="50"${_pageSize === 50 ? " selected" : ""}>50 par page</option>
+          <option value="100"${_pageSize === 100 ? " selected" : ""}>100 par page</option>
+        </select>
+      </div>
+      <div class="studio-rh-pagination" aria-label="Pagination événements RH">
+        <button type="button" class="sb-icon-btn studio-rh-page-nav" data-plan-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        ${tokens.map(t => {
+          if (typeof t === "string") return '<span class="studio-rh-page-ellipsis" aria-hidden="true">…</span>';
+          return `<button type="button" class="studio-rh-page-btn${t === page ? " is-active" : ""}" data-plan-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? "page" : "false"}">${t}</button>`;
+        }).join("")}
+        <button type="button" class="sb-icon-btn studio-rh-page-nav" data-plan-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="studio-rh-range-label">${esc(range)}</div>
+    `;
+  }
+
   function renderItems(){
     const list = byId("planRhList");
+    const empty = byId("planRhEmpty");
     const sub = byId("planRhListSubtitle");
     if (!list) return;
-    if (sub) sub.textContent = `${_items.length} élément${_items.length > 1 ? "s" : ""} dans la liste de travail.`;
+    if (sub) sub.textContent = `${_items.length} événement${_items.length > 1 ? "s" : ""} dans la liste de travail.`;
+
     if (!_items.length) {
-      list.innerHTML = `<div class="studio-rh-empty">Aucun événement sur ces filtres. Donc, pour une fois, le silence est une information.</div>`;
+      list.innerHTML = "";
+      if (empty) empty.style.display = "block";
       return;
     }
-    list.innerHTML = _items.map(item => {
+
+    if (empty) empty.style.display = "none";
+    const pageData = getPlanRhPageData(_items);
+    const rows = pageData.items.map(item => {
       const isSuggestion = item.kind === "suggestion";
+      const type = clean(item.type_evenement || item.type_suggestion);
       const metaDate = isSuggestion ? `Échéance : ${dateOnlyLabel(item.date_echeance)}` : `${dateLabel(item.date_debut)}${item.date_fin ? ` → ${dateLabel(item.date_fin)}` : ""}`;
-      const action = isSuggestion ? `<button type="button" class="sb-btn sb-btn--soft" data-plan-open-calendar="${esc(item.id)}">Planifier</button>` : "";
+      const action = isSuggestion ? `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-plan-open-calendar="${esc(item.id)}">Planifier</button>` : `<span class="studio-rh-table-muted">—</span>`;
       return `
-        <article class="studio-rh-row studio-rh-row--${esc(item.type_evenement || item.type_suggestion)}">
-          <div class="studio-rh-row-main">
-            <div class="studio-rh-row-title">${esc(item.titre || typeLabel(item.type_evenement))}</div>
-            <div class="studio-rh-row-meta">
-              <span>${esc(item.collaborateur || "Périmètre RH")}</span>
-              <span>${esc(item.nom_service || "Service non lié")}</span>
-              <span>${esc(metaDate)}</span>
-            </div>
+        <div class="studio-rh-table-row studio-rh-row--${esc(type)}">
+          <div class="studio-rh-table-cell studio-rh-table-cell--event">
+            <span class="studio-rh-table-title">${esc(item.titre || typeLabel(type))}</span>
+            <span class="studio-rh-table-sub">${esc(item.collaborateur || "Périmètre RH")}</span>
           </div>
-          <div class="studio-rh-row-side">
-            <span class="studio-rh-badge studio-rh-badge--${esc(item.type_evenement || item.type_suggestion)}">${esc(item.type_label || typeLabel(item.type_evenement || item.type_suggestion))}</span>
-            <span class="studio-rh-status">${esc(item.statut_label || statutLabel(item.statut))}</span>
-            ${action}
-          </div>
-        </article>`;
+          <div class="studio-rh-table-cell"><span class="studio-rh-badge studio-rh-badge--${esc(type)}">${esc(item.type_label || typeLabel(type))}</span></div>
+          <div class="studio-rh-table-cell">${esc(item.nom_service || "Service non lié")}</div>
+          <div class="studio-rh-table-cell">${esc(metaDate)}</div>
+          <div class="studio-rh-table-cell"><span class="studio-rh-status">${esc(item.statut_label || statutLabel(item.statut))}</span></div>
+          <div class="studio-rh-table-cell studio-rh-table-cell--actions">${action}</div>
+        </div>`;
     }).join("");
+
+    list.innerHTML = `
+      <div class="studio-rh-table">
+        <div class="studio-rh-table-row studio-rh-table-head">
+          <div class="studio-rh-table-cell">Événement</div>
+          <div class="studio-rh-table-cell">Type</div>
+          <div class="studio-rh-table-cell">Service</div>
+          <div class="studio-rh-table-cell">Date / période</div>
+          <div class="studio-rh-table-cell">Statut</div>
+          <div class="studio-rh-table-cell studio-rh-table-cell--actions">Action</div>
+        </div>
+        ${rows}
+      </div>
+      <div class="studio-rh-table-foot">
+        ${renderPlanRhPagination(pageData)}
+      </div>`;
+  }
+
+  function setFiltersCollapsed(collapsed){
+    const card = byId("planRhListCard");
+    const body = byId("planRhFilterBody");
+    const btn = byId("planRhFiltersToggle");
+    const isCollapsed = !!collapsed;
+    if (card) card.classList.toggle("is-filters-collapsed", isCollapsed);
+    if (body) body.style.display = isCollapsed ? "none" : "";
+    if (btn) {
+      btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      btn.title = isCollapsed ? "Déplier les filtres" : "Replier les filtres";
+      btn.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+    }
+  }
+
+  async function resetFilters(){
+    ["planRhFilterType", "planRhFilterService", "planRhFilterCollab", "planRhFilterStatut"].forEach(id => {
+      const el = byId(id);
+      if (el) el.value = "";
+    });
+    _page = 1;
+    await loadBootstrap();
+    await loadItems();
   }
 
   function setCurrentType(type){
@@ -305,7 +413,11 @@
 
     byId("planRhOpenCalendarBtn")?.addEventListener("click", () => window.portal.switchView("calendrier_rh"));
     byId("planRhCreateBtn")?.addEventListener("click", () => openModal("indisponibilite"));
-    byId("planRhRefreshBtn")?.addEventListener("click", async () => { await loadBootstrap(); await loadItems(); });
+    byId("planRhResetFiltersBtn")?.addEventListener("click", () => resetFilters().catch(e => setMsg("planRhMsg", getErrorMessage(e), "error")));
+    byId("planRhFiltersToggle")?.addEventListener("click", () => {
+      const collapsed = byId("planRhFiltersToggle")?.getAttribute("aria-expanded") === "true";
+      setFiltersCollapsed(collapsed);
+    });
     byId("planRhModalClose")?.addEventListener("click", closeModal);
     byId("planRhModalCancel")?.addEventListener("click", closeModal);
     byId("planRhForm")?.addEventListener("submit", submitForm);
@@ -313,10 +425,38 @@
 
     document.querySelectorAll("[data-plan-type]").forEach(btn => btn.addEventListener("click", () => openModal(btn.dataset.planType)));
     document.querySelectorAll("[data-plan-tab]").forEach(btn => btn.addEventListener("click", () => setCurrentType(btn.dataset.planTab)));
-    ["planRhFilterType", "planRhFilterService", "planRhFilterCollab", "planRhFilterStatut"].forEach(id => byId(id)?.addEventListener("change", loadItems));
+    ["planRhFilterType", "planRhFilterService", "planRhFilterCollab", "planRhFilterStatut"].forEach(id => byId(id)?.addEventListener("change", async () => {
+      _page = 1;
+      await loadItems();
+    }));
+    document.addEventListener("change", (ev) => {
+      const pageSizeSelect = ev.target.closest?.("[data-plan-page-size]");
+      if (!pageSizeSelect) return;
+      const nextSize = parseInt(pageSizeSelect.value, 10);
+      _pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 25;
+      _page = 1;
+      renderItems();
+    });
     document.addEventListener("click", (ev) => {
       const planBtn = ev.target.closest?.("[data-plan-open-calendar]");
-      if (planBtn) window.portal.switchView("calendrier_rh");
+      if (planBtn) {
+        window.portal.switchView("calendrier_rh");
+        return;
+      }
+
+      const pageBtn = ev.target.closest?.("[data-plan-page], [data-plan-page-nav]");
+      if (pageBtn) {
+        const pageData = getPlanRhPageData(_items);
+        const nav = pageBtn.getAttribute("data-plan-page-nav") || "";
+        const rawPage = pageBtn.getAttribute("data-plan-page") || "";
+        if (nav === "prev") _page = Math.max(1, pageData.page - 1);
+        else if (nav === "next") _page = Math.min(pageData.totalPages, pageData.page + 1);
+        else {
+          const nextPage = parseInt(rawPage, 10);
+          if (Number.isFinite(nextPage)) _page = Math.min(Math.max(1, nextPage), pageData.totalPages);
+        }
+        renderItems();
+      }
     });
     document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeModal(); });
   }
