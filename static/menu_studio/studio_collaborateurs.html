@@ -157,6 +157,49 @@
   </div>
 </section>
 
+<div class="collab-drawer-backdrop" id="collabDrawerBackdrop" aria-hidden="true"></div>
+<aside class="collab-side-drawer" id="collabSideDrawer" aria-hidden="true" aria-label="Aperçu collaborateur">
+  <div class="collab-side-drawer__head">
+    <div class="collab-side-drawer__titleline">
+      <span class="collab-side-drawer__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </span>
+      <div>
+        <div class="card-title" style="margin:0;">Aperçu collaborateur</div>
+        <div class="card-sub" style="margin:2px 0 0;">Synthèse du collaborateur sélectionné.</div>
+      </div>
+    </div>
+    <button type="button" class="sb-modal-x collab-side-drawer__close" id="btnCollabDrawerClose" aria-label="Fermer">&times;</button>
+  </div>
+
+  <div class="collab-side-drawer__body">
+    <div class="collab-side-drawer__identity">
+      <span class="collab-avatar collab-drawer-avatar" id="collabDrawerAvatar" aria-hidden="true">--</span>
+      <div style="min-width:0;">
+        <div class="collab-side-drawer__name" id="collabDrawerName">Collaborateur</div>
+        <div class="collab-drawer-status" id="collabDrawerStatus">—</div>
+      </div>
+    </div>
+
+    <div class="collab-side-drawer__facts">
+      <div class="collab-side-drawer__fact"><span>Service</span><strong id="collabDrawerService">—</strong></div>
+      <div class="collab-side-drawer__fact"><span>Poste</span><strong id="collabDrawerPoste">—</strong></div>
+      <div class="collab-side-drawer__fact"><span>Date d’entrée</span><strong id="collabDrawerDateEntree">—</strong></div>
+      <div class="collab-side-drawer__fact"><span>Sortie prévue</span><strong id="collabDrawerDateSortie">—</strong></div>
+      <div class="collab-side-drawer__fact"><span>Type de contrat</span><strong id="collabDrawerContrat">—</strong></div>
+      <div class="collab-side-drawer__fact"><span>Rôles</span><strong class="collab-side-drawer__roles" id="collabDrawerRoles">—</strong></div>
+      <div class="collab-side-drawer__fact"><span>Email</span><strong id="collabDrawerEmail">—</strong></div>
+      <div class="collab-side-drawer__fact"><span>Téléphone</span><strong id="collabDrawerTelephone">—</strong></div>
+    </div>
+
+    <div class="collab-side-drawer__actions">
+      <button type="button" class="collab-side-drawer__action" id="btnCollabDrawerOpen"><span>Voir la fiche</span><span aria-hidden="true">›</span></button>
+      <button type="button" class="collab-side-drawer__action" id="btnCollabDrawerEval"><span>Évaluer</span><span aria-hidden="true">›</span></button>
+      <button type="button" class="collab-side-drawer__action" id="btnCollabDrawerPlan"><span>Planifier</span><span aria-hidden="true">›</span></button>
+    </div>
+  </div>
+</aside>
+
 <div class="sb-modal" id="modalCollaborateur" style="display:none;">
   <div class="sb-modal-card sb-collab-modal-card">
     <div class="sb-modal-head sb-collab-modal-head">

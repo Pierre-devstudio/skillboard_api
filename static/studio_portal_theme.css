@@ -6450,3 +6450,226 @@
     grid-template-columns:1fr;
   }
 }
+
+/* ======================================================
+   Studio > Vos collaborateurs – aperçu latéral
+   ====================================================== */
+.collab-drawer-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:9988;
+  background:rgba(15,23,42,.28);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .18s ease, visibility .18s ease;
+}
+
+.collab-drawer-backdrop.is-open{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+
+.collab-side-drawer{
+  position:fixed;
+  top:12px;
+  right:12px;
+  bottom:12px;
+  z-index:9989;
+  width:min(370px, calc(100vw - 24px));
+  background:#fff;
+  border:1px solid #e7eaf0;
+  border-radius:18px;
+  box-shadow:0 24px 70px rgba(15,23,42,.24);
+  transform:translateX(calc(100% + 24px));
+  transition:transform .22s ease;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.collab-side-drawer.is-open{
+  transform:translateX(0);
+}
+
+.collab-side-drawer__head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:18px 18px 12px;
+  border-bottom:1px solid #eef2f7;
+}
+
+.collab-side-drawer__titleline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+.collab-side-drawer__icon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(var(--sb-accent-rgb), .14);
+  color:#111827;
+  flex:0 0 auto;
+}
+
+.collab-side-drawer__icon svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.collab-side-drawer__close{
+  flex:0 0 auto;
+}
+
+.collab-side-drawer__body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  padding:18px;
+}
+
+.collab-side-drawer__identity{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+  margin-bottom:18px;
+}
+
+#view-collaborateurs .collab-drawer-avatar,
+.collab-drawer-avatar{
+  width:48px;
+  height:48px;
+  font-size:14px;
+  box-shadow:0 0 0 1px rgba(17,24,39,.08) inset;
+}
+
+.collab-side-drawer__name{
+  color:#111827;
+  font-size:15px;
+  font-weight:800;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.collab-drawer-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:4px;
+  color:#475569;
+  font-size:12px;
+  font-weight:650;
+}
+
+.collab-drawer-status::before{
+  content:"";
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background:#94a3b8;
+}
+
+.collab-drawer-status.is-active::before{ background:#16a34a; }
+.collab-drawer-status.is-inactive::before{ background:#f97316; }
+.collab-drawer-status.is-archived::before{ background:#64748b; }
+
+.collab-side-drawer__facts{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.collab-side-drawer__fact{
+  display:grid;
+  grid-template-columns:96px minmax(0, 1fr);
+  gap:10px;
+  align-items:start;
+  color:#0f172a;
+  font-size:12.5px;
+}
+
+.collab-side-drawer__fact > span{
+  color:#111827;
+  font-weight:750;
+}
+
+.collab-side-drawer__fact > strong{
+  min-width:0;
+  color:#334155;
+  font-weight:520;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+
+.collab-side-drawer__roles{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.collab-side-drawer__actions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:20px;
+}
+
+.collab-side-drawer__action{
+  width:100%;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 13px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#fff;
+  color:#111827;
+  font:inherit;
+  font-size:13px;
+  font-weight:750;
+  cursor:pointer;
+  transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.collab-side-drawer__action:hover{
+  background:#fbfcfe;
+  border-color:#cbd5e1;
+  box-shadow:0 8px 18px rgba(15,23,42,.06);
+}
+
+#view-collaborateurs .collab-table-row[data-collab-row]:not(.collab-table-head){
+  cursor:pointer;
+}
+
+@media (max-width: 620px){
+  .collab-side-drawer{
+    top:8px;
+    right:8px;
+    bottom:8px;
+    width:calc(100vw - 16px);
+  }
+
+  .collab-side-drawer__fact{
+    grid-template-columns:1fr;
+    gap:3px;
+  }
+}

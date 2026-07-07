@@ -18,6 +18,7 @@
   let _page = 1;
   let _pageSize = 25;
   let _bulkSendSelectedIds = new Set();
+  let _drawerCollaborateurId = "";
 
   let _modalMode = "create";
   let _editingId = null;
@@ -2279,6 +2280,112 @@
     if (el) el.style.display = "none";
   }
 
+  function setDrawerText(id, value, fallback = "–"){
+    const el = byId(id);
+    if (!el) return;
+    const v = String(value ?? "").trim();
+    el.textContent = v || fallback;
+  }
+
+  function findCollaborateurItem(id){
+    const cid = String(id || "").trim();
+    if (!cid) return null;
+
+    const pools = [
+      Array.isArray(_items) ? _items : [],
+      Array.isArray(_globalItems) ? _globalItems : []
+    ];
+
+    for (const list of pools){
+      const found = list.find(x => String(x?.id_collaborateur || "").trim() === cid);
+      if (found) return found;
+    }
+
+    return null;
+  }
+
+  function drawerStatusLabel(it){
+    if (it?.archive) return "Archivé";
+    return it?.actif ? "Actif" : "Inactif";
+  }
+
+  function drawerStatusClass(it){
+    if (it?.archive) return "is-archived";
+    return it?.actif ? "is-active" : "is-inactive";
+  }
+
+  function renderDrawerRoles(it){
+    const roles = [];
+    if (it?.ismanager) roles.push('<span class="collab-role-badge collab-role-badge--manager">Manager</span>');
+    if (it?.isformateur) roles.push('<span class="collab-role-badge collab-role-badge--formateur">Formateur</span>');
+    if (it?.is_temp) roles.push('<span class="collab-role-badge">Temporaire</span>');
+    return roles.length ? roles.join('') : '<span class="card-sub" style="margin:0;">—</span>';
+  }
+
+  function renderCollabDrawer(it){
+    const cid = String(it?.id_collaborateur || "").trim();
+    const fullName = collabFullName(it);
+    const initials = collabInitials(it?.prenom, it?.nom);
+    const avatarTone = collabAvatarTone(cid || fullName);
+    const avatar = byId('collabDrawerAvatar');
+    const status = byId('collabDrawerStatus');
+    const roles = byId('collabDrawerRoles');
+
+    if (avatar){
+      avatar.className = `collab-avatar collab-drawer-avatar collab-avatar--${avatarTone}`;
+      avatar.textContent = initials;
+    }
+
+    setDrawerText('collabDrawerName', fullName, 'Collaborateur');
+    setDrawerText('collabDrawerService', it?.nom_service, '—');
+    setDrawerText('collabDrawerPoste', splitPosteLabel(it?.poste_label).title, '—');
+    setDrawerText('collabDrawerDateEntree', formatDateFR(it?.date_entree), '—');
+    setDrawerText('collabDrawerDateSortie', formatDateFR(it?.date_sortie_prevue), '—');
+    setDrawerText('collabDrawerContrat', it?.type_contrat, '—');
+    setDrawerText('collabDrawerEmail', it?.email, '—');
+    setDrawerText('collabDrawerTelephone', formatPhoneFr(it?.telephone || ''), '—');
+
+    if (status){
+      status.className = `collab-drawer-status ${drawerStatusClass(it)}`;
+      status.textContent = drawerStatusLabel(it);
+    }
+
+    if (roles) roles.innerHTML = renderDrawerRoles(it);
+  }
+
+  function openCollabDrawer(id){
+    const cid = String(id || "").trim();
+    const it = findCollaborateurItem(cid);
+    if (!it) return;
+
+    _drawerCollaborateurId = cid;
+    renderCollabDrawer(it);
+
+    const drawer = byId('collabSideDrawer');
+    const backdrop = byId('collabDrawerBackdrop');
+    if (backdrop){
+      backdrop.classList.add('is-open');
+      backdrop.setAttribute('aria-hidden', 'false');
+    }
+    if (drawer){
+      drawer.classList.add('is-open');
+      drawer.setAttribute('aria-hidden', 'false');
+    }
+  }
+
+  function closeCollabDrawer(){
+    const drawer = byId('collabSideDrawer');
+    const backdrop = byId('collabDrawerBackdrop');
+    if (drawer){
+      drawer.classList.remove('is-open');
+      drawer.setAttribute('aria-hidden', 'true');
+    }
+    if (backdrop){
+      backdrop.classList.remove('is-open');
+      backdrop.setAttribute('aria-hidden', 'true');
+    }
+  }
+
   function fillSelect(el, items, valueKey, labelKey, firstValue, firstLabel){
     if (!el) return;
     let html = "";
@@ -2870,7 +2977,7 @@
       const avatarTone = collabAvatarTone(cid || fullName);
 
       return `
-        <div class="collab-table-row ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}">
+        <div class="collab-table-row ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}" data-collab-row="${esc(cid)}">
           <div class="collab-table-cell collab-table-cell--check">
             <label class="sb-collab-send-check" title="Sélectionner pour l’envoi des accès">
               <input type="checkbox" data-select-collab="${esc(cid)}" ${selectedForSend ? 'checked' : ''} />
@@ -4031,17 +4138,23 @@
       }
 
       const btn = e.target.closest('button[data-act]');
-      if (!btn) return;
+      if (btn) {
+        const act = btn.getAttribute('data-act') || '';
+        const id = btn.getAttribute('data-id') || '';
 
-      const act = btn.getAttribute('data-act') || '';
-      const id = btn.getAttribute('data-id') || '';
-
-      try {
-        if (act === 'edit') await openEditModal(portal, id);
-        if (act === 'archive') await archiveCollaborateur(portal, id);
-      } catch (err) {
-        portal.showAlert('error', getErrorMessage(err));
+        try {
+          if (act === 'edit') await openEditModal(portal, id);
+          if (act === 'archive') await archiveCollaborateur(portal, id);
+        } catch (err) {
+          portal.showAlert('error', getErrorMessage(err));
+        }
+        return;
       }
+
+      const row = e.target.closest('.collab-table-row[data-collab-row]');
+      if (!row) return;
+
+      openCollabDrawer(row.getAttribute('data-collab-row') || '');
     });
   }
 
@@ -4075,6 +4188,32 @@
 
     bindListActions(portal);
     bindTabs(portal);
+
+    byId('btnCollabDrawerClose')?.addEventListener('click', closeCollabDrawer);
+    byId('collabDrawerBackdrop')?.addEventListener('click', closeCollabDrawer);
+
+    byId('btnCollabDrawerOpen')?.addEventListener('click', async () => {
+      const id = String(_drawerCollaborateurId || '').trim();
+      if (!id) return;
+      closeCollabDrawer();
+      try {
+        await openEditModal(portal, id);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
+    });
+
+    byId('btnCollabDrawerEval')?.addEventListener('click', () => {
+      portal.showAlert('', 'La page Entretiens et évaluations sera branchée dans un prochain chantier.');
+    });
+
+    byId('btnCollabDrawerPlan')?.addEventListener('click', () => {
+      portal.showAlert('', 'Le planning sera branché dans un prochain chantier.');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeCollabDrawer();
+    });
 
     byId('btnCollabAdd')?.addEventListener('click', () => {
       openCreateModal().catch(e => portal.showAlert('error', getErrorMessage(e)));
