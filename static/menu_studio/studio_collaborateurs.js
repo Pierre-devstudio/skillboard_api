@@ -18,7 +18,6 @@
   let _page = 1;
   let _pageSize = 25;
   let _bulkSendSelectedIds = new Set();
-  let _collabDrawerItem = null;
 
   let _modalMode = "create";
   let _editingId = null;
@@ -2781,157 +2780,6 @@
     `;
   }
 
-  function collabDrawerStatus(it){
-    if (it?.archive) return { label: 'Archivé', cls: 'is-archived' };
-    if (it?.actif) return { label: 'Actif', cls: 'is-active' };
-    return { label: 'Inactif', cls: 'is-inactive' };
-  }
-
-  function collabDrawerRoleBadges(it){
-    const badges = [];
-    if (it?.ismanager) badges.push('<span class="collab-role-badge collab-role-badge--manager">Manager</span>');
-    if (it?.isformateur) badges.push('<span class="collab-role-badge collab-role-badge--formateur">Formateur</span>');
-    return badges.length ? badges.join('') : '<span class="card-sub">—</span>';
-  }
-
-  function collabDrawerField(label, value, opts = {}){
-    const html = opts.html === true;
-    const text = String(value ?? '').trim();
-    return `
-      <div class="collab-drawer-field">
-        <div class="collab-drawer-field__label">${esc(label)}</div>
-        <div class="collab-drawer-field__value">${html ? (value || '<span class="card-sub">—</span>') : esc(text || '—')}</div>
-      </div>
-    `;
-  }
-
-  function setCollabDrawerRowState(id){
-    const current = String(id || '').trim();
-    document.querySelectorAll('#collabList [data-row-collab]').forEach(row => {
-      row.classList.toggle('is-drawer-open', current && row.getAttribute('data-row-collab') === current);
-    });
-  }
-
-  function renderCollabDrawer(item){
-    const host = byId('collabSideDrawerContent');
-    if (!host || !item) return;
-
-    const cid = String(item.id_collaborateur || '').trim();
-    const prenom = String(item.prenom || '').trim();
-    const nom = String(item.nom || '').trim();
-    const fullName = `${prenom} ${nom ? nom.toUpperCase() : ''}`.trim() || collabFullName(item);
-    const status = collabDrawerStatus(item);
-    const poste = splitPosteLabel(item.poste_label);
-    const service = String(item.nom_service || '').trim() || '—';
-    const code = String(item.code_effectif || item.matricule_interne || '').trim();
-    const subtitle = [code, poste.title && poste.title !== '—' ? poste.title : '', service !== '—' ? service : '']
-      .filter(Boolean)
-      .join(' · ');
-    const avatarTone = collabAvatarTone(cid || fullName);
-
-    host.innerHTML = `
-      <div class="collab-drawer-card">
-        <div class="collab-drawer-profile">
-          <span class="collab-avatar collab-avatar--${esc(avatarTone)} collab-drawer-avatar" aria-hidden="true">${esc(collabInitials(item.prenom, item.nom))}</span>
-          <div class="collab-drawer-profile__main">
-            <div class="collab-drawer-name">${esc(fullName)}</div>
-            <div class="collab-drawer-status"><span class="collab-status-dot ${esc(status.cls)}">${esc(status.label)}</span></div>
-            ${subtitle ? `<div class="collab-drawer-sub">${esc(subtitle)}</div>` : ''}
-          </div>
-        </div>
-
-        <div class="collab-drawer-fields">
-          ${collabDrawerField('Service', service)}
-          ${collabDrawerField('Poste', poste.code ? `${poste.code} - ${poste.title}` : poste.title)}
-          ${collabDrawerField('Date d’entrée', formatDateFR(item.date_entree))}
-          ${collabDrawerField('Sortie prévue', formatDateFR(item.date_sortie_prevue))}
-          ${collabDrawerField('Type de contrat', item.type_contrat || '—')}
-          ${collabDrawerField('Rôles', collabDrawerRoleBadges(item), { html: true })}
-          ${collabDrawerField('Email', item.email || '—')}
-          ${collabDrawerField('Téléphone', formatPhoneFr(item.telephone || '') || '—')}
-        </div>
-
-        <div class="collab-drawer-actions">
-          <button type="button" class="collab-drawer-action" data-drawer-action="open-card">
-            <span>Voir la fiche</span><span aria-hidden="true">›</span>
-          </button>
-          <button type="button" class="collab-drawer-action" data-drawer-action="evaluate">
-            <span>Évaluer</span><span aria-hidden="true">›</span>
-          </button>
-          <button type="button" class="collab-drawer-action" data-drawer-action="plan">
-            <span>Planifier</span><span aria-hidden="true">›</span>
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
-  function openCollabDrawer(item){
-    const drawer = byId('collabSideDrawer');
-    const backdrop = byId('collabSideDrawerBackdrop');
-    if (!drawer || !backdrop || !item) return;
-
-    _collabDrawerItem = item;
-    renderCollabDrawer(item);
-
-    backdrop.classList.add('is-open');
-    drawer.classList.add('is-open');
-    drawer.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('collab-side-drawer-open');
-    setCollabDrawerRowState(item.id_collaborateur);
-  }
-
-  function closeCollabDrawer(){
-    const drawer = byId('collabSideDrawer');
-    const backdrop = byId('collabSideDrawerBackdrop');
-    if (backdrop) backdrop.classList.remove('is-open');
-    if (drawer) {
-      drawer.classList.remove('is-open');
-      drawer.setAttribute('aria-hidden', 'true');
-    }
-    document.body.classList.remove('collab-side-drawer-open');
-    _collabDrawerItem = null;
-    setCollabDrawerRowState('');
-  }
-
-  function bindCollabDrawer(portal){
-    byId('btnCloseCollabSideDrawer')?.addEventListener('click', closeCollabDrawer);
-    byId('collabSideDrawerBackdrop')?.addEventListener('click', closeCollabDrawer);
-
-    byId('collabSideDrawer')?.addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-drawer-action]');
-      if (!btn || !_collabDrawerItem) return;
-
-      const action = btn.getAttribute('data-drawer-action') || '';
-      const id = String(_collabDrawerItem.id_collaborateur || '').trim();
-
-      try {
-        if (action === 'open-card') {
-          closeCollabDrawer();
-          await openEditModal(portal, id);
-          return;
-        }
-
-        if (action === 'evaluate') {
-          portal.showAlert?.('info', 'Le lien vers les entretiens et évaluations sera raccordé ensuite.');
-          return;
-        }
-
-        if (action === 'plan') {
-          portal.showAlert?.('info', 'Le lien vers les plannings sera raccordé ensuite.');
-        }
-      } catch (err) {
-        portal.showAlert?.('error', getErrorMessage(err));
-      }
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && byId('collabSideDrawer')?.classList.contains('is-open')) {
-        closeCollabDrawer();
-      }
-    });
-  }
-
   function setCollabFiltersCollapsed(collapsed){
     const card = byId('collabListCard') || document.querySelector('#view-collaborateurs .collab-list-card');
     const body = byId('collabFilterBody');
@@ -3022,7 +2870,7 @@
       const avatarTone = collabAvatarTone(cid || fullName);
 
       return `
-        <div class="collab-table-row ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}" data-row-collab="${esc(cid)}" role="button" tabindex="0" aria-label="Aperçu collaborateur ${esc(fullName)}">
+        <div class="collab-table-row ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}">
           <div class="collab-table-cell collab-table-cell--check">
             <label class="sb-collab-send-check" title="Sélectionner pour l’envoi des accès">
               <input type="checkbox" data-select-collab="${esc(cid)}" ${selectedForSend ? 'checked' : ''} />
@@ -4149,7 +3997,7 @@
     });
 
     host?.addEventListener('click', async (e) => {
-      if (e.target.closest('input[data-select-collab], .sb-collab-send-check')) return;
+      if (e.target.closest('input[data-select-collab]')) return;
 
       const sortBtn = e.target.closest('[data-sort-collab]');
       if (sortBtn) {
@@ -4183,39 +4031,17 @@
       }
 
       const btn = e.target.closest('button[data-act]');
-      if (btn) {
-        const act = btn.getAttribute('data-act') || '';
-        const id = btn.getAttribute('data-id') || '';
+      if (!btn) return;
 
-        try {
-          if (act === 'edit') {
-            closeCollabDrawer();
-            await openEditModal(portal, id);
-          }
-          if (act === 'archive') await archiveCollaborateur(portal, id);
-        } catch (err) {
-          portal.showAlert('error', getErrorMessage(err));
-        }
-        return;
+      const act = btn.getAttribute('data-act') || '';
+      const id = btn.getAttribute('data-id') || '';
+
+      try {
+        if (act === 'edit') await openEditModal(portal, id);
+        if (act === 'archive') await archiveCollaborateur(portal, id);
+      } catch (err) {
+        portal.showAlert('error', getErrorMessage(err));
       }
-
-      const row = e.target.closest('[data-row-collab]');
-      if (!row || !host.contains(row)) return;
-
-      const id = String(row.getAttribute('data-row-collab') || '').trim();
-      const item = (_items || []).find(x => String(x?.id_collaborateur || '').trim() === id);
-      if (item) openCollabDrawer(item);
-    });
-
-    host?.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      const row = e.target.closest('[data-row-collab]');
-      if (!row || !host.contains(row)) return;
-
-      e.preventDefault();
-      const id = String(row.getAttribute('data-row-collab') || '').trim();
-      const item = (_items || []).find(x => String(x?.id_collaborateur || '').trim() === id);
-      if (item) openCollabDrawer(item);
     });
   }
 
@@ -4249,7 +4075,6 @@
 
     bindListActions(portal);
     bindTabs(portal);
-    bindCollabDrawer(portal);
 
     byId('btnCollabAdd')?.addEventListener('click', () => {
       openCreateModal().catch(e => portal.showAlert('error', getErrorMessage(e)));
