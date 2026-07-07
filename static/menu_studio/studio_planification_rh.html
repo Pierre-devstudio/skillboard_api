@@ -177,14 +177,14 @@
 
       <form id="planRhForm" class="studio-rh-form">
         <div class="studio-rh-form-pane" data-plan-form="indisponibilite">
-          <div class="studio-rh-modal-block">
+          <div class="studio-rh-modal-block studio-rh-picker-block">
             <div class="studio-rh-block-head">
               <div>
                 <strong>Collaborateur concerné</strong>
-                <small>Filtrez la liste avant de sélectionner le collaborateur.</small>
+                <small>Recherchez puis sélectionnez le collaborateur.</small>
               </div>
             </div>
-            <div class="studio-rh-form-grid studio-rh-form-grid--filters">
+            <div class="studio-rh-form-grid studio-rh-form-grid--filters studio-rh-form-grid--collab-picker">
               <div class="sb-field studio-rh-filter-search">
                 <div class="label">Recherche</div>
                 <div class="studio-rh-search-field">
@@ -204,8 +204,9 @@
                   <span class="studio-rh-search-field__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                   </span>
-                  <input id="planIndispoPosteSearch" type="search" placeholder="Rechercher un poste..." list="planIndispoPosteList" autocomplete="off">
+                  <input id="planIndispoPosteSearch" type="search" placeholder="Rechercher un poste..." list="planIndispoPosteList" autocomplete="off" aria-autocomplete="list" aria-controls="planIndispoPosteSuggestions">
                   <datalist id="planIndispoPosteList"></datalist>
+                  <div id="planIndispoPosteSuggestions" class="studio-rh-suggest-list" style="display:none;"></div>
                 </div>
               </div>
               <label>
@@ -216,7 +217,7 @@
           </div>
 
           <div class="studio-rh-form-grid">
-            <label class="studio-rh-field-wide">
+            <label class="studio-rh-field-wide studio-rh-field-compact">
               <span class="label">Type d’indisponibilité</span>
               <input id="planIndispoType" type="text" placeholder="Ex : absence longue, congé, disponibilité réduite" required>
             </label>
@@ -240,7 +241,7 @@
                 <div id="planIndispoLines"></div>
               </div>
             </div>
-            <label class="studio-rh-field-wide">
+            <label class="studio-rh-field-wide studio-rh-comment-compact">
               <span class="label">Commentaire</span>
               <textarea id="planIndispoComment" class="sb-textarea--md" placeholder="Commentaire interne"></textarea>
             </label>

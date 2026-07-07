@@ -8122,3 +8122,216 @@
     justify-self:start;
   }
 }
+
+/* ======================================================
+   Studio – Planification RH – Ajustements modal indisponibilité V5
+   ====================================================== */
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-modal-card{
+  width:min(900px, 94vw);
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .sb-modal-body{
+  padding-top:10px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-picker-block{
+  padding:12px 14px;
+  margin-bottom:12px;
+  background:#fbfcfe;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-picker-block .studio-rh-block-head{
+  margin-bottom:9px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker{
+  grid-template-columns:minmax(230px, 1.08fr) minmax(170px, .78fr);
+  gap:10px 12px;
+  align-items:end;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker .label{
+  margin-bottom:5px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker input:not([type="checkbox"]):not([type="radio"]):not(.sb-date),
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker select{
+  min-height:38px;
+  height:38px;
+  border-color:#d8dee8;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker input:not([type="checkbox"]):not([type="radio"]):not(.sb-date):focus,
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker select:focus{
+  border-color:#b8c3d4;
+  box-shadow:0 0 0 3px rgba(15,23,42,.055);
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-search-field__icon{
+  left:12px;
+  color:#8a99ad;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-search-field input{
+  padding-left:36px !important;
+}
+
+.studio-rh-suggest-list{
+  position:absolute;
+  left:0;
+  right:0;
+  top:calc(100% + 6px);
+  z-index:30;
+  max-height:218px;
+  overflow:auto;
+  padding:6px;
+  border:1px solid #dfe5ee;
+  border-radius:13px;
+  background:#fff;
+  box-shadow:0 16px 34px rgba(15,23,42,.14);
+}
+
+.studio-rh-suggest-item{
+  width:100%;
+  border:0;
+  border-radius:10px;
+  background:#fff;
+  padding:8px 9px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:#0f172a;
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+
+.studio-rh-suggest-item:hover,
+.studio-rh-suggest-item:focus{
+  outline:none;
+  background:#f6f8fb;
+}
+
+.studio-rh-suggest-item span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12.5px;
+  font-weight:700;
+}
+
+.studio-rh-suggest-item small,
+.studio-rh-suggest-empty{
+  color:#64748b;
+  font-size:11.5px;
+  white-space:nowrap;
+}
+
+.studio-rh-suggest-empty{
+  padding:8px 9px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-field-compact input{
+  min-height:38px;
+  border-radius:12px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-lines-card{
+  padding:12px;
+  background:#fbfcfe;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-lines-head{
+  align-items:center;
+  margin-bottom:8px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-lines-head .sb-btn{
+  min-height:32px;
+  padding:6px 10px;
+  border-radius:10px;
+  background:#fff;
+  font-size:12.5px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-lines-table{
+  border:0;
+  border-radius:0;
+  overflow:visible;
+  background:transparent;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-lines-row--head{
+  display:none;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite #planIndispoLines{
+  display:grid;
+  gap:8px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-indispo-line{
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) 38px;
+  gap:9px;
+  padding:10px;
+  border:1px solid #e4e9f1;
+  border-radius:14px;
+  background:#fff;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-indispo-line label{
+  min-width:0;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-line-label{
+  display:block;
+  margin-bottom:5px;
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:650;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-indispo-line .sb-date{
+  min-height:40px;
+  height:40px;
+  padding:9px 12px;
+  border-color:#cfd8e6;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-indispo-line .sb-date:focus{
+  outline:none;
+  border-color:#b8c3d4;
+  box-shadow:0 0 0 3px rgba(15,23,42,.055);
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-line-delete{
+  align-self:end;
+  width:34px;
+  height:40px;
+  border-radius:12px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-comment-compact textarea{
+  min-height:62px;
+  max-height:96px;
+  border-radius:12px;
+}
+
+@media (max-width: 760px){
+  #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker,
+  #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-indispo-line{
+    grid-template-columns:1fr;
+  }
+
+  #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-line-delete{
+    justify-self:start;
+  }
+}

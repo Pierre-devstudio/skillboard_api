@@ -132,27 +132,51 @@
     return collabs().filter(c => collabMatches(c, searchId, serviceId, posteSearchId));
   }
 
-  function updateIndispoPosteSuggestions(){
-    const list = byId("planIndispoPosteList");
-    if (!list) return;
+  function getIndispoPosteMatches(){
     const q = lower(byId("planIndispoPosteSearch")?.value);
     const service = clean(byId("planIndispoService")?.value);
-    const seen = new Set();
-    const rows = collabs()
-      .filter(c => {
-        const poste = clean(c.intitule_poste);
-        if (!poste) return false;
-        if (service && clean(c.id_service) !== service) return false;
-        if (q && !lower(poste).includes(q)) return false;
-        const key = lower(poste);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .map(c => clean(c.intitule_poste))
-      .sort((a, b) => a.localeCompare(b, "fr", { sensitivity:"base" }))
+    const seen = new Map();
+    collabs().forEach(c => {
+      const poste = clean(c.intitule_poste);
+      if (!poste) return;
+      if (service && clean(c.id_service) !== service) return;
+      if (q && !lower(poste).includes(q)) return;
+      const key = lower(poste);
+      if (!seen.has(key)) seen.set(key, { label: poste, count: 0 });
+      seen.get(key).count += 1;
+    });
+    return Array.from(seen.values())
+      .sort((a, b) => a.label.localeCompare(b.label, "fr", { sensitivity:"base" }))
       .slice(0, 30);
-    list.innerHTML = rows.map(p => `<option value="${esc(p)}"></option>`).join("");
+  }
+
+  function closeIndispoPosteSuggestions(){
+    const panel = byId("planIndispoPosteSuggestions");
+    const input = byId("planIndispoPosteSearch");
+    if (panel) panel.style.display = "none";
+    if (input) input.setAttribute("aria-expanded", "false");
+  }
+
+  function updateIndispoPosteSuggestions(){
+    const list = byId("planIndispoPosteList");
+    const panel = byId("planIndispoPosteSuggestions");
+    const input = byId("planIndispoPosteSearch");
+    const rows = getIndispoPosteMatches();
+    if (list) list.innerHTML = rows.map(p => `<option value="${esc(p.label)}"></option>`).join("");
+    if (!panel || !input) return;
+    if (!rows.length) {
+      panel.innerHTML = `<div class="studio-rh-suggest-empty">Aucun poste trouvé</div>`;
+      panel.style.display = document.activeElement === input ? "" : "none";
+      input.setAttribute("aria-expanded", panel.style.display === "none" ? "false" : "true");
+      return;
+    }
+    panel.innerHTML = rows.slice(0, 8).map(p => `
+      <button type="button" class="studio-rh-suggest-item" data-indispo-poste-suggestion="${esc(p.label)}">
+        <span>${esc(p.label)}</span>
+        <small>${p.count} collaborateur${p.count > 1 ? "s" : ""}</small>
+      </button>`).join("");
+    panel.style.display = document.activeElement === input ? "" : "none";
+    input.setAttribute("aria-expanded", panel.style.display === "none" ? "false" : "true");
   }
 
   function applyBootstrap(){
@@ -514,6 +538,11 @@
 
   function setCurrentType(type){
     _currentType = type || "indisponibilite";
+    const modal = byId("modalPlanRhEvent");
+    if (modal) {
+      modal.classList.remove("studio-rh-modal--indisponibilite", "studio-rh-modal--campagne", "studio-rh-modal--competence");
+      modal.classList.add(`studio-rh-modal--${_currentType}`);
+    }
     document.querySelectorAll("[data-plan-form]").forEach(pane => {
       const active = pane.dataset.planForm === _currentType;
       pane.style.display = active ? "" : "none";
@@ -542,11 +571,11 @@
     row.dataset.line = String(id);
     row.innerHTML = `
       <label>
-        <span class="sr-only">Date début</span>
+        <span class="label studio-rh-line-label">Date début</span>
         <input type="date" class="sb-date" data-indispo-start required value="${esc(startValue || "")}">
       </label>
       <label>
-        <span class="sr-only">Date fin</span>
+        <span class="label studio-rh-line-label">Date fin</span>
         <input type="date" class="sb-date" data-indispo-end required value="${esc(endValue || "")}">
       </label>
       <button type="button" class="sb-icon-btn studio-rh-line-delete" data-indispo-remove="${esc(id)}" title="Supprimer la ligne" aria-label="Supprimer la ligne">
@@ -583,6 +612,7 @@
     _campaignExcluded.clear();
     _competencesSelected.clear();
     const lines = byId("planIndispoLines");
+    closeIndispoPosteSuggestions();
     if (lines) lines.innerHTML = "";
     _indispoLineSeq = 0;
     addIndispoLine();
@@ -762,6 +792,17 @@
       }
     });
     document.addEventListener("click", (ev) => {
+      const posteSuggestion = ev.target.closest?.("[data-indispo-poste-suggestion]");
+      if (posteSuggestion) {
+        const input = byId("planIndispoPosteSearch");
+        if (input) input.value = posteSuggestion.getAttribute("data-indispo-poste-suggestion") || "";
+        closeIndispoPosteSuggestions();
+        updateIndispoCollabOptions();
+        return;
+      }
+      const posteField = ev.target.closest?.("#planIndispoPosteSearch, #planIndispoPosteSuggestions");
+      if (!posteField) closeIndispoPosteSuggestions();
+
       const removeLine = ev.target.closest?.("[data-indispo-remove]");
       if (removeLine) {
         removeIndispoLine(removeLine.getAttribute("data-indispo-remove"));
