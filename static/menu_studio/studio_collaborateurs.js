@@ -3585,7 +3585,7 @@
 
     host.innerHTML = `
       <div class="sb-history-accordion-list">
-        <div class="sb-accordion sb-history-accordion is-open" id="studioHistAccJmb">
+        <div class="sb-acc sb-accordion sb-history-accordion is-open" id="studioHistAccJmb">
           <button type="button" class="sb-acc-head is-open" data-acc="jmb" aria-expanded="true">
             <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('school')}</span><span>Formations effectuées avec JMBCONSULTANT</span></span>
             <span class="sb-acc-chevron">▾</span>
@@ -3600,7 +3600,7 @@
           </div>
         </div>
 
-        <div class="sb-accordion sb-history-accordion" id="studioHistAccMoves">
+        <div class="sb-acc sb-accordion sb-history-accordion" id="studioHistAccMoves">
           <button type="button" class="sb-acc-head" data-acc="moves" aria-expanded="false">
             <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('trend')}</span><span>Évolutions structurantes</span></span>
             <span class="sb-acc-chevron">▾</span>
@@ -3615,7 +3615,7 @@
           </div>
         </div>
 
-        <div class="sb-accordion sb-history-accordion" id="studioHistAccAudits">
+        <div class="sb-acc sb-accordion sb-history-accordion" id="studioHistAccAudits">
           <button type="button" class="sb-acc-head" data-acc="audits" aria-expanded="false">
             <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('audit')}</span><span>Audits des compétences</span></span>
             <span class="sb-acc-chevron">▾</span>
@@ -3639,7 +3639,7 @@
         const open = btn.classList.toggle('is-open');
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         btn.closest('.sb-history-accordion')?.classList.toggle('is-open', open);
-        if (body) body.style.display = open ? '' : 'none';
+        if (body) body.style.display = open ? 'block' : 'none';
       });
     });
   }
