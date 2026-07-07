@@ -157,6 +157,204 @@
   </div>
 </section>
 
+<style id="studioCollabSideDrawerStyles">
+  .collab-side-drawer-backdrop{
+    position:fixed;
+    inset:0;
+    z-index:880;
+    background:rgba(15,23,42,.18);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .22s ease;
+  }
+  .collab-side-drawer-backdrop.is-open{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .collab-side-drawer{
+    position:fixed;
+    top:0;
+    right:0;
+    z-index:881;
+    width:min(392px, calc(100vw - 24px));
+    height:100vh;
+    background:#fff;
+    border-left:1px solid #e5e7eb;
+    box-shadow:-24px 0 60px rgba(15,23,42,.18);
+    transform:translateX(108%);
+    transition:transform .26s ease;
+    display:flex;
+    flex-direction:column;
+    padding:18px;
+  }
+  .collab-side-drawer.is-open{
+    transform:translateX(0);
+  }
+  .collab-side-drawer__head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    margin-bottom:14px;
+  }
+  .collab-side-drawer__title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:800;
+    color:#0f172a;
+  }
+  .collab-side-drawer__icon{
+    width:34px;
+    height:34px;
+    border-radius:999px;
+    background:#f8fafc;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:#355caa;
+  }
+  .collab-side-drawer__icon svg{
+    width:18px;
+    height:18px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+  .collab-side-drawer__close{
+    width:34px;
+    height:34px;
+    border:0;
+    border-radius:999px;
+    background:#fff;
+    color:#64748b;
+    cursor:pointer;
+    font-size:24px;
+    line-height:1;
+  }
+  .collab-side-drawer__close:hover{
+    background:#f8fafc;
+    color:#0f172a;
+  }
+  .collab-side-drawer__body{
+    min-height:0;
+    overflow:auto;
+  }
+  .collab-drawer-card{
+    border:1px solid #e5e7eb;
+    border-radius:20px;
+    padding:18px;
+    background:#fff;
+  }
+  .collab-drawer-profile{
+    display:flex;
+    align-items:flex-start;
+    gap:14px;
+    margin-bottom:18px;
+  }
+  .collab-drawer-avatar{
+    width:52px;
+    height:52px;
+    flex:0 0 auto;
+  }
+  .collab-drawer-profile__main{
+    min-width:0;
+  }
+  .collab-drawer-name{
+    font-weight:900;
+    font-size:17px;
+    line-height:1.25;
+    color:#0f172a;
+  }
+  .collab-drawer-status{
+    margin-top:4px;
+  }
+  .collab-drawer-sub{
+    margin-top:7px;
+    color:#64748b;
+    font-size:12px;
+    font-weight:700;
+    line-height:1.35;
+  }
+  .collab-drawer-fields{
+    display:grid;
+    gap:12px;
+  }
+  .collab-drawer-field{
+    display:grid;
+    grid-template-columns:92px minmax(0,1fr);
+    gap:10px;
+    align-items:start;
+  }
+  .collab-drawer-field__label{
+    color:#0f172a;
+    font-weight:800;
+    font-size:12px;
+  }
+  .collab-drawer-field__value{
+    color:#1f2937;
+    font-size:13px;
+    line-height:1.35;
+    word-break:break-word;
+  }
+  .collab-drawer-actions{
+    display:grid;
+    gap:10px;
+    margin-top:18px;
+  }
+  .collab-drawer-action{
+    width:100%;
+    border:1px solid #e5e7eb;
+    border-radius:13px;
+    background:#fff;
+    color:#0f172a;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 13px;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .collab-drawer-action:hover{
+    border-color:#cbd5e1;
+    background:#f8fafc;
+  }
+  #collabList .collab-table-row[data-row-collab]{
+    cursor:pointer;
+  }
+  #collabList .collab-table-row[data-row-collab].is-drawer-open{
+    background:#f8fafc;
+    box-shadow:inset 3px 0 0 #d8df00;
+  }
+  @media (max-width:720px){
+    .collab-side-drawer{
+      width:calc(100vw - 16px);
+      padding:14px;
+    }
+    .collab-drawer-field{
+      grid-template-columns:1fr;
+      gap:3px;
+    }
+  }
+</style>
+
+<div class="collab-side-drawer-backdrop" id="collabSideDrawerBackdrop" aria-hidden="true"></div>
+<aside class="collab-side-drawer" id="collabSideDrawer" aria-hidden="true" aria-labelledby="collabSideDrawerTitle">
+  <div class="collab-side-drawer__head">
+    <div class="collab-side-drawer__title" id="collabSideDrawerTitle">
+      <span class="collab-side-drawer__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </span>
+      <span>Aperçu collaborateur</span>
+    </div>
+    <button type="button" class="collab-side-drawer__close" id="btnCloseCollabSideDrawer" aria-label="Fermer">&times;</button>
+  </div>
+  <div class="collab-side-drawer__body" id="collabSideDrawerContent"></div>
+</aside>
+
 <div class="sb-modal" id="modalCollaborateur" style="display:none;">
   <div class="sb-modal-card sb-collab-modal-card">
     <div class="sb-modal-head sb-collab-modal-head">

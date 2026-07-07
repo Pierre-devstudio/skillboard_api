@@ -28,7 +28,7 @@
   registerView("dashboard", "/menu_studio/studio_dashboard.html");
   registerView("data", "/menu_studio/studio_data.html");
   registerView("organisation", "/menu_studio/studio_organisation.html");
-  registerView("collaborateurs", "/menu_studio/studio_collaborateurs.html");
+  registerView("collaborateurs", "/menu_studio/studio_collaborateurs.html?v=2026-07-07-collab-drawer-apercu");
   registerView("catalog_postes", "/menu_studio/studio_catalog_postes.html");
   registerView("catalog_competences", "/menu_studio/studio_catalog_competences.html");
   registerView("clients", "/menu_studio/studio_clients.html");
