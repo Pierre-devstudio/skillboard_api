@@ -7460,6 +7460,10 @@
   align-items:end;
 }
 
+#view-planification_rh .studio-rh-filter-grid .sb-field{
+  margin:0;
+}
+
 #view-planification_rh .studio-rh-table-wrap{
   overflow-x:auto;
 }
