@@ -8560,3 +8560,739 @@
     grid-template-columns:1fr;
   }
 }
+
+/* ======================================================
+   Studio – Calendrier RH : finition visuelle
+   ====================================================== */
+#view-calendrier_rh.studio-rh-cal-page{
+  gap:14px;
+}
+
+#view-calendrier_rh .studio-rh-hero-card{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:18px;
+  overflow:hidden;
+}
+
+#view-calendrier_rh .studio-rh-hero-card::after{
+  content:none;
+}
+
+#view-calendrier_rh .studio-rh-hero-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+#view-calendrier_rh .studio-rh-hero-main{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+
+#view-calendrier_rh .studio-rh-hero-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:52px;
+  height:52px;
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(var(--sb-accent-rgb), .22), rgba(var(--sb-accent-rgb), .08));
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-hero-icon svg{
+  width:24px !important;
+  height:24px !important;
+}
+
+#view-calendrier_rh .studio-rh-hero-card .card-title,
+#view-calendrier_rh .studio-rh-hero-card .card-sub{
+  margin:0;
+}
+
+#view-calendrier_rh .studio-rh-hero-card .card-title{
+  margin-bottom:4px;
+}
+
+#view-calendrier_rh .studio-rh-hero-actions{
+  flex:0 0 auto;
+  justify-content:flex-end;
+}
+
+#view-calendrier_rh .studio-rh-hero-actions .sb-btn{
+  min-height:38px;
+}
+
+#view-calendrier_rh .studio-rh-kpi-card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:68px;
+  padding:12px 14px;
+  border-color:#e7eaf0;
+  box-shadow:0 1px 2px rgba(15,23,42,.025);
+}
+
+#view-calendrier_rh .studio-rh-kpi-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:38px;
+  height:38px;
+  border-radius:14px;
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-kpi-icon svg{
+  width:19px !important;
+  height:19px !important;
+}
+
+#view-calendrier_rh .studio-rh-kpi-icon--dated{
+  background:rgba(37,99,235,.11);
+  color:#2563eb;
+}
+
+#view-calendrier_rh .studio-rh-kpi-icon--todo{
+  background:rgba(245,158,11,.14);
+  color:#b45309;
+}
+
+#view-calendrier_rh .studio-rh-kpi-icon--week{
+  background:rgba(34,197,94,.12);
+  color:#16a34a;
+}
+
+#view-calendrier_rh .studio-rh-kpi-icon--closed{
+  background:rgba(100,116,139,.12);
+  color:#475569;
+}
+
+#view-calendrier_rh .studio-rh-kpi-card .sb-kpi-value{
+  margin-top:3px;
+  font-size:18px;
+}
+
+#view-calendrier_rh .studio-rh-list-card,
+#view-calendrier_rh .studio-rh-calendar-card,
+#view-calendrier_rh .studio-rh-todo-card{
+  padding:16px;
+}
+
+#view-calendrier_rh .studio-rh-list-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+}
+
+#view-calendrier_rh .studio-rh-list-titleline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+#view-calendrier_rh .studio-rh-list-titleline .card-title,
+#view-calendrier_rh .studio-rh-list-titleline .card-sub{
+  margin:0;
+}
+
+#view-calendrier_rh .studio-rh-list-titleline .card-title{
+  font-weight:650;
+}
+
+#view-calendrier_rh .studio-rh-list-titleline .card-sub{
+  margin-top:3px;
+}
+
+#view-calendrier_rh .studio-rh-list-title-icon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  background:rgba(var(--sb-accent-rgb), .16);
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-list-title-icon--todo{
+  background:rgba(245,158,11,.14);
+  color:#b45309;
+}
+
+#view-calendrier_rh .studio-rh-list-title-icon svg,
+#view-calendrier_rh .studio-rh-filter-toggle svg,
+#view-calendrier_rh .studio-rh-list-head-actions .sb-btn-icon svg,
+#view-calendrier_rh .studio-rh-calendar-nav svg{
+  fill:none !important;
+  stroke:currentColor !important;
+  stroke-width:1.9 !important;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  display:block;
+}
+
+#view-calendrier_rh .studio-rh-list-title-icon svg{
+  width:18px !important;
+  height:18px !important;
+}
+
+#view-calendrier_rh .studio-rh-list-head-actions{
+  align-items:center;
+  flex:0 0 auto;
+}
+
+#view-calendrier_rh .studio-rh-filter-toggle{
+  width:34px;
+  height:34px;
+  border:1px solid #e2e8f0;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  background:#fff;
+  color:#64748b;
+  cursor:pointer;
+  transition:background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+#view-calendrier_rh .studio-rh-filter-toggle:hover{
+  background:rgba(var(--sb-accent-rgb), .13);
+  border-color:rgba(var(--sb-accent-rgb), .34);
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-filter-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-calendrier_rh .studio-rh-filter-toggle svg{
+  width:16px !important;
+  height:16px !important;
+  transition:transform .16s ease;
+}
+
+#view-calendrier_rh .studio-rh-filter-toggle[aria-expanded="false"] svg{
+  transform:rotate(90deg);
+}
+
+#view-calendrier_rh .studio-rh-cal-filter-card.is-filters-collapsed .studio-rh-filter-body{
+  display:none;
+}
+
+#view-calendrier_rh .studio-rh-filter-body{
+  padding:12px;
+  border:1px solid #edf0f5;
+  border-radius:14px;
+  background:#fbfcfe;
+}
+
+#view-calendrier_rh .studio-rh-filter-grid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(160px, 1fr));
+  gap:10px;
+  align-items:end;
+}
+
+#view-calendrier_rh .studio-rh-filter-grid .sb-field{
+  margin:0;
+}
+
+#view-calendrier_rh .studio-rh-calendar-layout{
+  display:grid;
+  grid-template-columns:minmax(260px, 320px) minmax(0, 1fr);
+  gap:14px;
+  align-items:start;
+}
+
+#view-calendrier_rh .studio-rh-todo-card{
+  position:sticky;
+  top:14px;
+}
+
+#view-calendrier_rh .studio-rh-todo-list{
+  display:grid;
+  gap:8px;
+}
+
+#view-calendrier_rh .studio-rh-todo-item{
+  border:1px solid #e7eaf0;
+  border-left:0;
+  border-radius:14px;
+  padding:11px 12px;
+  background:#fff;
+  cursor:grab;
+  box-shadow:0 1px 2px rgba(15,23,42,.025);
+  transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+#view-calendrier_rh .studio-rh-todo-item:hover{
+  transform:translateY(-1px);
+  border-color:#cbd5e1;
+  box-shadow:0 10px 22px rgba(15,23,42,.07);
+}
+
+#view-calendrier_rh .studio-rh-todo-item:active{
+  cursor:grabbing;
+}
+
+#view-calendrier_rh .studio-rh-todo-type{
+  display:inline-flex !important;
+  width:max-content;
+  max-width:100%;
+  margin-bottom:5px;
+  border-radius:999px;
+  padding:3px 7px;
+  background:#f1f5f9;
+  color:#475569;
+  font-size:10.5px !important;
+  font-weight:750;
+  line-height:1;
+}
+
+#view-calendrier_rh .studio-rh-todo-item strong,
+#view-calendrier_rh .studio-rh-todo-item span,
+#view-calendrier_rh .studio-rh-todo-item small{
+  display:block;
+}
+
+#view-calendrier_rh .studio-rh-todo-item strong{
+  color:#111827;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.25;
+}
+
+#view-calendrier_rh .studio-rh-todo-item span:not(.studio-rh-todo-type),
+#view-calendrier_rh .studio-rh-todo-item small{
+  margin-top:3px;
+  color:#64748b;
+  font-size:12px;
+  line-height:1.25;
+}
+
+#view-calendrier_rh .studio-rh-calendar-empty{
+  display:grid;
+  gap:3px;
+  border-style:solid;
+  background:#fbfcfe;
+  text-align:left;
+}
+
+#view-calendrier_rh .studio-rh-calendar-empty strong{
+  color:#334155;
+  font-size:13px;
+}
+
+#view-calendrier_rh .studio-rh-calendar-empty span{
+  color:#64748b;
+  font-size:12px;
+}
+
+#view-calendrier_rh .studio-rh-calendar-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:10px;
+  text-align:left;
+}
+
+#view-calendrier_rh .studio-rh-calendar-titleline .card-title,
+#view-calendrier_rh .studio-rh-calendar-titleline .card-sub{
+  margin:0;
+}
+
+#view-calendrier_rh .studio-rh-calendar-titleline .card-title{
+  text-transform:capitalize;
+}
+
+#view-calendrier_rh .studio-rh-calendar-titleline .card-sub{
+  margin-top:3px;
+}
+
+#view-calendrier_rh .studio-rh-calendar-nav{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex:0 0 auto;
+}
+
+#view-calendrier_rh .studio-rh-calendar-nav-btn{
+  width:34px;
+  min-width:34px;
+  height:34px;
+  padding:0;
+  border-radius:11px;
+  font-size:20px;
+  line-height:1;
+}
+
+#view-calendrier_rh .studio-rh-calendar-today{
+  min-height:34px;
+  padding:0 12px;
+  border-radius:11px;
+}
+
+#view-calendrier_rh .studio-rh-calendar-legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin:0 0 12px;
+}
+
+#view-calendrier_rh .studio-rh-legend-item{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:24px;
+  border-radius:999px;
+  padding:3px 9px;
+  background:#f8fafc;
+  color:#475569;
+  font-size:11px;
+  font-weight:700;
+}
+
+#view-calendrier_rh .studio-rh-legend-item::before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:#94a3b8;
+}
+
+#view-calendrier_rh .studio-rh-legend-item--indisponibilite::before{ background:#f97316; }
+#view-calendrier_rh .studio-rh-legend-item--entretien_annuel::before{ background:#2563eb; }
+#view-calendrier_rh .studio-rh-legend-item--evaluation_competence::before{ background:#7c3aed; }
+
+#view-calendrier_rh .studio-rh-weekdays{
+  gap:6px;
+  margin-bottom:6px;
+  color:#64748b;
+  font-size:12px;
+  font-weight:750;
+  text-align:center;
+}
+
+#view-calendrier_rh .studio-rh-weekdays span{
+  padding:0 0 3px;
+}
+
+#view-calendrier_rh .studio-rh-calendar-grid{
+  gap:6px;
+}
+
+#view-calendrier_rh .studio-rh-day{
+  min-height:116px;
+  border:1px solid #e7eaf0;
+  border-radius:14px;
+  background:linear-gradient(180deg, #fff, #fbfcfe);
+  padding:8px;
+  overflow:visible;
+  transition:background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+#view-calendrier_rh .studio-rh-day:hover{
+  border-color:#d7dde7;
+  box-shadow:0 8px 18px rgba(15,23,42,.045);
+}
+
+#view-calendrier_rh .studio-rh-day.is-muted{
+  background:#f8fafc;
+  color:#94a3b8;
+}
+
+#view-calendrier_rh .studio-rh-day.is-today{
+  border-color:rgba(var(--sb-accent-rgb), .62);
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .10);
+}
+
+#view-calendrier_rh .studio-rh-day.is-dragover{
+  outline:0;
+  border-color:rgba(var(--sb-accent-rgb), .82);
+  background:rgba(var(--sb-accent-rgb), .09);
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-calendrier_rh .studio-rh-day-number{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:22px;
+  height:22px;
+  border-radius:8px;
+  color:#334155;
+  font-size:12px;
+  font-weight:800;
+  margin:0 0 5px;
+}
+
+#view-calendrier_rh .studio-rh-day.is-today .studio-rh-day-number{
+  background:var(--accent);
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-day-events{
+  display:grid;
+  gap:5px;
+}
+
+#view-calendrier_rh .studio-rh-event-chip{
+  width:100%;
+  min-width:0;
+  border:0;
+  border-left:0;
+  border-radius:11px;
+  padding:7px 8px;
+  background:#f8fafc;
+  color:#111827;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 1px 2px rgba(15,23,42,.06), inset 0 0 0 1px rgba(15,23,42,.04);
+  transition:transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+#view-calendrier_rh .studio-rh-event-chip:hover,
+#view-calendrier_rh .studio-rh-event-chip:focus{
+  transform:translateY(-1px);
+  box-shadow:0 10px 22px rgba(15,23,42,.13), inset 0 0 0 1px rgba(15,23,42,.05);
+  outline:none;
+}
+
+#view-calendrier_rh .studio-rh-event-chip-main{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+}
+
+#view-calendrier_rh .studio-rh-event-dot{
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  flex:0 0 auto;
+  background:#64748b;
+}
+
+#view-calendrier_rh .studio-rh-event-title,
+#view-calendrier_rh .studio-rh-event-meta{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#view-calendrier_rh .studio-rh-event-title{
+  color:#111827;
+  font-size:12px;
+  font-weight:780;
+  line-height:1.18;
+}
+
+#view-calendrier_rh .studio-rh-event-meta{
+  margin-top:3px;
+  color:#475569;
+  font-size:11px;
+  font-weight:620;
+  line-height:1.2;
+}
+
+#view-calendrier_rh .studio-rh-row--indisponibilite.studio-rh-event-chip,
+#view-calendrier_rh .studio-rh-row--indisponibilite.studio-rh-todo-item{
+  background:linear-gradient(180deg, rgba(249,115,22,.13), rgba(255,247,237,.92));
+}
+
+#view-calendrier_rh .studio-rh-row--indisponibilite .studio-rh-event-dot{
+  background:#f97316;
+}
+
+#view-calendrier_rh .studio-rh-row--entretien_annuel.studio-rh-event-chip,
+#view-calendrier_rh .studio-rh-row--entretien_annuel.studio-rh-todo-item{
+  background:linear-gradient(180deg, rgba(37,99,235,.11), rgba(239,246,255,.94));
+}
+
+#view-calendrier_rh .studio-rh-row--entretien_annuel .studio-rh-event-dot{
+  background:#2563eb;
+}
+
+#view-calendrier_rh .studio-rh-row--entretien_competence.studio-rh-event-chip,
+#view-calendrier_rh .studio-rh-row--entretien_competence.studio-rh-todo-item,
+#view-calendrier_rh .studio-rh-row--evaluation_competence.studio-rh-event-chip,
+#view-calendrier_rh .studio-rh-row--evaluation_competence.studio-rh-todo-item{
+  background:linear-gradient(180deg, rgba(124,58,237,.12), rgba(245,243,255,.94));
+}
+
+#view-calendrier_rh .studio-rh-row--entretien_competence .studio-rh-event-dot,
+#view-calendrier_rh .studio-rh-row--evaluation_competence .studio-rh-event-dot{
+  background:#7c3aed;
+}
+
+#view-calendrier_rh .studio-rh-event-popover{
+  position:fixed;
+  z-index:10020;
+  width:320px;
+  max-width:calc(100vw - 28px);
+  padding:14px;
+  border:1px solid #e7eaf0;
+  border-radius:18px;
+  background:#fff;
+  color:#111827;
+  box-shadow:0 22px 54px rgba(15,23,42,.22);
+  pointer-events:none;
+}
+
+#view-calendrier_rh .studio-rh-event-popover[hidden]{
+  display:none;
+}
+
+#view-calendrier_rh .studio-rh-popover-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:9px;
+}
+
+#view-calendrier_rh .studio-rh-popover-type,
+#view-calendrier_rh .studio-rh-popover-status{
+  display:inline-flex;
+  align-items:center;
+  min-height:23px;
+  border-radius:999px;
+  padding:3px 8px;
+  font-size:11px;
+  font-weight:750;
+  line-height:1;
+}
+
+#view-calendrier_rh .studio-rh-popover-type{
+  background:#f1f5f9;
+  color:#334155;
+}
+
+#view-calendrier_rh .studio-rh-popover-type--indisponibilite{
+  background:rgba(249,115,22,.12);
+  color:#c2410c;
+}
+
+#view-calendrier_rh .studio-rh-popover-type--entretien_annuel{
+  background:rgba(37,99,235,.10);
+  color:#1d4ed8;
+}
+
+#view-calendrier_rh .studio-rh-popover-type--entretien_competence,
+#view-calendrier_rh .studio-rh-popover-type--evaluation_competence{
+  background:rgba(124,58,237,.10);
+  color:#6d28d9;
+}
+
+#view-calendrier_rh .studio-rh-popover-status{
+  background:#f8fafc;
+  color:#475569;
+}
+
+#view-calendrier_rh .studio-rh-popover-title{
+  display:block;
+  margin-bottom:11px;
+  color:#111827;
+  font-size:14px;
+  font-weight:800;
+  line-height:1.25;
+}
+
+#view-calendrier_rh .studio-rh-popover-grid{
+  display:grid;
+  grid-template-columns:86px minmax(0, 1fr);
+  gap:7px 10px;
+  align-items:start;
+}
+
+#view-calendrier_rh .studio-rh-popover-grid span{
+  color:#64748b;
+  font-size:11px;
+  font-weight:750;
+  text-transform:uppercase;
+  letter-spacing:.035em;
+}
+
+#view-calendrier_rh .studio-rh-popover-grid strong{
+  min-width:0;
+  color:#334155;
+  font-size:12.5px;
+  font-weight:620;
+  line-height:1.25;
+}
+
+#view-calendrier_rh .studio-rh-popover-foot{
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px solid #eef2f7;
+  color:#64748b;
+  font-size:12px;
+  font-weight:620;
+}
+
+#modalCalRhEvent .studio-rh-calendar-modal-card{
+  width:min(820px, 94vw);
+}
+
+@media (max-width:1180px){
+  #view-calendrier_rh .studio-rh-filter-grid{
+    grid-template-columns:repeat(2, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width:1020px){
+  #view-calendrier_rh .studio-rh-calendar-layout{
+    grid-template-columns:1fr;
+  }
+
+  #view-calendrier_rh .studio-rh-todo-card{
+    position:static;
+  }
+}
+
+@media (max-width:760px){
+  #view-calendrier_rh .studio-rh-hero-top,
+  #view-calendrier_rh .studio-rh-list-head,
+  #view-calendrier_rh .studio-rh-calendar-head{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  #view-calendrier_rh .studio-rh-hero-actions,
+  #view-calendrier_rh .studio-rh-list-head-actions,
+  #view-calendrier_rh .studio-rh-calendar-nav{
+    width:100%;
+    justify-content:flex-start;
+  }
+
+  #view-calendrier_rh .studio-rh-filter-grid{
+    grid-template-columns:1fr;
+  }
+
+  #view-calendrier_rh .studio-rh-day{
+    min-height:96px;
+    padding:6px;
+  }
+
+  #view-calendrier_rh .studio-rh-event-title{
+    font-size:11px;
+  }
+}

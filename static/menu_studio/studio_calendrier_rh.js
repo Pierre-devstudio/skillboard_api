@@ -108,6 +108,38 @@
     return d.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
   }
 
+  function fullDateLabel(value){
+    const raw = clean(value);
+    if (!raw) return "Non daté";
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw;
+    return d.toLocaleString("fr-FR", { weekday:"long", day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" });
+  }
+
+  function timeLabel(value){
+    const raw = clean(value);
+    if (!raw) return "—";
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw.slice(11, 16) || raw;
+    return d.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+  }
+
+  function eventTitle(ev){ return clean(ev && ev.titre) || typeLabel(ev && ev.type_evenement); }
+
+  function isClosedEvent(ev){
+    const statut = clean(ev && ev.statut).toLowerCase();
+    return !!(ev && ev.archive) || ["annule", "annulé", "archive", "archivé", "archivée"].includes(statut);
+  }
+
+  function weekBounds(reference){
+    const start = new Date(reference);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return { start, end };
+  }
+
   function monthRange(){
     const first = new Date(_month.getFullYear(), _month.getMonth(), 1);
     const start = new Date(first);
@@ -160,19 +192,48 @@
   }
 
   function renderAll(){
+    hideEventHover();
+    renderKpis();
     renderTodo();
     renderCalendar();
   }
 
+  function renderKpis(){
+    const dated = _events.filter(ev => clean(ev.date_debut));
+    const { start, end } = weekBounds(new Date());
+    const week = dated.filter(ev => {
+      const d = new Date(ev.date_debut);
+      return !Number.isNaN(d.getTime()) && d >= start && d < end;
+    });
+    const closed = _events.filter(isClosedEvent);
+    const values = {
+      calRhKpiDated: dated.length,
+      calRhKpiTodo: _suggestions.length,
+      calRhKpiWeek: week.length,
+      calRhKpiClosed: closed.length
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const el = byId(id);
+      if (el) el.textContent = String(value);
+    });
+  }
+
   function renderTodo(){
     const box = byId("calRhTodoList");
+    const sub = byId("calRhTodoSub");
+    if (sub) sub.textContent = `${_suggestions.length} événement${_suggestions.length > 1 ? "s" : ""} à dater.`;
     if (!box) return;
     if (!_suggestions.length) {
-      box.innerHTML = `<div class="studio-rh-empty">Aucun événement à planifier.</div>`;
+      box.innerHTML = `
+        <div class="studio-rh-empty studio-rh-calendar-empty">
+          <strong>Aucun événement à planifier</strong>
+          <span>Les événements non datés apparaîtront ici.</span>
+        </div>`;
       return;
     }
     box.innerHTML = _suggestions.map(s => `
       <article class="studio-rh-todo-item studio-rh-row--${esc(s.type_suggestion || s.type_evenement)}" draggable="true" data-suggestion-id="${esc(s.id_suggestion || s.id)}">
+        <span class="studio-rh-todo-type">${esc(typeLabel(s.type_suggestion || s.type_evenement))}</span>
         <strong>${esc(s.titre || typeLabel(s.type_suggestion))}</strong>
         <span>${esc(s.collaborateur || "Périmètre RH")}</span>
         <small>${esc(s.nom_service || "Service non lié")} · ${esc(statutLabel(s.statut))}</small>
@@ -201,19 +262,27 @@
       days.push(d);
     }
 
+    const todayKey = ymd(new Date());
     grid.innerHTML = days.map(day => {
       const inMonth = day.getMonth() === _month.getMonth();
       const dayEvents = eventsByDay(day);
+      const dayKey = ymd(day);
       return `
-        <div class="studio-rh-day${inMonth ? "" : " is-muted"}" data-day="${ymd(day)}">
+        <div class="studio-rh-day${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}">
           <div class="studio-rh-day-number">${day.getDate()}</div>
           <div class="studio-rh-day-events">
-            ${dayEvents.map(ev => `
-              <button type="button" class="studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)}" draggable="true" data-event-id="${esc(ev.id_evenement || ev.id)}">
-                <span>${esc(ev.titre || typeLabel(ev.type_evenement))}</span>
-                <small>${esc(dateLabel(ev.date_debut))}</small>
-              </button>
-            `).join("")}
+            ${dayEvents.map(ev => {
+              const id = clean(ev.id_evenement || ev.id);
+              const titleText = eventTitle(ev);
+              return `
+                <button type="button" class="studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)}" draggable="true" data-event-id="${esc(id)}">
+                  <span class="studio-rh-event-chip-main">
+                    <span class="studio-rh-event-dot" aria-hidden="true"></span>
+                    <span class="studio-rh-event-title">${esc(titleText)}</span>
+                  </span>
+                  <span class="studio-rh-event-meta">${esc(timeLabel(ev.date_debut))}${ev.collaborateur ? ` · ${esc(ev.collaborateur)}` : ""}</span>
+                </button>`;
+            }).join("")}
           </div>
         </div>`;
     }).join("");
@@ -237,13 +306,66 @@
 
     grid.querySelectorAll("[data-event-id]").forEach(el => {
       el.addEventListener("click", () => openEventModal(el.dataset.eventId));
+      el.addEventListener("mouseenter", ev => showEventHover(el.dataset.eventId, ev));
+      el.addEventListener("mousemove", ev => positionEventHover(ev));
+      el.addEventListener("mouseleave", hideEventHover);
+      el.addEventListener("focus", ev => showEventHover(el.dataset.eventId, ev));
+      el.addEventListener("blur", hideEventHover);
       el.addEventListener("dragstart", ev => {
+        hideEventHover();
         ev.dataTransfer.setData("text/plain", JSON.stringify({ kind:"event", id: el.dataset.eventId }));
       });
     });
   }
 
   function eventById(id){ return _events.find(ev => clean(ev.id_evenement || ev.id) === clean(id)); }
+
+  function showEventHover(id, ev){
+    const item = eventById(id);
+    const card = byId("calRhHoverCard");
+    if (!item || !card) return;
+    const payload = item.payload_json || {};
+    const competence = clean(payload.competence || payload.competences_label || payload.intitule_competence);
+    card.innerHTML = `
+      <div class="studio-rh-popover-head">
+        <span class="studio-rh-popover-type studio-rh-popover-type--${esc(item.type_evenement)}">${esc(typeLabel(item.type_evenement))}</span>
+        <span class="studio-rh-popover-status">${esc(statutLabel(item.statut))}</span>
+      </div>
+      <strong class="studio-rh-popover-title">${esc(eventTitle(item))}</strong>
+      <div class="studio-rh-popover-grid">
+        <span>Date</span><strong>${esc(fullDateLabel(item.date_debut))}</strong>
+        <span>Fin</span><strong>${esc(item.date_fin ? fullDateLabel(item.date_fin) : "Non renseignée")}</strong>
+        <span>Collaborateur</span><strong>${esc(item.collaborateur || "Périmètre RH")}</strong>
+        <span>Service</span><strong>${esc(item.nom_service || "Service non lié")}</strong>
+        ${competence ? `<span>Compétence</span><strong>${esc(competence)}</strong>` : ""}
+      </div>
+      <div class="studio-rh-popover-foot">Cliquez pour ouvrir le détail.</div>
+    `;
+    card.hidden = false;
+    positionEventHover(ev);
+  }
+
+  function positionEventHover(ev){
+    const card = byId("calRhHoverCard");
+    if (!card || card.hidden) return;
+    const source = ev && ev.currentTarget ? ev.currentTarget.getBoundingClientRect() : null;
+    const x = ev && typeof ev.clientX === "number" ? ev.clientX : (source ? source.left + source.width : window.innerWidth / 2);
+    const y = ev && typeof ev.clientY === "number" ? ev.clientY : (source ? source.top : window.innerHeight / 2);
+    const width = 320;
+    const padding = 14;
+    let left = x + 16;
+    let top = y + 16;
+    if (left + width + padding > window.innerWidth) left = Math.max(padding, x - width - 16);
+    const height = card.offsetHeight || 230;
+    if (top + height + padding > window.innerHeight) top = Math.max(padding, window.innerHeight - height - padding);
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
+  }
+
+  function hideEventHover(){
+    const card = byId("calRhHoverCard");
+    if (card) card.hidden = true;
+  }
 
   async function handleDrop(data, day){
     const ownerId = getOwnerId();
@@ -349,20 +471,43 @@
     }
   }
 
+  function resetFilters(){
+    ["calRhFilterType", "calRhFilterService", "calRhFilterCollab", "calRhFilterStatut"].forEach(id => {
+      const el = byId(id);
+      if (el) el.value = "";
+    });
+    loadCalendar();
+  }
+
+  function toggleFilters(){
+    const card = byId("calRhFilterCard");
+    const btn = byId("calRhFiltersToggle");
+    if (!card || !btn) return;
+    const isCollapsed = !card.classList.contains("is-filters-collapsed");
+    card.classList.toggle("is-filters-collapsed", isCollapsed);
+    btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    btn.setAttribute("title", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+    btn.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+  }
+
   function bind(){
     if (_bound) return;
     _bound = true;
     byId("calRhBackPlanBtn")?.addEventListener("click", () => window.portal.switchView("planification_rh"));
     byId("calRhRefreshBtn")?.addEventListener("click", loadCalendar);
+    byId("calRhResetFiltersBtn")?.addEventListener("click", resetFilters);
+    byId("calRhFiltersToggle")?.addEventListener("click", toggleFilters);
     byId("calRhPrevMonth")?.addEventListener("click", async () => { _month = new Date(_month.getFullYear(), _month.getMonth() - 1, 1); await loadCalendar(); });
     byId("calRhNextMonth")?.addEventListener("click", async () => { _month = new Date(_month.getFullYear(), _month.getMonth() + 1, 1); await loadCalendar(); });
+    byId("calRhTodayBtn")?.addEventListener("click", async () => { const now = new Date(); _month = new Date(now.getFullYear(), now.getMonth(), 1); await loadCalendar(); });
     byId("calRhModalClose")?.addEventListener("click", closeModal);
     byId("calRhModalCancel")?.addEventListener("click", closeModal);
     byId("calRhForm")?.addEventListener("submit", submitForm);
     byId("calRhCancelEventBtn")?.addEventListener("click", () => cancelOrArchive("annule"));
     byId("calRhArchiveEventBtn")?.addEventListener("click", () => cancelOrArchive("archive"));
     ["calRhFilterType", "calRhFilterService", "calRhFilterCollab", "calRhFilterStatut"].forEach(id => byId(id)?.addEventListener("change", loadCalendar));
-    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeModal(); });
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeModal(); hideEventHover(); } });
+    window.addEventListener("scroll", hideEventHover, true);
   }
 
   async function initStudioCalendrierRh(){
