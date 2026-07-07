@@ -179,6 +179,54 @@
     input.setAttribute("aria-expanded", panel.style.display === "none" ? "false" : "true");
   }
 
+
+  function getCompetencePosteMatches(){
+    const q = lower(byId("planCompPosteSearch")?.value);
+    const service = clean(byId("planCompService")?.value);
+    const seen = new Map();
+    collabs().forEach(c => {
+      const poste = clean(c.intitule_poste);
+      if (!poste) return;
+      if (service && clean(c.id_service) !== service) return;
+      if (q && !lower(poste).includes(q)) return;
+      const key = lower(poste);
+      if (!seen.has(key)) seen.set(key, { label: poste, count: 0 });
+      seen.get(key).count += 1;
+    });
+    return Array.from(seen.values())
+      .sort((a, b) => a.label.localeCompare(b.label, "fr", { sensitivity:"base" }))
+      .slice(0, 30);
+  }
+
+  function closeCompetencePosteSuggestions(){
+    const panel = byId("planCompPosteSuggestions");
+    const input = byId("planCompPosteSearch");
+    if (panel) panel.style.display = "none";
+    if (input) input.setAttribute("aria-expanded", "false");
+  }
+
+  function updateCompetencePosteSuggestions(){
+    const list = byId("planCompPosteList");
+    const panel = byId("planCompPosteSuggestions");
+    const input = byId("planCompPosteSearch");
+    const rows = getCompetencePosteMatches();
+    if (list) list.innerHTML = rows.map(p => `<option value="${esc(p.label)}"></option>`).join("");
+    if (!panel || !input) return;
+    if (!rows.length) {
+      panel.innerHTML = `<div class="studio-rh-suggest-empty">Aucun poste trouvé</div>`;
+      panel.style.display = document.activeElement === input ? "" : "none";
+      input.setAttribute("aria-expanded", panel.style.display === "none" ? "false" : "true");
+      return;
+    }
+    panel.innerHTML = rows.slice(0, 8).map(p => `
+      <button type="button" class="studio-rh-suggest-item" data-comp-poste-suggestion="${esc(p.label)}">
+        <span>${esc(p.label)}</span>
+        <small>${p.count} collaborateur${p.count > 1 ? "s" : ""}</small>
+      </button>`).join("");
+    panel.style.display = document.activeElement === input ? "" : "none";
+    input.setAttribute("aria-expanded", panel.style.display === "none" ? "false" : "true");
+  }
+
   function applyBootstrap(){
     const data = _bootstrap || {};
     const refsServices = services();
@@ -332,6 +380,7 @@
   }
 
   function updateCompetenceCollabOptions(){
+    updateCompetencePosteSuggestions();
     fillSelect("planCompCollab", filteredCollabs("planCompSearch", "planCompService", "planCompPosteSearch"), "id_effectif", collabLabel, "Choisir un collaborateur", true);
     updateCompetenceManagerOptions();
   }
@@ -349,22 +398,73 @@
     fillSelect("planCompManager", rows.length ? rows : refsManagers, "id_effectif", collabLabel, "Non renseigné", true);
   }
 
+  function isUuidLike(value){
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean(value));
+  }
+
+  function competenceMeta(c){
+    const domaine = clean(c.domaine);
+    if (!domaine || isUuidLike(domaine)) return "";
+    return domaine;
+  }
+
+  function competenceHay(c){
+    return [c.intitule, c.domaine, c.description, c.description_competence].map(lower).join(" ");
+  }
+
+  function competenceRank(c, q){
+    const title = lower(competenceLabel(c));
+    if (_competencesSelected.has(clean(c.id_comp))) return 0;
+    if (q && title === q) return 1;
+    if (q && title.startsWith(q)) return 2;
+    return 3;
+  }
+
+  function competenceChoiceHtml(c){
+    const id = clean(c.id_comp);
+    const meta = competenceMeta(c);
+    const checked = _competencesSelected.has(id);
+    return `
+      <label class="studio-rh-check-item studio-rh-check-item--competence${checked ? " is-selected" : ""}">
+        <input type="checkbox" data-plan-check="competence" data-id="${esc(id)}"${checked ? " checked" : ""}>
+        <span>
+          <strong>${esc(competenceLabel(c))}</strong>
+          ${meta ? `<small>${esc(meta)}</small>` : ""}
+        </span>
+      </label>`;
+  }
+
+  function renderSelectedCompetences(){
+    const wrap = byId("planCompSelectedWrap");
+    const list = byId("planCompSelectedList");
+    if (!wrap || !list) return;
+    const selectedRows = competences().filter(c => _competencesSelected.has(clean(c.id_comp)));
+    wrap.style.display = selectedRows.length ? "" : "none";
+    list.innerHTML = selectedRows.map(c => `
+      <button type="button" class="studio-rh-selected-chip" data-competence-remove="${esc(clean(c.id_comp))}" title="Retirer cette compétence">
+        <span>${esc(competenceLabel(c))}</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>`).join("");
+  }
+
   function renderCompetenceChoices(){
     const box = byId("planCompCompetenceList");
     if (!box) return;
     const q = lower(byId("planCompCompetenceSearch")?.value);
-    const rows = competences().filter(c => !q || [c.intitule, c.domaine].map(lower).join(" ").includes(q));
+    const rows = competences()
+      .filter(c => !q || competenceHay(c).includes(q) || _competencesSelected.has(clean(c.id_comp)))
+      .sort((a, b) => {
+        const rank = competenceRank(a, q) - competenceRank(b, q);
+        if (rank) return rank;
+        return competenceLabel(a).localeCompare(competenceLabel(b), "fr", { sensitivity:"base" });
+      })
+      .slice(0, 90);
     if (!rows.length) {
       box.innerHTML = '<div class="studio-rh-check-empty">Aucune compétence trouvée.</div>';
     } else {
-      box.innerHTML = rows.map(c => checkboxItemHtml(
-        "competence",
-        clean(c.id_comp),
-        competenceLabel(c),
-        clean(c.domaine) || "Domaine non renseigné",
-        _competencesSelected.has(clean(c.id_comp))
-      )).join("");
+      box.innerHTML = rows.map(competenceChoiceHtml).join("");
     }
+    renderSelectedCompetences();
     const count = byId("planCompCompetenceCount");
     if (count) count.textContent = `${_competencesSelected.size} sélectionnée${_competencesSelected.size > 1 ? "s" : ""}`;
   }
@@ -613,6 +713,7 @@
     _competencesSelected.clear();
     const lines = byId("planIndispoLines");
     closeIndispoPosteSuggestions();
+    closeCompetencePosteSuggestions();
     if (lines) lines.innerHTML = "";
     _indispoLineSeq = 0;
     addIndispoLine();
@@ -749,6 +850,7 @@
       el.addEventListener(eventName, updateIndispoCollabOptions);
     });
     byId("planIndispoPosteSearch")?.addEventListener("focus", updateIndispoPosteSuggestions);
+    byId("planCompPosteSearch")?.addEventListener("focus", updateCompetencePosteSuggestions);
     ["planCompSearch", "planCompService", "planCompPosteSearch"].forEach(id => {
       const el = byId(id);
       if (!el) return;
@@ -800,8 +902,24 @@
         updateIndispoCollabOptions();
         return;
       }
+      const compPosteSuggestion = ev.target.closest?.("[data-comp-poste-suggestion]");
+      if (compPosteSuggestion) {
+        const input = byId("planCompPosteSearch");
+        if (input) input.value = compPosteSuggestion.getAttribute("data-comp-poste-suggestion") || "";
+        closeCompetencePosteSuggestions();
+        updateCompetenceCollabOptions();
+        return;
+      }
+      const competenceRemove = ev.target.closest?.("[data-competence-remove]");
+      if (competenceRemove) {
+        _competencesSelected.delete(clean(competenceRemove.getAttribute("data-competence-remove")));
+        renderCompetenceChoices();
+        return;
+      }
       const posteField = ev.target.closest?.("#planIndispoPosteSearch, #planIndispoPosteSuggestions");
       if (!posteField) closeIndispoPosteSuggestions();
+      const compPosteField = ev.target.closest?.("#planCompPosteSearch, #planCompPosteSuggestions");
+      if (!compPosteField) closeCompetencePosteSuggestions();
 
       const removeLine = ev.target.closest?.("[data-indispo-remove]");
       if (removeLine) {

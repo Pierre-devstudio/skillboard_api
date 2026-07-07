@@ -8347,3 +8347,216 @@
     justify-self:start;
   }
 }
+
+/* ======================================================
+   Studio – Planification RH – Ajustements modal compétence V7
+   ====================================================== */
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-modal-card{
+  width:min(920px, 94vw);
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .sb-modal-body{
+  padding-top:10px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-picker-block,
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-planification-block,
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-competence-panel{
+  padding:12px 14px;
+  margin-bottom:12px;
+  background:#fbfcfe;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-picker-block .studio-rh-block-head,
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-planification-block .studio-rh-block-head{
+  margin-bottom:9px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker{
+  grid-template-columns:minmax(230px, 1.08fr) minmax(170px, .78fr);
+  gap:10px 12px;
+  align-items:start;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker > label,
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker > .sb-field{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  min-width:0;
+  margin:0;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker .label{
+  display:block;
+  margin:0 0 5px;
+  min-height:15px;
+  line-height:15px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker input:not([type="checkbox"]):not([type="radio"]):not(.sb-date),
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker select,
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning select{
+  min-height:38px;
+  height:38px;
+  border-color:#d8dee8;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker input:not([type="checkbox"]):not([type="radio"]):not(.sb-date):focus,
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker select:focus,
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning select:focus{
+  border-color:#b8c3d4;
+  box-shadow:0 0 0 3px rgba(15,23,42,.055);
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-search-field__icon{
+  left:12px;
+  color:#8a99ad;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-search-field input{
+  padding-left:36px !important;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-competence-panel{
+  display:block;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-competence-search{
+  margin-top:10px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-competence-search input{
+  min-height:38px;
+  height:38px;
+  border-color:#d8dee8;
+  border-radius:12px;
+  background:#fff;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-panel{
+  margin-top:10px;
+  padding:9px 10px;
+  border:1px solid #e7eaf0;
+  border-radius:13px;
+  background:#fff;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-label{
+  margin-bottom:7px;
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:750;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-chip{
+  border:1px solid rgba(124,58,237,.22);
+  border-radius:999px;
+  background:rgba(124,58,237,.08);
+  color:#4c1d95;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  max-width:100%;
+  padding:5px 8px 5px 10px;
+  font:inherit;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-chip span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-chip svg{
+  width:13px !important;
+  height:13px !important;
+  flex:0 0 auto;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-competence-list{
+  max-height:178px;
+  margin-top:8px;
+  gap:6px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-check-item--competence{
+  min-height:36px;
+  align-items:center;
+  padding:7px 9px;
+  border-radius:11px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-check-item--competence.is-selected{
+  border-color:rgba(124,58,237,.35);
+  background:rgba(124,58,237,.055);
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-check-item--competence input{
+  margin-top:0;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-check-item--competence strong{
+  font-size:12.5px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-check-item--competence small{
+  font-size:11px;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning{
+  grid-template-columns:minmax(180px, 1fr) minmax(180px, 1fr) minmax(140px, .72fr);
+  gap:10px 12px;
+  align-items:start;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning label{
+  min-width:0;
+  margin:0;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning .sb-date{
+  min-height:38px;
+  height:38px;
+  border-color:#d8dee8;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning .sb-date:focus{
+  outline:none;
+  border-color:#b8c3d4;
+  box-shadow:0 0 0 3px rgba(15,23,42,.055);
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-competence-comment{
+  display:block;
+  margin:0;
+}
+
+#modalPlanRhEvent.studio-rh-modal--competence .studio-rh-competence-comment textarea{
+  min-height:56px;
+  max-height:90px;
+  border-radius:12px;
+}
+
+@media (max-width: 760px){
+  #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker,
+  #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning{
+    grid-template-columns:1fr;
+  }
+}

@@ -311,26 +311,38 @@
         </div>
 
         <div class="studio-rh-form-pane" data-plan-form="competence">
-          <div class="studio-rh-modal-block">
+          <div class="studio-rh-modal-block studio-rh-picker-block">
             <div class="studio-rh-block-head">
               <div>
                 <strong>Collaborateur concerné</strong>
-                <small>Filtrez la liste avant de sélectionner le collaborateur.</small>
+                <small>Recherchez puis sélectionnez le collaborateur.</small>
               </div>
             </div>
-            <div class="studio-rh-form-grid studio-rh-form-grid--filters">
-              <label>
-                <span class="label">Recherche</span>
-                <input id="planCompSearch" type="search" placeholder="Nom, prénom, email...">
-              </label>
+            <div class="studio-rh-form-grid studio-rh-form-grid--filters studio-rh-form-grid--collab-picker">
+              <div class="sb-field studio-rh-filter-search">
+                <div class="label">Recherche</div>
+                <div class="studio-rh-search-field">
+                  <span class="studio-rh-search-field__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  </span>
+                  <input id="planCompSearch" type="search" placeholder="Nom, prénom, mail..." autocomplete="off">
+                </div>
+              </div>
               <label>
                 <span class="label">Service</span>
                 <select id="planCompService"><option value="">Tous les services</option></select>
               </label>
-              <label>
-                <span class="label">Poste</span>
-                <input id="planCompPosteSearch" type="search" placeholder="Filtrer par poste">
-              </label>
+              <div class="sb-field studio-rh-filter-search">
+                <div class="label">Poste</div>
+                <div class="studio-rh-search-field">
+                  <span class="studio-rh-search-field__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  </span>
+                  <input id="planCompPosteSearch" type="search" placeholder="Rechercher un poste..." list="planCompPosteList" autocomplete="off" aria-autocomplete="list" aria-controls="planCompPosteSuggestions">
+                  <datalist id="planCompPosteList"></datalist>
+                  <div id="planCompPosteSuggestions" class="studio-rh-suggest-list" style="display:none;"></div>
+                </div>
+              </div>
               <label>
                 <span class="label">Collaborateur</span>
                 <select id="planCompCollab" required></select>
@@ -338,38 +350,57 @@
             </div>
           </div>
 
-          <div class="studio-rh-form-grid">
-            <div class="studio-rh-field-wide studio-rh-check-panel">
-              <div class="studio-rh-check-panel-head">
-                <div>
-                  <strong>Compétences évaluées</strong>
-                  <small>Recherchez puis cochez une ou plusieurs compétences.</small>
-                </div>
-                <span id="planCompCompetenceCount" class="studio-rh-check-count">0 sélectionnée</span>
+          <div class="studio-rh-field-wide studio-rh-check-panel studio-rh-competence-panel">
+            <div class="studio-rh-check-panel-head">
+              <div>
+                <strong>Compétences évaluées</strong>
+                <small>Recherchez puis cochez une ou plusieurs compétences.</small>
               </div>
-              <input id="planCompCompetenceSearch" type="search" placeholder="Rechercher une compétence ou un domaine">
-              <div id="planCompCompetenceList" class="studio-rh-check-list studio-rh-check-list--compact"></div>
+              <span id="planCompCompetenceCount" class="studio-rh-check-count">0 sélectionnée</span>
             </div>
-            <label>
-              <span class="label">Date cible optionnelle</span>
-              <input id="planCompDate" type="datetime-local" class="sb-date">
-            </label>
-            <label>
-              <span class="label">Responsable / manager</span>
-              <select id="planCompManager"><option value="">Non renseigné</option></select>
-            </label>
-            <label>
-              <span class="label">Statut</span>
-              <select id="planCompStatut">
-                <option value="a_planifier">À planifier</option>
-                <option value="planifie">Planifiée</option>
-              </select>
-            </label>
-            <label class="studio-rh-field-wide">
-              <span class="label">Commentaire</span>
-              <textarea id="planCompComment" class="sb-textarea--md" placeholder="Commentaire RH"></textarea>
-            </label>
+            <div class="studio-rh-selected-panel" id="planCompSelectedWrap" style="display:none;">
+              <div class="studio-rh-selected-label">Sélectionnées</div>
+              <div id="planCompSelectedList" class="studio-rh-selected-list"></div>
+            </div>
+            <div class="studio-rh-search-field studio-rh-competence-search">
+              <span class="studio-rh-search-field__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              </span>
+              <input id="planCompCompetenceSearch" type="search" placeholder="Rechercher une compétence..." autocomplete="off">
+            </div>
+            <div id="planCompCompetenceList" class="studio-rh-check-list studio-rh-check-list--compact studio-rh-competence-list"></div>
           </div>
+
+          <div class="studio-rh-modal-block studio-rh-planification-block">
+            <div class="studio-rh-block-head">
+              <div>
+                <strong>Planification</strong>
+                <small>Définissez la date cible, le responsable et l’état de préparation.</small>
+              </div>
+            </div>
+            <div class="studio-rh-form-grid studio-rh-form-grid--planning">
+              <label>
+                <span class="label">Date cible optionnelle</span>
+                <input id="planCompDate" type="datetime-local" class="sb-date">
+              </label>
+              <label>
+                <span class="label">Responsable / manager</span>
+                <select id="planCompManager"><option value="">Non renseigné</option></select>
+              </label>
+              <label>
+                <span class="label">Statut</span>
+                <select id="planCompStatut">
+                  <option value="a_planifier">À planifier</option>
+                  <option value="planifie">Planifiée</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <label class="studio-rh-field-wide studio-rh-comment-compact studio-rh-competence-comment">
+            <span class="label">Commentaire</span>
+            <textarea id="planCompComment" class="sb-textarea--md" placeholder="Précision RH, contexte, consigne manager..."></textarea>
+          </label>
         </div>
       </form>
     </div>
