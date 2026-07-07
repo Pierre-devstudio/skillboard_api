@@ -22,11 +22,11 @@ NON_LIE_SERVICE_ID = "__NON_LIE__"
 
 class StudioRhIndisponibilitePayload(BaseModel):
     id_effectif: str
-    type_indisponibilite: str
     date_debut: str
     date_fin: str
+    type_indisponibilite: Optional[str] = None
     commentaire: Optional[str] = None
-    statut: Optional[str] = "prevue"
+    statut: Optional[str] = None
 
 
 class StudioRhCampagnePayload(BaseModel):
@@ -695,16 +695,20 @@ def _events_query(cur, ctx: dict, *, start_dt: Optional[datetime] = None, end_dt
                   type_filter: Optional[str] = None, statut: Optional[str] = None,
                   id_service: Optional[str] = None, id_effectif: Optional[str] = None,
                   limit: Optional[int] = None, include_archived: bool = False) -> List[dict]:
+    typ = _clean(type_filter)
+    if typ == "indisponibilite":
+        return []
+
     params: List[Any] = [ctx["id_ent"]]
     where = """
       WHERE ev.id_ent = %s
+        AND COALESCE(ev.type_evenement, '') <> 'indisponibilite'
     """
     if not include_archived:
         where += " AND COALESCE(ev.archive, FALSE) = FALSE "
     if start_dt is not None and end_dt is not None:
         where += " AND COALESCE(ev.date_fin, ev.date_debut) >= %s AND ev.date_debut < %s "
         params.extend([start_dt, end_dt])
-    typ = _clean(type_filter)
     if typ:
         where += " AND ev.type_evenement = %s "
         params.append(typ)
@@ -824,6 +828,265 @@ def _suggestions_query(cur, ctx: dict, *, type_filter: Optional[str] = None, sta
     return [_row_to_suggestion(dict(r)) for r in (cur.fetchall() or [])]
 
 
+def _ranges_overlap(start_a: date, end_a: date, start_b: date, end_b: date) -> bool:
+    return start_a <= end_b and start_b <= end_a
+
+
+def _check_break_overlap_db(cur, id_ent: str, id_effectif: str, new_start: date, new_end: date,
+                            exclude_id_break: Optional[str] = None):
+    sql = """
+        SELECT id_break, date_debut, date_fin
+        FROM public.tbl_effectif_client_break
+        WHERE id_ent = %s
+          AND id_effectif = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND date_debut <= %s
+          AND date_fin >= %s
+    """
+    params: List[Any] = [id_ent, id_effectif, new_end, new_start]
+    if _clean(exclude_id_break):
+        sql += " AND id_break <> %s "
+        params.append(_clean(exclude_id_break))
+
+    cur.execute(sql, tuple(params))
+    for row in (cur.fetchall() or []):
+        if _ranges_overlap(row.get("date_debut"), row.get("date_fin"), new_start, new_end):
+            raise HTTPException(status_code=400, detail="Chevauchement avec une indisponibilité existante.")
+
+
+def _break_status(row: Dict[str, Any]) -> str:
+    if bool(row.get("archive")):
+        return "archive"
+    end_value = row.get("date_fin")
+    if isinstance(end_value, datetime):
+        end_value = end_value.date()
+    if isinstance(end_value, date) and end_value < date.today():
+        return "realise"
+    return "planifie"
+
+
+def _row_to_break(row: Dict[str, Any]) -> Dict[str, Any]:
+    statut = _break_status(row)
+    payload = {
+        "source_table": "tbl_effectif_client_break",
+        "date_debut": _date_to_str(row.get("date_debut")),
+        "date_fin": _date_to_str(row.get("date_fin")),
+    }
+    return {
+        "kind": "break",
+        "id": row.get("id_break"),
+        "id_break": row.get("id_break"),
+        "id_evenement": row.get("id_break"),
+        "id_ent": row.get("id_ent"),
+        "id_manager": None,
+        "id_effectif": row.get("id_effectif"),
+        "type_evenement": "indisponibilite",
+        "type_label": "Indisponibilité",
+        "titre": f"Indisponibilité · {_collab_label(row) or 'Collaborateur'}",
+        "date_debut": _date_to_str(row.get("date_debut")),
+        "date_fin": _date_to_str(row.get("date_fin")),
+        "statut": statut,
+        "statut_label": "Archivé" if statut == "archive" else ("Terminée" if statut == "realise" else "Planifié"),
+        "source": "effectif_break",
+        "id_suggestion_origine": None,
+        "id_service": row.get("id_service"),
+        "nom_service": row.get("nom_service"),
+        "collaborateur": _collab_label(row),
+        "payload_json": payload,
+        "notification_json": {},
+        "archive": bool(row.get("archive")),
+        "created_at": _dt_to_str(row.get("date_creation")),
+        "updated_at": _dt_to_str(row.get("dernier_update")),
+    }
+
+
+def _breaks_query(cur, ctx: dict, *, start_dt: Optional[datetime] = None, end_dt: Optional[datetime] = None,
+                  type_filter: Optional[str] = None, statut: Optional[str] = None,
+                  id_service: Optional[str] = None, id_effectif: Optional[str] = None,
+                  limit: Optional[int] = None, include_archived: bool = False) -> List[dict]:
+    typ = _clean(type_filter)
+    if typ and typ != "indisponibilite":
+        return []
+
+    params: List[Any] = [ctx["id_ent"]]
+    where = """
+      WHERE b.id_ent = %s
+    """
+
+    stat = _clean(statut).lower()
+    if stat in ("archive", "archivé", "archivée"):
+        where += " AND COALESCE(b.archive, FALSE) = TRUE "
+    elif not include_archived:
+        where += " AND COALESCE(b.archive, FALSE) = FALSE "
+
+    if stat in ("a_planifier", "à_planifier", "proposee", "proposée", "annule", "annulé"):
+        return []
+
+    today = date.today()
+    if stat in ("realise", "réalisé", "realisee", "terminée", "terminee"):
+        where += " AND b.date_fin < %s "
+        params.append(today)
+    elif stat in ("planifie", "planifiée", "planifiee", "prevue", "prévue", "en_cours"):
+        where += " AND b.date_fin >= %s "
+        params.append(today)
+
+    if start_dt is not None and end_dt is not None:
+        where += " AND b.date_fin >= %s AND b.date_debut < %s "
+        params.extend([start_dt.date(), end_dt.date()])
+
+    svc = _normalize_service_filter(id_service)
+    if svc == NON_LIE_SERVICE_ID:
+        where += " AND (ec.id_service IS NULL OR COALESCE(ec.id_service, '') = '') "
+    elif svc:
+        where += " AND ec.id_service = %s "
+        params.append(svc)
+
+    eff = _clean(id_effectif)
+    if eff:
+        where += " AND b.id_effectif = %s "
+        params.append(eff)
+
+    limit_sql = ""
+    if limit and int(limit) > 0:
+        limit_sql = " LIMIT %s"
+        params.append(int(limit))
+
+    cur.execute(
+        f"""
+        SELECT
+          b.id_break,
+          b.id_ent,
+          b.id_effectif,
+          b.date_debut,
+          b.date_fin,
+          b.archive,
+          b.date_creation,
+          b.dernier_update,
+          ec.nom_effectif,
+          ec.prenom_effectif,
+          ec.id_service,
+          org.nom_service
+        FROM public.tbl_effectif_client_break b
+        JOIN public.tbl_effectif_client ec
+          ON ec.id_effectif = b.id_effectif
+         AND ec.id_ent = b.id_ent
+         AND COALESCE(ec.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise_organigramme org
+          ON org.id_service = ec.id_service
+         AND org.id_ent = ec.id_ent
+         AND COALESCE(org.archive, FALSE) = FALSE
+        {where}
+        ORDER BY b.date_debut ASC, b.date_fin ASC, ec.nom_effectif ASC, ec.prenom_effectif ASC
+        {limit_sql}
+        """,
+        tuple(params),
+    )
+    return [_row_to_break(dict(r)) for r in (cur.fetchall() or [])]
+
+
+def _insert_break(cur, ctx: dict, *, id_effectif: str, date_debut: date, date_fin: date) -> dict:
+    eff = _validate_effectif(cur, ctx["id_ent"], id_effectif)
+    _check_break_overlap_db(cur, ctx["id_ent"], eff.get("id_effectif"), date_debut, date_fin)
+    id_break = str(uuid4())
+    cur.execute(
+        """
+        INSERT INTO public.tbl_effectif_client_break
+          (id_break, id_ent, id_effectif, date_debut, date_fin, archive, date_creation, dernier_update)
+        VALUES
+          (%s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+        RETURNING *
+        """,
+        (id_break, ctx["id_ent"], eff.get("id_effectif"), date_debut, date_fin),
+    )
+    row = dict(cur.fetchone() or {})
+    row.update(eff)
+    return row
+
+def _fetch_break_by_id(cur, ctx: dict, id_break: str) -> Optional[dict]:
+    cur.execute(
+        """
+        SELECT
+          b.id_break,
+          b.id_ent,
+          b.id_effectif,
+          b.date_debut,
+          b.date_fin,
+          b.archive,
+          b.date_creation,
+          b.dernier_update,
+          ec.nom_effectif,
+          ec.prenom_effectif,
+          ec.id_service,
+          org.nom_service
+        FROM public.tbl_effectif_client_break b
+        JOIN public.tbl_effectif_client ec
+          ON ec.id_effectif = b.id_effectif
+         AND ec.id_ent = b.id_ent
+         AND COALESCE(ec.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise_organigramme org
+          ON org.id_service = ec.id_service
+         AND org.id_ent = ec.id_ent
+         AND COALESCE(org.archive, FALSE) = FALSE
+        WHERE b.id_ent = %s
+          AND b.id_break = %s
+        LIMIT 1
+        """,
+        (ctx["id_ent"], _clean(id_break)),
+    )
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def _patch_break(cur, ctx: dict, id_break: str, payload: StudioRhEventPatchPayload) -> dict:
+    current = _fetch_break_by_id(cur, ctx, id_break)
+    if not current:
+        raise HTTPException(status_code=404, detail="Événement calendrier introuvable.")
+
+    updates = []
+    params: List[Any] = []
+
+    new_start = current.get("date_debut")
+    new_end = current.get("date_fin")
+    if payload.date_debut is not None:
+        new_start = _parse_date_param("date_debut", payload.date_debut)
+        updates.append("date_debut = %s")
+        params.append(new_start)
+    if payload.date_fin is not None:
+        new_end = _parse_date_param("date_fin", payload.date_fin)
+        updates.append("date_fin = %s")
+        params.append(new_end)
+    if new_end < new_start:
+        raise HTTPException(status_code=400, detail="date_fin doit être postérieure à date_debut.")
+
+    should_archive = bool(payload.archive) or _clean(payload.statut).lower() in ("annule", "annulé", "archive", "archivé", "archivée")
+    if payload.archive is not None or payload.statut is not None:
+        updates.append("archive = %s")
+        params.append(should_archive)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="Aucune modification fournie.")
+
+    if not bool(current.get("archive")) or (payload.date_debut is not None or payload.date_fin is not None):
+        _check_break_overlap_db(cur, ctx["id_ent"], current.get("id_effectif"), new_start, new_end, exclude_id_break=id_break)
+
+    updates.append("dernier_update = NOW()")
+    params.extend([ctx["id_ent"], _clean(id_break)])
+    cur.execute(
+        f"""
+        UPDATE public.tbl_effectif_client_break
+        SET {', '.join(updates)}
+        WHERE id_ent = %s
+          AND id_break = %s
+        """,
+        tuple(params),
+    )
+    row = _fetch_break_by_id(cur, ctx, id_break)
+    if not row:
+        raise HTTPException(status_code=404, detail="Indisponibilité introuvable après mise à jour.")
+    return row
+
+
+
 # ------------------------------------------------------
 # Routes
 # ------------------------------------------------------
@@ -851,11 +1114,12 @@ def studio_planification_bootstrap(id_owner: str, request: Request):
                     cur.execute(
                         """
                         SELECT
-                          COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = FALSE AND statut IN ('planifie', 'planifiée', 'planifiee', 'prevue', 'prévue')) AS planifies,
-                          COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = FALSE AND statut IN ('realise', 'réalisé', 'realisee', 'terminée', 'terminee')) AS realises,
+                          COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = FALSE AND statut IN ('planifie', 'planifiée', 'planifiee')) AS planifies,
+                          COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = FALSE AND statut IN ('realise', 'réalisé', 'realisee')) AS realises,
                           COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = TRUE OR statut IN ('annule', 'annulé', 'archive', 'archivé', 'archivée')) AS annules_archives
                         FROM public.tbl_calendrier_rh
                         WHERE id_ent = %s
+                          AND COALESCE(type_evenement, '') <> 'indisponibilite'
                         """,
                         (ctx["id_ent"],),
                     )
@@ -866,6 +1130,22 @@ def studio_planification_bootstrap(id_owner: str, request: Request):
                         "realises": int(s2.get("realises") or 0),
                         "annules_archives": int(s2.get("annules_archives") or 0),
                     }
+
+                cur.execute(
+                    """
+                    SELECT
+                      COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = FALSE AND date_fin >= CURRENT_DATE) AS planifies,
+                      COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = FALSE AND date_fin < CURRENT_DATE) AS realises,
+                      COUNT(1) FILTER (WHERE COALESCE(archive, FALSE) = TRUE) AS annules_archives
+                    FROM public.tbl_effectif_client_break
+                    WHERE id_ent = %s
+                    """,
+                    (ctx["id_ent"],),
+                )
+                breaks_kpis = cur.fetchone() or {}
+                kpis["planifies"] += int(breaks_kpis.get("planifies") or 0)
+                kpis["realises"] += int(breaks_kpis.get("realises") or 0)
+                kpis["annules_archives"] += int(breaks_kpis.get("annules_archives") or 0)
 
         return {
             "context": ctx,
@@ -907,7 +1187,8 @@ def studio_planification_items(
                 include_archived = _clean(statut).lower() in ("archive", "archivé", "archivée")
                 events = _events_query(cur, ctx, type_filter=type, statut=statut, id_service=id_service, id_effectif=id_effectif, limit=limit, include_archived=include_archived)
                 suggestions = _suggestions_query(cur, ctx, type_filter=type, statut=statut, id_service=id_service, id_effectif=id_effectif, limit=limit, include_archived=include_archived)
-        items = suggestions + events
+                breaks = _breaks_query(cur, ctx, type_filter=type, statut=statut, id_service=id_service, id_effectif=id_effectif, limit=limit, include_archived=include_archived)
+        items = suggestions + events + breaks
         items.sort(key=lambda x: (x.get("date_debut") or x.get("date_echeance") or "9999-12-31", x.get("titre") or ""))
         return {"items": items[: max(1, int(limit or 80))]}
     except HTTPException:
@@ -937,10 +1218,14 @@ def studio_calendrier_events(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 ctx = _resolve_context(cur, id_owner, request)
-                if not _calendar_table_exists(cur, "tbl_calendrier_rh"):
-                    return []
                 include_archived = _clean(statut).lower() in ("archive", "archivé", "archivée")
-                return _events_query(cur, ctx, start_dt=start_dt, end_dt=end_dt, type_filter=type, statut=statut, id_service=id_service, id_effectif=id_effectif, include_archived=include_archived)
+                events = []
+                if _calendar_table_exists(cur, "tbl_calendrier_rh"):
+                    events = _events_query(cur, ctx, start_dt=start_dt, end_dt=end_dt, type_filter=type, statut=statut, id_service=id_service, id_effectif=id_effectif, include_archived=include_archived)
+                breaks = _breaks_query(cur, ctx, start_dt=start_dt, end_dt=end_dt, type_filter=type, statut=statut, id_service=id_service, id_effectif=id_effectif, include_archived=include_archived)
+                items = events + breaks
+                items.sort(key=lambda x: (x.get("date_debut") or "9999-12-31", x.get("titre") or ""))
+                return items
     except HTTPException:
         raise
     except Exception as e:
@@ -973,39 +1258,23 @@ def studio_calendrier_suggestions(
 @router.post("/studio/planification/indisponibilites/{id_owner}")
 def studio_planification_create_indisponibilite(id_owner: str, payload: StudioRhIndisponibilitePayload, request: Request):
     try:
-        date_debut = _parse_datetime_param("date_debut", payload.date_debut)
-        date_fin = _parse_datetime_param("date_fin", payload.date_fin, default_hour=18)
+        date_debut = _parse_date_param("date_debut", payload.date_debut)
+        date_fin = _parse_date_param("date_fin", payload.date_fin)
         if date_fin < date_debut:
             raise HTTPException(status_code=400, detail="date_fin doit être postérieure à date_debut.")
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 ctx = _resolve_context(cur, id_owner, request)
-                _ensure_calendar_tables(cur)
-                eff = _validate_effectif(cur, ctx["id_ent"], payload.id_effectif)
-                titre = f"Indisponibilité · {_collab_label(eff) or 'Collaborateur'}"
-                event_payload = {
-                    "type_indisponibilite": _clean(payload.type_indisponibilite),
-                    "commentaire": _clean(payload.commentaire),
-                    "id_service": eff.get("id_service"),
-                    "nom_service": eff.get("nom_service"),
-                    "collaborateur": _collab_label(eff),
-                }
-                row = _insert_calendar_event(
+                row = _insert_break(
                     cur,
                     ctx,
-                    type_evenement="indisponibilite",
-                    titre=titre,
+                    id_effectif=payload.id_effectif,
                     date_debut=date_debut,
                     date_fin=date_fin,
-                    statut=_clean(payload.statut) or "prevue",
-                    id_effectif=eff.get("id_effectif"),
-                    id_manager=None,
-                    source="studio_planification",
-                    payload_json=event_payload,
                 )
                 conn.commit()
-                return _row_to_event(row)
+                return _row_to_break(row)
     except HTTPException:
         raise
     except Exception as e:
@@ -1238,7 +1507,9 @@ def studio_calendrier_patch_event(id_owner: str, id_evenement: str, payload: Stu
                 )
                 current = dict(cur.fetchone() or {})
                 if not current:
-                    raise HTTPException(status_code=404, detail="Événement calendrier introuvable.")
+                    row = _patch_break(cur, ctx, id_evenement, payload)
+                    conn.commit()
+                    return _row_to_break(row)
 
                 updates = []
                 params: List[Any] = []

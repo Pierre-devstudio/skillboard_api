@@ -90,6 +90,7 @@
   function dateTimeLocal(value){
     const raw = clean(value);
     if (!raw) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return `${raw}T00:00`;
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return raw.slice(0, 16);
     const yyyy = d.getFullYear();
@@ -100,9 +101,17 @@
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
   }
 
+  function dateOnlyFr(value, withYear){
+    const raw = clean(value).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return clean(value) || "Non daté";
+    const [y, m, d] = raw.split("-");
+    return withYear ? `${d}/${m}/${y}` : `${d}/${m}`;
+  }
+
   function dateLabel(value){
     const raw = clean(value);
     if (!raw) return "Non daté";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return dateOnlyFr(raw, true);
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return raw;
     return d.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
@@ -111,6 +120,7 @@
   function fullDateLabel(value){
     const raw = clean(value);
     if (!raw) return "Non daté";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return dateOnlyFr(raw, true);
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return raw;
     return d.toLocaleString("fr-FR", { weekday:"long", day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" });
@@ -119,9 +129,25 @@
   function timeLabel(value){
     const raw = clean(value);
     if (!raw) return "—";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "Journée";
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return raw.slice(11, 16) || raw;
     return d.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+  }
+
+  function breakRangeLabel(ev){
+    if (!ev || ev.source !== "effectif_break") return "";
+    const start = dateOnlyFr(ev.date_debut, false);
+    const end = dateOnlyFr(ev.date_fin, false);
+    return start === end ? "Journée" : `${start} → ${end}`;
+  }
+
+  function eventChipMeta(ev){
+    if (ev && ev.source === "effectif_break") {
+      const range = breakRangeLabel(ev);
+      return `${range}${ev.collaborateur ? ` · ${ev.collaborateur}` : ""}`;
+    }
+    return `${timeLabel(ev && ev.date_debut)}${ev && ev.collaborateur ? ` · ${ev.collaborateur}` : ""}`;
   }
 
   function eventTitle(ev){ return clean(ev && ev.titre) || typeLabel(ev && ev.type_evenement); }
@@ -280,7 +306,7 @@
                     <span class="studio-rh-event-dot" aria-hidden="true"></span>
                     <span class="studio-rh-event-title">${esc(titleText)}</span>
                   </span>
-                  <span class="studio-rh-event-meta">${esc(timeLabel(ev.date_debut))}${ev.collaborateur ? ` · ${esc(ev.collaborateur)}` : ""}</span>
+                  <span class="studio-rh-event-meta">${esc(eventChipMeta(ev))}</span>
                 </button>`;
             }).join("")}
           </div>
@@ -383,6 +409,22 @@
     if (data.kind === "event") {
       const ev = eventById(data.id);
       if (!ev) return;
+      if (ev.source === "effectif_break") {
+        const startRaw = clean(ev.date_debut).slice(0, 10);
+        const endRaw = clean(ev.date_fin || ev.date_debut).slice(0, 10);
+        const start = new Date(`${startRaw}T00:00:00`);
+        const end = new Date(`${endRaw}T00:00:00`);
+        const durationDays = (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()))
+          ? Math.max(0, Math.round((end.getTime() - start.getTime()) / 86400000))
+          : 0;
+        const newEndDate = new Date(`${day}T00:00:00`);
+        newEndDate.setDate(newEndDate.getDate() + durationDays);
+        await patchEvent(data.id, { date_debut: day, date_fin: ymd(newEndDate) });
+        setMsg("calRhMsg", "Indisponibilité déplacée.", "ok");
+        await loadCalendar();
+        return;
+      }
+
       const start = new Date(ev.date_debut);
       const end = ev.date_fin ? new Date(ev.date_fin) : null;
       const hh = Number.isNaN(start.getTime()) ? "09" : String(start.getHours()).padStart(2, "0");
@@ -410,12 +452,18 @@
     byId("calRhEventStatus").value = clean(ev.archive) === "true" ? "archive" : clean(ev.statut) || "planifie";
     byId("calRhEventStart").value = dateTimeLocal(ev.date_debut);
     byId("calRhEventEnd").value = dateTimeLocal(ev.date_fin);
+    const isBreak = ev.source === "effectif_break";
+    ["calRhEventTitle", "calRhEventType"].forEach(fieldId => {
+      const field = byId(fieldId);
+      if (field) field.disabled = isBreak;
+    });
     const meta = byId("calRhEventMeta");
     if (meta) {
       meta.innerHTML = `
         <div><strong>Collaborateur</strong><span>${esc(ev.collaborateur || "Périmètre RH")}</span></div>
         <div><strong>Service</strong><span>${esc(ev.nom_service || "Service non lié")}</span></div>
         <div><strong>Type</strong><span>${esc(typeLabel(ev.type_evenement))}</span></div>
+        ${ev.source === "effectif_break" ? `<div><strong>Source</strong><span>Planning d’indisponibilités</span></div>` : ""}
       `;
     }
     const modal = byId("modalCalRhEvent");
@@ -440,14 +488,23 @@
     try {
       byId("calRhModalSave")?.setAttribute("disabled", "disabled");
       const statut = clean(byId("calRhEventStatus")?.value) || "planifie";
-      await patchEvent(id, {
-        titre: clean(byId("calRhEventTitle")?.value),
-        type_evenement: clean(byId("calRhEventType")?.value),
-        statut,
-        date_debut: clean(byId("calRhEventStart")?.value),
-        date_fin: clean(byId("calRhEventEnd")?.value),
-        archive: statut === "archive"
-      });
+      const sourceEvent = eventById(id);
+      const payload = sourceEvent && sourceEvent.source === "effectif_break"
+        ? {
+            statut,
+            date_debut: clean(byId("calRhEventStart")?.value).slice(0, 10),
+            date_fin: clean(byId("calRhEventEnd")?.value).slice(0, 10),
+            archive: statut === "archive" || statut === "annule"
+          }
+        : {
+            titre: clean(byId("calRhEventTitle")?.value),
+            type_evenement: clean(byId("calRhEventType")?.value),
+            statut,
+            date_debut: clean(byId("calRhEventStart")?.value),
+            date_fin: clean(byId("calRhEventEnd")?.value),
+            archive: statut === "archive"
+          };
+      await patchEvent(id, payload);
       closeModal();
       setMsg("calRhMsg", "Événement mis à jour.", "ok");
       await loadCalendar();

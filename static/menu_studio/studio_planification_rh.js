@@ -103,6 +103,7 @@
   function dateLabel(value){
     const raw = clean(value);
     if (!raw) return "Non daté";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return dateOnlyLabel(raw);
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return raw;
     return d.toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
@@ -736,11 +737,8 @@
 
   function getIndispoPayloads(){
     const idEffectif = clean(byId("planIndispoCollab")?.value);
-    const typeIndispo = clean(byId("planIndispoType")?.value);
-    const commentaire = clean(byId("planIndispoComment")?.value);
     const rows = Array.from(byId("planIndispoLines")?.querySelectorAll(".studio-rh-indispo-line") || []);
     if (!idEffectif) throw new Error("Sélectionne un collaborateur.");
-    if (!typeIndispo) throw new Error("Renseigne le type d’indisponibilité.");
     if (!rows.length) throw new Error("Ajoute au moins une période d’indisponibilité.");
     return rows.map(row => {
       const dateDebut = clean(row.querySelector("[data-indispo-start]")?.value);
@@ -748,11 +746,8 @@
       if (!dateDebut || !dateFin) throw new Error("Chaque ligne d’indisponibilité doit avoir une date début et une date fin.");
       return {
         id_effectif: idEffectif,
-        type_indisponibilite: typeIndispo,
         date_debut: dateDebut,
-        date_fin: dateFin,
-        commentaire: commentaire,
-        statut: "prevue"
+        date_fin: dateFin
       };
     });
   }
