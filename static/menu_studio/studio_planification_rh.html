@@ -1,0 +1,273 @@
+<section id="view-planification_rh" class="studio-rh-page studio-rh-plan-page" data-view="planification_rh">
+  <div class="card studio-rh-hero-card">
+    <div class="studio-rh-hero-top">
+      <div>
+        <p class="studio-rh-eyebrow">Données de pilotage</p>
+        <h1 class="card-title">Planification RH</h1>
+        <p class="card-sub">Préparez les indisponibilités, campagnes d’entretiens et évaluations compétence. Ici, on planifie. Les analyses restent dans Analyse RH, parce qu’un outil qui mélange tout finit toujours en tiroir à câbles.</p>
+      </div>
+      <div class="studio-rh-hero-actions">
+        <button type="button" class="sb-btn sb-btn--soft" id="planRhOpenCalendarBtn">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/></svg>
+          </span>
+          Voir le calendrier RH
+        </button>
+        <button type="button" class="sb-btn sb-btn--accent" id="planRhCreateBtn">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+          Créer un événement
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-kpi-grid studio-rh-kpis">
+    <div class="sb-kpi-card studio-rh-kpi-card">
+      <div class="sb-kpi-label">À planifier</div>
+      <div class="sb-kpi-value" id="planRhKpiTodo">0</div>
+    </div>
+    <div class="sb-kpi-card studio-rh-kpi-card">
+      <div class="sb-kpi-label">Planifiés / prévus</div>
+      <div class="sb-kpi-value" id="planRhKpiPlanned">0</div>
+    </div>
+    <div class="sb-kpi-card studio-rh-kpi-card">
+      <div class="sb-kpi-label">Réalisés / terminés</div>
+      <div class="sb-kpi-value" id="planRhKpiDone">0</div>
+    </div>
+    <div class="sb-kpi-card studio-rh-kpi-card">
+      <div class="sb-kpi-label">Annulés / archivés</div>
+      <div class="sb-kpi-value" id="planRhKpiClosed">0</div>
+    </div>
+  </div>
+
+  <div id="planRhMsg" class="studio-rh-inline-msg" style="display:none;"></div>
+
+  <div class="studio-rh-entry-grid">
+    <button type="button" class="card studio-rh-entry-card" data-plan-type="indisponibilite">
+      <span class="studio-rh-entry-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+      </span>
+      <span>
+        <strong>Indisponibilité collaborateur</strong>
+        <small>Absence, indisponibilité prévue, période bloquée.</small>
+      </span>
+    </button>
+    <button type="button" class="card studio-rh-entry-card" data-plan-type="campagne">
+      <span class="studio-rh-entry-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </span>
+      <span>
+        <strong>Campagne d’entretiens annuels</strong>
+        <small>Préparation par entreprise, service ou sélection.</small>
+      </span>
+    </button>
+    <button type="button" class="card studio-rh-entry-card" data-plan-type="competence">
+      <span class="studio-rh-entry-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>
+      </span>
+      <span>
+        <strong>Entretien / évaluation compétence</strong>
+        <small>Préparation ponctuelle pour un collaborateur.</small>
+      </span>
+    </button>
+  </div>
+
+  <div class="card studio-rh-filter-card">
+    <div class="studio-rh-section-head">
+      <div>
+        <h2 class="card-title">Événements RH</h2>
+        <p class="card-sub">Liste de travail : événements datés et briques à planifier.</p>
+      </div>
+      <button type="button" class="sb-btn sb-btn--soft" id="planRhRefreshBtn">Rafraîchir</button>
+    </div>
+    <div class="studio-rh-filter-grid">
+      <label>
+        <span class="label">Type</span>
+        <select id="planRhFilterType"><option value="">Tous les types</option></select>
+      </label>
+      <label>
+        <span class="label">Service</span>
+        <select id="planRhFilterService"><option value="">Tous les services</option></select>
+      </label>
+      <label>
+        <span class="label">Collaborateur</span>
+        <select id="planRhFilterCollab"><option value="">Tous les collaborateurs</option></select>
+      </label>
+      <label>
+        <span class="label">Statut</span>
+        <select id="planRhFilterStatut"><option value="">Tous les statuts</option></select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card studio-rh-list-card">
+    <div class="studio-rh-section-head">
+      <div>
+        <h2 class="card-title">Récemment créés / à planifier</h2>
+        <p class="card-sub" id="planRhListSubtitle">Chargement…</p>
+      </div>
+    </div>
+    <div id="planRhList" class="studio-rh-list"></div>
+  </div>
+</section>
+
+<div class="sb-modal studio-rh-modal" id="modalPlanRhEvent" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="planRhModalTitle">
+  <div class="sb-modal-card studio-rh-modal-card">
+    <div class="sb-modal-head">
+      <div>
+        <h2 id="planRhModalTitle" class="card-title">Créer un événement RH</h2>
+        <p class="card-sub" id="planRhModalSub">Sélectionnez le type d’événement.</p>
+      </div>
+      <button type="button" class="sb-modal-x" id="planRhModalClose" aria-label="Fermer">×</button>
+    </div>
+    <div class="sb-modal-body">
+      <div id="planRhModalMsg" class="studio-rh-inline-msg" style="display:none;"></div>
+
+      <div class="studio-rh-type-tabs" role="tablist" aria-label="Type d'événement RH">
+        <button type="button" class="studio-rh-type-tab" data-plan-tab="indisponibilite">Indisponibilité</button>
+        <button type="button" class="studio-rh-type-tab" data-plan-tab="campagne">Campagne annuelle</button>
+        <button type="button" class="studio-rh-type-tab" data-plan-tab="competence">Entretien / évaluation</button>
+      </div>
+
+      <form id="planRhForm" class="studio-rh-form">
+        <div class="studio-rh-form-pane" data-plan-form="indisponibilite">
+          <div class="studio-rh-form-grid">
+            <label>
+              <span class="label">Collaborateur</span>
+              <select id="planIndispoCollab" required></select>
+            </label>
+            <label>
+              <span class="label">Type d’indisponibilité</span>
+              <input id="planIndispoType" type="text" placeholder="Ex : absence longue, congé, disponibilité réduite" required>
+            </label>
+            <label>
+              <span class="label">Date début</span>
+              <input id="planIndispoStart" type="datetime-local" required>
+            </label>
+            <label>
+              <span class="label">Date fin</span>
+              <input id="planIndispoEnd" type="datetime-local" required>
+            </label>
+            <label>
+              <span class="label">Statut</span>
+              <select id="planIndispoStatut">
+                <option value="prevue">Prévue</option>
+                <option value="en_cours">En cours</option>
+                <option value="terminee">Terminée</option>
+                <option value="annule">Annulée</option>
+                <option value="archive">Archivée</option>
+              </select>
+            </label>
+            <label class="studio-rh-field-wide">
+              <span class="label">Commentaire</span>
+              <textarea id="planIndispoComment" class="sb-textarea--md" placeholder="Commentaire interne"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="studio-rh-form-pane" data-plan-form="campagne">
+          <div class="studio-rh-form-grid">
+            <label>
+              <span class="label">Nom de campagne</span>
+              <input id="planCampagneNom" type="text" placeholder="Ex : Entretiens annuels 2027" required>
+            </label>
+            <label>
+              <span class="label">Périmètre</span>
+              <select id="planCampagnePerimetre">
+                <option value="entreprise">Toute l’entreprise</option>
+                <option value="service">Service</option>
+                <option value="selection">Sélection collaborateurs</option>
+              </select>
+            </label>
+            <label>
+              <span class="label">Date début cible</span>
+              <input id="planCampagneStart" type="date" required>
+            </label>
+            <label>
+              <span class="label">Date fin cible</span>
+              <input id="planCampagneEnd" type="date" required>
+            </label>
+            <label data-campagne-scope="service">
+              <span class="label">Service</span>
+              <select id="planCampagneService"></select>
+            </label>
+            <label>
+              <span class="label">Responsable / manager</span>
+              <select id="planCampagneManager"><option value="">Non renseigné</option></select>
+            </label>
+            <label>
+              <span class="label">Statut</span>
+              <select id="planCampagneStatut">
+                <option value="brouillon">Brouillon</option>
+                <option value="a_planifier" selected>À planifier</option>
+                <option value="planifie">Planifiée</option>
+                <option value="cloturee">Clôturée</option>
+                <option value="archive">Archivée</option>
+              </select>
+            </label>
+            <label class="studio-rh-field-wide" data-campagne-scope="selection">
+              <span class="label">Collaborateurs inclus</span>
+              <select id="planCampagneIncluded" multiple size="6"></select>
+            </label>
+            <label class="studio-rh-field-wide">
+              <span class="label">Collaborateurs exclus</span>
+              <select id="planCampagneExcluded" multiple size="5"></select>
+            </label>
+            <label class="studio-rh-field-wide">
+              <span class="label">Commentaire</span>
+              <textarea id="planCampagneComment" class="sb-textarea--md" placeholder="Consignes de campagne, contexte ou informations de suivi"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="studio-rh-form-pane" data-plan-form="competence">
+          <div class="studio-rh-form-grid">
+            <label>
+              <span class="label">Collaborateur</span>
+              <select id="planCompCollab" required></select>
+            </label>
+            <label>
+              <span class="label">Type</span>
+              <select id="planCompType">
+                <option value="entretien_competence">Entretien compétence</option>
+                <option value="evaluation_competence">Évaluation compétence</option>
+              </select>
+            </label>
+            <label>
+              <span class="label">Compétence concernée</span>
+              <select id="planCompCompetence"><option value="">Non précisée</option></select>
+            </label>
+            <label>
+              <span class="label">Date cible optionnelle</span>
+              <input id="planCompDate" type="datetime-local">
+            </label>
+            <label>
+              <span class="label">Responsable / manager</span>
+              <select id="planCompManager"><option value="">Non renseigné</option></select>
+            </label>
+            <label>
+              <span class="label">Statut</span>
+              <select id="planCompStatut">
+                <option value="a_planifier">À planifier</option>
+                <option value="planifie">Planifié</option>
+                <option value="realise">Réalisé</option>
+                <option value="annule">Annulé</option>
+                <option value="archive">Archivé</option>
+              </select>
+            </label>
+            <label class="studio-rh-field-wide">
+              <span class="label">Commentaire</span>
+              <textarea id="planCompComment" class="sb-textarea--md" placeholder="Commentaire RH"></textarea>
+            </label>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="sb-modal-foot">
+      <button type="button" class="sb-btn sb-btn--soft" id="planRhModalCancel">Annuler</button>
+      <button type="submit" form="planRhForm" class="sb-btn sb-btn--accent" id="planRhModalSave">Créer</button>
+    </div>
+  </div>
+</div>

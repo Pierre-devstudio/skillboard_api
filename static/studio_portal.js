@@ -32,6 +32,8 @@
   registerView("catalog_postes", "/menu_studio/studio_catalog_postes.html");
   registerView("catalog_competences", "/menu_studio/studio_catalog_competences.html");
   registerView("clients", "/menu_studio/studio_clients.html");
+  registerView("planification_rh", "/menu_studio/studio_planification_rh.html");
+  registerView("calendrier_rh", "/menu_studio/studio_calendrier_rh.html");
 
   registerSoon("cartographie_competences");
   registerSoon("analyse_rh");
@@ -106,6 +108,19 @@
     menu.classList.toggle("is-open", open);
     menu.setAttribute("aria-hidden", open ? "false" : "true");
     btn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function bindCalendarButton(){
+    const btn = byId("btnStudioRhCalendar");
+    if (!btn || btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      closeSettingsMenu();
+      if (window.portal && typeof window.portal.switchView === "function") {
+        await window.portal.switchView("calendrier_rh");
+      }
+    });
   }
 
   function bindSettingsMenu(){
@@ -207,6 +222,7 @@
 
   window.addEventListener("DOMContentLoaded", async () => {
     bindSettingsMenu();
+    bindCalendarButton();
     applyMenuGating("user");
     try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
     tryFillTopbar();

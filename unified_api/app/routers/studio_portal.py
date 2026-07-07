@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
 
-from app.routers import studio_portal_auth, studio_portal_dashboard, studio_portal_data, studio_portal_organisation, studio_portal_collaborateurs, studio_portal_catalog_postes, studio_portal_catalog_competences, studio_portal_clients, studio_portal_connexions, studio_portal_sirh
+from app.routers import studio_portal_auth, studio_portal_dashboard, studio_portal_data, studio_portal_organisation, studio_portal_collaborateurs, studio_portal_catalog_postes, studio_portal_catalog_competences, studio_portal_clients, studio_portal_connexions, studio_portal_sirh, studio_portal_planification
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import (
     studio_require_user,
@@ -221,6 +221,10 @@ for route in studio_portal_connexions.router.routes:
 
 # Injection routes connecteurs SIRH / Paie
 for route in studio_portal_sirh.router.routes:
+    app_local.router.routes.append(route)
+
+# Injection routes planification RH / calendrier RH
+for route in studio_portal_planification.router.routes:
     app_local.router.routes.append(route)
 
 router = app_local

@@ -1,0 +1,128 @@
+<section id="view-calendrier_rh" class="studio-rh-page studio-rh-cal-page" data-view="calendrier_rh">
+  <div class="card studio-rh-hero-card">
+    <div class="studio-rh-hero-top">
+      <div>
+        <p class="studio-rh-eyebrow">Vue transversale</p>
+        <h1 class="card-title">Calendrier RH</h1>
+        <p class="card-sub">Vue calendrier des événements RH datés et des briques à planifier. Déplacer, dater, annuler, archiver. Aucun scoring caché, aucun oracle RH en robe de chambre.</p>
+      </div>
+      <div class="studio-rh-hero-actions">
+        <button type="button" class="sb-btn sb-btn--soft" id="calRhBackPlanBtn">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+          Créer des événements
+        </button>
+        <button type="button" class="sb-btn sb-btn--accent" id="calRhRefreshBtn">Rafraîchir</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="calRhMsg" class="studio-rh-inline-msg" style="display:none;"></div>
+
+  <div class="card studio-rh-filter-card">
+    <div class="studio-rh-filter-grid">
+      <label>
+        <span class="label">Type</span>
+        <select id="calRhFilterType"><option value="">Tous les types</option></select>
+      </label>
+      <label>
+        <span class="label">Service</span>
+        <select id="calRhFilterService"><option value="">Tous les services</option></select>
+      </label>
+      <label>
+        <span class="label">Collaborateur</span>
+        <select id="calRhFilterCollab"><option value="">Tous les collaborateurs</option></select>
+      </label>
+      <label>
+        <span class="label">Statut</span>
+        <select id="calRhFilterStatut"><option value="">Tous les statuts</option></select>
+      </label>
+    </div>
+  </div>
+
+  <div class="studio-rh-calendar-layout">
+    <aside class="card studio-rh-todo-card">
+      <div class="studio-rh-section-head">
+        <div>
+          <h2 class="card-title">Événements à planifier</h2>
+          <p class="card-sub">Glissez une brique sur une date.</p>
+        </div>
+      </div>
+      <div id="calRhTodoList" class="studio-rh-todo-list"></div>
+    </aside>
+
+    <div class="card studio-rh-calendar-card">
+      <div class="studio-rh-calendar-head">
+        <button type="button" class="sb-btn sb-btn--soft" id="calRhPrevMonth" aria-label="Mois précédent">‹</button>
+        <div>
+          <h2 class="card-title" id="calRhMonthTitle">Calendrier</h2>
+          <p class="card-sub" id="calRhMonthSub">Chargement…</p>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft" id="calRhNextMonth" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="studio-rh-weekdays" aria-hidden="true">
+        <span>Lun.</span><span>Mar.</span><span>Mer.</span><span>Jeu.</span><span>Ven.</span><span>Sam.</span><span>Dim.</span>
+      </div>
+      <div id="calRhGrid" class="studio-rh-calendar-grid"></div>
+    </div>
+  </div>
+</section>
+
+<div class="sb-modal studio-rh-modal" id="modalCalRhEvent" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="calRhModalTitle">
+  <div class="sb-modal-card studio-rh-modal-card">
+    <div class="sb-modal-head">
+      <div>
+        <h2 id="calRhModalTitle" class="card-title">Détail événement RH</h2>
+        <p class="card-sub" id="calRhModalSub">Modifier sans supprimer définitivement. Quelle audace.</p>
+      </div>
+      <button type="button" class="sb-modal-x" id="calRhModalClose" aria-label="Fermer">×</button>
+    </div>
+    <div class="sb-modal-body">
+      <div id="calRhModalMsg" class="studio-rh-inline-msg" style="display:none;"></div>
+      <form id="calRhForm" class="studio-rh-form">
+        <input type="hidden" id="calRhEventId">
+        <div class="studio-rh-form-grid">
+          <label class="studio-rh-field-wide">
+            <span class="label">Titre</span>
+            <input id="calRhEventTitle" type="text" required>
+          </label>
+          <label>
+            <span class="label">Type</span>
+            <select id="calRhEventType">
+              <option value="indisponibilite">Indisponibilité</option>
+              <option value="entretien_annuel">Entretien annuel</option>
+              <option value="entretien_competence">Entretien compétence</option>
+              <option value="evaluation_competence">Évaluation compétence</option>
+            </select>
+          </label>
+          <label>
+            <span class="label">Statut</span>
+            <select id="calRhEventStatus">
+              <option value="a_planifier">À planifier</option>
+              <option value="planifie">Planifié</option>
+              <option value="realise">Réalisé</option>
+              <option value="annule">Annulé</option>
+              <option value="archive">Archivé</option>
+            </select>
+          </label>
+          <label>
+            <span class="label">Début</span>
+            <input id="calRhEventStart" type="datetime-local" required>
+          </label>
+          <label>
+            <span class="label">Fin</span>
+            <input id="calRhEventEnd" type="datetime-local">
+          </label>
+          <div class="studio-rh-field-wide studio-rh-detail-box" id="calRhEventMeta"></div>
+        </div>
+      </form>
+    </div>
+    <div class="sb-modal-foot studio-rh-modal-actions">
+      <button type="button" class="sb-btn sb-btn--soft" id="calRhCancelEventBtn">Annuler l’événement</button>
+      <button type="button" class="sb-btn sb-btn--soft" id="calRhArchiveEventBtn">Archiver</button>
+      <button type="button" class="sb-btn sb-btn--soft" id="calRhModalCancel">Fermer</button>
+      <button type="submit" form="calRhForm" class="sb-btn sb-btn--accent" id="calRhModalSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
