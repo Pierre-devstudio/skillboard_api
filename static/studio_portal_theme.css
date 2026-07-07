@@ -8147,11 +8147,23 @@
 #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker{
   grid-template-columns:minmax(230px, 1.08fr) minmax(170px, .78fr);
   gap:10px 12px;
-  align-items:end;
+  align-items:start;
+}
+
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker > label,
+#modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker > .sb-field{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  min-width:0;
+  margin:0;
 }
 
 #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker .label{
-  margin-bottom:5px;
+  display:block;
+  margin:0 0 5px;
+  min-height:15px;
+  line-height:15px;
 }
 
 #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker input:not([type="checkbox"]):not([type="radio"]):not(.sb-date),
