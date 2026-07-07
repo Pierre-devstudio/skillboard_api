@@ -185,18 +185,29 @@
               </div>
             </div>
             <div class="studio-rh-form-grid studio-rh-form-grid--filters">
-              <label>
-                <span class="label">Recherche</span>
-                <input id="planIndispoSearch" type="search" placeholder="Nom, prénom, email...">
-              </label>
+              <div class="sb-field studio-rh-filter-search">
+                <div class="label">Recherche</div>
+                <div class="studio-rh-search-field">
+                  <span class="studio-rh-search-field__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  </span>
+                  <input id="planIndispoSearch" type="search" placeholder="Nom, prénom, mail..." autocomplete="off">
+                </div>
+              </div>
               <label>
                 <span class="label">Service</span>
                 <select id="planIndispoService"><option value="">Tous les services</option></select>
               </label>
-              <label>
-                <span class="label">Poste</span>
-                <input id="planIndispoPosteSearch" type="search" placeholder="Filtrer par poste">
-              </label>
+              <div class="sb-field studio-rh-filter-search">
+                <div class="label">Poste</div>
+                <div class="studio-rh-search-field">
+                  <span class="studio-rh-search-field__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  </span>
+                  <input id="planIndispoPosteSearch" type="search" placeholder="Rechercher un poste..." list="planIndispoPosteList" autocomplete="off">
+                  <datalist id="planIndispoPosteList"></datalist>
+                </div>
+              </div>
               <label>
                 <span class="label">Collaborateur</span>
                 <select id="planIndispoCollab" required></select>

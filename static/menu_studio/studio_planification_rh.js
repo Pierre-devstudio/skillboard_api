@@ -132,6 +132,29 @@
     return collabs().filter(c => collabMatches(c, searchId, serviceId, posteSearchId));
   }
 
+  function updateIndispoPosteSuggestions(){
+    const list = byId("planIndispoPosteList");
+    if (!list) return;
+    const q = lower(byId("planIndispoPosteSearch")?.value);
+    const service = clean(byId("planIndispoService")?.value);
+    const seen = new Set();
+    const rows = collabs()
+      .filter(c => {
+        const poste = clean(c.intitule_poste);
+        if (!poste) return false;
+        if (service && clean(c.id_service) !== service) return false;
+        if (q && !lower(poste).includes(q)) return false;
+        const key = lower(poste);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map(c => clean(c.intitule_poste))
+      .sort((a, b) => a.localeCompare(b, "fr", { sensitivity:"base" }))
+      .slice(0, 30);
+    list.innerHTML = rows.map(p => `<option value="${esc(p)}"></option>`).join("");
+  }
+
   function applyBootstrap(){
     const data = _bootstrap || {};
     const refsServices = services();
@@ -186,6 +209,7 @@
   }
 
   function updateIndispoCollabOptions(){
+    updateIndispoPosteSuggestions();
     fillSelect("planIndispoCollab", filteredCollabs("planIndispoSearch", "planIndispoService", "planIndispoPosteSearch"), "id_effectif", collabLabel, "Choisir un collaborateur", true);
   }
 
@@ -694,6 +718,7 @@
       const eventName = el.tagName === "SELECT" ? "change" : "input";
       el.addEventListener(eventName, updateIndispoCollabOptions);
     });
+    byId("planIndispoPosteSearch")?.addEventListener("focus", updateIndispoPosteSuggestions);
     ["planCompSearch", "planCompService", "planCompPosteSearch"].forEach(id => {
       const el = byId(id);
       if (!el) return;

@@ -7798,6 +7798,67 @@
   grid-template-columns:1.15fr .82fr .92fr 1.15fr;
 }
 
+.studio-rh-form input:not([type="checkbox"]):not([type="radio"]):not(.sb-date),
+.studio-rh-form select,
+.studio-rh-form textarea{
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  min-height:38px;
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  background:#fff;
+  color:#0f172a;
+  font:inherit;
+  font-size:13px;
+  outline:none;
+  box-shadow:none;
+}
+
+.studio-rh-form input:not([type="checkbox"]):not([type="radio"]):not(.sb-date),
+.studio-rh-form select{
+  padding:8px 11px;
+}
+
+.studio-rh-form textarea{
+  padding:10px 11px;
+}
+
+.studio-rh-form input:not([type="checkbox"]):not([type="radio"]):not(.sb-date):focus,
+.studio-rh-form select:focus,
+.studio-rh-form textarea:focus{
+  border-color:#94a3b8;
+  box-shadow:0 0 0 3px rgba(15,23,42,.06);
+}
+
+.studio-rh-filter-search{
+  min-width:0;
+}
+
+.studio-rh-search-field{
+  position:relative;
+}
+
+.studio-rh-search-field input{
+  padding-left:34px !important;
+}
+
+.studio-rh-search-field__icon{
+  position:absolute;
+  left:11px;
+  top:50%;
+  transform:translateY(-50%);
+  width:15px;
+  height:15px;
+  color:#94a3b8;
+  pointer-events:none;
+}
+
+.studio-rh-search-field__icon svg{
+  width:15px !important;
+  height:15px !important;
+}
+
 .studio-rh-form .sb-date,
 .studio-rh-form input[type="date"].sb-date,
 .studio-rh-form input[type="datetime-local"].sb-date{
@@ -7852,11 +7913,13 @@
 }
 
 .studio-rh-lines-row--head{
-  min-height:38px;
+  min-height:30px;
+  padding:7px 12px;
   background:#f8fafc;
   color:#111827;
   font-size:12px;
   font-weight:750;
+  line-height:1.2;
   text-align:center;
 }
 
