@@ -6,6 +6,10 @@
   let _currentType = "indisponibilite";
   let _page = 1;
   let _pageSize = 25;
+  let _indispoLineSeq = 0;
+  const _campaignIncluded = new Set();
+  const _campaignExcluded = new Set();
+  const _competencesSelected = new Set();
 
   function root(){ return document.querySelector('#view-planification_rh[data-view="planification_rh"]'); }
   function byId(id){ return document.getElementById(id); }
@@ -19,6 +23,7 @@
   }
   function clean(v){ return String(v ?? "").trim(); }
   function asArray(v){ return Array.isArray(v) ? v : []; }
+  function lower(v){ return clean(v).toLowerCase(); }
 
   function getOwnerId(){
     const portalId = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
@@ -39,12 +44,6 @@
     return url.toString();
   }
 
-  function selectedValues(selectId){
-    const el = byId(selectId);
-    if (!el) return [];
-    return Array.from(el.selectedOptions || []).map(o => clean(o.value)).filter(Boolean);
-  }
-
   function setMsg(id, msg, type){
     const el = byId(id);
     if (!el) return;
@@ -62,15 +61,22 @@
     return `<option value="${esc(value)}"${selected ? " selected" : ""}>${esc(label)}</option>`;
   }
 
+  function collabs(){ return asArray((_bootstrap || {}).collaborateurs); }
+  function services(){ return asArray((_bootstrap || {}).services); }
+  function managers(){ return asArray((_bootstrap || {}).managers); }
+  function competences(){ return asArray((_bootstrap || {}).competences); }
   function collabLabel(c){ return clean(c.label) || `${clean(c.prenom_effectif)} ${clean(c.nom_effectif)}`.trim() || clean(c.id_effectif); }
   function serviceLabel(s){ return clean(s.nom_service) || clean(s.id_service); }
   function competenceLabel(c){ return clean(c.intitule) || clean(c.id_comp); }
 
-  function fillSelect(id, rows, valueKey, labelFn, placeholder){
+  function fillSelect(id, rows, valueKey, labelFn, placeholder, keepValue){
     const el = byId(id);
     if (!el) return;
-    const first = placeholder !== null ? option(placeholder || "Sélectionner", "", false) : "";
-    el.innerHTML = first + asArray(rows).map(r => option(labelFn(r), r[valueKey], false)).join("");
+    const current = keepValue ? clean(el.value) : "";
+    const first = placeholder !== null ? option(placeholder || "Sélectionner", "", !current) : "";
+    const opts = asArray(rows).map(r => option(labelFn(r), r[valueKey], current && clean(r[valueKey]) === current)).join("");
+    el.innerHTML = first + opts;
+    if (current && Array.from(el.options || []).some(o => o.value === current)) el.value = current;
   }
 
   function statutLabel(value){
@@ -110,16 +116,31 @@
     return d.toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit", year:"numeric" });
   }
 
+  function collabMatches(c, searchId, serviceId, posteSearchId){
+    const q = lower(byId(searchId)?.value);
+    const service = clean(byId(serviceId)?.value);
+    const poste = lower(byId(posteSearchId)?.value);
+    const hay = [collabLabel(c), c.email_effectif, c.nom_service].map(lower).join(" ");
+    const posteHay = lower(c.intitule_poste);
+    if (q && !hay.includes(q)) return false;
+    if (service && clean(c.id_service) !== service) return false;
+    if (poste && !posteHay.includes(poste)) return false;
+    return true;
+  }
+
+  function filteredCollabs(searchId, serviceId, posteSearchId){
+    return collabs().filter(c => collabMatches(c, searchId, serviceId, posteSearchId));
+  }
+
   function applyBootstrap(){
     const data = _bootstrap || {};
-    const services = asArray(data.services);
-    const collaborateurs = asArray(data.collaborateurs);
-    const managers = asArray(data.managers);
-    const competences = asArray(data.competences);
+    const refsServices = services();
+    const refsCollabs = collabs();
+    const refsManagers = managers();
 
     fillSelect("planRhFilterType", asArray(data.types_evenements || []), "id", x => x.label, "Tous les types");
-    fillSelect("planRhFilterService", services, "id_service", serviceLabel, "Tous les services");
-    fillSelect("planRhFilterCollab", collaborateurs, "id_effectif", collabLabel, "Tous les collaborateurs");
+    fillSelect("planRhFilterService", refsServices, "id_service", serviceLabel, "Tous les services");
+    fillSelect("planRhFilterCollab", refsCollabs, "id_effectif", collabLabel, "Tous les collaborateurs");
     fillSelect("planRhFilterStatut", [
       { id:"a_planifier", label:"À planifier" },
       { id:"planifie", label:"Planifié" },
@@ -128,14 +149,16 @@
       { id:"archive", label:"Archivé" }
     ], "id", x => x.label, "Tous les statuts");
 
-    fillSelect("planIndispoCollab", collaborateurs, "id_effectif", collabLabel, "Choisir un collaborateur");
-    fillSelect("planCampagneService", services, "id_service", serviceLabel, "Choisir un service");
-    fillSelect("planCampagneManager", managers.length ? managers : collaborateurs, "id_effectif", collabLabel, "Non renseigné");
-    fillSelect("planCampagneIncluded", collaborateurs, "id_effectif", collabLabel, null);
-    fillSelect("planCampagneExcluded", collaborateurs, "id_effectif", collabLabel, null);
-    fillSelect("planCompCollab", collaborateurs, "id_effectif", collabLabel, "Choisir un collaborateur");
-    fillSelect("planCompManager", managers.length ? managers : collaborateurs, "id_effectif", collabLabel, "Non renseigné");
-    fillSelect("planCompCompetence", competences, "id_comp", competenceLabel, "Non précisée");
+    fillSelect("planIndispoService", refsServices, "id_service", serviceLabel, "Tous les services", true);
+    fillSelect("planCampagneService", refsServices, "id_service", serviceLabel, "Choisir un service", true);
+    fillSelect("planCompService", refsServices, "id_service", serviceLabel, "Tous les services", true);
+    fillSelect("planCompManager", refsManagers.length ? refsManagers : refsCollabs, "id_effectif", collabLabel, "Non renseigné", true);
+
+    updateIndispoCollabOptions();
+    updateCampagneScope();
+    updateCompetenceCollabOptions();
+    renderCompetenceChoices();
+    updateCompetenceManagerOptions();
 
     const k = data.kpis || {};
     const set = (id, value) => { const el = byId(id); if (el) el.textContent = Number(value || 0).toString(); };
@@ -149,11 +172,153 @@
     }
   }
 
-  function toggleCampagneScope(){
+  function serviceAncestors(idService){
+    const ids = new Set();
+    const byIdService = new Map(services().map(s => [clean(s.id_service), s]));
+    let current = clean(idService);
+    let guard = 0;
+    while (current && !ids.has(current) && guard < 25) {
+      ids.add(current);
+      current = clean((byIdService.get(current) || {}).id_service_parent);
+      guard += 1;
+    }
+    return ids;
+  }
+
+  function updateIndispoCollabOptions(){
+    fillSelect("planIndispoCollab", filteredCollabs("planIndispoSearch", "planIndispoService", "planIndispoPosteSearch"), "id_effectif", collabLabel, "Choisir un collaborateur", true);
+  }
+
+  function getCampaignPerimeterCollabs(){
+    const p = clean(byId("planCampagnePerimetre")?.value) || "entreprise";
+    if (p === "service") {
+      const sid = clean(byId("planCampagneService")?.value);
+      return sid ? collabs().filter(c => clean(c.id_service) === sid) : [];
+    }
+    if (p === "selection") {
+      const ids = new Set(Array.from(_campaignIncluded));
+      return collabs().filter(c => ids.has(clean(c.id_effectif)));
+    }
+    return collabs();
+  }
+
+  function campaignManagerRows(){
+    const refsManagers = managers();
+    if (!refsManagers.length) return [];
+    const p = clean(byId("planCampagnePerimetre")?.value) || "entreprise";
+    if (p === "entreprise") return refsManagers;
+
+    const serviceIds = new Set();
+    if (p === "service") {
+      serviceAncestors(byId("planCampagneService")?.value).forEach(x => serviceIds.add(x));
+    } else {
+      getCampaignPerimeterCollabs().forEach(c => serviceAncestors(c.id_service).forEach(x => serviceIds.add(x)));
+    }
+    const rows = refsManagers.filter(m => serviceIds.has(clean(m.id_service)));
+    return rows.length ? rows : refsManagers;
+  }
+
+  function updateCampaignManagerOptions(){
+    fillSelect("planCampagneManager", campaignManagerRows(), "id_effectif", collabLabel, "Non renseigné", true);
+  }
+
+  function checkboxItemHtml(kind, id, label, meta, checked){
+    return `
+      <label class="studio-rh-check-item">
+        <input type="checkbox" data-plan-check="${esc(kind)}" data-id="${esc(id)}"${checked ? " checked" : ""}>
+        <span>
+          <strong>${esc(label)}</strong>
+          <small>${esc(meta || "")}</small>
+        </span>
+      </label>`;
+  }
+
+  function renderCollabCheckboxList(targetId, kind, rows, selectedSet, emptyText){
+    const box = byId(targetId);
+    if (!box) return;
+    if (!rows.length) {
+      box.innerHTML = `<div class="studio-rh-check-empty">${esc(emptyText || "Aucun collaborateur trouvé.")}</div>`;
+      return;
+    }
+    box.innerHTML = rows.map(c => checkboxItemHtml(
+      kind,
+      clean(c.id_effectif),
+      collabLabel(c),
+      [clean(c.nom_service), clean(c.intitule_poste)].filter(Boolean).join(" · "),
+      selectedSet.has(clean(c.id_effectif))
+    )).join("");
+  }
+
+  function updateCampaignLists(){
+    const p = clean(byId("planCampagnePerimetre")?.value) || "entreprise";
+    const scopeRows = getCampaignPerimeterCollabs();
+    const validScopeIds = new Set(scopeRows.map(c => clean(c.id_effectif)));
+    Array.from(_campaignExcluded).forEach(id => { if (!validScopeIds.has(id)) _campaignExcluded.delete(id); });
+
+    const includedSearch = lower(byId("planCampagneIncludedSearch")?.value);
+    const excludedSearch = lower(byId("planCampagneExcludedSearch")?.value);
+    const includedRows = collabs().filter(c => !includedSearch || [collabLabel(c), c.email_effectif, c.nom_service, c.intitule_poste].map(lower).join(" ").includes(includedSearch));
+    const excludedRows = scopeRows.filter(c => !excludedSearch || [collabLabel(c), c.email_effectif, c.nom_service, c.intitule_poste].map(lower).join(" ").includes(excludedSearch));
+
+    renderCollabCheckboxList("planCampagneIncludedList", "campagne-included", includedRows, _campaignIncluded, "Aucun collaborateur disponible.");
+    renderCollabCheckboxList("planCampagneExcludedList", "campagne-excluded", excludedRows, _campaignExcluded, "Aucun collaborateur dans ce périmètre.");
+
+    const incCount = byId("planCampagneIncludedCount");
+    const excCount = byId("planCampagneExcludedCount");
+    if (incCount) incCount.textContent = `${_campaignIncluded.size} sélectionné${_campaignIncluded.size > 1 ? "s" : ""}`;
+    if (excCount) excCount.textContent = `${_campaignExcluded.size} exclu${_campaignExcluded.size > 1 ? "s" : ""}`;
+
+    const excludedDetails = byId("planCampagneExcludedDetails");
+    if (excludedDetails) excludedDetails.style.display = p === "selection" ? "none" : "";
+    updateCampaignManagerOptions();
+  }
+
+  function updateCampagneScope(){
     const p = clean(byId("planCampagnePerimetre")?.value) || "entreprise";
     document.querySelectorAll("[data-campagne-scope]").forEach(el => {
       el.style.display = el.dataset.campagneScope === p ? "" : "none";
     });
+    if (p !== "selection") _campaignIncluded.clear();
+    if (p === "selection") _campaignExcluded.clear();
+    updateCampaignLists();
+  }
+
+  function updateCompetenceCollabOptions(){
+    fillSelect("planCompCollab", filteredCollabs("planCompSearch", "planCompService", "planCompPosteSearch"), "id_effectif", collabLabel, "Choisir un collaborateur", true);
+    updateCompetenceManagerOptions();
+  }
+
+  function updateCompetenceManagerOptions(){
+    const selected = clean(byId("planCompCollab")?.value);
+    const eff = collabs().find(c => clean(c.id_effectif) === selected);
+    const refsManagers = managers();
+    if (!eff || !refsManagers.length) {
+      fillSelect("planCompManager", refsManagers, "id_effectif", collabLabel, "Non renseigné", true);
+      return;
+    }
+    const ids = serviceAncestors(eff.id_service);
+    const rows = refsManagers.filter(m => ids.has(clean(m.id_service)));
+    fillSelect("planCompManager", rows.length ? rows : refsManagers, "id_effectif", collabLabel, "Non renseigné", true);
+  }
+
+  function renderCompetenceChoices(){
+    const box = byId("planCompCompetenceList");
+    if (!box) return;
+    const q = lower(byId("planCompCompetenceSearch")?.value);
+    const rows = competences().filter(c => !q || [c.intitule, c.domaine].map(lower).join(" ").includes(q));
+    if (!rows.length) {
+      box.innerHTML = '<div class="studio-rh-check-empty">Aucune compétence trouvée.</div>';
+    } else {
+      box.innerHTML = rows.map(c => checkboxItemHtml(
+        "competence",
+        clean(c.id_comp),
+        competenceLabel(c),
+        clean(c.domaine) || "Domaine non renseigné",
+        _competencesSelected.has(clean(c.id_comp))
+      )).join("");
+    }
+    const count = byId("planCompCompetenceCount");
+    if (count) count.textContent = `${_competencesSelected.size} sélectionnée${_competencesSelected.size > 1 ? "s" : ""}`;
   }
 
   async function loadBootstrap(){
@@ -317,21 +482,94 @@
     await loadItems();
   }
 
+  function modalIconSvg(type){
+    if (type === "campagne") return '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+    if (type === "competence") return '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>';
+    return '<svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>';
+  }
+
   function setCurrentType(type){
     _currentType = type || "indisponibilite";
-    document.querySelectorAll("[data-plan-tab]").forEach(btn => btn.classList.toggle("is-active", btn.dataset.planTab === _currentType));
-    document.querySelectorAll("[data-plan-form]").forEach(pane => pane.style.display = pane.dataset.planForm === _currentType ? "" : "none");
+    document.querySelectorAll("[data-plan-form]").forEach(pane => {
+      const active = pane.dataset.planForm === _currentType;
+      pane.style.display = active ? "" : "none";
+      pane.querySelectorAll("input, select, textarea, button").forEach(ctrl => { ctrl.disabled = !active; });
+    });
     const title = byId("planRhModalTitle");
     const sub = byId("planRhModalSub");
-    if (title) title.textContent = _currentType === "campagne" ? "Créer une campagne d’entretiens" : _currentType === "competence" ? "Créer un entretien / une évaluation" : "Créer une indisponibilité";
-    if (sub) sub.textContent = _currentType === "campagne" ? "Génère des briques d’entretiens annuels à planifier." : _currentType === "competence" ? "Prépare un entretien ou une évaluation compétence, datée ou non." : "Crée une période d’indisponibilité collaborateur.";
-    toggleCampagneScope();
+    const icon = byId("planRhModalIcon");
+    if (title) title.textContent = _currentType === "campagne" ? "Créer une campagne d’entretiens" : _currentType === "competence" ? "Créer une évaluation compétence" : "Créer une indisponibilité";
+    if (sub) sub.textContent = _currentType === "campagne" ? "Préparez une campagne annuelle et générez les entretiens à planifier." : _currentType === "competence" ? "Préparez une ou plusieurs évaluations compétence pour un collaborateur." : "Ajoutez une ou plusieurs périodes d’indisponibilité pour un collaborateur.";
+    if (icon) {
+      icon.className = `studio-rh-modal-title-icon studio-rh-modal-title-icon--${_currentType}`;
+      icon.innerHTML = modalIconSvg(_currentType);
+    }
+    updateCampagneScope();
+    updateIndispoLinesCount();
+  }
+
+  function addIndispoLine(startValue, endValue){
+    const box = byId("planIndispoLines");
+    if (!box) return;
+    _indispoLineSeq += 1;
+    const id = _indispoLineSeq;
+    const row = document.createElement("div");
+    row.className = "studio-rh-lines-row studio-rh-indispo-line";
+    row.dataset.line = String(id);
+    row.innerHTML = `
+      <label>
+        <span class="sr-only">Date début</span>
+        <input type="date" class="sb-date" data-indispo-start required value="${esc(startValue || "")}">
+      </label>
+      <label>
+        <span class="sr-only">Date fin</span>
+        <input type="date" class="sb-date" data-indispo-end required value="${esc(endValue || "")}">
+      </label>
+      <button type="button" class="sb-icon-btn studio-rh-line-delete" data-indispo-remove="${esc(id)}" title="Supprimer la ligne" aria-label="Supprimer la ligne">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>`;
+    box.appendChild(row);
+    updateIndispoLinesCount();
+  }
+
+  function ensureIndispoLine(){
+    if (!byId("planIndispoLines")?.querySelector(".studio-rh-indispo-line")) addIndispoLine();
+  }
+
+  function updateIndispoLinesCount(){
+    const count = byId("planIndispoLines")?.querySelectorAll(".studio-rh-indispo-line").length || 0;
+    const el = byId("planIndispoLinesCount");
+    if (el) el.textContent = `${count} ligne${count > 1 ? "s" : ""} saisie${count > 1 ? "s" : ""}`;
+  }
+
+  function removeIndispoLine(lineId){
+    const rows = byId("planIndispoLines")?.querySelectorAll(".studio-rh-indispo-line") || [];
+    if (rows.length <= 1) {
+      setMsg("planRhModalMsg", "Conserve au moins une période d’indisponibilité.", "warn");
+      return;
+    }
+    byId("planIndispoLines")?.querySelector(`[data-line="${String(lineId).replace(/"/g, "")}"]`)?.remove();
+    updateIndispoLinesCount();
+  }
+
+  function resetModalState(){
+    const form = byId("planRhForm");
+    if (form) form.reset();
+    _campaignIncluded.clear();
+    _campaignExcluded.clear();
+    _competencesSelected.clear();
+    const lines = byId("planIndispoLines");
+    if (lines) lines.innerHTML = "";
+    _indispoLineSeq = 0;
+    addIndispoLine();
+    applyBootstrap();
   }
 
   function openModal(type){
     const modal = byId("modalPlanRhEvent");
     if (!modal) return;
     setMsg("planRhModalMsg", "");
+    resetModalState();
     setCurrentType(type || _currentType);
     modal.style.display = "flex";
   }
@@ -341,61 +579,85 @@
     if (modal) modal.style.display = "none";
   }
 
-  function payloadIndispo(){
-    return {
-      id_effectif: clean(byId("planIndispoCollab")?.value),
-      type_indisponibilite: clean(byId("planIndispoType")?.value),
-      date_debut: clean(byId("planIndispoStart")?.value),
-      date_fin: clean(byId("planIndispoEnd")?.value),
-      statut: clean(byId("planIndispoStatut")?.value) || "prevue",
-      commentaire: clean(byId("planIndispoComment")?.value)
-    };
+  function getIndispoPayloads(){
+    const idEffectif = clean(byId("planIndispoCollab")?.value);
+    const typeIndispo = clean(byId("planIndispoType")?.value);
+    const commentaire = clean(byId("planIndispoComment")?.value);
+    const rows = Array.from(byId("planIndispoLines")?.querySelectorAll(".studio-rh-indispo-line") || []);
+    if (!idEffectif) throw new Error("Sélectionne un collaborateur.");
+    if (!typeIndispo) throw new Error("Renseigne le type d’indisponibilité.");
+    if (!rows.length) throw new Error("Ajoute au moins une période d’indisponibilité.");
+    return rows.map(row => {
+      const dateDebut = clean(row.querySelector("[data-indispo-start]")?.value);
+      const dateFin = clean(row.querySelector("[data-indispo-end]")?.value);
+      if (!dateDebut || !dateFin) throw new Error("Chaque ligne d’indisponibilité doit avoir une date début et une date fin.");
+      return {
+        id_effectif: idEffectif,
+        type_indisponibilite: typeIndispo,
+        date_debut: dateDebut,
+        date_fin: dateFin,
+        commentaire: commentaire,
+        statut: "prevue"
+      };
+    });
   }
 
   function payloadCampagne(){
+    const perimetre = clean(byId("planCampagnePerimetre")?.value) || "entreprise";
     return {
       nom_campagne: clean(byId("planCampagneNom")?.value),
       periode_debut: clean(byId("planCampagneStart")?.value),
       periode_fin: clean(byId("planCampagneEnd")?.value),
-      perimetre: clean(byId("planCampagnePerimetre")?.value) || "entreprise",
+      perimetre: perimetre,
       id_service: clean(byId("planCampagneService")?.value),
-      collaborateurs_inclus: selectedValues("planCampagneIncluded"),
-      collaborateurs_exclus: selectedValues("planCampagneExcluded"),
+      collaborateurs_inclus: perimetre === "selection" ? Array.from(_campaignIncluded) : [],
+      collaborateurs_exclus: perimetre === "selection" ? [] : Array.from(_campaignExcluded),
       id_manager: clean(byId("planCampagneManager")?.value),
-      statut: clean(byId("planCampagneStatut")?.value) || "a_planifier",
+      statut: "a_planifier",
       commentaire: clean(byId("planCampagneComment")?.value)
     };
   }
 
-  function payloadCompetence(){
-    return {
-      id_effectif: clean(byId("planCompCollab")?.value),
-      type_entretien: clean(byId("planCompType")?.value) || "entretien_competence",
-      id_competence: clean(byId("planCompCompetence")?.value),
+  function getCompetencePayloads(){
+    const idEffectif = clean(byId("planCompCollab")?.value);
+    const idsCompetences = Array.from(_competencesSelected);
+    if (!idEffectif) throw new Error("Sélectionne un collaborateur.");
+    if (!idsCompetences.length) throw new Error("Sélectionne au moins une compétence à évaluer.");
+    return idsCompetences.map(idCompetence => ({
+      id_effectif: idEffectif,
+      type_entretien: "evaluation_competence",
+      id_competence: idCompetence,
       date_cible: clean(byId("planCompDate")?.value),
       id_manager: clean(byId("planCompManager")?.value),
       statut: clean(byId("planCompStatut")?.value) || "a_planifier",
       commentaire: clean(byId("planCompComment")?.value)
-    };
+    }));
+  }
+
+  async function postPayloads(url, payloads){
+    for (const payload of payloads) {
+      await window.portal.apiJson(scopedUrl(url), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    }
   }
 
   async function submitForm(ev){
     ev.preventDefault();
     const ownerId = getOwnerId();
     if (!ownerId) return;
-    const map = {
-      indisponibilite: { url: `/studio/planification/indisponibilites/${encodeURIComponent(ownerId)}`, payload: payloadIndispo() },
-      campagne: { url: `/studio/planification/campagnes/${encodeURIComponent(ownerId)}`, payload: payloadCampagne() },
-      competence: { url: `/studio/planification/competence/${encodeURIComponent(ownerId)}`, payload: payloadCompetence() }
-    };
-    const cfg = map[_currentType] || map.indisponibilite;
+    const baseOwner = encodeURIComponent(ownerId);
     try {
       byId("planRhModalSave")?.setAttribute("disabled", "disabled");
-      await window.portal.apiJson(scopedUrl(cfg.url), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cfg.payload)
-      });
+      if (_currentType === "indisponibilite") {
+        await postPayloads(`/studio/planification/indisponibilites/${baseOwner}`, getIndispoPayloads());
+      } else if (_currentType === "campagne") {
+        await postPayloads(`/studio/planification/campagnes/${baseOwner}`, [payloadCampagne()]);
+      } else {
+        await postPayloads(`/studio/planification/competence/${baseOwner}`, getCompetencePayloads());
+      }
       closeModal();
       setMsg("planRhMsg", "Événement RH créé.", "ok");
       await loadBootstrap();
@@ -421,23 +683,66 @@
     byId("planRhModalClose")?.addEventListener("click", closeModal);
     byId("planRhModalCancel")?.addEventListener("click", closeModal);
     byId("planRhForm")?.addEventListener("submit", submitForm);
-    byId("planCampagnePerimetre")?.addEventListener("change", toggleCampagneScope);
+    byId("planCampagnePerimetre")?.addEventListener("change", updateCampagneScope);
+    byId("planCampagneService")?.addEventListener("change", updateCampaignLists);
+    byId("planCompCollab")?.addEventListener("change", updateCompetenceManagerOptions);
+    byId("planIndispoAddLine")?.addEventListener("click", () => addIndispoLine());
+
+    ["planIndispoSearch", "planIndispoService", "planIndispoPosteSearch"].forEach(id => {
+      const el = byId(id);
+      if (!el) return;
+      const eventName = el.tagName === "SELECT" ? "change" : "input";
+      el.addEventListener(eventName, updateIndispoCollabOptions);
+    });
+    ["planCompSearch", "planCompService", "planCompPosteSearch"].forEach(id => {
+      const el = byId(id);
+      if (!el) return;
+      const eventName = el.tagName === "SELECT" ? "change" : "input";
+      el.addEventListener(eventName, updateCompetenceCollabOptions);
+    });
+    ["planCampagneIncludedSearch", "planCampagneExcludedSearch"].forEach(id => byId(id)?.addEventListener("input", updateCampaignLists));
+    byId("planCompCompetenceSearch")?.addEventListener("input", renderCompetenceChoices);
 
     document.querySelectorAll("[data-plan-type]").forEach(btn => btn.addEventListener("click", () => openModal(btn.dataset.planType)));
-    document.querySelectorAll("[data-plan-tab]").forEach(btn => btn.addEventListener("click", () => setCurrentType(btn.dataset.planTab)));
     ["planRhFilterType", "planRhFilterService", "planRhFilterCollab", "planRhFilterStatut"].forEach(id => byId(id)?.addEventListener("change", async () => {
       _page = 1;
       await loadItems();
     }));
     document.addEventListener("change", (ev) => {
       const pageSizeSelect = ev.target.closest?.("[data-plan-page-size]");
-      if (!pageSizeSelect) return;
-      const nextSize = parseInt(pageSizeSelect.value, 10);
-      _pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 25;
-      _page = 1;
-      renderItems();
+      if (pageSizeSelect) {
+        const nextSize = parseInt(pageSizeSelect.value, 10);
+        _pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 25;
+        _page = 1;
+        renderItems();
+        return;
+      }
+
+      const check = ev.target.closest?.("[data-plan-check]");
+      if (!check) return;
+      const id = clean(check.dataset.id);
+      if (!id) return;
+      if (check.dataset.planCheck === "campagne-included") {
+        if (check.checked) _campaignIncluded.add(id);
+        else _campaignIncluded.delete(id);
+        updateCampaignLists();
+      } else if (check.dataset.planCheck === "campagne-excluded") {
+        if (check.checked) _campaignExcluded.add(id);
+        else _campaignExcluded.delete(id);
+        updateCampaignLists();
+      } else if (check.dataset.planCheck === "competence") {
+        if (check.checked) _competencesSelected.add(id);
+        else _competencesSelected.delete(id);
+        renderCompetenceChoices();
+      }
     });
     document.addEventListener("click", (ev) => {
+      const removeLine = ev.target.closest?.("[data-indispo-remove]");
+      if (removeLine) {
+        removeIndispoLine(removeLine.getAttribute("data-indispo-remove"));
+        return;
+      }
+
       const planBtn = ev.target.closest?.("[data-plan-open-calendar]");
       if (planBtn) {
         window.portal.switchView("calendrier_rh");
@@ -464,6 +769,8 @@
   async function initStudioPlanificationRh(){
     if (!root()) return;
     bind();
+    ensureIndispoLine();
+    setCurrentType(_currentType);
     if (_loaded) return;
     _loaded = true;
     try {

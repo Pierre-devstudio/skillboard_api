@@ -161,50 +161,74 @@
 <div class="sb-modal studio-rh-modal" id="modalPlanRhEvent" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="planRhModalTitle">
   <div class="sb-modal-card studio-rh-modal-card">
     <div class="sb-modal-head">
-      <div>
-        <h2 id="planRhModalTitle" class="card-title">Créer un événement RH</h2>
-        <p class="card-sub" id="planRhModalSub">Sélectionnez le type d’événement.</p>
+      <div class="studio-rh-modal-titleline">
+        <span id="planRhModalIcon" class="studio-rh-modal-title-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+        </span>
+        <div>
+          <h2 id="planRhModalTitle" class="card-title">Créer un événement RH</h2>
+          <p class="card-sub" id="planRhModalSub">Préparez l’événement RH à inscrire dans la liste de travail.</p>
+        </div>
       </div>
       <button type="button" class="sb-modal-x" id="planRhModalClose" aria-label="Fermer">×</button>
     </div>
     <div class="sb-modal-body">
       <div id="planRhModalMsg" class="studio-rh-inline-msg" style="display:none;"></div>
 
-      <div class="studio-rh-type-tabs" role="tablist" aria-label="Type d'événement RH">
-        <button type="button" class="studio-rh-type-tab" data-plan-tab="indisponibilite">Indisponibilité</button>
-        <button type="button" class="studio-rh-type-tab" data-plan-tab="campagne">Campagne annuelle</button>
-        <button type="button" class="studio-rh-type-tab" data-plan-tab="competence">Entretien / évaluation</button>
-      </div>
-
       <form id="planRhForm" class="studio-rh-form">
         <div class="studio-rh-form-pane" data-plan-form="indisponibilite">
+          <div class="studio-rh-modal-block">
+            <div class="studio-rh-block-head">
+              <div>
+                <strong>Collaborateur concerné</strong>
+                <small>Filtrez la liste avant de sélectionner le collaborateur.</small>
+              </div>
+            </div>
+            <div class="studio-rh-form-grid studio-rh-form-grid--filters">
+              <label>
+                <span class="label">Recherche</span>
+                <input id="planIndispoSearch" type="search" placeholder="Nom, prénom, email...">
+              </label>
+              <label>
+                <span class="label">Service</span>
+                <select id="planIndispoService"><option value="">Tous les services</option></select>
+              </label>
+              <label>
+                <span class="label">Poste</span>
+                <input id="planIndispoPosteSearch" type="search" placeholder="Filtrer par poste">
+              </label>
+              <label>
+                <span class="label">Collaborateur</span>
+                <select id="planIndispoCollab" required></select>
+              </label>
+            </div>
+          </div>
+
           <div class="studio-rh-form-grid">
-            <label>
-              <span class="label">Collaborateur</span>
-              <select id="planIndispoCollab" required></select>
-            </label>
-            <label>
+            <label class="studio-rh-field-wide">
               <span class="label">Type d’indisponibilité</span>
               <input id="planIndispoType" type="text" placeholder="Ex : absence longue, congé, disponibilité réduite" required>
             </label>
-            <label>
-              <span class="label">Date début</span>
-              <input id="planIndispoStart" type="datetime-local" required>
-            </label>
-            <label>
-              <span class="label">Date fin</span>
-              <input id="planIndispoEnd" type="datetime-local" required>
-            </label>
-            <label>
-              <span class="label">Statut</span>
-              <select id="planIndispoStatut">
-                <option value="prevue">Prévue</option>
-                <option value="en_cours">En cours</option>
-                <option value="terminee">Terminée</option>
-                <option value="annule">Annulée</option>
-                <option value="archive">Archivée</option>
-              </select>
-            </label>
+            <div class="studio-rh-field-wide studio-rh-lines-card">
+              <div class="studio-rh-lines-head">
+                <div>
+                  <strong>Périodes d’indisponibilité</strong>
+                  <small id="planIndispoLinesCount">1 ligne saisie</small>
+                </div>
+                <button type="button" class="sb-btn sb-btn--secondary" id="planIndispoAddLine">
+                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+                  <span class="sb-btn-label">Ajouter une ligne</span>
+                </button>
+              </div>
+              <div class="studio-rh-lines-table">
+                <div class="studio-rh-lines-row studio-rh-lines-row--head">
+                  <span>Date début</span>
+                  <span>Date fin</span>
+                  <span>Suppr.</span>
+                </div>
+                <div id="planIndispoLines"></div>
+              </div>
+            </div>
             <label class="studio-rh-field-wide">
               <span class="label">Commentaire</span>
               <textarea id="planIndispoComment" class="sb-textarea--md" placeholder="Commentaire interne"></textarea>
@@ -228,11 +252,11 @@
             </label>
             <label>
               <span class="label">Date début cible</span>
-              <input id="planCampagneStart" type="date" required>
+              <input id="planCampagneStart" type="date" class="sb-date" required>
             </label>
             <label>
               <span class="label">Date fin cible</span>
-              <input id="planCampagneEnd" type="date" required>
+              <input id="planCampagneEnd" type="date" class="sb-date" required>
             </label>
             <label data-campagne-scope="service">
               <span class="label">Service</span>
@@ -242,24 +266,31 @@
               <span class="label">Responsable / manager</span>
               <select id="planCampagneManager"><option value="">Non renseigné</option></select>
             </label>
-            <label>
-              <span class="label">Statut</span>
-              <select id="planCampagneStatut">
-                <option value="brouillon">Brouillon</option>
-                <option value="a_planifier" selected>À planifier</option>
-                <option value="planifie">Planifiée</option>
-                <option value="cloturee">Clôturée</option>
-                <option value="archive">Archivée</option>
-              </select>
-            </label>
-            <label class="studio-rh-field-wide" data-campagne-scope="selection">
-              <span class="label">Collaborateurs inclus</span>
-              <select id="planCampagneIncluded" multiple size="6"></select>
-            </label>
-            <label class="studio-rh-field-wide">
-              <span class="label">Collaborateurs exclus</span>
-              <select id="planCampagneExcluded" multiple size="5"></select>
-            </label>
+
+            <div class="studio-rh-field-wide studio-rh-check-panel" data-campagne-scope="selection">
+              <div class="studio-rh-check-panel-head">
+                <div>
+                  <strong>Collaborateurs inclus</strong>
+                  <small>Sélectionnez les collaborateurs concernés par la campagne.</small>
+                </div>
+                <span id="planCampagneIncludedCount" class="studio-rh-check-count">0 sélectionné</span>
+              </div>
+              <input id="planCampagneIncludedSearch" type="search" placeholder="Rechercher un collaborateur">
+              <div id="planCampagneIncludedList" class="studio-rh-check-list"></div>
+            </div>
+
+            <details class="studio-rh-field-wide studio-rh-check-panel studio-rh-check-details" id="planCampagneExcludedDetails">
+              <summary>
+                <span>
+                  <strong>Collaborateurs exclus</strong>
+                  <small>Fermé par défaut. Les collaborateurs affichés dépendent du périmètre.</small>
+                </span>
+                <em id="planCampagneExcludedCount">0 exclu</em>
+              </summary>
+              <input id="planCampagneExcludedSearch" type="search" placeholder="Rechercher dans le périmètre">
+              <div id="planCampagneExcludedList" class="studio-rh-check-list"></div>
+            </details>
+
             <label class="studio-rh-field-wide">
               <span class="label">Commentaire</span>
               <textarea id="planCampagneComment" class="sb-textarea--md" placeholder="Consignes de campagne, contexte ou informations de suivi"></textarea>
@@ -268,25 +299,48 @@
         </div>
 
         <div class="studio-rh-form-pane" data-plan-form="competence">
+          <div class="studio-rh-modal-block">
+            <div class="studio-rh-block-head">
+              <div>
+                <strong>Collaborateur concerné</strong>
+                <small>Filtrez la liste avant de sélectionner le collaborateur.</small>
+              </div>
+            </div>
+            <div class="studio-rh-form-grid studio-rh-form-grid--filters">
+              <label>
+                <span class="label">Recherche</span>
+                <input id="planCompSearch" type="search" placeholder="Nom, prénom, email...">
+              </label>
+              <label>
+                <span class="label">Service</span>
+                <select id="planCompService"><option value="">Tous les services</option></select>
+              </label>
+              <label>
+                <span class="label">Poste</span>
+                <input id="planCompPosteSearch" type="search" placeholder="Filtrer par poste">
+              </label>
+              <label>
+                <span class="label">Collaborateur</span>
+                <select id="planCompCollab" required></select>
+              </label>
+            </div>
+          </div>
+
           <div class="studio-rh-form-grid">
-            <label>
-              <span class="label">Collaborateur</span>
-              <select id="planCompCollab" required></select>
-            </label>
-            <label>
-              <span class="label">Type</span>
-              <select id="planCompType">
-                <option value="entretien_competence">Entretien compétence</option>
-                <option value="evaluation_competence">Évaluation compétence</option>
-              </select>
-            </label>
-            <label>
-              <span class="label">Compétence concernée</span>
-              <select id="planCompCompetence"><option value="">Non précisée</option></select>
-            </label>
+            <div class="studio-rh-field-wide studio-rh-check-panel">
+              <div class="studio-rh-check-panel-head">
+                <div>
+                  <strong>Compétences évaluées</strong>
+                  <small>Recherchez puis cochez une ou plusieurs compétences.</small>
+                </div>
+                <span id="planCompCompetenceCount" class="studio-rh-check-count">0 sélectionnée</span>
+              </div>
+              <input id="planCompCompetenceSearch" type="search" placeholder="Rechercher une compétence ou un domaine">
+              <div id="planCompCompetenceList" class="studio-rh-check-list studio-rh-check-list--compact"></div>
+            </div>
             <label>
               <span class="label">Date cible optionnelle</span>
-              <input id="planCompDate" type="datetime-local">
+              <input id="planCompDate" type="datetime-local" class="sb-date">
             </label>
             <label>
               <span class="label">Responsable / manager</span>
@@ -296,10 +350,7 @@
               <span class="label">Statut</span>
               <select id="planCompStatut">
                 <option value="a_planifier">À planifier</option>
-                <option value="planifie">Planifié</option>
-                <option value="realise">Réalisé</option>
-                <option value="annule">Annulé</option>
-                <option value="archive">Archivé</option>
+                <option value="planifie">Planifiée</option>
               </select>
             </label>
             <label class="studio-rh-field-wide">
@@ -311,8 +362,14 @@
       </form>
     </div>
     <div class="sb-modal-foot">
-      <button type="button" class="sb-btn sb-btn--soft" id="planRhModalCancel">Annuler</button>
-      <button type="submit" form="planRhForm" class="sb-btn sb-btn--accent" id="planRhModalSave">Créer</button>
+      <button type="button" class="sb-btn sb-btn--soft studio-rh-modal-cancel" id="planRhModalCancel">
+        <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+        <span class="sb-btn-label">Annuler</span>
+      </button>
+      <button type="submit" form="planRhForm" class="sb-btn sb-btn--accent" id="planRhModalSave">
+        <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></span>
+        <span class="sb-btn-label">Créer</span>
+      </button>
     </div>
   </div>
 </div>
