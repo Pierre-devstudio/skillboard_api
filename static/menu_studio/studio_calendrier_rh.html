@@ -139,6 +139,9 @@
           <button type="button" class="sb-btn sb-btn--soft studio-rh-calendar-nav-btn" id="calRhPrevMonth" aria-label="Mois précédent">‹</button>
           <button type="button" class="sb-btn sb-btn--soft studio-rh-calendar-today" id="calRhTodayBtn">Aujourd’hui</button>
           <button type="button" class="sb-btn sb-btn--soft studio-rh-calendar-nav-btn" id="calRhNextMonth" aria-label="Mois suivant">›</button>
+          <button type="button" class="sb-btn sb-btn--soft studio-rh-calendar-expand-btn" id="calRhExpandBtn" aria-label="Agrandir le calendrier" title="Agrandir le calendrier" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5"/><path d="M3 3l7 7"/><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/><path d="M16 21h5v-5"/><path d="M21 21l-7-7"/></svg>
+          </button>
         </div>
       </div>
       <div class="studio-rh-calendar-legend" aria-label="Légende des types d’événements">
@@ -154,6 +157,7 @@
   </div>
 
   <div id="calRhHoverCard" class="studio-rh-event-popover" hidden></div>
+  <div id="calRhExpandBackdrop" class="studio-rh-calendar-expand-backdrop" hidden></div>
 </section>
 
 <div class="sb-modal studio-rh-modal" id="modalCalRhEvent" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="calRhModalTitle">

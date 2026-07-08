@@ -87,6 +87,50 @@
     return `${y}-${m}-${day}`;
   }
 
+
+  function parseDay(value){
+    const raw = clean(value);
+    if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return null;
+    const [y, m, d] = raw.slice(0, 10).split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function eventRange(ev){
+    const start = parseDay(ev && ev.date_debut);
+    if (!start) return null;
+    const end = parseDay(ev && (ev.date_fin || ev.date_debut)) || new Date(start);
+    if (end < start) return { start, end: new Date(start) };
+    return { start, end };
+  }
+
+  function sameDay(a, b){
+    return !!(a && b) && ymd(a) === ymd(b);
+  }
+
+  function isEventMultiDay(ev){
+    const range = eventRange(ev);
+    return !!(range && !sameDay(range.start, range.end));
+  }
+
+  function dayInEventRange(ev, day){
+    const range = eventRange(ev);
+    if (!range) return false;
+    const current = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    return current >= range.start && current <= range.end;
+  }
+
+  function eventSegment(ev, day){
+    const range = eventRange(ev);
+    if (!range) return { classes: "", label: "" };
+    const isStart = sameDay(day, range.start);
+    const isEnd = sameDay(day, range.end);
+    if (isStart && isEnd) return { classes: "is-range-single", label: "" };
+    if (isStart) return { classes: "is-range is-range-start", label: "Début" };
+    if (isEnd) return { classes: "is-range is-range-end", label: "Fin" };
+    return { classes: "is-range is-range-middle", label: "En cours" };
+  }
+
   function dateTimeLocal(value){
     const raw = clean(value);
     if (!raw) return "";
@@ -213,8 +257,15 @@
   }
 
   function eventsByDay(day){
-    const key = ymd(day);
-    return _events.filter(ev => clean(ev.date_debut).slice(0, 10) === key);
+    return _events
+      .filter(ev => dayInEventRange(ev, day))
+      .sort((a, b) => {
+        const aMulti = isEventMultiDay(a) ? 0 : 1;
+        const bMulti = isEventMultiDay(b) ? 0 : 1;
+        if (aMulti !== bMulti) return aMulti - bMulti;
+        return String(a.date_debut || "").localeCompare(String(b.date_debut || ""))
+          || eventTitle(a).localeCompare(eventTitle(b), "fr");
+      });
   }
 
   function renderAll(){
@@ -228,8 +279,8 @@
     const dated = _events.filter(ev => clean(ev.date_debut));
     const { start, end } = weekBounds(new Date());
     const week = dated.filter(ev => {
-      const d = new Date(ev.date_debut);
-      return !Number.isNaN(d.getTime()) && d >= start && d < end;
+      const range = eventRange(ev);
+      return !!(range && range.start < end && range.end >= start);
     });
     const closed = _events.filter(isClosedEvent);
     const values = {
@@ -300,11 +351,14 @@
             ${dayEvents.map(ev => {
               const id = clean(ev.id_evenement || ev.id);
               const titleText = eventTitle(ev);
+              const segment = eventSegment(ev, day);
+              const segmentLabel = segment.label ? `<span class="studio-rh-event-segment">${esc(segment.label)}</span>` : "";
               return `
-                <button type="button" class="studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)}" draggable="true" data-event-id="${esc(id)}">
+                <button type="button" class="studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)} ${esc(segment.classes)}" draggable="true" data-event-id="${esc(id)}" data-event-day="${esc(dayKey)}">
                   <span class="studio-rh-event-chip-main">
                     <span class="studio-rh-event-dot" aria-hidden="true"></span>
                     <span class="studio-rh-event-title">${esc(titleText)}</span>
+                    ${segmentLabel}
                   </span>
                   <span class="studio-rh-event-meta">${esc(eventChipMeta(ev))}</span>
                 </button>`;
@@ -547,23 +601,47 @@
     btn.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
   }
 
+  function setCalendarExpanded(expanded){
+    const view = root();
+    const btn = byId("calRhExpandBtn");
+    const backdrop = byId("calRhExpandBackdrop");
+    if (!view || !btn) return;
+    view.classList.toggle("is-calendar-expanded", !!expanded);
+    btn.setAttribute("aria-pressed", expanded ? "true" : "false");
+    btn.setAttribute("aria-label", expanded ? "Réduire le calendrier" : "Agrandir le calendrier");
+    btn.setAttribute("title", expanded ? "Réduire le calendrier" : "Agrandir le calendrier");
+    if (backdrop) backdrop.hidden = !expanded;
+    document.body.classList.toggle("studio-rh-calendar-expanded", !!expanded);
+    hideEventHover();
+  }
+
+  function toggleCalendarExpanded(){
+    const view = root();
+    setCalendarExpanded(!(view && view.classList.contains("is-calendar-expanded")));
+  }
+
   function bind(){
     if (_bound) return;
     _bound = true;
-    byId("calRhBackPlanBtn")?.addEventListener("click", () => window.portal.switchView("planification_rh"));
+    byId("calRhBackPlanBtn")?.addEventListener("click", () => {
+      setCalendarExpanded(false);
+      window.portal.switchView("planification_rh");
+    });
     byId("calRhRefreshBtn")?.addEventListener("click", loadCalendar);
     byId("calRhResetFiltersBtn")?.addEventListener("click", resetFilters);
     byId("calRhFiltersToggle")?.addEventListener("click", toggleFilters);
     byId("calRhPrevMonth")?.addEventListener("click", async () => { _month = new Date(_month.getFullYear(), _month.getMonth() - 1, 1); await loadCalendar(); });
     byId("calRhNextMonth")?.addEventListener("click", async () => { _month = new Date(_month.getFullYear(), _month.getMonth() + 1, 1); await loadCalendar(); });
     byId("calRhTodayBtn")?.addEventListener("click", async () => { const now = new Date(); _month = new Date(now.getFullYear(), now.getMonth(), 1); await loadCalendar(); });
+    byId("calRhExpandBtn")?.addEventListener("click", toggleCalendarExpanded);
+    byId("calRhExpandBackdrop")?.addEventListener("click", () => setCalendarExpanded(false));
     byId("calRhModalClose")?.addEventListener("click", closeModal);
     byId("calRhModalCancel")?.addEventListener("click", closeModal);
     byId("calRhForm")?.addEventListener("submit", submitForm);
     byId("calRhCancelEventBtn")?.addEventListener("click", () => cancelOrArchive("annule"));
     byId("calRhArchiveEventBtn")?.addEventListener("click", () => cancelOrArchive("archive"));
     ["calRhFilterType", "calRhFilterService", "calRhFilterCollab", "calRhFilterStatut"].forEach(id => byId(id)?.addEventListener("change", loadCalendar));
-    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeModal(); hideEventHover(); } });
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeModal(); setCalendarExpanded(false); hideEventHover(); } });
     window.addEventListener("scroll", hideEventHover, true);
   }
 
