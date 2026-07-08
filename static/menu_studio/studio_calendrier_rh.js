@@ -681,6 +681,15 @@
     return isReducedScope() && visibleEvents.length <= 40;
   }
 
+  function dayDetailButton(dayKey, total){
+    if (!total) return "";
+    const label = `Voir le détail du ${dateOnlyFr(dayKey, true)} : ${total} événement${total > 1 ? "s" : ""}`;
+    return `
+      <button type="button" class="studio-rh-day-detail-btn" data-day-total="${esc(dayKey)}" aria-label="${esc(label)}" title="${esc(label)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>`;
+  }
+
   function renderDaySummary(day, inMonth, todayKey){
     const dayKey = ymd(day);
     const events = dayEvents(day);
@@ -690,7 +699,7 @@
       <div class="studio-rh-day studio-rh-day--summary${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}">
         <div class="studio-rh-day-topline">
           <div class="studio-rh-day-number">${day.getDate()}</div>
-          ${total ? `<button type="button" class="studio-rh-day-total" data-day-total="${dayKey}">${total}</button>` : ""}
+          ${dayDetailButton(dayKey, total)}
         </div>
         <div class="studio-rh-day-summary">
           ${summaryLineHtml("indisponibilite", counts.indisponibilite)}
@@ -711,7 +720,7 @@
       <div class="studio-rh-day studio-rh-day--detail${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}">
         <div class="studio-rh-day-topline">
           <div class="studio-rh-day-number">${day.getDate()}</div>
-          ${events.length ? `<button type="button" class="studio-rh-day-total" data-day-total="${dayKey}">${events.length}</button>` : ""}
+          ${dayDetailButton(dayKey, events.length)}
         </div>
         <div class="studio-rh-day-events">
           ${visible.map(ev => renderSingleDayEvent(ev, dayKey)).join("")}
