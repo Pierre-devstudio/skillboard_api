@@ -228,6 +228,23 @@
       <div id="calRhTodoList" class="studio-rh-todo-list"></div>
     </div>
   </aside>
+
+  <div id="calRhDetailBackdrop" class="studio-rh-drawer-backdrop" hidden></div>
+  <aside id="calRhDetailDrawer" class="studio-rh-side-drawer studio-rh-detail-drawer" aria-hidden="true" aria-labelledby="calRhDetailDrawerTitle">
+    <div class="studio-rh-side-drawer-head">
+      <div class="studio-rh-list-titleline">
+        <span class="studio-rh-list-title-icon studio-rh-list-title-icon--detail" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+        </span>
+        <div>
+          <h2 class="card-title" id="calRhDetailDrawerTitle">Détail calendrier</h2>
+          <p class="card-sub" id="calRhDetailDrawerSub">Sélectionnez un événement ou une journée.</p>
+        </div>
+      </div>
+      <button type="button" class="sb-modal-x" id="calRhDetailCloseBtn" aria-label="Fermer">×</button>
+    </div>
+    <div class="studio-rh-side-drawer-body" id="calRhDetailDrawerBody"></div>
+  </aside>
 </section>
 
 <div class="sb-modal studio-rh-modal" id="modalCalRhEvent" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="calRhModalTitle">

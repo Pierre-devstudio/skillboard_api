@@ -291,6 +291,57 @@
 
   function eventTitle(ev){ return clean(ev && ev.titre) || typeLabel(ev && ev.type_evenement); }
 
+  function eventPayload(ev){
+    const payload = ev && ev.payload_json;
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) return payload;
+    if (typeof payload === "string" && payload.trim()) {
+      try {
+        const parsed = JSON.parse(payload);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+    return {};
+  }
+
+  function eventCompetenceLabel(ev){
+    const payload = eventPayload(ev);
+    const values = [
+      payload.competence,
+      payload.competences_label,
+      payload.intitule_competence,
+      payload.competence_label,
+      payload.competences
+    ].filter(Boolean);
+    const first = values.length ? values[0] : "";
+    return Array.isArray(first) ? first.map(clean).filter(Boolean).join(", ") : clean(first);
+  }
+
+  function eventSourceLabel(ev){
+    if (ev && ev.source === "effectif_break") return "Planning d’indisponibilités";
+    if (ev && ev.source === "calendrier_rh") return "Calendrier RH";
+    return "Événement RH";
+  }
+
+  function eventRangeText(ev){
+    if (ev && ev.source === "effectif_break") return breakRangeLabel(ev) || dateLabel(ev.date_debut);
+    const start = fullDateLabel(ev && ev.date_debut);
+    const end = clean(ev && ev.date_fin) ? fullDateLabel(ev.date_fin) : "Non renseignée";
+    return `${start} → ${end}`;
+  }
+
+  function eventMainMeta(ev){
+    const parts = [];
+    const collaborator = clean(ev && ev.collaborateur);
+    const service = clean(ev && ev.nom_service);
+    const competence = eventCompetenceLabel(ev);
+    if (collaborator) parts.push(collaborator);
+    if (service) parts.push(service);
+    if (competence) parts.push(competence);
+    return parts.join(" · ") || eventSourceLabel(ev);
+  }
+
   function isClosedEvent(ev){
     const statut = clean(ev && ev.statut).toLowerCase();
     return !!(ev && ev.archive) || ["annule", "annulé", "archive", "archivé", "archivée"].includes(statut);
@@ -717,7 +768,7 @@
     grid.querySelectorAll("[data-day-total]").forEach(btn => btn.addEventListener("click", () => openDayDetails(btn.dataset.dayTotal)));
 
     grid.querySelectorAll("[data-event-id]").forEach(el => {
-      el.addEventListener("click", () => openEventModal(el.dataset.eventId));
+      el.addEventListener("click", () => openEventDetails(el.dataset.eventId));
       el.addEventListener("mouseenter", ev => showEventHover(el.dataset.eventId, ev));
       el.addEventListener("mousemove", ev => positionEventHover(ev));
       el.addEventListener("mouseleave", hideEventHover);
@@ -734,24 +785,53 @@
     const day = parseDay(dayKey);
     if (!day) return;
     const events = dayEvents(day);
-    const card = byId("calRhHoverCard");
-    if (!card) return;
-    card.innerHTML = `
-      <div class="studio-rh-popover-head">
-        <span class="studio-rh-popover-type">${esc(fullDateLabel(dayKey))}</span>
-        <span class="studio-rh-popover-status">${events.length} événement${events.length > 1 ? "s" : ""}</span>
+    const title = fullDateLabel(dayKey);
+    setDetailDrawerContent("day", "Détail journée", `${title} · ${events.length} événement${events.length > 1 ? "s" : ""}`, renderDayDrawerHtml(dayKey, events));
+    setDetailDrawer(true);
+  }
+
+  function groupedEvents(events){
+    const groups = [
+      { id:"indisponibilite", label:"Indisponibilités", rows:[] },
+      { id:"entretien_annuel", label:"Entretiens annuels", rows:[] },
+      { id:"evaluation_competence", label:"Évaluations compétence", rows:[] },
+      { id:"autre", label:"Autres événements", rows:[] }
+    ];
+    const byIdMap = Object.fromEntries(groups.map(g => [g.id, g]));
+    events.forEach(ev => {
+      const group = calendarGroupForType(ev && ev.type_evenement);
+      (byIdMap[group] || byIdMap.autre).rows.push(ev);
+    });
+    return groups.filter(g => g.rows.length);
+  }
+
+  function renderDayDrawerHtml(dayKey, events){
+    if (!events.length) {
+      return `<div class="studio-rh-empty studio-rh-calendar-empty"><strong>Aucun événement visible</strong><span>Les filtres actifs masquent peut-être certains éléments.</span></div>`;
+    }
+    return `
+      <div class="studio-rh-detail-day-head">
+        <span class="studio-rh-detail-date-pill">${esc(dateOnlyFr(dayKey, true))}</span>
+        <span>${events.length} événement${events.length > 1 ? "s" : ""} visible${events.length > 1 ? "s" : ""}</span>
       </div>
-      <div class="studio-rh-day-detail-list">
-        ${events.length ? events.map(ev => `
-          <button type="button" class="studio-rh-day-detail-item studio-rh-row--${esc(ev.type_evenement)}" data-event-id="${esc(clean(ev.id_evenement || ev.id))}">
-            <strong>${esc(eventTitle(ev))}</strong>
-            <span>${esc(eventChipMeta(ev))}</span>
-          </button>`).join("") : `<span class="studio-rh-empty-line">Aucun événement visible.</span>`}
-      </div>`;
-    card.hidden = false;
-    card.style.left = `${Math.max(16, window.innerWidth - 380)}px`;
-    card.style.top = `120px`;
-    card.querySelectorAll('[data-event-id]').forEach(btn => btn.addEventListener('click', () => openEventModal(btn.dataset.eventId)));
+      ${groupedEvents(events).map(group => `
+        <section class="studio-rh-detail-group">
+          <h3>${esc(group.label)}</h3>
+          <div class="studio-rh-detail-event-list">
+            ${group.rows.map(renderDayDrawerEvent).join("")}
+          </div>
+        </section>`).join("")}`;
+  }
+
+  function renderDayDrawerEvent(ev){
+    const id = clean(ev.id_evenement || ev.id);
+    return `
+      <button type="button" class="studio-rh-detail-event-row studio-rh-row--${esc(ev.type_evenement)}" data-cal-rh-detail-event-id="${esc(id)}">
+        <span class="studio-rh-detail-event-type">${esc(typeLabel(ev.type_evenement))}</span>
+        <strong>${esc(eventTitle(ev))}</strong>
+        <span>${esc(eventRangeText(ev))}</span>
+        <small>${esc(eventMainMeta(ev))}</small>
+      </button>`;
   }
 
   function eventById(id){ return _events.find(ev => clean(ev.id_evenement || ev.id) === clean(id)); }
@@ -760,22 +840,19 @@
     const item = eventById(id);
     const card = byId("calRhHoverCard");
     if (!item || !card) return;
-    const payload = item.payload_json || {};
-    const competence = clean(payload.competence || payload.competences_label || payload.intitule_competence);
+    const competence = eventCompetenceLabel(item);
     card.innerHTML = `
       <div class="studio-rh-popover-head">
         <span class="studio-rh-popover-type studio-rh-popover-type--${esc(item.type_evenement)}">${esc(typeLabel(item.type_evenement))}</span>
         <span class="studio-rh-popover-status">${esc(statutLabel(item.statut))}</span>
       </div>
       <strong class="studio-rh-popover-title">${esc(eventTitle(item))}</strong>
-      <div class="studio-rh-popover-grid">
-        <span>Date</span><strong>${esc(fullDateLabel(item.date_debut))}</strong>
-        <span>Fin</span><strong>${esc(item.date_fin ? fullDateLabel(item.date_fin) : "Non renseignée")}</strong>
-        <span>Collaborateur</span><strong>${esc(item.collaborateur || "Périmètre RH")}</strong>
-        <span>Service</span><strong>${esc(item.nom_service || "Service non lié")}</strong>
-        ${competence ? `<span>Compétence</span><strong>${esc(competence)}</strong>` : ""}
+      <div class="studio-rh-popover-summary">
+        <span>${esc(eventRangeText(item))}</span>
+        <span>${esc(eventMainMeta(item))}</span>
+        ${competence ? `<span>Compétence : ${esc(competence)}</span>` : ""}
       </div>
-      <div class="studio-rh-popover-foot">Cliquez pour ouvrir le détail.</div>
+      <div class="studio-rh-popover-foot">Cliquez pour ouvrir le panneau détail.</div>
     `;
     card.hidden = false;
     positionEventHover(ev);
@@ -801,6 +878,117 @@
   function hideEventHover(){
     const card = byId("calRhHoverCard");
     if (card) card.hidden = true;
+  }
+
+  function setDetailDrawerContent(mode, title, sub, bodyHtml, eventId){
+    const drawer = byId("calRhDetailDrawer");
+    const titleEl = byId("calRhDetailDrawerTitle");
+    const subEl = byId("calRhDetailDrawerSub");
+    const body = byId("calRhDetailDrawerBody");
+    if (drawer) {
+      drawer.dataset.mode = clean(mode);
+      drawer.dataset.eventId = clean(eventId);
+    }
+    if (titleEl) titleEl.textContent = clean(title) || "Détail calendrier";
+    if (subEl) subEl.textContent = clean(sub) || "";
+    if (body) body.innerHTML = bodyHtml || "";
+  }
+
+  function setDetailDrawer(open){
+    const drawer = byId("calRhDetailDrawer");
+    const backdrop = byId("calRhDetailBackdrop");
+    if (!drawer || !backdrop) return;
+    if (open) setTodoDrawer(false);
+    drawer.classList.toggle("is-open", !!open);
+    drawer.setAttribute("aria-hidden", open ? "false" : "true");
+    backdrop.hidden = !open;
+    hideEventHover();
+  }
+
+  function renderEventDetailHtml(ev){
+    const id = clean(ev.id_evenement || ev.id);
+    const competence = eventCompetenceLabel(ev);
+    const payload = eventPayload(ev);
+    const responsable = clean(ev.responsable || ev.manager || payload.responsable || payload.manager || payload.responsable_label);
+    const poste = clean(ev.poste || ev.intitule_poste || payload.poste || payload.intitule_poste);
+    const commentaire = clean(ev.commentaire || payload.commentaire || payload.commentaire_rh || payload.consigne || payload.description);
+    return `
+      <article class="studio-rh-detail-event-card studio-rh-row--${esc(ev.type_evenement)}">
+        <div class="studio-rh-detail-event-card-head">
+          <span class="studio-rh-popover-type studio-rh-popover-type--${esc(ev.type_evenement)}">${esc(typeLabel(ev.type_evenement))}</span>
+          <span class="studio-rh-popover-status">${esc(statutLabel(ev.statut))}</span>
+        </div>
+        <h3>${esc(eventTitle(ev))}</h3>
+        <p>${esc(eventMainMeta(ev))}</p>
+      </article>
+      <div class="studio-rh-detail-facts">
+        <div><span>Collaborateur</span><strong>${esc(ev.collaborateur || "Périmètre RH")}</strong></div>
+        <div><span>Service</span><strong>${esc(ev.nom_service || "Service non lié")}</strong></div>
+        ${poste ? `<div><span>Poste</span><strong>${esc(poste)}</strong></div>` : ""}
+        <div><span>Début</span><strong>${esc(fullDateLabel(ev.date_debut))}</strong></div>
+        <div><span>Fin</span><strong>${esc(ev.date_fin ? fullDateLabel(ev.date_fin) : "Non renseignée")}</strong></div>
+        <div><span>Source</span><strong>${esc(eventSourceLabel(ev))}</strong></div>
+        ${responsable ? `<div><span>Responsable</span><strong>${esc(responsable)}</strong></div>` : ""}
+        ${competence ? `<div><span>Compétence</span><strong>${esc(competence)}</strong></div>` : ""}
+      </div>
+      ${commentaire ? `<div class="studio-rh-detail-note"><span>Commentaire / consigne</span><p>${esc(commentaire)}</p></div>` : ""}
+      <div class="studio-rh-detail-actions">
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-rh-detail-action="edit" data-event-id="${esc(id)}">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+          <span class="sb-btn-label">Modifier</span>
+        </button>
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-rh-detail-action="cancel" data-event-id="${esc(id)}">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+          <span class="sb-btn-label">Annuler</span>
+        </button>
+        <button type="button" class="sb-btn sb-btn--soft" data-cal-rh-detail-action="archive" data-event-id="${esc(id)}">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></span>
+          <span class="sb-btn-label">Archiver</span>
+        </button>
+      </div>`;
+  }
+
+  function openEventDetails(id){
+    const ev = eventById(id);
+    if (!ev) return;
+    setDetailDrawerContent("event", "Détail événement", `${typeLabel(ev.type_evenement)} · ${statutLabel(ev.statut)}`, renderEventDetailHtml(ev), clean(ev.id_evenement || ev.id));
+    setDetailDrawer(true);
+  }
+
+  function eventUpdatePayloadForStatus(ev, status){
+    const statut = clean(status);
+    if (ev && ev.source === "effectif_break") return { statut, archive: statut === "archive" || statut === "annule" };
+    return { statut, archive: statut === "archive" };
+  }
+
+  async function cancelOrArchiveEvent(id, status){
+    const ev = eventById(id);
+    if (!ev) return;
+    await patchEvent(id, eventUpdatePayloadForStatus(ev, status));
+    setDetailDrawer(false);
+    closeModal();
+    setMsg("calRhMsg", status === "archive" ? "Événement archivé." : "Événement annulé.", "ok");
+    await loadCalendar();
+  }
+
+  async function handleDetailAction(action, id){
+    const cleanAction = clean(action);
+    const cleanId = clean(id);
+    if (!cleanId) return;
+    try {
+      if (cleanAction === "edit") {
+        setDetailDrawer(false);
+        openEventModal(cleanId);
+        return;
+      }
+      if (cleanAction === "cancel") {
+        await cancelOrArchiveEvent(cleanId, "annule");
+        return;
+      }
+      if (cleanAction === "archive") await cancelOrArchiveEvent(cleanId, "archive");
+    } catch (e) {
+      setMsg("calRhMsg", getErrorMessage(e), "error");
+    }
   }
 
   async function handleDrop(data, day){
@@ -929,10 +1117,7 @@
     const id = clean(byId("calRhEventId")?.value);
     if (!id) return;
     try {
-      await patchEvent(id, { statut: status, archive: status === "archive" });
-      closeModal();
-      setMsg("calRhMsg", status === "archive" ? "Événement archivé." : "Événement annulé.", "ok");
-      await loadCalendar();
+      await cancelOrArchiveEvent(id, status);
     } catch (e) {
       setMsg("calRhModalMsg", getErrorMessage(e), "error");
     }
@@ -1006,6 +1191,7 @@
     const backdrop = byId("calRhTodoBackdrop");
     const btn = byId("calRhTodoOpenBtn");
     if (!drawer || !backdrop) return;
+    if (open) setDetailDrawer(false);
     drawer.classList.toggle("is-open", !!open);
     drawer.setAttribute("aria-hidden", open ? "false" : "true");
     backdrop.hidden = !open;
@@ -1024,11 +1210,23 @@
     byId("calRhBackPlanBtn")?.addEventListener("click", () => {
       setCalendarExpanded(false);
       setTodoDrawer(false);
+      setDetailDrawer(false);
       window.portal.switchView("planification_rh");
     });
     byId("calRhTodoOpenBtn")?.addEventListener("click", toggleTodoDrawer);
     byId("calRhTodoCloseBtn")?.addEventListener("click", () => setTodoDrawer(false));
     byId("calRhTodoBackdrop")?.addEventListener("click", () => setTodoDrawer(false));
+    byId("calRhDetailCloseBtn")?.addEventListener("click", () => setDetailDrawer(false));
+    byId("calRhDetailBackdrop")?.addEventListener("click", () => setDetailDrawer(false));
+    byId("calRhDetailDrawer")?.addEventListener("click", (ev) => {
+      const actionBtn = ev.target.closest('[data-cal-rh-detail-action]');
+      if (actionBtn) {
+        handleDetailAction(actionBtn.dataset.calRhDetailAction, actionBtn.dataset.eventId);
+        return;
+      }
+      const eventBtn = ev.target.closest('[data-cal-rh-detail-event-id]');
+      if (eventBtn) openEventDetails(eventBtn.dataset.calRhDetailEventId);
+    });
     document.querySelectorAll('#view-calendrier_rh [data-cal-rh-todo-type]').forEach(btn => {
       btn.addEventListener('click', () => {
         _todoFilterType = clean(btn.dataset.calRhTodoType);
@@ -1052,7 +1250,7 @@
     byId("calRhForm")?.addEventListener("submit", submitForm);
     byId("calRhCancelEventBtn")?.addEventListener("click", () => cancelOrArchive("annule"));
     byId("calRhArchiveEventBtn")?.addEventListener("click", () => cancelOrArchive("archive"));
-    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeModal(); setCalendarExpanded(false); setTodoDrawer(false); hideEventHover(); } });
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeModal(); setCalendarExpanded(false); setTodoDrawer(false); setDetailDrawer(false); hideEventHover(); } });
     window.addEventListener("scroll", hideEventHover, true);
   }
 

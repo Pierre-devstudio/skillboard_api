@@ -10670,3 +10670,225 @@ body.studio-rh-calendar-expanded{
   max-width:100%;
   box-sizing:border-box;
 }
+
+/* ======================================================
+   Studio – Calendrier RH : aperçu + panneau détail
+   ====================================================== */
+#view-calendrier_rh .studio-rh-popover-summary{
+  display:grid;
+  gap:5px;
+  color:#475569;
+  font-size:12px;
+  font-weight:560;
+  line-height:1.3;
+}
+
+#view-calendrier_rh .studio-rh-popover-summary span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#view-calendrier_rh .studio-rh-list-title-icon--detail{
+  background:#eef2ff;
+  color:#4338ca;
+}
+
+#view-calendrier_rh .studio-rh-detail-drawer{
+  width:min(460px, calc(100vw - 24px));
+}
+
+#view-calendrier_rh .studio-rh-detail-day-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:14px;
+  color:#64748b;
+  font-size:12px;
+  font-weight:620;
+}
+
+#view-calendrier_rh .studio-rh-detail-date-pill{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  border-radius:999px;
+  background:#f8fafc;
+  color:#334155;
+  padding:0 10px;
+  font-size:12px;
+  font-weight:750;
+}
+
+#view-calendrier_rh .studio-rh-detail-group{
+  display:grid;
+  gap:8px;
+  margin-bottom:16px;
+}
+
+#view-calendrier_rh .studio-rh-detail-group h3{
+  margin:0;
+  color:#111827;
+  font-size:13px;
+  font-weight:760;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-list{
+  display:grid;
+  gap:8px;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-row{
+  display:grid;
+  gap:3px;
+  width:100%;
+  border:1px solid #e7eaf0;
+  border-radius:14px;
+  background:#fff;
+  padding:10px 11px;
+  text-align:left;
+  cursor:pointer;
+  transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-row:hover,
+#view-calendrier_rh .studio-rh-detail-event-row:focus{
+  border-color:#cfd8e6;
+  box-shadow:0 10px 22px rgba(15,23,42,.08);
+  transform:translateY(-1px);
+  outline:none;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-type{
+  color:#64748b;
+  font-size:10.5px;
+  font-weight:700;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-row strong{
+  color:#111827;
+  font-size:13px;
+  font-weight:720;
+  line-height:1.2;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-row span:not(.studio-rh-detail-event-type),
+#view-calendrier_rh .studio-rh-detail-event-row small{
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:560;
+  line-height:1.25;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-card{
+  display:grid;
+  gap:8px;
+  border:1px solid #e7eaf0;
+  border-radius:18px;
+  background:linear-gradient(180deg, #fff, #fbfcfe);
+  padding:14px;
+  margin-bottom:14px;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-card h3{
+  margin:0;
+  color:#111827;
+  font-size:17px;
+  font-weight:760;
+  line-height:1.2;
+}
+
+#view-calendrier_rh .studio-rh-detail-event-card p{
+  margin:0;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:560;
+  line-height:1.35;
+}
+
+#view-calendrier_rh .studio-rh-detail-facts{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  margin-bottom:14px;
+}
+
+#view-calendrier_rh .studio-rh-detail-facts div{
+  display:grid;
+  grid-template-columns:120px minmax(0, 1fr);
+  gap:10px;
+  align-items:start;
+  border:1px solid #eef2f7;
+  border-radius:13px;
+  background:#fff;
+  padding:9px 10px;
+}
+
+#view-calendrier_rh .studio-rh-detail-facts span,
+#view-calendrier_rh .studio-rh-detail-note span{
+  color:#64748b;
+  font-size:11px;
+  font-weight:700;
+}
+
+#view-calendrier_rh .studio-rh-detail-facts strong{
+  min-width:0;
+  color:#111827;
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.25;
+}
+
+#view-calendrier_rh .studio-rh-detail-note{
+  display:grid;
+  gap:6px;
+  border:1px solid #eef2f7;
+  border-radius:14px;
+  background:#f8fafc;
+  padding:11px;
+  margin-bottom:14px;
+}
+
+#view-calendrier_rh .studio-rh-detail-note p{
+  margin:0;
+  color:#334155;
+  font-size:12.5px;
+  line-height:1.4;
+}
+
+#view-calendrier_rh .studio-rh-detail-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+  padding-top:12px;
+  border-top:1px solid #eef2f7;
+}
+
+#view-calendrier_rh .studio-rh-detail-actions .sb-btn{
+  min-height:34px;
+}
+
+@media (max-width:560px){
+  #view-calendrier_rh .studio-rh-detail-facts div{
+    grid-template-columns:1fr;
+    gap:3px;
+  }
+
+  #view-calendrier_rh .studio-rh-detail-actions{
+    justify-content:stretch;
+  }
+
+  #view-calendrier_rh .studio-rh-detail-actions .sb-btn{
+    width:100%;
+  }
+}
