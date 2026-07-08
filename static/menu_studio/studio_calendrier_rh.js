@@ -5,6 +5,12 @@
   let _events = [];
   let _suggestions = [];
   let _month = new Date();
+  const _calendarTypeGroups = {
+    indisponibilite: ["indisponibilite"],
+    entretien_annuel: ["entretien_annuel"],
+    evaluation_competence: ["evaluation_competence", "entretien_competence"]
+  };
+  const _hiddenCalendarGroups = new Set();
   _month = new Date(_month.getFullYear(), _month.getMonth(), 1);
 
   function root(){ return document.querySelector('#view-calendrier_rh[data-view="calendrier_rh"]'); }
@@ -68,6 +74,19 @@
       evaluation_competence: "Évaluation compétence"
     };
     return map[clean(value)] || clean(value) || "Événement RH";
+  }
+
+  function calendarGroupForType(value){
+    const type = clean(value);
+    return Object.entries(_calendarTypeGroups).find(([, types]) => types.includes(type))?.[0] || type || "autre";
+  }
+
+  function isCalendarGroupVisible(value){
+    return !_hiddenCalendarGroups.has(calendarGroupForType(value));
+  }
+
+  function visibleCalendarEvents(){
+    return _events.filter(ev => isCalendarGroupVisible(ev && ev.type_evenement));
   }
 
   function statutLabel(value){
@@ -257,7 +276,7 @@
   }
 
   function singleDayEventsByDay(day){
-    return _events
+    return visibleCalendarEvents()
       .filter(ev => !isEventMultiDay(ev) && dayInEventRange(ev, day))
       .sort((a, b) => String(a.date_debut || "").localeCompare(String(b.date_debut || ""))
         || eventTitle(a).localeCompare(eventTitle(b), "fr"));
@@ -266,7 +285,7 @@
   function rangeEventsForWeek(weekDays){
     const weekStart = weekDays[0];
     const weekEnd = weekDays[6];
-    const segments = _events
+    const segments = visibleCalendarEvents()
       .filter(isEventMultiDay)
       .map(ev => {
         const range = eventRange(ev);
@@ -302,11 +321,11 @@
     return { segments, laneCount: lanes.length };
   }
 
-  function rangeBarMeta(ev){
-    const start = dateOnlyFr(ev && ev.date_debut, false);
-    const end = dateOnlyFr(ev && (ev.date_fin || ev.date_debut), false);
-    const range = start === end ? start : `${start} → ${end}`;
-    return `${range}${ev && ev.collaborateur ? ` · ${ev.collaborateur}` : ""}`;
+  function rangeBarLabel(ev){
+    const collaborator = clean(ev && ev.collaborateur);
+    if (collaborator) return collaborator;
+    const title = eventTitle(ev);
+    return title === typeLabel(ev && ev.type_evenement) ? title : title;
   }
 
   function renderSingleDayEvent(ev, dayKey){
@@ -332,9 +351,7 @@
     ].join(" ");
     return `
       <button type="button" class="${esc(classes)}" draggable="true" data-event-id="${esc(id)}" style="grid-column:${segment.startCol} / ${segment.endCol + 1}; --rh-lane:${segment.lane};">
-        <span class="studio-rh-range-dot" aria-hidden="true"></span>
-        <span class="studio-rh-range-title">${esc(eventTitle(ev))}</span>
-        <span class="studio-rh-range-meta">${esc(rangeBarMeta(ev))}</span>
+        <span class="studio-rh-range-title">${esc(rangeBarLabel(ev))}</span>
       </button>`;
   }
 
@@ -399,7 +416,11 @@
     const title = byId("calRhMonthTitle");
     const sub = byId("calRhMonthSub");
     if (title) title.textContent = _month.toLocaleDateString("fr-FR", { month:"long", year:"numeric" });
-    if (sub) sub.textContent = `${_events.length} événement${_events.length > 1 ? "s" : ""} daté${_events.length > 1 ? "s" : ""} · ${_suggestions.length} à planifier`;
+    const visibleEvents = visibleCalendarEvents();
+    if (sub) {
+      const hiddenCount = Math.max(0, _events.length - visibleEvents.length);
+      sub.textContent = `${visibleEvents.length} événement${visibleEvents.length > 1 ? "s" : ""} affiché${visibleEvents.length > 1 ? "s" : ""}${hiddenCount ? ` · ${hiddenCount} masqué${hiddenCount > 1 ? "s" : ""}` : ""} · ${_suggestions.length} à planifier`;
+    }
 
     const range = monthRange();
     const days = [];
@@ -434,7 +455,7 @@
         </div>` : "";
 
       return `
-        <div class="studio-rh-week-row" data-week-index="${weekIndex}" style="--rh-range-lanes:${rangeData.laneCount}; --rh-range-space:${Math.min(rangeData.laneCount, 6) * 30}px;">
+        <div class="studio-rh-week-row" data-week-index="${weekIndex}" style="--rh-range-lanes:${rangeData.laneCount}; --rh-range-space:${rangeData.laneCount ? Math.min(rangeData.laneCount, 6) * 22 + 8 : 0}px;">
           ${dayCells}
           ${rangeBars}
         </div>`;
@@ -693,6 +714,29 @@
     setCalendarExpanded(!(view && view.classList.contains("is-calendar-expanded")));
   }
 
+
+  function updateLegendButtons(){
+    document.querySelectorAll('#view-calendrier_rh [data-cal-rh-toggle-types]').forEach(btn => {
+      const groups = clean(btn.dataset.calRhToggleTypes).split(',').map(x => clean(x)).filter(Boolean);
+      const hidden = groups.every(group => _hiddenCalendarGroups.has(group));
+      btn.classList.toggle('is-active', !hidden);
+      btn.setAttribute('aria-pressed', hidden ? 'false' : 'true');
+      btn.setAttribute('title', hidden ? 'Afficher cette catégorie' : 'Masquer cette catégorie');
+    });
+  }
+
+  function toggleCalendarGroup(btn){
+    const groups = clean(btn && btn.dataset.calRhToggleTypes).split(',').map(x => clean(x)).filter(Boolean);
+    if (!groups.length) return;
+    const shouldHide = groups.some(group => !_hiddenCalendarGroups.has(group));
+    groups.forEach(group => {
+      if (shouldHide) _hiddenCalendarGroups.add(group);
+      else _hiddenCalendarGroups.delete(group);
+    });
+    updateLegendButtons();
+    renderCalendar();
+  }
+
   function bind(){
     if (_bound) return;
     _bound = true;
@@ -708,6 +752,10 @@
     byId("calRhTodayBtn")?.addEventListener("click", async () => { const now = new Date(); _month = new Date(now.getFullYear(), now.getMonth(), 1); await loadCalendar(); });
     byId("calRhExpandBtn")?.addEventListener("click", toggleCalendarExpanded);
     byId("calRhExpandBackdrop")?.addEventListener("click", () => setCalendarExpanded(false));
+    document.querySelectorAll('#view-calendrier_rh [data-cal-rh-toggle-types]').forEach(btn => {
+      btn.addEventListener('click', () => toggleCalendarGroup(btn));
+    });
+    updateLegendButtons();
     byId("calRhModalClose")?.addEventListener("click", closeModal);
     byId("calRhModalCancel")?.addEventListener("click", closeModal);
     byId("calRhForm")?.addEventListener("submit", submitForm);
