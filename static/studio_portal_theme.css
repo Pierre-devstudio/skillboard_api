@@ -10437,3 +10437,178 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-filter-section:not(.is-open) .studio-rh-filter-section-body{
   display:none;
 }
+
+/* ======================================================
+   Studio – Calendrier RH V16 : filtres en cartes indépendantes
+   ====================================================== */
+#view-calendrier_rh .studio-rh-cal-filter-panel{
+  display:grid;
+  gap:10px;
+  position:sticky;
+  top:14px;
+  align-self:start;
+  padding:0;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+
+#view-calendrier_rh .studio-rh-cal-filter-panel .studio-rh-filter-reset{
+  width:100%;
+  min-height:38px;
+  justify-content:center;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+}
+
+#view-calendrier_rh .studio-rh-filter-section.studio-rh-filter-accordion,
+#view-calendrier_rh .studio-rh-filter-section.card{
+  display:block;
+  padding:0;
+  border:1px solid #e7eaf0;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(15,23,42,.035);
+  overflow:hidden;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-head{
+  min-height:54px;
+  padding:11px 12px 11px 14px;
+  background:#fff;
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-head:hover,
+#view-calendrier_rh .studio-rh-filter-section-head:focus{
+  background:#fbfcfe;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-copy{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-head .studio-rh-filter-section-title,
+#view-calendrier_rh .studio-rh-filter-section-title{
+  color:#111827;
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:0;
+  line-height:1.15;
+  text-transform:none;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-sub{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:500;
+  line-height:1.2;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-toggle{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:30px;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  background:#fff;
+  color:#64748b;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-toggle svg{
+  width:15px !important;
+  height:15px !important;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-calendrier_rh .studio-rh-filter-accordion.is-open .studio-rh-filter-section-toggle{
+  border-color:rgba(var(--sb-accent-rgb), .42);
+  background:rgba(var(--sb-accent-rgb), .14);
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-filter-section-body{
+  padding:0 12px 12px;
+  background:#fff;
+}
+
+#view-calendrier_rh .studio-rh-filter-accordion.is-open .studio-rh-filter-section-body{
+  display:grid;
+  gap:8px;
+}
+
+#view-calendrier_rh .studio-rh-check-list{
+  margin-top:0;
+  gap:4px;
+  padding-right:0;
+  background:#fff;
+}
+
+#view-calendrier_rh .studio-rh-check-list--scroll{
+  max-height:170px;
+  overflow:auto;
+  padding:2px 2px 2px 0;
+}
+
+#view-calendrier_rh .studio-rh-check-item{
+  min-height:32px;
+  padding:6px 7px;
+  border-radius:9px;
+  background:#fff;
+  color:#111827;
+}
+
+#view-calendrier_rh .studio-rh-check-item span{
+  font-size:12.5px;
+  font-weight:600;
+}
+
+#view-calendrier_rh .studio-rh-check-item small{
+  font-size:10.5px;
+  font-weight:500;
+}
+
+#view-calendrier_rh #calRhCollabFilterSection,
+#view-calendrier_rh #calRhCollabFilterSection .studio-rh-filter-section-body,
+#view-calendrier_rh #calRhCollabChecks{
+  background:#fff;
+}
+
+#view-calendrier_rh .studio-rh-filter-searchbox{
+  height:36px;
+  border-radius:11px;
+  background:#fff;
+  box-shadow:none;
+}
+
+#view-calendrier_rh .studio-rh-mode-list label{
+  min-height:32px;
+  background:#fff;
+}
+
+#view-calendrier_rh .studio-rh-mode-list span{
+  font-size:12.5px;
+  font-weight:600;
+}
+
+@media (max-width:1080px){
+  #view-calendrier_rh .studio-rh-cal-filter-panel{
+    position:relative;
+    top:auto;
+  }
+}

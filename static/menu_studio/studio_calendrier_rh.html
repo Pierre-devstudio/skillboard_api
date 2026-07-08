@@ -72,90 +72,97 @@
   <div id="calRhMsg" class="studio-rh-inline-msg" style="display:none;"></div>
 
   <div class="studio-rh-calendar-layout studio-rh-calendar-layout--pilotage">
-    <aside class="card studio-rh-list-card studio-rh-cal-filter-card studio-rh-cal-filter-panel" id="calRhFilterCard">
-      <div class="studio-rh-list-head">
-        <div class="studio-rh-list-titleline">
-          <span class="studio-rh-list-title-icon" aria-hidden="true">
+    <aside class="studio-rh-cal-filter-panel" id="calRhFilterPanel" aria-label="Filtres calendrier RH">
+      <button type="button" class="sb-btn sb-btn--secondary studio-rh-filter-reset" id="calRhResetFiltersBtn">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.1-6.6"/><path d="M18 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.1 6.6"/><path d="M6 21v-5h5"/></svg>
+        </span>
+        <span class="sb-btn-label">Réinitialiser les filtres</span>
+      </button>
+
+      <section class="card studio-rh-filter-section studio-rh-filter-accordion is-open" data-filter-section="categories">
+        <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="categories" aria-expanded="true">
+          <span class="studio-rh-filter-section-copy">
+            <span class="studio-rh-filter-section-title">Catégories</span>
+            <span class="studio-rh-filter-section-sub">Types d’événements visibles.</span>
+          </span>
+          <span class="studio-rh-filter-section-toggle" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
           </span>
-          <div>
-            <div class="card-title">Filtres</div>
-            <div class="card-sub" id="calRhFilterSummary">Affichage synthétique par défaut.</div>
-          </div>
-        </div>
-        <div class="sb-actions studio-rh-list-head-actions">
-          <button type="button" class="studio-rh-filter-toggle" id="calRhFiltersToggle" aria-expanded="true" aria-controls="calRhFilterBody" title="Replier les filtres" aria-label="Replier les filtres">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
-          </button>
-        </div>
-      </div>
-      <div class="studio-rh-filter-body" id="calRhFilterBody">
-        <button type="button" class="sb-btn sb-btn--secondary studio-rh-filter-reset" id="calRhResetFiltersBtn">
-          <span class="sb-btn-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.1-6.6"/><path d="M18 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.1 6.6"/><path d="M6 21v-5h5"/></svg>
-          </span>
-          <span class="sb-btn-label">Réinitialiser</span>
         </button>
-
-        <div class="studio-rh-filter-section studio-rh-filter-accordion is-open" data-filter-section="categories">
-          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="categories" aria-expanded="true">
-            <span class="studio-rh-filter-section-title">Catégories</span>
-            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div class="studio-rh-filter-section-body">
-            <div class="studio-rh-check-list" id="calRhTypeChecks"></div>
-          </div>
+        <div class="studio-rh-filter-section-body">
+          <div class="studio-rh-check-list" id="calRhTypeChecks"></div>
         </div>
+      </section>
 
-        <div class="studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="services">
-          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="services" aria-expanded="false">
+      <section class="card studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="services">
+        <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="services" aria-expanded="false">
+          <span class="studio-rh-filter-section-copy">
             <span class="studio-rh-filter-section-title">Périmètre service</span>
-            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div class="studio-rh-filter-section-body">
-            <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhServiceChecks"></div>
-          </div>
+            <span class="studio-rh-filter-section-sub">Limiter la lecture par service.</span>
+          </span>
+          <span class="studio-rh-filter-section-toggle" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </span>
+        </button>
+        <div class="studio-rh-filter-section-body">
+          <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhServiceChecks"></div>
         </div>
+      </section>
 
-        <div class="studio-rh-filter-section studio-rh-filter-accordion" id="calRhCollabFilterSection" data-filter-section="collaborateurs">
-          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="collaborateurs" aria-expanded="false">
+      <section class="card studio-rh-filter-section studio-rh-filter-accordion" id="calRhCollabFilterSection" data-filter-section="collaborateurs">
+        <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="collaborateurs" aria-expanded="false">
+          <span class="studio-rh-filter-section-copy">
             <span class="studio-rh-filter-section-title">Collaborateurs</span>
-            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div class="studio-rh-filter-section-body">
-            <label class="studio-rh-searchbox studio-rh-filter-searchbox">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-              <input id="calRhCollabSearch" type="search" placeholder="Rechercher un collaborateur...">
-            </label>
-            <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhCollabChecks"></div>
-          </div>
+            <span class="studio-rh-filter-section-sub">Rechercher et sélectionner les salariés.</span>
+          </span>
+          <span class="studio-rh-filter-section-toggle" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </span>
+        </button>
+        <div class="studio-rh-filter-section-body">
+          <label class="studio-rh-searchbox studio-rh-filter-searchbox">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="calRhCollabSearch" type="search" placeholder="Rechercher un collaborateur...">
+          </label>
+          <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhCollabChecks"></div>
         </div>
+      </section>
 
-        <div class="studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="statuts">
-          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="statuts" aria-expanded="false">
+      <section class="card studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="statuts">
+        <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="statuts" aria-expanded="false">
+          <span class="studio-rh-filter-section-copy">
             <span class="studio-rh-filter-section-title">Statuts</span>
-            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div class="studio-rh-filter-section-body">
-            <div class="studio-rh-check-list" id="calRhStatusChecks"></div>
-          </div>
+            <span class="studio-rh-filter-section-sub">État de traitement des événements.</span>
+          </span>
+          <span class="studio-rh-filter-section-toggle" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </span>
+        </button>
+        <div class="studio-rh-filter-section-body">
+          <div class="studio-rh-check-list" id="calRhStatusChecks"></div>
         </div>
+      </section>
 
-        <div class="studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="affichage">
-          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="affichage" aria-expanded="false">
+      <section class="card studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="affichage">
+        <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="affichage" aria-expanded="false">
+          <span class="studio-rh-filter-section-copy">
             <span class="studio-rh-filter-section-title">Affichage</span>
-            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div class="studio-rh-filter-section-body">
-            <div class="studio-rh-mode-list" id="calRhDisplayMode">
-              <label><input type="radio" name="calRhDisplayMode" value="auto" checked> <span>Automatique</span></label>
-              <label><input type="radio" name="calRhDisplayMode" value="summary"> <span>Synthèse</span></label>
-              <label><input type="radio" name="calRhDisplayMode" value="detail"> <span>Détail</span></label>
-            </div>
-            <p class="studio-rh-filter-help">Le détail s’active sur un périmètre réduit. Sinon, le mois devient illisible.</p>
+            <span class="studio-rh-filter-section-sub">Synthèse ou détail selon le périmètre.</span>
+          </span>
+          <span class="studio-rh-filter-section-toggle" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </span>
+        </button>
+        <div class="studio-rh-filter-section-body">
+          <div class="studio-rh-mode-list" id="calRhDisplayMode">
+            <label><input type="radio" name="calRhDisplayMode" value="auto" checked> <span>Automatique</span></label>
+            <label><input type="radio" name="calRhDisplayMode" value="summary"> <span>Synthèse</span></label>
+            <label><input type="radio" name="calRhDisplayMode" value="detail"> <span>Détail</span></label>
           </div>
+          <p class="studio-rh-filter-help">Le détail s’active sur un périmètre réduit. Sinon, le mois devient illisible.</p>
         </div>
-      </div>
+      </section>
     </aside>
 
     <div class="card studio-rh-calendar-card">
