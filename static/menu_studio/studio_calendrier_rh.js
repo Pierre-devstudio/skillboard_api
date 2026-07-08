@@ -11,6 +11,19 @@
     evaluation_competence: ["evaluation_competence", "entretien_competence"]
   };
   const _hiddenCalendarGroups = new Set();
+  const _calendarFilterTypes = [
+    { id:"indisponibilite", label:"Indisponibilités", groups:["indisponibilite"] },
+    { id:"entretien_annuel", label:"Entretiens annuels", groups:["entretien_annuel"] },
+    { id:"evaluation_competence", label:"Évaluations compétence", groups:["evaluation_competence"] }
+  ];
+  const _calendarFilterStatus = [
+    { id:"a_planifier", label:"À planifier" },
+    { id:"planifie", label:"Planifié" },
+    { id:"realise", label:"Réalisé" },
+    { id:"annule", label:"Annulé" },
+    { id:"archive", label:"Archivé" }
+  ];
+  let _todoFilterType = "";
   _month = new Date(_month.getFullYear(), _month.getMonth(), 1);
 
   function root(){ return document.querySelector('#view-calendrier_rh[data-view="calendrier_rh"]'); }
@@ -85,8 +98,49 @@
     return !_hiddenCalendarGroups.has(calendarGroupForType(value));
   }
 
+  function checkedValues(containerId){
+    return Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map(input => clean(input.value)).filter(Boolean);
+  }
+
+  function eventStatusKey(ev){
+    const statut = clean(ev && ev.statut).toLowerCase();
+    if ((ev && ev.archive) || ["archive", "archivé", "archivée"].includes(statut)) return "archive";
+    if (["annule", "annulé"].includes(statut)) return "annule";
+    if (["realise", "realisee", "réalisé", "réalisée"].includes(statut)) return "realise";
+    if (["a_planifier", "proposee", "proposée"].includes(statut)) return "a_planifier";
+    return "planifie";
+  }
+
+  function selectedCalendarGroups(){
+    const checked = checkedValues("calRhTypeChecks");
+    return new Set(checked);
+  }
+
+  function activeFilterState(){
+    return {
+      groups: selectedCalendarGroups(),
+      services: new Set(checkedValues("calRhServiceChecks")),
+      collaborateurs: new Set(checkedValues("calRhCollabChecks")),
+      statuts: new Set(checkedValues("calRhStatusChecks"))
+    };
+  }
+
+  function eventPassesUiFilters(ev, state){
+    const filters = state || activeFilterState();
+    const group = calendarGroupForType(ev && ev.type_evenement);
+    if (!filters.groups.has(group)) return false;
+    const serviceId = clean(ev && ev.id_service);
+    if (filters.services.size && (!serviceId || !filters.services.has(serviceId))) return false;
+    const collabId = clean(ev && ev.id_effectif);
+    if (filters.collaborateurs.size && (!collabId || !filters.collaborateurs.has(collabId))) return false;
+    const statut = eventStatusKey(ev);
+    if (filters.statuts.size && !filters.statuts.has(statut)) return false;
+    return true;
+  }
+
   function visibleCalendarEvents(){
-    return _events.filter(ev => isCalendarGroupVisible(ev && ev.type_evenement));
+    const state = activeFilterState();
+    return _events.filter(ev => eventPassesUiFilters(ev, state));
   }
 
   function statutLabel(value){
@@ -248,28 +302,84 @@
     }, extra || {});
   }
 
+  function checkItemHtml(value, label, checked, meta){
+    return `
+      <label class="studio-rh-check-item">
+        <input type="checkbox" value="${esc(value)}"${checked ? " checked" : ""}>
+        <span>${esc(label)}</span>
+        ${meta ? `<small>${esc(meta)}</small>` : ""}
+      </label>`;
+  }
+
+  function renderCheckList(id, rows, valueFn, labelFn, checkedFn, metaFn){
+    const box = byId(id);
+    if (!box) return;
+    const items = asArray(rows);
+    if (!items.length) {
+      box.innerHTML = `<div class="studio-rh-filter-empty">Aucune donnée.</div>`;
+      return;
+    }
+    box.innerHTML = items.map(row => checkItemHtml(valueFn(row), labelFn(row), checkedFn ? checkedFn(row) : false, metaFn ? metaFn(row) : "")).join("");
+    box.querySelectorAll('input[type="checkbox"]').forEach(input => input.addEventListener("change", handleFilterChange));
+  }
+
+  function selectedServiceIds(){ return new Set(checkedValues("calRhServiceChecks")); }
+
+  function renderDynamicCollaborators(){
+    const services = selectedServiceIds();
+    const query = clean(byId("calRhCollabSearch")?.value).toLowerCase();
+    const selected = new Set(checkedValues("calRhCollabChecks"));
+    let rows = asArray(_bootstrap && _bootstrap.collaborateurs);
+    if (services.size) rows = rows.filter(c => services.has(clean(c.id_service)));
+    if (query) {
+      rows = rows.filter(c => collabLabel(c).toLowerCase().includes(query)
+        || clean(c.email_effectif).toLowerCase().includes(query)
+        || clean(c.matricule_effectif).toLowerCase().includes(query));
+    }
+    rows = rows.slice().sort((a, b) => collabLabel(a).localeCompare(collabLabel(b), "fr"));
+    renderCheckList("calRhCollabChecks", rows, c => clean(c.id_effectif), collabLabel, c => selected.has(clean(c.id_effectif)), c => serviceLabel(c));
+  }
+
+  function renderFilterPanel(){
+    renderCheckList("calRhTypeChecks", _calendarFilterTypes, x => x.id, x => x.label, () => true);
+    renderCheckList("calRhServiceChecks", asArray(_bootstrap && _bootstrap.services).slice().sort((a, b) => serviceLabel(a).localeCompare(serviceLabel(b), "fr")), s => clean(s.id_service), serviceLabel, () => false);
+    renderCheckList("calRhStatusChecks", _calendarFilterStatus, x => x.id, x => x.label, () => true);
+    renderDynamicCollaborators();
+    byId("calRhCollabSearch")?.addEventListener("input", renderDynamicCollaborators);
+    document.querySelectorAll('#calRhDisplayMode input[type="radio"]').forEach(input => input.addEventListener("change", renderAll));
+    refreshFilterSummary();
+  }
+
+  function refreshFilterSummary(){
+    const el = byId("calRhFilterSummary");
+    if (!el) return;
+    const state = activeFilterState();
+    const details = [];
+    if (state.groups.size < _calendarFilterTypes.length) details.push(`${state.groups.size} catégorie${state.groups.size > 1 ? "s" : ""}`);
+    if (state.services.size) details.push(`${state.services.size} service${state.services.size > 1 ? "s" : ""}`);
+    if (state.collaborateurs.size) details.push(`${state.collaborateurs.size} collaborateur${state.collaborateurs.size > 1 ? "s" : ""}`);
+    if (state.statuts.size < _calendarFilterStatus.length) details.push(`${state.statuts.size} statut${state.statuts.size > 1 ? "s" : ""}`);
+    el.textContent = details.length ? `Filtré : ${details.join(" · ")}.` : "Affichage synthétique par défaut.";
+  }
+
+  function handleFilterChange(){
+    renderDynamicCollaborators();
+    refreshFilterSummary();
+    renderAll();
+  }
+
   async function loadBootstrap(){
     const ownerId = getOwnerId();
     _bootstrap = await window.portal.apiJson(scopedUrl(`/studio/planification/bootstrap/${encodeURIComponent(ownerId)}`));
-    fillSelect("calRhFilterType", asArray(_bootstrap.types_evenements || []), "id", x => x.label, "Tous les types");
-    fillSelect("calRhFilterService", asArray(_bootstrap.services), "id_service", serviceLabel, "Tous les services");
-    fillSelect("calRhFilterCollab", asArray(_bootstrap.collaborateurs), "id_effectif", collabLabel, "Tous les collaborateurs");
-    fillSelect("calRhFilterStatut", [
-      { id:"a_planifier", label:"À planifier" },
-      { id:"planifie", label:"Planifié" },
-      { id:"realise", label:"Réalisé" },
-      { id:"annule", label:"Annulé" },
-      { id:"archive", label:"Archivé" }
-    ], "id", x => x.label, "Tous les statuts");
+    renderFilterPanel();
     if (_bootstrap.sql_ready === false) setMsg("calRhMsg", "Tables calendrier RH absentes. Exécute le script SQL déjà présent dans docs/sql/20260701_insights_calendrier_rh.sql.", "warn");
   }
 
   async function loadCalendar(){
     const ownerId = getOwnerId();
     const range = monthRange();
-    const params = filters({ start: ymd(range.start), end: ymd(range.end) });
-    const events = await window.portal.apiJson(scopedUrl(`/studio/calendrier/events/${encodeURIComponent(ownerId)}`, params));
-    const suggestions = await window.portal.apiJson(scopedUrl(`/studio/calendrier/suggestions/${encodeURIComponent(ownerId)}`, filters()));
+    const events = await window.portal.apiJson(scopedUrl(`/studio/calendrier/events/${encodeURIComponent(ownerId)}`, { start: ymd(range.start), end: ymd(range.end) }));
+    const suggestions = await window.portal.apiJson(scopedUrl(`/studio/calendrier/suggestions/${encodeURIComponent(ownerId)}`));
     _events = asArray(events);
     _suggestions = asArray(suggestions);
     renderAll();
@@ -382,20 +492,29 @@
     });
   }
 
+  function suggestionPassesTodoFilter(s){
+    if (!_todoFilterType) return true;
+    const group = calendarGroupForType(s && (s.type_suggestion || s.type_evenement));
+    return group === _todoFilterType;
+  }
+
   function renderTodo(){
     const box = byId("calRhTodoList");
     const sub = byId("calRhTodoSub");
-    if (sub) sub.textContent = `${_suggestions.length} événement${_suggestions.length > 1 ? "s" : ""} à dater.`;
+    const rows = _suggestions.filter(suggestionPassesTodoFilter);
+    const countBtn = byId("calRhTodoBtnCount");
+    if (countBtn) countBtn.textContent = String(_suggestions.length);
+    if (sub) sub.textContent = `${_suggestions.length} brique${_suggestions.length > 1 ? "s" : ""} à dater.`;
     if (!box) return;
-    if (!_suggestions.length) {
+    if (!rows.length) {
       box.innerHTML = `
         <div class="studio-rh-empty studio-rh-calendar-empty">
           <strong>Aucun événement à planifier</strong>
-          <span>Les événements non datés apparaîtront ici.</span>
+          <span>${_todoFilterType ? "Aucune brique dans cette catégorie." : "Les événements non datés apparaîtront ici."}</span>
         </div>`;
       return;
     }
-    box.innerHTML = _suggestions.map(s => `
+    box.innerHTML = rows.map(s => `
       <article class="studio-rh-todo-item studio-rh-row--${esc(s.type_suggestion || s.type_evenement)}" draggable="true" data-suggestion-id="${esc(s.id_suggestion || s.id)}">
         <span class="studio-rh-todo-type">${esc(typeLabel(s.type_suggestion || s.type_evenement))}</span>
         <strong>${esc(s.titre || typeLabel(s.type_suggestion))}</strong>
@@ -410,18 +529,7 @@
     });
   }
 
-  function renderCalendar(){
-    const grid = byId("calRhGrid");
-    if (!grid) return;
-    const title = byId("calRhMonthTitle");
-    const sub = byId("calRhMonthSub");
-    if (title) title.textContent = _month.toLocaleDateString("fr-FR", { month:"long", year:"numeric" });
-    const visibleEvents = visibleCalendarEvents();
-    if (sub) {
-      const hiddenCount = Math.max(0, _events.length - visibleEvents.length);
-      sub.textContent = `${visibleEvents.length} événement${visibleEvents.length > 1 ? "s" : ""} affiché${visibleEvents.length > 1 ? "s" : ""}${hiddenCount ? ` · ${hiddenCount} masqué${hiddenCount > 1 ? "s" : ""}` : ""} · ${_suggestions.length} à planifier`;
-    }
-
+  function calendarDays(){
     const range = monthRange();
     const days = [];
     for (let i = 0; i < 42; i++) {
@@ -429,39 +537,117 @@
       d.setDate(range.start.getDate() + i);
       days.push(d);
     }
+    return days;
+  }
 
+  function dayEvents(day){
+    return visibleCalendarEvents()
+      .filter(ev => dayInEventRange(ev, day))
+      .sort((a, b) => Number(isEventMultiDay(b)) - Number(isEventMultiDay(a))
+        || String(a.date_debut || "").localeCompare(String(b.date_debut || ""))
+        || eventTitle(a).localeCompare(eventTitle(b), "fr"));
+  }
+
+  function dayCounts(events){
+    const counts = { indisponibilite:0, entretien_annuel:0, evaluation_competence:0 };
+    events.forEach(ev => {
+      const group = calendarGroupForType(ev && ev.type_evenement);
+      if (Object.prototype.hasOwnProperty.call(counts, group)) counts[group] += 1;
+    });
+    return counts;
+  }
+
+  function summaryLineHtml(group, count){
+    if (!count) return "";
+    const labels = {
+      indisponibilite: count > 1 ? "indisponibilités" : "indisponibilité",
+      entretien_annuel: count > 1 ? "entretiens" : "entretien",
+      evaluation_competence: count > 1 ? "évaluations" : "évaluation"
+    };
+    return `<span class="studio-rh-day-summary-line studio-rh-day-summary-line--${esc(group)}"><strong>${count}</strong> ${esc(labels[group] || "événement")}</span>`;
+  }
+
+  function getDisplayMode(){
+    return clean(document.querySelector('#calRhDisplayMode input[name="calRhDisplayMode"]:checked')?.value) || "auto";
+  }
+
+  function isReducedScope(){
+    const state = activeFilterState();
+    return state.services.size > 0 || state.collaborateurs.size > 0 || state.groups.size <= 1;
+  }
+
+  function useDetailMode(visibleEvents){
+    const mode = getDisplayMode();
+    if (mode === "summary") return false;
+    if (mode === "detail") return true;
+    return isReducedScope() && visibleEvents.length <= 40;
+  }
+
+  function renderDaySummary(day, inMonth, todayKey){
+    const dayKey = ymd(day);
+    const events = dayEvents(day);
+    const counts = dayCounts(events);
+    const total = events.length;
+    return `
+      <div class="studio-rh-day studio-rh-day--summary${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}">
+        <div class="studio-rh-day-topline">
+          <div class="studio-rh-day-number">${day.getDate()}</div>
+          ${total ? `<button type="button" class="studio-rh-day-total" data-day-total="${dayKey}">${total}</button>` : ""}
+        </div>
+        <div class="studio-rh-day-summary">
+          ${summaryLineHtml("indisponibilite", counts.indisponibilite)}
+          ${summaryLineHtml("entretien_annuel", counts.entretien_annuel)}
+          ${summaryLineHtml("evaluation_competence", counts.evaluation_competence)}
+          ${!total ? `<span class="studio-rh-day-empty-dot">—</span>` : ""}
+        </div>
+      </div>`;
+  }
+
+  function renderDayDetail(day, inMonth, todayKey){
+    const dayKey = ymd(day);
+    const events = dayEvents(day);
+    const maxVisible = 4;
+    const visible = events.slice(0, maxVisible);
+    const more = Math.max(0, events.length - visible.length);
+    return `
+      <div class="studio-rh-day studio-rh-day--detail${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}">
+        <div class="studio-rh-day-topline">
+          <div class="studio-rh-day-number">${day.getDate()}</div>
+          ${events.length ? `<button type="button" class="studio-rh-day-total" data-day-total="${dayKey}">${events.length}</button>` : ""}
+        </div>
+        <div class="studio-rh-day-events">
+          ${visible.map(ev => renderSingleDayEvent(ev, dayKey)).join("")}
+          ${more ? `<button type="button" class="studio-rh-day-more" data-day-total="${dayKey}">+ ${more} événement${more > 1 ? "s" : ""}</button>` : ""}
+        </div>
+      </div>`;
+  }
+
+  function renderCalendar(){
+    const grid = byId("calRhGrid");
+    if (!grid) return;
+    const title = byId("calRhMonthTitle");
+    const sub = byId("calRhMonthSub");
+    const hint = byId("calRhModeHint");
+    if (title) title.textContent = _month.toLocaleDateString("fr-FR", { month:"long", year:"numeric" });
+    const visibleEvents = visibleCalendarEvents();
+    const hiddenCount = Math.max(0, _events.length - visibleEvents.length);
+    const detail = useDetailMode(visibleEvents);
+    if (sub) sub.textContent = `${visibleEvents.length} événement${visibleEvents.length > 1 ? "s" : ""} affiché${visibleEvents.length > 1 ? "s" : ""}${hiddenCount ? ` · ${hiddenCount} masqué${hiddenCount > 1 ? "s" : ""}` : ""} · ${_suggestions.length} à planifier`;
+    if (hint) hint.textContent = detail ? "Vue détaillée : les événements sont listés dans chaque journée." : "Vue synthèse : les volumes par journée restent lisibles sur un grand périmètre.";
+    root()?.classList.toggle("is-calendar-detail-mode", detail);
+    root()?.classList.toggle("is-calendar-summary-mode", !detail);
+
+    const days = calendarDays();
     const todayKey = ymd(new Date());
     const weeks = [];
     for (let i = 0; i < 6; i++) weeks.push(days.slice(i * 7, i * 7 + 7));
 
     grid.innerHTML = weeks.map((weekDays, weekIndex) => {
-      const rangeData = rangeEventsForWeek(weekDays);
-      const dayCells = weekDays.map((day, dayIndex) => {
+      const dayCells = weekDays.map(day => {
         const inMonth = day.getMonth() === _month.getMonth();
-        const dayKey = ymd(day);
-        const dayEvents = singleDayEventsByDay(day);
-        return `
-          <div class="studio-rh-day${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}" style="grid-column:${dayIndex + 1};">
-            <div class="studio-rh-day-number">${day.getDate()}</div>
-            <div class="studio-rh-day-events">
-              ${dayEvents.map(ev => renderSingleDayEvent(ev, dayKey)).join("")}
-            </div>
-          </div>`;
+        return detail ? renderDayDetail(day, inMonth, todayKey) : renderDaySummary(day, inMonth, todayKey);
       }).join("");
-
-      const laneCount = rangeData.laneCount;
-      const rangeBars = rangeData.segments.length ? `
-        <div class="studio-rh-week-bars" style="--rh-bars-height:${laneCount * 18 + 2}px;">
-          ${rangeData.segments.map(renderRangeBar).join("")}
-        </div>` : "";
-
-      return `
-        <div class="studio-rh-week-row" data-week-index="${weekIndex}" style="--rh-range-lanes:${laneCount}; --rh-bars-height:${laneCount ? laneCount * 18 + 2 : 0}px;">
-          ${rangeBars}
-          <div class="studio-rh-week-days">
-            ${dayCells}
-          </div>
-        </div>`;
+      return `<div class="studio-rh-week-row ${detail ? "is-detail" : "is-summary"}" data-week-index="${weekIndex}"><div class="studio-rh-week-days">${dayCells}</div></div>`;
     }).join("");
 
     grid.querySelectorAll("[data-day]").forEach(dayEl => {
@@ -481,6 +667,8 @@
       });
     });
 
+    grid.querySelectorAll("[data-day-total]").forEach(btn => btn.addEventListener("click", () => openDayDetails(btn.dataset.dayTotal)));
+
     grid.querySelectorAll("[data-event-id]").forEach(el => {
       el.addEventListener("click", () => openEventModal(el.dataset.eventId));
       el.addEventListener("mouseenter", ev => showEventHover(el.dataset.eventId, ev));
@@ -493,6 +681,30 @@
         ev.dataTransfer.setData("text/plain", JSON.stringify({ kind:"event", id: el.dataset.eventId }));
       });
     });
+  }
+
+  function openDayDetails(dayKey){
+    const day = parseDay(dayKey);
+    if (!day) return;
+    const events = dayEvents(day);
+    const card = byId("calRhHoverCard");
+    if (!card) return;
+    card.innerHTML = `
+      <div class="studio-rh-popover-head">
+        <span class="studio-rh-popover-type">${esc(fullDateLabel(dayKey))}</span>
+        <span class="studio-rh-popover-status">${events.length} événement${events.length > 1 ? "s" : ""}</span>
+      </div>
+      <div class="studio-rh-day-detail-list">
+        ${events.length ? events.map(ev => `
+          <button type="button" class="studio-rh-day-detail-item studio-rh-row--${esc(ev.type_evenement)}" data-event-id="${esc(clean(ev.id_evenement || ev.id))}">
+            <strong>${esc(eventTitle(ev))}</strong>
+            <span>${esc(eventChipMeta(ev))}</span>
+          </button>`).join("") : `<span class="studio-rh-empty-line">Aucun événement visible.</span>`}
+      </div>`;
+    card.hidden = false;
+    card.style.left = `${Math.max(16, window.innerWidth - 380)}px`;
+    card.style.top = `120px`;
+    card.querySelectorAll('[data-event-id]').forEach(btn => btn.addEventListener('click', () => openEventModal(btn.dataset.eventId)));
   }
 
   function eventById(id){ return _events.find(ev => clean(ev.id_evenement || ev.id) === clean(id)); }
@@ -680,11 +892,17 @@
   }
 
   function resetFilters(){
-    ["calRhFilterType", "calRhFilterService", "calRhFilterCollab", "calRhFilterStatut"].forEach(id => {
-      const el = byId(id);
-      if (el) el.value = "";
+    document.querySelectorAll('#view-calendrier_rh .studio-rh-cal-filter-panel input[type="checkbox"]').forEach(input => {
+      if (input.closest('#calRhTypeChecks') || input.closest('#calRhStatusChecks')) input.checked = true;
+      else input.checked = false;
     });
-    loadCalendar();
+    const search = byId("calRhCollabSearch");
+    if (search) search.value = "";
+    const auto = document.querySelector('#calRhDisplayMode input[value="auto"]');
+    if (auto) auto.checked = true;
+    renderDynamicCollaborators();
+    refreshFilterSummary();
+    renderAll();
   }
 
   function toggleFilters(){
@@ -717,27 +935,21 @@
     setCalendarExpanded(!(view && view.classList.contains("is-calendar-expanded")));
   }
 
-
-  function updateLegendButtons(){
-    document.querySelectorAll('#view-calendrier_rh [data-cal-rh-toggle-types]').forEach(btn => {
-      const groups = clean(btn.dataset.calRhToggleTypes).split(',').map(x => clean(x)).filter(Boolean);
-      const hidden = groups.every(group => _hiddenCalendarGroups.has(group));
-      btn.classList.toggle('is-active', !hidden);
-      btn.setAttribute('aria-pressed', hidden ? 'false' : 'true');
-      btn.setAttribute('title', hidden ? 'Afficher cette catégorie' : 'Masquer cette catégorie');
-    });
+  function setTodoDrawer(open){
+    const drawer = byId("calRhTodoDrawer");
+    const backdrop = byId("calRhTodoBackdrop");
+    const btn = byId("calRhTodoOpenBtn");
+    if (!drawer || !backdrop) return;
+    drawer.classList.toggle("is-open", !!open);
+    drawer.setAttribute("aria-hidden", open ? "false" : "true");
+    backdrop.hidden = !open;
+    if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+    hideEventHover();
   }
 
-  function toggleCalendarGroup(btn){
-    const groups = clean(btn && btn.dataset.calRhToggleTypes).split(',').map(x => clean(x)).filter(Boolean);
-    if (!groups.length) return;
-    const shouldHide = groups.some(group => !_hiddenCalendarGroups.has(group));
-    groups.forEach(group => {
-      if (shouldHide) _hiddenCalendarGroups.add(group);
-      else _hiddenCalendarGroups.delete(group);
-    });
-    updateLegendButtons();
-    renderCalendar();
+  function toggleTodoDrawer(){
+    const drawer = byId("calRhTodoDrawer");
+    setTodoDrawer(!(drawer && drawer.classList.contains("is-open")));
   }
 
   function bind(){
@@ -745,7 +957,18 @@
     _bound = true;
     byId("calRhBackPlanBtn")?.addEventListener("click", () => {
       setCalendarExpanded(false);
+      setTodoDrawer(false);
       window.portal.switchView("planification_rh");
+    });
+    byId("calRhTodoOpenBtn")?.addEventListener("click", toggleTodoDrawer);
+    byId("calRhTodoCloseBtn")?.addEventListener("click", () => setTodoDrawer(false));
+    byId("calRhTodoBackdrop")?.addEventListener("click", () => setTodoDrawer(false));
+    document.querySelectorAll('#view-calendrier_rh [data-cal-rh-todo-type]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _todoFilterType = clean(btn.dataset.calRhTodoType);
+        document.querySelectorAll('#view-calendrier_rh [data-cal-rh-todo-type]').forEach(x => x.classList.toggle('is-active', x === btn));
+        renderTodo();
+      });
     });
     byId("calRhRefreshBtn")?.addEventListener("click", loadCalendar);
     byId("calRhResetFiltersBtn")?.addEventListener("click", resetFilters);
@@ -755,17 +978,12 @@
     byId("calRhTodayBtn")?.addEventListener("click", async () => { const now = new Date(); _month = new Date(now.getFullYear(), now.getMonth(), 1); await loadCalendar(); });
     byId("calRhExpandBtn")?.addEventListener("click", toggleCalendarExpanded);
     byId("calRhExpandBackdrop")?.addEventListener("click", () => setCalendarExpanded(false));
-    document.querySelectorAll('#view-calendrier_rh [data-cal-rh-toggle-types]').forEach(btn => {
-      btn.addEventListener('click', () => toggleCalendarGroup(btn));
-    });
-    updateLegendButtons();
     byId("calRhModalClose")?.addEventListener("click", closeModal);
     byId("calRhModalCancel")?.addEventListener("click", closeModal);
     byId("calRhForm")?.addEventListener("submit", submitForm);
     byId("calRhCancelEventBtn")?.addEventListener("click", () => cancelOrArchive("annule"));
     byId("calRhArchiveEventBtn")?.addEventListener("click", () => cancelOrArchive("archive"));
-    ["calRhFilterType", "calRhFilterService", "calRhFilterCollab", "calRhFilterStatut"].forEach(id => byId(id)?.addEventListener("change", loadCalendar));
-    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeModal(); setCalendarExpanded(false); hideEventHover(); } });
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeModal(); setCalendarExpanded(false); setTodoDrawer(false); hideEventHover(); } });
     window.addEventListener("scroll", hideEventHover, true);
   }
 
