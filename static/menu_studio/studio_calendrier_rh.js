@@ -449,15 +449,18 @@
           </div>`;
       }).join("");
 
+      const laneCount = rangeData.laneCount;
       const rangeBars = rangeData.segments.length ? `
-        <div class="studio-rh-week-bars">
+        <div class="studio-rh-week-bars" style="--rh-bars-height:${laneCount * 18 + 2}px;">
           ${rangeData.segments.map(renderRangeBar).join("")}
         </div>` : "";
 
       return `
-        <div class="studio-rh-week-row" data-week-index="${weekIndex}" style="--rh-range-lanes:${rangeData.laneCount}; --rh-range-space:${rangeData.laneCount ? Math.min(rangeData.laneCount, 6) * 22 + 8 : 0}px;">
-          ${dayCells}
+        <div class="studio-rh-week-row" data-week-index="${weekIndex}" style="--rh-range-lanes:${laneCount}; --rh-bars-height:${laneCount ? laneCount * 18 + 2 : 0}px;">
           ${rangeBars}
+          <div class="studio-rh-week-days">
+            ${dayCells}
+          </div>
         </div>`;
     }).join("");
 

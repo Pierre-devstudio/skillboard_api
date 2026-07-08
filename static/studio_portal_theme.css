@@ -9705,3 +9705,125 @@ body.studio-rh-calendar-expanded{
     font-size:10px;
   }
 }
+
+/* ======================================================
+   Studio – Calendrier RH : correction empilement barres continues
+   ====================================================== */
+#view-calendrier_rh .studio-rh-week-row{
+  position:relative;
+  display:grid;
+  grid-template-columns:1fr;
+  grid-template-rows:var(--rh-bars-height, 0px) auto;
+  gap:4px;
+  min-width:0;
+}
+
+#view-calendrier_rh .studio-rh-week-days{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  gap:6px;
+  min-width:0;
+}
+
+#view-calendrier_rh .studio-rh-week-bars{
+  position:relative;
+  z-index:2;
+  top:auto;
+  left:auto;
+  right:auto;
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  gap:6px;
+  min-height:var(--rh-bars-height, 0px);
+  align-content:start;
+  pointer-events:none;
+}
+
+#view-calendrier_rh .studio-rh-day{
+  min-height:112px;
+}
+
+#view-calendrier_rh .studio-rh-day-events{
+  padding-top:0 !important;
+  gap:4px;
+}
+
+#view-calendrier_rh .studio-rh-range-bar{
+  min-height:16px;
+  height:16px;
+  margin-top:calc(var(--rh-lane, 0) * 18px);
+  padding:0 8px;
+  border:0;
+  border-radius:7px;
+  gap:0;
+  box-shadow:none;
+  opacity:.98;
+}
+
+#view-calendrier_rh .studio-rh-range-bar:hover,
+#view-calendrier_rh .studio-rh-range-bar:focus{
+  transform:none;
+  box-shadow:none;
+  filter:brightness(.985);
+}
+
+#view-calendrier_rh .studio-rh-range-title{
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:0;
+  line-height:1;
+}
+
+#view-calendrier_rh .studio-rh-row--indisponibilite.studio-rh-range-bar{
+  background:#ffedd5;
+  color:#9a3412;
+}
+
+#view-calendrier_rh .studio-rh-row--entretien_annuel.studio-rh-range-bar{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+
+#view-calendrier_rh .studio-rh-row--entretien_competence.studio-rh-range-bar,
+#view-calendrier_rh .studio-rh-row--evaluation_competence.studio-rh-range-bar{
+  background:#ede9fe;
+  color:#6d28d9;
+}
+
+#view-calendrier_rh .studio-rh-row--indisponibilite.studio-rh-range-bar .studio-rh-range-title,
+#view-calendrier_rh .studio-rh-row--entretien_annuel.studio-rh-range-bar .studio-rh-range-title,
+#view-calendrier_rh .studio-rh-row--entretien_competence.studio-rh-range-bar .studio-rh-range-title,
+#view-calendrier_rh .studio-rh-row--evaluation_competence.studio-rh-range-bar .studio-rh-range-title{
+  color:inherit;
+}
+
+#view-calendrier_rh .studio-rh-event-chip{
+  position:relative;
+  z-index:1;
+}
+
+#view-calendrier_rh.is-calendar-expanded .studio-rh-day{
+  min-height:108px;
+}
+
+@media (max-width:760px){
+  #view-calendrier_rh .studio-rh-week-row{
+    gap:3px;
+  }
+
+  #view-calendrier_rh .studio-rh-week-days,
+  #view-calendrier_rh .studio-rh-week-bars{
+    gap:4px;
+  }
+
+  #view-calendrier_rh .studio-rh-range-bar{
+    min-height:15px;
+    height:15px;
+    margin-top:calc(var(--rh-lane, 0) * 16px);
+    padding:0 6px;
+  }
+
+  #view-calendrier_rh .studio-rh-range-title{
+    font-size:10px;
+  }
+}
