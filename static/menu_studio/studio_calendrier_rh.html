@@ -17,13 +17,6 @@
           </span>
           <span class="sb-btn-label">Créer des événements</span>
         </button>
-        <button type="button" class="sb-btn sb-btn--soft" id="calRhTodoOpenBtn" aria-expanded="false" aria-controls="calRhTodoDrawer">
-          <span class="sb-btn-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M5 5h14"/><path d="M5 12h14"/><path d="M5 19h10"/><circle cx="17" cy="19" r="2"/></svg>
-          </span>
-          <span class="sb-btn-label">À planifier</span>
-          <span class="studio-rh-btn-count" id="calRhTodoBtnCount">0</span>
-        </button>
         <button type="button" class="sb-btn sb-btn--accent" id="calRhRefreshBtn">
           <span class="sb-btn-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.1-6.6"/><path d="M18 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.1 6.6"/><path d="M6 21v-5h5"/></svg>
@@ -43,7 +36,7 @@
           <div class="sb-kpi-value" id="calRhKpiDated">0</div>
         </div>
       </div>
-      <div class="sb-kpi-card studio-rh-kpi-card">
+      <button type="button" class="sb-kpi-card studio-rh-kpi-card studio-rh-kpi-card--action studio-rh-kpi-card--todo-action" id="calRhTodoOpenBtn" aria-expanded="false" aria-controls="calRhTodoDrawer">
         <div class="studio-rh-kpi-icon studio-rh-kpi-icon--todo" aria-hidden="true">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </div>
@@ -51,7 +44,10 @@
           <div class="sb-kpi-label">À planifier</div>
           <div class="sb-kpi-value" id="calRhKpiTodo">0</div>
         </div>
-      </div>
+        <span class="studio-rh-kpi-action-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </span>
+      </button>
       <div class="sb-kpi-card studio-rh-kpi-card">
         <div class="studio-rh-kpi-icon studio-rh-kpi-icon--week" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18"/><path d="M7 14h5"/><path d="M7 18h3"/></svg>
@@ -101,38 +97,63 @@
           <span class="sb-btn-label">Réinitialiser</span>
         </button>
 
-        <div class="studio-rh-filter-section">
-          <div class="studio-rh-filter-section-title">Catégories</div>
-          <div class="studio-rh-check-list" id="calRhTypeChecks"></div>
-        </div>
-
-        <div class="studio-rh-filter-section">
-          <div class="studio-rh-filter-section-title">Périmètre service</div>
-          <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhServiceChecks"></div>
-        </div>
-
-        <div class="studio-rh-filter-section" id="calRhCollabFilterSection">
-          <div class="studio-rh-filter-section-title">Collaborateurs</div>
-          <label class="studio-rh-searchbox studio-rh-filter-searchbox">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <input id="calRhCollabSearch" type="search" placeholder="Rechercher un collaborateur...">
-          </label>
-          <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhCollabChecks"></div>
-        </div>
-
-        <div class="studio-rh-filter-section">
-          <div class="studio-rh-filter-section-title">Statuts</div>
-          <div class="studio-rh-check-list" id="calRhStatusChecks"></div>
-        </div>
-
-        <div class="studio-rh-filter-section">
-          <div class="studio-rh-filter-section-title">Affichage</div>
-          <div class="studio-rh-mode-list" id="calRhDisplayMode">
-            <label><input type="radio" name="calRhDisplayMode" value="auto" checked> <span>Automatique</span></label>
-            <label><input type="radio" name="calRhDisplayMode" value="summary"> <span>Synthèse</span></label>
-            <label><input type="radio" name="calRhDisplayMode" value="detail"> <span>Détail</span></label>
+        <div class="studio-rh-filter-section studio-rh-filter-accordion is-open" data-filter-section="categories">
+          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="categories" aria-expanded="true">
+            <span class="studio-rh-filter-section-title">Catégories</span>
+            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="studio-rh-filter-section-body">
+            <div class="studio-rh-check-list" id="calRhTypeChecks"></div>
           </div>
-          <p class="studio-rh-filter-help">Le détail s’active surtout sur un périmètre réduit. Sinon, le mois devient un plat de nouilles RH.</p>
+        </div>
+
+        <div class="studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="services">
+          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="services" aria-expanded="false">
+            <span class="studio-rh-filter-section-title">Périmètre service</span>
+            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="studio-rh-filter-section-body">
+            <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhServiceChecks"></div>
+          </div>
+        </div>
+
+        <div class="studio-rh-filter-section studio-rh-filter-accordion" id="calRhCollabFilterSection" data-filter-section="collaborateurs">
+          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="collaborateurs" aria-expanded="false">
+            <span class="studio-rh-filter-section-title">Collaborateurs</span>
+            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="studio-rh-filter-section-body">
+            <label class="studio-rh-searchbox studio-rh-filter-searchbox">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input id="calRhCollabSearch" type="search" placeholder="Rechercher un collaborateur...">
+            </label>
+            <div class="studio-rh-check-list studio-rh-check-list--scroll" id="calRhCollabChecks"></div>
+          </div>
+        </div>
+
+        <div class="studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="statuts">
+          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="statuts" aria-expanded="false">
+            <span class="studio-rh-filter-section-title">Statuts</span>
+            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="studio-rh-filter-section-body">
+            <div class="studio-rh-check-list" id="calRhStatusChecks"></div>
+          </div>
+        </div>
+
+        <div class="studio-rh-filter-section studio-rh-filter-accordion" data-filter-section="affichage">
+          <button type="button" class="studio-rh-filter-section-head" data-cal-rh-filter-toggle="affichage" aria-expanded="false">
+            <span class="studio-rh-filter-section-title">Affichage</span>
+            <span class="studio-rh-filter-section-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="studio-rh-filter-section-body">
+            <div class="studio-rh-mode-list" id="calRhDisplayMode">
+              <label><input type="radio" name="calRhDisplayMode" value="auto" checked> <span>Automatique</span></label>
+              <label><input type="radio" name="calRhDisplayMode" value="summary"> <span>Synthèse</span></label>
+              <label><input type="radio" name="calRhDisplayMode" value="detail"> <span>Détail</span></label>
+            </div>
+            <p class="studio-rh-filter-help">Le détail s’active sur un périmètre réduit. Sinon, le mois devient illisible.</p>
+          </div>
         </div>
       </div>
     </aside>

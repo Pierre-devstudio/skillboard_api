@@ -900,6 +900,7 @@
     if (search) search.value = "";
     const auto = document.querySelector('#calRhDisplayMode input[value="auto"]');
     if (auto) auto.checked = true;
+    resetFilterSectionsDefault();
     renderDynamicCollaborators();
     refreshFilterSummary();
     renderAll();
@@ -914,6 +915,24 @@
     btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
     btn.setAttribute("title", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
     btn.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+  }
+
+
+  function toggleFilterSection(btn){
+    const section = btn && btn.closest('.studio-rh-filter-accordion');
+    if (!section) return;
+    const isOpen = !section.classList.contains('is-open');
+    section.classList.toggle('is-open', isOpen);
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  function resetFilterSectionsDefault(){
+    document.querySelectorAll('#view-calendrier_rh .studio-rh-filter-accordion').forEach(section => {
+      const isDefaultOpen = clean(section.dataset.filterSection) === 'categories';
+      section.classList.toggle('is-open', isDefaultOpen);
+      const btn = section.querySelector('[data-cal-rh-filter-toggle]');
+      if (btn) btn.setAttribute('aria-expanded', isDefaultOpen ? 'true' : 'false');
+    });
   }
 
   function setCalendarExpanded(expanded){
@@ -973,6 +992,9 @@
     byId("calRhRefreshBtn")?.addEventListener("click", loadCalendar);
     byId("calRhResetFiltersBtn")?.addEventListener("click", resetFilters);
     byId("calRhFiltersToggle")?.addEventListener("click", toggleFilters);
+    document.querySelectorAll('#view-calendrier_rh [data-cal-rh-filter-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => toggleFilterSection(btn));
+    });
     byId("calRhPrevMonth")?.addEventListener("click", async () => { _month = new Date(_month.getFullYear(), _month.getMonth() - 1, 1); await loadCalendar(); });
     byId("calRhNextMonth")?.addEventListener("click", async () => { _month = new Date(_month.getFullYear(), _month.getMonth() + 1, 1); await loadCalendar(); });
     byId("calRhTodayBtn")?.addEventListener("click", async () => { const now = new Date(); _month = new Date(now.getFullYear(), now.getMonth(), 1); await loadCalendar(); });
