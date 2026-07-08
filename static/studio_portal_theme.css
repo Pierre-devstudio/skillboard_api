@@ -10981,3 +10981,20 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-day-total{
   display:none;
 }
+
+/* ======================================================
+   Studio – Calendrier RH : panneau détail au-dessus calendrier agrandi
+   ====================================================== */
+#view-calendrier_rh.is-calendar-expanded .studio-rh-drawer-backdrop,
+#view-calendrier_rh.is-calendar-expanded #calRhDetailBackdrop{
+  z-index:10040;
+  background:rgba(15,23,42,.30);
+}
+
+#view-calendrier_rh.is-calendar-expanded .studio-rh-detail-drawer{
+  z-index:10055;
+}
+
+#view-calendrier_rh.is-calendar-expanded .studio-rh-detail-drawer.is-open{
+  transform:translateX(0);
+}
