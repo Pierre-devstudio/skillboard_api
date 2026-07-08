@@ -256,16 +256,86 @@
     renderAll();
   }
 
-  function eventsByDay(day){
+  function singleDayEventsByDay(day){
     return _events
-      .filter(ev => dayInEventRange(ev, day))
-      .sort((a, b) => {
-        const aMulti = isEventMultiDay(a) ? 0 : 1;
-        const bMulti = isEventMultiDay(b) ? 0 : 1;
-        if (aMulti !== bMulti) return aMulti - bMulti;
-        return String(a.date_debut || "").localeCompare(String(b.date_debut || ""))
-          || eventTitle(a).localeCompare(eventTitle(b), "fr");
-      });
+      .filter(ev => !isEventMultiDay(ev) && dayInEventRange(ev, day))
+      .sort((a, b) => String(a.date_debut || "").localeCompare(String(b.date_debut || ""))
+        || eventTitle(a).localeCompare(eventTitle(b), "fr"));
+  }
+
+  function rangeEventsForWeek(weekDays){
+    const weekStart = weekDays[0];
+    const weekEnd = weekDays[6];
+    const segments = _events
+      .filter(isEventMultiDay)
+      .map(ev => {
+        const range = eventRange(ev);
+        if (!range || range.end < weekStart || range.start > weekEnd) return null;
+        const visibleStart = range.start < weekStart ? weekStart : range.start;
+        const visibleEnd = range.end > weekEnd ? weekEnd : range.end;
+        const startCol = weekDays.findIndex(d => sameDay(d, visibleStart)) + 1;
+        const endCol = weekDays.findIndex(d => sameDay(d, visibleEnd)) + 1;
+        if (startCol < 1 || endCol < 1) return null;
+        return {
+          ev,
+          startCol,
+          endCol,
+          startsHere: sameDay(visibleStart, range.start),
+          endsHere: sameDay(visibleEnd, range.end),
+          lane: 0
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (a.startCol - b.startCol) || (b.endCol - a.endCol) || eventTitle(a.ev).localeCompare(eventTitle(b.ev), "fr"));
+
+    const lanes = [];
+    segments.forEach(segment => {
+      let lane = lanes.findIndex(lastEndCol => segment.startCol > lastEndCol);
+      if (lane === -1) {
+        lane = lanes.length;
+        lanes.push(segment.endCol);
+      } else {
+        lanes[lane] = segment.endCol;
+      }
+      segment.lane = lane;
+    });
+    return { segments, laneCount: lanes.length };
+  }
+
+  function rangeBarMeta(ev){
+    const start = dateOnlyFr(ev && ev.date_debut, false);
+    const end = dateOnlyFr(ev && (ev.date_fin || ev.date_debut), false);
+    const range = start === end ? start : `${start} → ${end}`;
+    return `${range}${ev && ev.collaborateur ? ` · ${ev.collaborateur}` : ""}`;
+  }
+
+  function renderSingleDayEvent(ev, dayKey){
+    const id = clean(ev.id_evenement || ev.id);
+    return `
+      <button type="button" class="studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)}" draggable="true" data-event-id="${esc(id)}" data-event-day="${esc(dayKey)}">
+        <span class="studio-rh-event-chip-main">
+          <span class="studio-rh-event-dot" aria-hidden="true"></span>
+          <span class="studio-rh-event-title">${esc(eventTitle(ev))}</span>
+        </span>
+        <span class="studio-rh-event-meta">${esc(eventChipMeta(ev))}</span>
+      </button>`;
+  }
+
+  function renderRangeBar(segment){
+    const ev = segment.ev;
+    const id = clean(ev.id_evenement || ev.id);
+    const classes = [
+      "studio-rh-range-bar",
+      `studio-rh-row--${clean(ev.type_evenement)}`,
+      segment.startsHere ? "is-range-start" : "is-range-continue-left",
+      segment.endsHere ? "is-range-end" : "is-range-continue-right"
+    ].join(" ");
+    return `
+      <button type="button" class="${esc(classes)}" draggable="true" data-event-id="${esc(id)}" style="grid-column:${segment.startCol} / ${segment.endCol + 1}; --rh-lane:${segment.lane};">
+        <span class="studio-rh-range-dot" aria-hidden="true"></span>
+        <span class="studio-rh-range-title">${esc(eventTitle(ev))}</span>
+        <span class="studio-rh-range-meta">${esc(rangeBarMeta(ev))}</span>
+      </button>`;
   }
 
   function renderAll(){
@@ -340,30 +410,33 @@
     }
 
     const todayKey = ymd(new Date());
-    grid.innerHTML = days.map(day => {
-      const inMonth = day.getMonth() === _month.getMonth();
-      const dayEvents = eventsByDay(day);
-      const dayKey = ymd(day);
+    const weeks = [];
+    for (let i = 0; i < 6; i++) weeks.push(days.slice(i * 7, i * 7 + 7));
+
+    grid.innerHTML = weeks.map((weekDays, weekIndex) => {
+      const rangeData = rangeEventsForWeek(weekDays);
+      const dayCells = weekDays.map((day, dayIndex) => {
+        const inMonth = day.getMonth() === _month.getMonth();
+        const dayKey = ymd(day);
+        const dayEvents = singleDayEventsByDay(day);
+        return `
+          <div class="studio-rh-day${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}" style="grid-column:${dayIndex + 1};">
+            <div class="studio-rh-day-number">${day.getDate()}</div>
+            <div class="studio-rh-day-events">
+              ${dayEvents.map(ev => renderSingleDayEvent(ev, dayKey)).join("")}
+            </div>
+          </div>`;
+      }).join("");
+
+      const rangeBars = rangeData.segments.length ? `
+        <div class="studio-rh-week-bars">
+          ${rangeData.segments.map(renderRangeBar).join("")}
+        </div>` : "";
+
       return `
-        <div class="studio-rh-day${inMonth ? "" : " is-muted"}${dayKey === todayKey ? " is-today" : ""}" data-day="${dayKey}">
-          <div class="studio-rh-day-number">${day.getDate()}</div>
-          <div class="studio-rh-day-events">
-            ${dayEvents.map(ev => {
-              const id = clean(ev.id_evenement || ev.id);
-              const titleText = eventTitle(ev);
-              const segment = eventSegment(ev, day);
-              const segmentLabel = segment.label ? `<span class="studio-rh-event-segment">${esc(segment.label)}</span>` : "";
-              return `
-                <button type="button" class="studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)} ${esc(segment.classes)}" draggable="true" data-event-id="${esc(id)}" data-event-day="${esc(dayKey)}">
-                  <span class="studio-rh-event-chip-main">
-                    <span class="studio-rh-event-dot" aria-hidden="true"></span>
-                    <span class="studio-rh-event-title">${esc(titleText)}</span>
-                    ${segmentLabel}
-                  </span>
-                  <span class="studio-rh-event-meta">${esc(eventChipMeta(ev))}</span>
-                </button>`;
-            }).join("")}
-          </div>
+        <div class="studio-rh-week-row" data-week-index="${weekIndex}" style="--rh-range-lanes:${rangeData.laneCount}; --rh-range-space:${Math.min(rangeData.laneCount, 6) * 30}px;">
+          ${dayCells}
+          ${rangeBars}
         </div>`;
     }).join("");
 
