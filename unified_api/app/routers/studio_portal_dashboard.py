@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
+import copy
+import time
 
 from psycopg.rows import dict_row
 
@@ -19,6 +21,32 @@ from app.routers.skills_portal_dashboard import (
 from app.services.skills_analyse_engine import _fetch_postes_fragility_records, _fetch_service_label
 
 router = APIRouter()
+
+_STUDIO_DASH_CACHE_TTL_SECONDS = 180
+_STUDIO_DASH_CACHE_MAX_ITEMS = 96
+_STUDIO_DASH_RESPONSE_CACHE: Dict[tuple, Dict[str, Any]] = {}
+_STUDIO_DASH_INSIGHTS_CACHE: Dict[tuple, Dict[str, Any]] = {}
+
+def _studio_cache_get(cache: Dict[tuple, Dict[str, Any]], key: tuple, ttl_seconds: int = _STUDIO_DASH_CACHE_TTL_SECONDS):
+    entry = cache.get(key)
+    if not entry:
+        return None
+    if time.time() - float(entry.get("ts") or 0) > ttl_seconds:
+        cache.pop(key, None)
+        return None
+    return copy.deepcopy(entry.get("value"))
+
+def _studio_cache_set(cache: Dict[tuple, Dict[str, Any]], key: tuple, value: Dict[str, Any], max_items: int = _STUDIO_DASH_CACHE_MAX_ITEMS):
+    if len(cache) >= max_items:
+        oldest = sorted(cache.items(), key=lambda kv: float((kv[1] or {}).get("ts") or 0))[: max(1, max_items // 4)]
+        for old_key, _ in oldest:
+            cache.pop(old_key, None)
+    cache[key] = {"ts": time.time(), "value": copy.deepcopy(value)}
+
+def _studio_cache_bypass(request: Request) -> bool:
+    v = (request.query_params.get("refresh") or request.query_params.get("no_cache") or "").strip().lower()
+    return v in ("1", "true", "yes", "oui")
+
 
 
 class StudioContext(BaseModel):
@@ -425,6 +453,11 @@ def _studio_fetch_insights_overview(cur, id_ent: str, id_service: Optional[str],
     Insights/Studio réapparaissent et tout le monde finit par comparer des pourcentages
     au lieu de travailler. Passionnant, mais non.
     """
+    cache_key = ("insights_overview", _studio_s(id_ent), _studio_s(id_service), _studio_i(criticite, 70))
+    cached = _studio_cache_get(_STUDIO_DASH_INSIGHTS_CACHE, cache_key)
+    if cached is not None:
+        return cached
+
     scope_raw = _fetch_service_label(cur, id_ent, id_service)
     scope = DashboardScope(
         id_service=getattr(scope_raw, "id_service", None),
@@ -440,7 +473,9 @@ def _studio_fetch_insights_overview(cur, id_ent: str, id_service: Optional[str],
         services=services,
         criticite_min=criticite,
     )
-    return _studio_model_to_dict(overview)
+    out = _studio_model_to_dict(overview)
+    _studio_cache_set(_STUDIO_DASH_INSIGHTS_CACHE, cache_key, out)
+    return out
 
 
 def _studio_empty_main_for_missing_structure(current: Dict[str, Any]) -> Dict[str, Any]:
@@ -520,6 +555,66 @@ def _studio_risk_items_by_service(cur, id_ent: str, services: List[Dict[str, Any
         })
     return sorted(items, key=lambda x: (0 if x.get("priority") == "danger" else 1 if x.get("priority") == "surveillance" else 2, -_studio_f(x.get("risk_pct")), x.get("label") or ""))
 
+def _studio_risk_items_by_service_from_records(records: List[Dict[str, Any]], services: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Version rapide pour le dashboard Studio.
+    On agrège les records postes déjà calculés une seule fois sur toute la structure,
+    au lieu de relancer le moteur Insights complet pour chaque service.
+    Les services parents récupèrent les postes des sous-services pour rester cohérents
+    avec le périmètre récursif utilisé dans Analyse RH.
+    """
+    service_by_id = {_studio_s(s.get("id_service")): s for s in services or [] if _studio_s(s.get("id_service"))}
+    parent_by_id = {_studio_s(s.get("id_service")): _studio_s(s.get("id_service_parent")) for s in services or [] if _studio_s(s.get("id_service"))}
+    grouped: Dict[str, List[Dict[str, Any]]] = {sid: [] for sid in service_by_id}
+
+    def ancestors(service_id: str) -> List[str]:
+        sid = _studio_s(service_id)
+        out: List[str] = []
+        seen = set()
+        while sid and sid in service_by_id and sid not in seen:
+            seen.add(sid)
+            out.append(sid)
+            sid = parent_by_id.get(sid) or ""
+        return out
+
+    for r in records or []:
+        for sid in ancestors(r.get("id_service")):
+            grouped.setdefault(sid, []).append(r)
+
+    items: List[Dict[str, Any]] = []
+    for s in services or []:
+        sid = _studio_s(s.get("id_service"))
+        if not sid:
+            continue
+        rows = grouped.get(sid) or []
+        postes_total = len(rows)
+        frag_values = [_studio_f(r.get("indice_fragilite")) for r in rows]
+        risk_pct = round(sum(frag_values) / postes_total, 1) if postes_total else 0.0
+        postes_danger = sum(1 for v in frag_values if v >= DASHBOARD_DANGER_MIN)
+        postes_surveillance = sum(1 for v in frag_values if DASHBOARD_WATCH_MIN <= v < DASHBOARD_DANGER_MIN)
+        postes_critiques = sum(
+            1
+            for r in rows
+            if _studio_f(r.get("indice_fragilite")) >= DASHBOARD_DANGER_MIN
+            and _studio_i(r.get("criticite_poste"), 2) >= DASHBOARD_CRITICAL_POSTE_MIN
+        )
+        priority, priority_label = _studio_priority_from_risk(risk_pct, postes_danger, postes_critiques)
+        items.append({
+            "kind": "service",
+            "id_service": sid,
+            "label": s.get("nom_service") or "Service",
+            "nom_service": s.get("nom_service") or "Service",
+            "postes_total": postes_total,
+            "postes_danger": postes_danger,
+            "postes_surveillance": postes_surveillance,
+            "risques_sans_action": postes_danger,
+            "risk_pct": risk_pct,
+            "priority": priority,
+            "priority_label": priority_label,
+        })
+    return sorted(items, key=lambda x: (0 if x.get("priority") == "danger" else 1 if x.get("priority") == "surveillance" else 2, -_studio_f(x.get("risk_pct")), x.get("label") or ""))
+
+
 def _studio_risk_items_by_poste(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
     for r in records or []:
@@ -543,14 +638,18 @@ def _studio_risk_items_by_poste(records: List[Dict[str, Any]]) -> List[Dict[str,
 
 
 def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criticite_min: int) -> Dict[str, Any]:
+    """
+    Synthèse réseau rapide pour Studio.
+    Ancienne version : un appel complet au moteur dashboard Insights par structure liée.
+    Nouvelle version : lecture des records postes par structure, largement moins coûteuse,
+    suffisante pour prioriser les sites/clients sur le dashboard d'entrée.
+    """
     items: List[Dict[str, Any]] = []
     total_postes = 0
     total_danger = 0
     total_watch = 0
     total_stable = 0
     total_health_weighted = 0.0
-    total_transmission_ok = 0
-    total_transmission_postes = 0
     total_no_action = 0
 
     for st in structures:
@@ -558,21 +657,24 @@ def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criti
         if not id_ent:
             continue
         try:
-            overview = _studio_fetch_insights_overview(cur, id_ent, None, criticite_min)
+            records = _fetch_postes_fragility_records(cur, id_ent, None, criticite_min)
+            _enrich_records_poste_criticite(cur, records)
         except Exception:
-            overview = {}
-        health = overview.get("health") or {}
-        watch = overview.get("postes_watch") or {}
-        tr = overview.get("transmission") or {}
-        no_action = overview.get("risks_without_action") or {}
+            records = []
 
-        postes_total = _studio_i(watch.get("total_postes"))
-        postes_danger = _studio_i(watch.get("postes_danger"))
-        postes_watch = _studio_i(watch.get("postes_surveillance"))
-        postes_stables = _studio_i(watch.get("postes_stables"))
-        postes_critiques = _studio_i(watch.get("postes_critiques_danger"))
-        health_pct = round(_studio_f(health.get("pct")), 1)
-        risk_pct = round(max(0.0, 100.0 - health_pct), 1) if postes_total else 0.0
+        postes_total = len(records)
+        frag_values = [_studio_f(r.get("indice_fragilite")) for r in records]
+        risk_pct = round(sum(frag_values) / postes_total, 1) if postes_total else 0.0
+        health_pct = round(max(0.0, 100.0 - risk_pct), 1) if postes_total else 0.0
+        postes_danger = sum(1 for v in frag_values if v >= DASHBOARD_DANGER_MIN)
+        postes_watch = sum(1 for v in frag_values if DASHBOARD_WATCH_MIN <= v < DASHBOARD_DANGER_MIN)
+        postes_stables = max(postes_total - postes_danger - postes_watch, 0)
+        postes_critiques = sum(
+            1
+            for r in records
+            if _studio_f(r.get("indice_fragilite")) >= DASHBOARD_DANGER_MIN
+            and _studio_i(r.get("criticite_poste"), 2) >= DASHBOARD_CRITICAL_POSTE_MIN
+        )
         priority, priority_label = _studio_priority_from_risk(risk_pct, postes_danger, postes_critiques)
 
         total_postes += postes_total
@@ -580,9 +682,7 @@ def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criti
         total_watch += postes_watch
         total_stable += postes_stables
         total_health_weighted += health_pct * postes_total
-        total_no_action += _studio_i(no_action.get("total"))
-        total_transmission_ok += _studio_i(tr.get("postes_transmissibles"))
-        total_transmission_postes += _studio_i(tr.get("postes_total"))
+        total_no_action += postes_danger
 
         items.append({
             "kind": "structure",
@@ -595,7 +695,7 @@ def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criti
             "postes_surveillance": postes_watch,
             "postes_stables": postes_stables,
             "postes_critiques_danger": postes_critiques,
-            "risques_sans_action": _studio_i(no_action.get("total")),
+            "risques_sans_action": postes_danger,
             "risk_pct": risk_pct,
             "health_pct": health_pct,
             "priority": priority,
@@ -630,10 +730,10 @@ def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criti
             "risques_sans_action": total_no_action,
         },
         "transmission": {
-            "pct": round((total_transmission_ok / total_transmission_postes * 100.0), 1) if total_transmission_postes else 0.0,
-            "postes_total": total_transmission_postes,
-            "postes_transmissibles": total_transmission_ok,
-            "postes_risque": max(total_transmission_postes - total_transmission_ok, 0),
+            "pct": 0.0,
+            "postes_total": 0,
+            "postes_transmissibles": 0,
+            "postes_risque": 0,
         },
     }
 
@@ -863,12 +963,12 @@ def _studio_scope_options(current: Dict[str, Any], services: List[Dict[str, Any]
     return opts
 
 
-def _studio_build_main(cur, id_owner: str, current: Dict[str, Any], perimetre: str, priorite: str, criticite: int) -> Dict[str, Any]:
+def _studio_build_main(cur, id_owner: str, current: Dict[str, Any], perimetre: str, priorite: str, criticite: int, services: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     id_ent = _studio_s(current.get("id_ent")) or id_owner
     if not bool(current.get("is_real_entity", True)):
         return _studio_empty_main_for_missing_structure(current)
 
-    services = _studio_fetch_services(cur, id_ent)
+    services = services if services is not None else _studio_fetch_services(cur, id_ent)
     service_id = None
     if _studio_s(perimetre).lower().startswith("service:"):
         service_id = _studio_s(perimetre).split(":", 1)[1]
@@ -928,7 +1028,7 @@ def _studio_build_main(cur, id_owner: str, current: Dict[str, Any], perimetre: s
         scope_label = f"Service analysé : {service_label}"
         risk_kind = "poste"
     elif services:
-        risk_items = _studio_risk_items_by_service(cur, id_ent, services, criticite)
+        risk_items = _studio_risk_items_by_service_from_records(records, services)
         risk_title = "Services à surveiller"
         risk_subtitle = "Priorisation interne par service"
         scope_label = "Structure courante, avec lecture par services"
@@ -1026,12 +1126,18 @@ def get_studio_dashboard_overview(
                 if not service_requested and requested_perim.startswith("service:"):
                     service_requested = requested_perim.split(":", 1)[1].strip()
 
+                response_cache_key = ("dashboard_overview", oid, current_id, service_requested, criticite, len(linked_structures))
+                if not _studio_cache_bypass(request):
+                    cached_response = _studio_cache_get(_STUDIO_DASH_RESPONSE_CACHE, response_cache_key)
+                    if cached_response is not None:
+                        return cached_response
+
                 main_perim = f"service:{service_requested}" if service_requested else "ma_structure"
-                main = _studio_build_main(cur, oid, current, main_perim, "tous", criticite)
+                main = _studio_build_main(cur, oid, current, main_perim, "tous", criticite, services=services)
                 linked = _studio_build_linked(cur, oid, linked_structures, "tous", criticite) if has_linked else {"visible": False, "portfolio": {"structures_total": 0}, "structures_prioritaires": [], "actions_prioritaires": []}
 
                 mode = "network" if has_linked else "single_structure"
-                return {
+                payload = {
                     "context": {"id_owner": ow.get("id_owner"), "nom_owner": ow.get("nom_owner")},
                     "mode": mode,
                     "own": {"id_ent": current_id, "nom_ent": current.get("nom_ent") or ow.get("nom_owner"), "type_entreprise": current.get("type_entreprise"), "is_real_entity": bool(current.get("is_real_entity", True)), "has_linked": has_linked, "linked_count": len(linked_structures)},
@@ -1040,6 +1146,8 @@ def get_studio_dashboard_overview(
                     "main": main,
                     "linked": linked,
                 }
+                _studio_cache_set(_STUDIO_DASH_RESPONSE_CACHE, response_cache_key, payload)
+                return payload
     except HTTPException:
         raise
     except Exception as e:
