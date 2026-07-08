@@ -125,16 +125,38 @@
     };
   }
 
+  function selectionIsRestrictive(selected, total){
+    return selected && selected.size > 0 && selected.size < Math.max(1, total || 0);
+  }
+
+  function totalServiceCount(){ return asArray(_bootstrap && _bootstrap.services).length; }
+  function totalStatusCount(){ return _calendarFilterStatus.length; }
+  function totalTypeCount(){ return _calendarFilterTypes.length; }
+
+  function serviceSelectionIsRestrictive(services){
+    return selectionIsRestrictive(services, totalServiceCount());
+  }
+
+  function collaboratorsForFilterScope(services){
+    let rows = asArray(_bootstrap && _bootstrap.collaborateurs);
+    if (serviceSelectionIsRestrictive(services)) rows = rows.filter(c => services.has(clean(c.id_service)));
+    return rows;
+  }
+
+  function collaboratorSelectionIsRestrictive(collaborateurs, services){
+    return selectionIsRestrictive(collaborateurs, collaboratorsForFilterScope(services).length);
+  }
+
   function eventPassesUiFilters(ev, state){
     const filters = state || activeFilterState();
     const group = calendarGroupForType(ev && ev.type_evenement);
-    if (!filters.groups.has(group)) return false;
+    if (selectionIsRestrictive(filters.groups, totalTypeCount()) && !filters.groups.has(group)) return false;
     const serviceId = clean(ev && ev.id_service);
-    if (filters.services.size && (!serviceId || !filters.services.has(serviceId))) return false;
+    if (serviceSelectionIsRestrictive(filters.services) && (!serviceId || !filters.services.has(serviceId))) return false;
     const collabId = clean(ev && ev.id_effectif);
-    if (filters.collaborateurs.size && (!collabId || !filters.collaborateurs.has(collabId))) return false;
+    if (collaboratorSelectionIsRestrictive(filters.collaborateurs, filters.services) && (!collabId || !filters.collaborateurs.has(collabId))) return false;
     const statut = eventStatusKey(ev);
-    if (filters.statuts.size && !filters.statuts.has(statut)) return false;
+    if (selectionIsRestrictive(filters.statuts, totalStatusCount()) && !filters.statuts.has(statut)) return false;
     return true;
   }
 
@@ -329,8 +351,7 @@
     const services = selectedServiceIds();
     const query = clean(byId("calRhCollabSearch")?.value).toLowerCase();
     const selected = new Set(checkedValues("calRhCollabChecks"));
-    let rows = asArray(_bootstrap && _bootstrap.collaborateurs);
-    if (services.size) rows = rows.filter(c => services.has(clean(c.id_service)));
+    let rows = collaboratorsForFilterScope(services);
     if (query) {
       rows = rows.filter(c => collabLabel(c).toLowerCase().includes(query)
         || clean(c.email_effectif).toLowerCase().includes(query)
@@ -346,20 +367,46 @@
     renderCheckList("calRhStatusChecks", _calendarFilterStatus, x => x.id, x => x.label, () => true);
     renderDynamicCollaborators();
     byId("calRhCollabSearch")?.addEventListener("input", renderDynamicCollaborators);
-    document.querySelectorAll('#calRhDisplayMode input[type="radio"]').forEach(input => input.addEventListener("change", renderAll));
+    document.querySelectorAll('#calRhDisplayMode input[type="radio"]').forEach(input => input.addEventListener("change", () => {
+      refreshFilterSummary();
+      renderAll();
+    }));
     refreshFilterSummary();
+  }
+
+  function setFilterCount(id, value){
+    const el = byId(id);
+    if (!el) return;
+    el.textContent = clean(value);
+    el.classList.toggle("is-empty", clean(value) === "0");
+  }
+
+  function displayModeLabel(){
+    const mode = document.querySelector('#calRhDisplayMode input[type="radio"]:checked')?.value || "auto";
+    if (mode === "summary") return "Synthèse";
+    if (mode === "detail") return "Détail";
+    return "Auto";
+  }
+
+  function updateFilterCounts(state){
+    const filters = state || activeFilterState();
+    setFilterCount("calRhCountTypes", filters.groups.size);
+    setFilterCount("calRhCountServices", filters.services.size);
+    setFilterCount("calRhCountCollabs", filters.collaborateurs.size);
+    setFilterCount("calRhCountStatus", filters.statuts.size);
+    setFilterCount("calRhCountMode", displayModeLabel());
   }
 
   function refreshFilterSummary(){
     const el = byId("calRhFilterSummary");
-    if (!el) return;
     const state = activeFilterState();
     const details = [];
-    if (state.groups.size < _calendarFilterTypes.length) details.push(`${state.groups.size} catégorie${state.groups.size > 1 ? "s" : ""}`);
-    if (state.services.size) details.push(`${state.services.size} service${state.services.size > 1 ? "s" : ""}`);
-    if (state.collaborateurs.size) details.push(`${state.collaborateurs.size} collaborateur${state.collaborateurs.size > 1 ? "s" : ""}`);
-    if (state.statuts.size < _calendarFilterStatus.length) details.push(`${state.statuts.size} statut${state.statuts.size > 1 ? "s" : ""}`);
-    el.textContent = details.length ? `Filtré : ${details.join(" · ")}.` : "Affichage synthétique par défaut.";
+    if (selectionIsRestrictive(state.groups, totalTypeCount())) details.push(`${state.groups.size} catégorie${state.groups.size > 1 ? "s" : ""}`);
+    if (serviceSelectionIsRestrictive(state.services)) details.push(`${state.services.size} service${state.services.size > 1 ? "s" : ""}`);
+    if (collaboratorSelectionIsRestrictive(state.collaborateurs, state.services)) details.push(`${state.collaborateurs.size} collaborateur${state.collaborateurs.size > 1 ? "s" : ""}`);
+    if (selectionIsRestrictive(state.statuts, totalStatusCount())) details.push(`${state.statuts.size} statut${state.statuts.size > 1 ? "s" : ""}`);
+    updateFilterCounts(state);
+    if (el) el.textContent = details.length ? `Filtré : ${details.join(" · ")}.` : "Affichage synthétique par défaut.";
   }
 
   function handleFilterChange(){

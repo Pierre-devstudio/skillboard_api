@@ -10612,3 +10612,61 @@ body.studio-rh-calendar-expanded{
     top:auto;
   }
 }
+
+/* ======================================================
+   Studio – Calendrier RH V17 : cohérence filtres + compteurs
+   ====================================================== */
+#view-calendrier_rh .studio-rh-filter-section-actions{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+}
+
+#view-calendrier_rh .studio-rh-filter-count{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:22px;
+  height:22px;
+  padding:0 7px;
+  border-radius:999px;
+  background:rgba(var(--sb-accent-rgb), .16);
+  color:#111827;
+  font-size:11px;
+  font-weight:700;
+  line-height:1;
+  white-space:nowrap;
+}
+
+#view-calendrier_rh .studio-rh-filter-count.is-empty{
+  background:#f1f5f9;
+  color:#64748b;
+}
+
+#view-calendrier_rh #calRhTypeChecks{
+  gap:2px;
+}
+
+#view-calendrier_rh #calRhTypeChecks .studio-rh-check-item{
+  min-height:27px;
+  padding:4px 6px;
+}
+
+#view-calendrier_rh #calRhCollabFilterSection .studio-rh-filter-section-body{
+  min-width:0;
+  overflow:hidden;
+}
+
+#view-calendrier_rh #calRhCollabFilterSection .studio-rh-filter-searchbox{
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+#view-calendrier_rh #calRhCollabFilterSection .studio-rh-filter-searchbox input{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
