@@ -10998,3 +10998,649 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh.is-calendar-expanded .studio-rh-detail-drawer.is-open{
   transform:translateX(0);
 }
+
+/* ======================================================
+   Studio – Référentiel de compétences : harmonisation UI
+   ====================================================== */
+#view-catalog_competences.studio-catalog-comp-page{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-card,
+#view-catalog_competences .studio-catalog-comp-list-card{
+  border-color:#e7eaf0;
+  box-shadow:0 1px 2px rgba(15,23,42,.035);
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-card{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:18px;
+  overflow:hidden;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-main{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:52px;
+  height:52px;
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(var(--sb-accent-rgb), .22), rgba(var(--sb-accent-rgb), .08));
+  color:#111827;
+  overflow:hidden;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-icon svg,
+#view-catalog_competences .studio-catalog-comp-kpi-icon svg,
+#view-catalog_competences .studio-catalog-comp-hero-actions .sb-btn-icon svg,
+#view-catalog_competences .studio-catalog-comp-kpi-action-icon svg,
+#view-catalog_competences .studio-catalog-comp-list-title-icon svg,
+#view-catalog_competences .studio-catalog-comp-filter-toggle svg,
+#view-catalog_competences .studio-catalog-comp-filter-section-toggle svg,
+#view-catalog_competences .studio-catalog-comp-filter-reset .sb-btn-icon svg,
+#view-catalog_competences .studio-catalog-comp-searchbox svg{
+  fill:none !important;
+  stroke:currentColor !important;
+  stroke-width:1.9 !important;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  display:block;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-icon svg{
+  width:24px !important;
+  height:24px !important;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-card .card-title{
+  margin:0 0 4px 0;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-card .card-sub{
+  margin:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-actions{
+  flex:0 0 auto;
+  justify-content:flex-end;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-actions .sb-btn{
+  min-height:38px;
+}
+
+#view-catalog_competences .studio-catalog-comp-hero-kpis{
+  margin-top:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:68px;
+  padding:12px 14px;
+  border-color:#e7eaf0;
+  box-shadow:0 1px 2px rgba(15,23,42,.025);
+}
+
+#view-catalog_competences button.studio-catalog-comp-kpi-card{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  border:1px solid #e7eaf0;
+  background:#fff;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+
+#view-catalog_competences button.studio-catalog-comp-kpi-card:hover{
+  border-color:#cbd5e1;
+  background:#fbfcfe;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-card[aria-pressed="true"]{
+  border-color:rgba(var(--sb-accent-rgb), .62);
+  background:rgba(var(--sb-accent-rgb), .08);
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .10);
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:38px;
+  height:38px;
+  border-radius:14px;
+  color:#111827;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-icon svg{
+  width:19px !important;
+  height:19px !important;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-icon--total{
+  background:rgba(37,99,235,.11);
+  color:#2563eb;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-icon--pending{
+  background:rgba(245,158,11,.14);
+  color:#b45309;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-card .sb-kpi-value{
+  margin-top:3px;
+  font-size:18px;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-action-icon{
+  margin-left:auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  color:#94a3b8;
+  flex:0 0 auto;
+}
+
+#view-catalog_competences .studio-catalog-comp-kpi-action-icon svg{
+  width:16px !important;
+  height:16px !important;
+}
+
+#view-catalog_competences .studio-catalog-comp-layout{
+  display:grid;
+  grid-template-columns:minmax(260px, 310px) minmax(0, 1fr);
+  gap:14px;
+  align-items:start;
+}
+
+#view-catalog_competences .studio-catalog-comp-layout.is-filters-collapsed{
+  grid-template-columns:minmax(0, 1fr);
+}
+
+#view-catalog_competences .studio-catalog-comp-layout.is-filters-collapsed .studio-catalog-comp-filter-panel{
+  display:none;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-panel{
+  display:grid;
+  gap:10px;
+  position:sticky;
+  top:14px;
+  align-self:start;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-reset{
+  width:100%;
+  min-height:38px;
+  justify-content:center;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section{
+  display:block;
+  padding:0;
+  border:1px solid #e7eaf0;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(15,23,42,.035);
+  overflow:hidden;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-head{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:11px 12px 11px 14px;
+  border:0;
+  background:#fff;
+  color:#111827;
+  cursor:pointer;
+  text-align:left;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-head:hover,
+#view-catalog_competences .studio-catalog-comp-filter-section-head:focus{
+  background:#fbfcfe;
+  outline:none;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-copy{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-title{
+  color:#111827;
+  font-size:13px;
+  font-weight:700;
+  line-height:1.15;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-sub{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:500;
+  line-height:1.2;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-actions{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-count{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:22px;
+  height:22px;
+  padding:0 7px;
+  border-radius:999px;
+  background:rgba(var(--sb-accent-rgb), .16);
+  color:#111827;
+  font-size:11px;
+  font-weight:700;
+  line-height:1;
+  white-space:nowrap;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-toggle{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:30px;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  background:#fff;
+  color:#64748b;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-toggle svg{
+  width:15px !important;
+  height:15px !important;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-accordion.is-open .studio-catalog-comp-filter-section-toggle{
+  border-color:rgba(var(--sb-accent-rgb), .42);
+  background:rgba(var(--sb-accent-rgb), .14);
+  color:#111827;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-section-body{
+  display:none;
+  padding:0 12px 12px;
+  background:#fff;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-accordion.is-open .studio-catalog-comp-filter-section-body{
+  display:grid;
+  gap:8px;
+}
+
+#view-catalog_competences .studio-catalog-comp-searchbox{
+  position:relative;
+  display:flex;
+  align-items:center;
+  width:100%;
+  min-width:0;
+  height:36px;
+  margin:0;
+  padding:0 10px;
+  border:1px solid #e2e8f0;
+  border-radius:11px;
+  background:#fff;
+  box-shadow:none;
+}
+
+#view-catalog_competences .studio-catalog-comp-searchbox svg{
+  flex:0 0 auto;
+  width:15px !important;
+  height:15px !important;
+  margin-right:7px;
+  color:#94a3b8;
+}
+
+#view-catalog_competences .studio-catalog-comp-searchbox input{
+  min-width:0;
+  width:100%;
+  height:100%;
+  padding:0;
+  border:0;
+  outline:0;
+  background:transparent;
+  box-shadow:none;
+  color:#111827;
+  font-size:12px;
+}
+
+#view-catalog_competences .studio-catalog-comp-status-field{
+  margin:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-list{
+  display:grid;
+  gap:4px;
+  margin-top:0;
+  padding-right:0;
+  background:#fff;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-list--scroll{
+  max-height:220px;
+  overflow:auto;
+  padding:2px 2px 2px 0;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:32px;
+  padding:6px 7px;
+  border:1px solid #e7eaf0;
+  border-radius:9px;
+  background:#fff;
+  color:#111827;
+  cursor:pointer;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-item:hover{
+  border-color:#cbd5e1;
+  background:#fbfcfe;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-item input{
+  width:16px !important;
+  height:16px;
+  margin:0;
+  flex:0 0 auto;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-item span{
+  font-size:12.5px;
+  font-weight:600;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-item--status{
+  margin-top:2px;
+}
+
+#view-catalog_competences .studio-catalog-comp-domain-dot{
+  --sb-domain-rgb:17,24,39;
+  width:9px;
+  height:9px;
+  border-radius:999px;
+  flex:0 0 auto;
+  background:rgb(var(--sb-domain-rgb));
+  box-shadow:0 0 0 2px rgba(255,255,255,.75) inset;
+}
+
+#view-catalog_competences .studio-catalog-comp-check-label{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-empty{
+  color:#64748b;
+  font-size:12px;
+  line-height:1.3;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-card{
+  padding:16px;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-titleline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-titleline .card-title,
+#view-catalog_competences .studio-catalog-comp-list-titleline .card-sub{
+  margin:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-titleline .card-title{
+  font-weight:650;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-titleline .card-sub{
+  margin-top:3px;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-title-icon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  background:rgba(var(--sb-accent-rgb), .16);
+  color:#111827;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-title-icon svg{
+  width:18px !important;
+  height:18px !important;
+}
+
+#view-catalog_competences .studio-catalog-comp-list-head-actions{
+  align-items:center;
+  flex:0 0 auto;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-toggle{
+  width:34px;
+  height:34px;
+  border:1px solid #e2e8f0;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  background:#fff;
+  color:#64748b;
+  cursor:pointer;
+  transition:background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-toggle:hover{
+  background:rgba(var(--sb-accent-rgb), .13);
+  border-color:rgba(var(--sb-accent-rgb), .34);
+  color:#111827;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-toggle svg{
+  width:16px !important;
+  height:16px !important;
+  transition:transform .16s ease;
+}
+
+#view-catalog_competences .studio-catalog-comp-filter-toggle[aria-expanded="false"] svg{
+  transform:rotate(90deg);
+}
+
+#view-catalog_competences .studio-catalog-comp-table-wrap{
+  overflow-x:auto;
+}
+
+#view-catalog_competences .studio-catalog-comp-table{
+  min-width:820px;
+  border:1px solid #e7eaf0;
+  border-radius:14px;
+  overflow:hidden;
+  background:#fff;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-row{
+  display:grid;
+  grid-template-columns:minmax(420px, 1.55fr) minmax(160px, .62fr) minmax(118px, .38fr);
+  align-items:center;
+  min-height:54px;
+  border-bottom:1px solid #eef1f6;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-row:last-child{
+  border-bottom:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-row:not(.studio-catalog-comp-table-head):hover{
+  background:#fbfcfe;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-row.is-archived{
+  opacity:.68;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-head{
+  min-height:40px;
+  background:#f8fafc;
+  color:#475569;
+  font-size:12px;
+  font-weight:600;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-cell{
+  min-width:0;
+  padding:9px 12px;
+  font-size:12.5px;
+  color:#334155;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-cell--competence{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+#view-catalog_competences .studio-catalog-comp-code{
+  flex:0 0 auto;
+  padding:2px 8px;
+  font-size:11px;
+}
+
+#view-catalog_competences .studio-catalog-comp-title-wrap{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+#view-catalog_competences .studio-catalog-comp-title{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#111827;
+  font-weight:650;
+}
+
+#view-catalog_competences .studio-catalog-comp-meta{
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:600;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-cell--domain{
+  display:flex;
+  align-items:center;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-cell--actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-head .studio-catalog-comp-table-cell--actions{
+  justify-content:center;
+  text-align:center;
+}
+
+#view-catalog_competences .studio-catalog-comp-empty{
+  margin:12px 0 0 0;
+}
+
+@media (max-width:1080px){
+  #view-catalog_competences .studio-catalog-comp-layout{
+    grid-template-columns:1fr;
+  }
+  #view-catalog_competences .studio-catalog-comp-filter-panel{
+    position:relative;
+    top:auto;
+  }
+}
+
+@media (max-width:760px){
+  #view-catalog_competences .studio-catalog-comp-hero-top,
+  #view-catalog_competences .studio-catalog-comp-list-head{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  #view-catalog_competences .studio-catalog-comp-hero-actions,
+  #view-catalog_competences .studio-catalog-comp-list-head-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+}

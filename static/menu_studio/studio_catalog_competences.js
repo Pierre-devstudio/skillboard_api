@@ -4,10 +4,12 @@
   let _q = "";
   let _qTimer = null;
   let _show = "active";
-  let _dom = "";          // id_domaine_competence sélectionné
-  let _itemsAll = [];     // liste brute reçue de l’API (avant filtre domaine)
+  let _dom = new Set();   // id_domaine_competence sélectionnés
+  let _onlyPending = false;
+  let _itemsAll = [];     // liste brute reçue de l’API (avant filtres UI)
   let _domainsLoaded = false;
   let _domainItems = [];
+  let _metricsLoaded = false;
 
     async function ensureDomains(portal){
         if (_domainsLoaded) return;
@@ -407,6 +409,24 @@
     if (el) el.textContent = msg || "—";
   }
 
+  function htmlEsc(v){
+    return String(v ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function pendingKey(value){
+    const plain = String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+    return plain === "a valider" || plain === "a_valider" || plain === "avalider";
+  }
+
   function iconSvg(kind){
     if (kind === "edit") {
       return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.5L19 9.5a2.1 2.1 0 0 0-3-3L5.5 17H4v3Z"></path><path d="M14.5 7 17 9.5"></path></svg>`;
@@ -414,7 +434,119 @@
     if (kind === "archive") {
       return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M6 7l1 13h10l1-13"></path><path d="M9 7V4h6v3"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>`;
     }
+    if (kind === "pdf") {
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
+    }
     return "";
+  }
+
+  async function resolveStudioAccessToken(){
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        if (session && session.access_token) return String(session.access_token);
+      }
+    } catch (_) {}
+    if (window.portal && window.portal.accessToken) return String(window.portal.accessToken);
+    if (window.portal && window.portal.token) return String(window.portal.token);
+    return "";
+  }
+
+  function openPdfLoadingWindow(title){
+    const safeTitle = htmlEsc(title || "Document PDF");
+    const win = window.open("", "_blank");
+    if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
+
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>${safeTitle}</title>
+<style>
+html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;}
+.pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite;}
+.pdf-loading__text{font-size:14px;color:#475467;}
+iframe{width:100%;height:100%;border:0;background:#fff;}
+@keyframes pdfSpin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="pdf-loading"><div class="pdf-loading__spinner"></div><div class="pdf-loading__text">Génération du PDF…</div></div>
+</body>
+</html>`);
+    win.document.close();
+    return win;
+  }
+
+  function renderPdfBlobInWindow(win, blob, title){
+    const blobUrl = URL.createObjectURL(blob);
+    const safeTitle = htmlEsc(title || "Document PDF");
+
+    if (!win || win.closed){
+      window.open(blobUrl, "_blank");
+      setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, 5 * 60 * 1000);
+      return;
+    }
+
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>${safeTitle}</title>
+<style>html,body{height:100%;margin:0;background:#f3f4f6;}iframe{width:100%;height:100%;border:0;background:#fff;}</style>
+</head>
+<body><iframe src="${blobUrl}" title="${safeTitle}"></iframe></body>
+</html>`);
+    win.document.close();
+
+    const revoke = () => { try { URL.revokeObjectURL(blobUrl); } catch(_){} };
+    try { win.addEventListener("beforeunload", revoke, { once: true }); } catch(_){}
+    setTimeout(revoke, 5 * 60 * 1000);
+  }
+
+  async function fetchPdfBlob(url){
+    const headers = {};
+    const token = await resolveStudioAccessToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      credentials: "same-origin"
+    });
+
+    if (!res.ok){
+      let detail = `HTTP ${res.status}`;
+      try {
+        const js = await res.clone().json();
+        detail = js?.detail || js?.message || detail;
+      } catch (_) {
+        try {
+          const txt = await res.text();
+          if (txt) detail = txt;
+        } catch (_) {}
+      }
+      throw new Error(detail);
+    }
+
+    return await res.blob();
+  }
+
+  async function openSkillSheetPdf(portal, item, popupWin){
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner introuvable.");
+
+    const compId = String(item?.id_comp || item?.id_competence || "").trim();
+    if (!compId) throw new Error("Compétence introuvable.");
+
+    const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+    const url = `${portal.apiBase}/studio/org/competences/fiche_pdf/${encodeURIComponent(ownerId)}/${encodeURIComponent(compId)}`;
+    const blob = await fetchPdfBlob(url);
+    renderPdfBlobInWindow(popupWin, blob, title);
   }
 
   function openModal(id){
@@ -427,126 +559,238 @@
     if (el) el.style.display = "none";
   }
 
-    function refreshDomainOptions(){
-        const sel = byId("catCompsDomain");
-        if (!sel) return;
+  function domainRowsFromItems(){
+    const map = new Map();
+    (_itemsAll || []).forEach(it => {
+      const id = (it.domaine || "").toString().trim();
+      if (!id) return;
 
-        const keep = (sel.value || "").trim();
+      const label = (it.domaine_titre_court || it.domaine || "").toString().trim();
+      if (!label) return;
 
-        // domaines présents dans la liste courante
-        const map = new Map(); // id -> { label, couleur }
-        (_itemsAll || []).forEach(it => {
-            const id = (it.domaine || "").toString().trim();
-            if (!id) return;
+      if (!map.has(id)) map.set(id, { label, couleur: it.domaine_couleur });
+    });
 
-            const label = (it.domaine_titre_court || it.domaine || "").toString().trim();
-            if (!label) return;
+    return Array.from(map.entries())
+      .sort((a, b) => a[1].label.localeCompare(b[1].label, "fr", { sensitivity: "base" }))
+      .map(([id, d]) => ({ id, label: d.label, couleur: d.couleur }));
+  }
 
-            if (!map.has(id)) {
-            map.set(id, { label: label, couleur: it.domaine_couleur });
-            }
-        });
-
-        // reset options
-        sel.innerHTML = "";
-        const opt0 = document.createElement("option");
-        opt0.value = "";
-        opt0.textContent = "Tous";
-        sel.appendChild(opt0);
-
-        // tri par label
-        Array.from(map.entries())
-            .sort((a, b) => a[1].label.localeCompare(b[1].label, "fr", { sensitivity: "base" }))
-            .forEach(([id, d]) => {
-            const opt = document.createElement("option");
-            opt.value = id;
-            opt.textContent = d.label;
-            sel.appendChild(opt);
-            });
-
-        // restore selection if possible
-        if (keep && map.has(keep)) sel.value = keep;
-        else sel.value = "";
-        _dom = (sel.value || "").trim();
-        }
-
-        function applyDomainFilterAndRender(){
-        const dom = (_dom || "").trim();
-        if (!dom){
-            _items = Array.isArray(_itemsAll) ? _itemsAll.slice() : [];
-        } else {
-            _items = (_itemsAll || []).filter(it => (it.domaine || "").toString().trim() === dom);
-        }
-        renderList();
-    }
-
-  function renderList(){
-    const host = byId("catCompsList");
+  function refreshDomainChecks(){
+    const host = byId("catCompsDomainChecks");
     if (!host) return;
+
+    const rows = domainRowsFromItems();
+    const available = new Set(rows.map(d => d.id));
+    _dom = new Set(Array.from(_dom || []).filter(id => available.has(id)));
+
     host.innerHTML = "";
 
-    if (!_items.length) {
+    if (!rows.length){
       const empty = document.createElement("div");
-      empty.className = "card-sub";
-      empty.textContent = "Aucune compétence à afficher.";
+      empty.className = "studio-catalog-comp-filter-empty";
+      empty.textContent = "Aucun domaine disponible.";
       host.appendChild(empty);
+      refreshFilterCounts();
       return;
     }
 
+    rows.forEach(d => {
+      const label = document.createElement("label");
+      label.className = "studio-catalog-comp-check-item studio-catalog-comp-check-item--domain";
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = d.id;
+      input.checked = _dom.has(d.id);
+      input.addEventListener("change", () => {
+        if (input.checked) _dom.add(d.id);
+        else _dom.delete(d.id);
+        refreshFilterCounts();
+        applyUiFiltersAndRender();
+      });
+
+      const dot = document.createElement("span");
+      dot.className = "studio-catalog-comp-domain-dot";
+      const rgb = argbIntToRgbTuple(d.couleur);
+      if (rgb) dot.style.setProperty("--sb-domain-rgb", rgb.css);
+
+      const text = document.createElement("span");
+      text.className = "studio-catalog-comp-check-label";
+      text.textContent = d.label;
+
+      label.appendChild(input);
+      label.appendChild(dot);
+      label.appendChild(text);
+      host.appendChild(label);
+    });
+
+    refreshFilterCounts();
+  }
+
+  function refreshFilterCounts(){
+    const domainCount = byId("catCompsDomainCount");
+    const domains = domainRowsFromItems();
+    if (domainCount) domainCount.textContent = String(_dom.size || domains.length || 0);
+
+    const statusCount = byId("catCompsStatusCount");
+    if (statusCount) statusCount.textContent = _onlyPending ? "1" : "0";
+
+    const pendingCard = byId("catCompsKpiToValidate");
+    if (pendingCard) pendingCard.setAttribute("aria-pressed", _onlyPending ? "true" : "false");
+  }
+
+  function applyUiFiltersAndRender(){
+    const selectedDomains = _dom || new Set();
+    _items = (_itemsAll || []).filter(it => {
+      const domId = (it.domaine || "").toString().trim();
+      if (selectedDomains.size > 0 && !selectedDomains.has(domId)) return false;
+      if (_onlyPending && !pendingKey(it.etat)) return false;
+      return true;
+    });
+    refreshFilterCounts();
+    renderList();
+  }
+
+  function updateMetrics(items){
+    const rows = Array.isArray(items) ? items : [];
+    const activeRows = rows.filter(it => !it.masque);
+    const pendingRows = activeRows.filter(it => pendingKey(it.etat));
+
+    const total = byId("catCompsKpiTotal");
+    if (total) total.textContent = String(activeRows.length);
+
+    const pending = byId("catCompsKpiPending");
+    if (pending) pending.textContent = String(pendingRows.length);
+  }
+
+  async function loadMetrics(portal){
+    const ownerId = getOwnerId();
+    if (!ownerId) return;
+
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}?q=&show=all`
+    );
+    updateMetrics((data && data.items) ? data.items : []);
+    _metricsLoaded = true;
+  }
+
+  function renderDomainBadge(it){
+    const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
+    const dom = document.createElement("span");
+    dom.className = "sb-badge sb-badge--comp-domain studio-catalog-scope";
+
+    const dot = document.createElement("span");
+    dot.className = "sb-dot";
+
+    const rgb = argbIntToRgbTuple(it.domaine_couleur);
+    if (rgb) dom.style.setProperty("--sb-domain-rgb", rgb.css);
+
+    dom.appendChild(dot);
+    dom.appendChild(document.createTextNode(domLabel || "—"));
+    return dom;
+  }
+
+  function renderList(){
+    const host = byId("catCompsList");
+    const empty = byId("catCompsEmpty");
+    if (!host) return;
+    host.innerHTML = "";
+
+    if (empty) empty.style.display = _items.length ? "none" : "";
+
+    if (!_items.length) {
+      setStatus("Aucune compétence trouvée.");
+      return;
+    }
+
+    const table = document.createElement("div");
+    table.className = "studio-catalog-comp-table";
+
+    const head = document.createElement("div");
+    head.className = "studio-catalog-comp-table-row studio-catalog-comp-table-head";
+    ["Compétence", "Domaine", "Actions"].forEach((label, idx) => {
+      const cell = document.createElement("div");
+      cell.className = `studio-catalog-comp-table-cell${idx === 2 ? " studio-catalog-comp-table-cell--actions" : ""}`;
+      cell.textContent = label;
+      head.appendChild(cell);
+    });
+    table.appendChild(head);
+
     _items.forEach(it => {
       const row = document.createElement("div");
-      row.className = "sb-row-card";
+      row.className = "studio-catalog-comp-table-row";
       if (it.masque) row.classList.add("is-archived");
+      if (pendingKey(it.etat)) row.classList.add("is-pending");
 
-      const left = document.createElement("div");
-      left.className = "sb-row-left";
+      const compCell = document.createElement("div");
+      compCell.className = "studio-catalog-comp-table-cell studio-catalog-comp-table-cell--competence";
 
       const code = document.createElement("span");
-      code.className = "sb-badge sb-badge--comp";
+      code.className = "sb-badge sb-badge--comp studio-catalog-comp-code";
       code.textContent = it.code || "—";
 
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "studio-catalog-comp-title-wrap";
+
       const title = document.createElement("div");
-      title.className = "sb-row-title";
+      title.className = "studio-catalog-comp-title";
       title.textContent = it.intitule || "";
+      titleWrap.appendChild(title);
 
-      left.appendChild(code);
-      left.appendChild(title);
+      if (pendingKey(it.etat) || it.masque){
+        const meta = document.createElement("div");
+        meta.className = "studio-catalog-comp-meta";
+        meta.textContent = it.masque ? "Archivée" : "À valider";
+        titleWrap.appendChild(meta);
+      }
 
-      const right = document.createElement("div");
-      right.className = "sb-actions studio-catalog-actions";
+      compCell.appendChild(code);
+      compCell.appendChild(titleWrap);
 
-        // --- Badge Domaine (remplace UUID + active/archivé)
-        const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
-        if (domLabel){
-            const dom = document.createElement("span");
-            dom.className = "sb-badge sb-badge--comp-domain studio-catalog-scope";
+      const domainCell = document.createElement("div");
+      domainCell.className = "studio-catalog-comp-table-cell studio-catalog-comp-table-cell--domain";
+      domainCell.appendChild(renderDomainBadge(it));
 
-            const dot = document.createElement("span");
-            dot.className = "sb-dot";
+      const actionCell = document.createElement("div");
+      actionCell.className = "studio-catalog-comp-table-cell studio-catalog-comp-table-cell--actions";
 
-            const rgb = argbIntToRgbTuple(it.domaine_couleur);
-            if (rgb){
-                dom.style.setProperty("--sb-domain-rgb", rgb.css);
-            }
-
-            dom.appendChild(dot);
-            dom.appendChild(document.createTextNode(domLabel));
-            right.appendChild(dom);
-        }
+      const actions = document.createElement("div");
+      actions.className = "sb-icon-actions";
 
       if (isSupervisor()) {
-        const iconActions = document.createElement("div");
-        iconActions.className = "sb-icon-actions";
-
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
         btnEdit.className = "sb-icon-btn";
         btnEdit.title = "Modifier";
         btnEdit.setAttribute("aria-label", "Modifier la compétence");
         btnEdit.innerHTML = iconSvg("edit");
-        btnEdit.addEventListener("click", () => openEdit(portal, it));
-        iconActions.appendChild(btnEdit);
+        btnEdit.addEventListener("click", () => openEdit(window.portal, it));
+        actions.appendChild(btnEdit);
+      }
 
+      const btnPdf = document.createElement("button");
+      btnPdf.type = "button";
+      btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
+      btnPdf.title = "Exporter la fiche compétence";
+      btnPdf.setAttribute("aria-label", "Exporter la fiche compétence");
+      btnPdf.innerHTML = iconSvg("pdf");
+      btnPdf.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        let popupWin = null;
+        try {
+          const title = `Fiche compétence - ${it.code || ""} ${it.intitule || ""}`.trim();
+          popupWin = openPdfLoadingWindow(title);
+          await openSkillSheetPdf(window.portal, it, popupWin);
+        } catch (err) {
+          try { if (popupWin && !popupWin.closed) popupWin.close(); } catch(_) {}
+          window.portal?.showAlert?.("error", err?.message || String(err));
+        }
+      });
+      actions.appendChild(btnPdf);
+
+      if (isSupervisor()) {
         if (!it.masque) {
           const btnArch = document.createElement("button");
           btnArch.type = "button";
@@ -555,22 +799,26 @@
           btnArch.setAttribute("aria-label", "Archiver la compétence");
           btnArch.innerHTML = iconSvg("archive");
           btnArch.addEventListener("click", () => openArchive(it));
-          iconActions.appendChild(btnArch);
+          actions.appendChild(btnArch);
         } else {
           const arch = document.createElement("span");
           arch.className = "sb-badge sb-badge--poste studio-catalog-archive-badge";
           arch.textContent = "Archivée";
-          iconActions.appendChild(arch);
+          actions.appendChild(arch);
         }
-
-        right.appendChild(iconActions);
       }
 
-      row.appendChild(left);
-      row.appendChild(right);
+      actionCell.appendChild(actions);
 
-      host.appendChild(row);
+      row.appendChild(compCell);
+      row.appendChild(domainCell);
+      row.appendChild(actionCell);
+      table.appendChild(row);
     });
+
+    host.appendChild(table);
+    const suffix = _items.length > 1 ? "s" : "";
+    setStatus(`${_items.length} compétence${suffix} affichée${suffix}.`);
   }
 
   async function loadList(portal){
@@ -585,8 +833,9 @@
     const data = await portal.apiJson(url);
     _itemsAll = (data && data.items) ? data.items : [];
 
-    refreshDomainOptions();
-    applyDomainFilterAndRender();
+    refreshDomainChecks();
+    applyUiFiltersAndRender();
+    if (!_metricsLoaded) await loadMetrics(portal);
   }
 
     function openAiModal(){
@@ -784,6 +1033,7 @@ async function save(portal){
 
     closeModal("modalCompEdit");
     portal.showAlert("", "");
+    await loadMetrics(portal);
     await loadList(portal);
   }
 
@@ -805,7 +1055,50 @@ function openArchive(it){
     _archiveId = null;
     closeModal("modalCompArchive");
     portal.showAlert("", "");
+    await loadMetrics(portal);
     await loadList(portal);
+  }
+
+  function toggleFilters(){
+    const layout = document.querySelector("#view-catalog_competences .studio-catalog-comp-layout");
+    const panel = byId("catCompsFilterPanel");
+    const btn = byId("catCompsFiltersToggle");
+    if (!layout || !panel || !btn) return;
+
+    const isCollapsed = !layout.classList.contains("is-filters-collapsed");
+    layout.classList.toggle("is-filters-collapsed", isCollapsed);
+    panel.setAttribute("aria-hidden", isCollapsed ? "true" : "false");
+    btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    btn.setAttribute("title", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+    btn.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+  }
+
+  function toggleFilterSection(btn){
+    const section = btn && btn.closest(".studio-catalog-comp-filter-accordion");
+    if (!section) return;
+
+    const isOpen = !section.classList.contains("is-open");
+    section.classList.toggle("is-open", isOpen);
+    btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  }
+
+  function resetFilters(portal){
+    const search = byId("catCompsSearch");
+    if (search) search.value = "";
+
+    const show = byId("catCompsShow");
+    if (show) show.value = "active";
+
+    const pending = byId("catCompsOnlyPending");
+    if (pending) pending.checked = false;
+
+    _q = "";
+    _show = "active";
+    _onlyPending = false;
+    _dom = new Set();
+
+    refreshDomainChecks();
+    loadList(portal).catch(() => {});
   }
 
   function bindOnce(portal){
@@ -893,22 +1186,46 @@ function openArchive(it){
     });
 
     const s = byId("catCompsSearch");
-    s.addEventListener("input", () => {
+    s?.addEventListener("input", () => {
       _q = (s.value || "").trim();
       if (_qTimer) clearTimeout(_qTimer);
       _qTimer = setTimeout(() => loadList(portal).catch(() => {}), 250);
     });
 
     const sh = byId("catCompsShow");
-    sh.addEventListener("change", () => {
+    sh?.addEventListener("change", () => {
       _show = (sh.value || "active").trim();
+      _dom = new Set();
       loadList(portal).catch(() => {});
     });
 
-    const domSel = byId("catCompsDomain");
-    domSel.addEventListener("change", () => {
-    _dom = (domSel.value || "").trim();
-    applyDomainFilterAndRender();
+    const pending = byId("catCompsOnlyPending");
+    pending?.addEventListener("change", () => {
+      _onlyPending = !!pending.checked;
+      refreshFilterCounts();
+      applyUiFiltersAndRender();
+    });
+
+    byId("catCompsResetFilters")?.addEventListener("click", () => resetFilters(portal));
+    byId("catCompsFiltersToggle")?.addEventListener("click", toggleFilters);
+
+    byId("catCompsKpiToValidate")?.addEventListener("click", () => {
+      const previousShow = _show;
+      _onlyPending = !_onlyPending;
+      if (_onlyPending){
+        _show = "active";
+        const show = byId("catCompsShow");
+        if (show) show.value = "active";
+      }
+      const input = byId("catCompsOnlyPending");
+      if (input) input.checked = _onlyPending;
+      refreshFilterCounts();
+      if (_onlyPending && previousShow !== "active") loadList(portal).catch(() => {});
+      else applyUiFiltersAndRender();
+    });
+
+    document.querySelectorAll('#view-catalog_competences [data-cat-comp-filter-toggle]').forEach(btn => {
+      btn.addEventListener("click", () => toggleFilterSection(btn));
     });
   }
 
@@ -923,7 +1240,6 @@ function openArchive(it){
 
     setStatus("Chargement…");
     await loadList(portal);
-    setStatus("—");
   }
 
   init().catch(e => {

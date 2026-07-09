@@ -1,42 +1,151 @@
-<section id="view-catalog_competences" data-view="catalog_competences">
-  <div class="card">
-    <div class="sb-card-head">
-      <div>
-        <div class="card-title">Catalogue compétences</div>
-        <div class="card-sub">Créer, modifier, archiver des compétences (catalogue privé par owner).</div>
+<section id="view-catalog_competences" data-view="catalog_competences" class="sb-stack sb-stack--md studio-catalog-comp-page">
+  <div class="card studio-catalog-comp-hero-card">
+    <div class="studio-catalog-comp-hero-top">
+      <div class="studio-catalog-comp-hero-main">
+        <div class="studio-catalog-comp-hero-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M8 7h8"/><path d="M8 11h8"/></svg>
+        </div>
+        <div style="min-width:0;">
+          <div class="card-title">Référentiel de compétences</div>
+          <div class="card-sub">Créer, modifier et archiver les compétences du catalogue.</div>
+        </div>
       </div>
-      <div class="sb-actions">
-        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCompNew">Ajouter une compétence</button>
+
+      <div class="sb-actions studio-catalog-comp-hero-actions">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCompNew">
+          <span class="sb-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+          </span>
+          <span class="sb-btn-label">Ajouter une compétence</span>
+        </button>
       </div>
+    </div>
+
+    <div class="sb-kpi-grid studio-catalog-comp-hero-kpis">
+      <div class="sb-kpi-card studio-catalog-comp-kpi-card">
+        <div class="studio-catalog-comp-kpi-icon studio-catalog-comp-kpi-icon--total" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M8 7h8"/><path d="M8 11h8"/></svg>
+        </div>
+        <div>
+          <div class="sb-kpi-label">Compétences catalogue</div>
+          <div class="sb-kpi-value" id="catCompsKpiTotal">0</div>
+        </div>
+      </div>
+
+      <button type="button" class="sb-kpi-card studio-catalog-comp-kpi-card studio-catalog-comp-kpi-card--action" id="catCompsKpiToValidate" aria-pressed="false">
+        <div class="studio-catalog-comp-kpi-icon studio-catalog-comp-kpi-icon--pending" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div>
+          <div class="sb-kpi-label">À valider</div>
+          <div class="sb-kpi-value" id="catCompsKpiPending">0</div>
+        </div>
+        <span class="studio-catalog-comp-kpi-action-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </span>
+      </button>
     </div>
   </div>
 
-  <div class="card">
-    <div class="sb-toolbar">
-      <div class="sb-search">
-        <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
-        <input type="text" id="catCompsSearch" placeholder="Code, intitulé, domaine…" />
+  <div class="studio-catalog-comp-layout">
+    <aside class="studio-catalog-comp-filter-panel" id="catCompsFilterPanel" aria-label="Filtres compétences">
+      <button type="button" class="sb-btn sb-btn--secondary studio-catalog-comp-filter-reset" id="catCompsResetFilters">
+        <span class="sb-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.1-6.6"/><path d="M18 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.1 6.6"/><path d="M6 21v-5h5"/></svg>
+        </span>
+        <span class="sb-btn-label">Réinitialiser les filtres</span>
+      </button>
+
+      <section class="card studio-catalog-comp-filter-section studio-catalog-comp-filter-accordion is-open" data-cat-comp-filter-section="search">
+        <button type="button" class="studio-catalog-comp-filter-section-head" data-cat-comp-filter-toggle="search" aria-expanded="true">
+          <span class="studio-catalog-comp-filter-section-copy">
+            <span class="studio-catalog-comp-filter-section-title">Recherche</span>
+            <span class="studio-catalog-comp-filter-section-sub">Code, intitulé ou domaine.</span>
+          </span>
+          <span class="studio-catalog-comp-filter-section-actions">
+            <span class="studio-catalog-comp-filter-section-toggle" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+            </span>
+          </span>
+        </button>
+        <div class="studio-catalog-comp-filter-section-body">
+          <label class="studio-catalog-comp-searchbox">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input type="search" id="catCompsSearch" placeholder="Rechercher une compétence..." />
+          </label>
+        </div>
+      </section>
+
+      <section class="card studio-catalog-comp-filter-section studio-catalog-comp-filter-accordion is-open" data-cat-comp-filter-section="status">
+        <button type="button" class="studio-catalog-comp-filter-section-head" data-cat-comp-filter-toggle="status" aria-expanded="true">
+          <span class="studio-catalog-comp-filter-section-copy">
+            <span class="studio-catalog-comp-filter-section-title">Statut</span>
+            <span class="studio-catalog-comp-filter-section-sub">Actives, archivées ou à valider.</span>
+          </span>
+          <span class="studio-catalog-comp-filter-section-actions">
+            <span class="studio-catalog-comp-filter-count" id="catCompsStatusCount">0</span>
+            <span class="studio-catalog-comp-filter-section-toggle" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+            </span>
+          </span>
+        </button>
+        <div class="studio-catalog-comp-filter-section-body">
+          <label class="sb-field studio-catalog-comp-status-field">
+            <span class="label">Afficher</span>
+            <select id="catCompsShow">
+              <option value="active">Actives</option>
+              <option value="archived">Archivées</option>
+              <option value="all">Tout</option>
+            </select>
+          </label>
+          <label class="studio-catalog-comp-check-item studio-catalog-comp-check-item--status">
+            <input type="checkbox" id="catCompsOnlyPending" />
+            <span>À valider uniquement</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card studio-catalog-comp-filter-section studio-catalog-comp-filter-accordion is-open" data-cat-comp-filter-section="domaines">
+        <button type="button" class="studio-catalog-comp-filter-section-head" data-cat-comp-filter-toggle="domaines" aria-expanded="true">
+          <span class="studio-catalog-comp-filter-section-copy">
+            <span class="studio-catalog-comp-filter-section-title">Domaines</span>
+            <span class="studio-catalog-comp-filter-section-sub">Filtrer par domaine de compétence.</span>
+          </span>
+          <span class="studio-catalog-comp-filter-section-actions">
+            <span class="studio-catalog-comp-filter-count" id="catCompsDomainCount">0</span>
+            <span class="studio-catalog-comp-filter-section-toggle" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+            </span>
+          </span>
+        </button>
+        <div class="studio-catalog-comp-filter-section-body">
+          <div class="studio-catalog-comp-check-list studio-catalog-comp-check-list--scroll" id="catCompsDomainChecks"></div>
+        </div>
+      </section>
+    </aside>
+
+    <div class="card studio-catalog-comp-list-card" id="catCompsListCard">
+      <div class="studio-catalog-comp-list-head">
+        <div class="studio-catalog-comp-list-titleline">
+          <span class="studio-catalog-comp-list-title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M8 7h8"/><path d="M8 11h8"/></svg>
+          </span>
+          <div>
+            <div class="card-title">Compétences</div>
+            <div class="card-sub" id="catCompsStatus">Retrouvez et filtrez les compétences.</div>
+          </div>
+        </div>
+
+        <div class="sb-actions studio-catalog-comp-list-head-actions">
+          <button type="button" class="studio-catalog-comp-filter-toggle" id="catCompsFiltersToggle" aria-expanded="true" aria-controls="catCompsFilterPanel" title="Replier les filtres" aria-label="Replier les filtres">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+          </button>
+        </div>
       </div>
 
-      <div class="info-item" style="min-width:220px;">
-        <div class="label">Afficher</div>
-        <select id="catCompsShow">
-          <option value="active">Actives</option>
-          <option value="archived">Archivées</option>
-          <option value="all">Tout</option>
-        </select>
-      </div>
-
-     <div class="info-item" style="min-width:240px;">
-        <div class="label">Domaine</div>
-        <select id="catCompsDomain">
-            <option value="">Tous</option>
-        </select>
-      </div>
-
+      <div class="studio-catalog-comp-table-wrap" id="catCompsList"></div>
+      <div class="card-sub studio-catalog-comp-empty" id="catCompsEmpty" style="display:none;">Aucune compétence à afficher.</div>
     </div>
-
-    <div class="sb-stack sb-stack--sm" id="catCompsList" style="margin-top:12px;"></div>
   </div>
 
   <!-- MODAL : Create/Edit -->
