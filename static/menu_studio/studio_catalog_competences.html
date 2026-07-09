@@ -117,15 +117,6 @@
 
     <div class="card studio-catalog-comp-list-card" id="catCompsListCard">
       <div class="studio-catalog-comp-list-head">
-        <div class="studio-catalog-comp-list-titleline">
-          <span class="studio-catalog-comp-list-title-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M8 7h8"/><path d="M8 11h8"/></svg>
-          </span>
-          <div>
-            <div class="card-title">Compétences</div>
-          </div>
-        </div>
-
         <div class="studio-catalog-comp-tabs" role="tablist" aria-label="Référentiel de compétences">
           <button type="button" class="studio-catalog-comp-tab is-active" id="catCompsTabReferentiel" data-cat-comp-tab="referentiel" role="tab" aria-selected="true" aria-controls="catCompsPanelReferentiel">Référentiel</button>
           <button type="button" class="studio-catalog-comp-tab" id="catCompsTabCartographie" data-cat-comp-tab="cartographie" role="tab" aria-selected="false" aria-controls="catCompsPanelCartographie">Cartographie</button>
@@ -134,7 +125,6 @@
 
       <div class="studio-catalog-comp-tab-panel is-active" id="catCompsPanelReferentiel" data-cat-comp-panel="referentiel" role="tabpanel" aria-labelledby="catCompsTabReferentiel">
         <div class="studio-catalog-comp-panel-head">
-          <div class="card-sub">Catalogue des compétences enregistrées.</div>
           <button type="button" class="sb-btn sb-btn--accent" id="btnCompNew">
             <span class="sb-btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
@@ -150,51 +140,6 @@
       <div class="studio-catalog-comp-tab-panel" id="catCompsPanelCartographie" data-cat-comp-panel="cartographie" role="tabpanel" aria-labelledby="catCompsTabCartographie" hidden>
         <div id="view-cartographie-competences" class="studio-catalog-comp-map-scope">
           <div class="map-workspace studio-catalog-comp-map-workspace">
-            <aside class="map-left-col studio-catalog-comp-map-left">
-              <div class="card map-filter-card studio-catalog-comp-map-filter-card" id="catCompsMapFilterCard">
-                <div class="map-card-head">
-                  <div>
-                    <div class="card-title" style="margin-bottom:4px;">Filtres</div>
-                    <div class="card-sub" style="margin:0;">Filtrez la cartographie affichée.</div>
-                  </div>
-                  <button type="button" class="map-card-head__icon map-card-toggle" id="btnCatCompsMapFiltersToggle" aria-expanded="true" aria-controls="catCompsMapFilterBody" title="Replier les filtres" aria-label="Replier les filtres">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
-                  </button>
-                </div>
-
-                <div class="map-filter-body" id="catCompsMapFilterBody">
-                  <div class="info-item">
-                    <label class="sb-label" for="catCompsMapSearch">Recherche</label>
-                    <div class="map-search-wrap">
-                      <input type="text" id="catCompsMapSearch" class="sb-ctrl" placeholder="Code poste, intitulé..." />
-                      <span class="map-search-wrap__icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="map-filter-actions">
-                    <button type="button" class="sb-btn sb-btn--soft" id="btnCatCompsMapReset">Réinitialiser</button>
-                    <button type="button" class="sb-btn sb-btn--accent" id="btnCatCompsMapApply">Appliquer</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card map-domain-card studio-catalog-comp-map-domain-card" id="catCompsMapDomainCard">
-                <div class="map-card-head">
-                  <div>
-                    <div class="card-title" style="margin-bottom:4px;">Domaines</div>
-                  </div>
-                  <button type="button" class="map-card-head__icon map-card-toggle" id="btnCatCompsMapDomainesToggle" aria-expanded="true" aria-controls="catCompsMapDomaineBody" title="Replier les domaines" aria-label="Replier les domaines">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
-                  </button>
-                </div>
-                <div class="map-domain-body" id="catCompsMapDomaineBody">
-                  <div class="map-domain-list" id="catCompsMapDomainesList"></div>
-                </div>
-              </div>
-            </aside>
-
             <main class="card map-matrix-card studio-catalog-comp-map-matrix-card">
               <div class="map-matrix-head">
                 <div>

@@ -641,7 +641,6 @@ def studio_catalog_competences_cartographie(id_owner: str, request: Request):
                     JOIN public.tbl_competence c
                       ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
                      AND c.id_owner = %s
-                     AND COALESCE(c.masque, FALSE) = FALSE
                     LEFT JOIN public.tbl_domaine_competence d
                       ON d.id_domaine_competence = c.domaine
                      AND COALESCE(d.masque, FALSE) = FALSE
@@ -668,6 +667,8 @@ def studio_catalog_competences_cartographie(id_owner: str, request: Request):
                       c.id_comp,
                       c.code,
                       c.intitule,
+                      c.etat,
+                      COALESCE(c.masque, FALSE) AS masque,
                       fpc.niveau_requis,
                       d.titre AS domaine_titre,
                       d.titre_court AS domaine_titre_court,
@@ -679,7 +680,6 @@ def studio_catalog_competences_cartographie(id_owner: str, request: Request):
                     JOIN public.tbl_competence c
                       ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
                      AND c.id_owner = %s
-                     AND COALESCE(c.masque, FALSE) = FALSE
                     LEFT JOIN public.tbl_domaine_competence d
                       ON d.id_domaine_competence = c.domaine
                      AND COALESCE(d.masque, FALSE) = FALSE
@@ -749,6 +749,8 @@ def studio_catalog_competences_cartographie(id_owner: str, request: Request):
                     "id_comp": r.get("id_comp"),
                     "code": r.get("code"),
                     "intitule": r.get("intitule"),
+                    "etat": r.get("etat"),
+                    "masque": bool(r.get("masque")),
                     "niveau_requis": r.get("niveau_requis"),
                     "domaine_titre": r.get("domaine_titre"),
                     "domaine_titre_court": r.get("domaine_titre_court"),

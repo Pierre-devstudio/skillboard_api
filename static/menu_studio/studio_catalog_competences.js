@@ -17,7 +17,6 @@
   let _activeTab = "referentiel";
   let _mapLoaded = false;
   let _mapRaw = null;
-  let _mapSearchTimer = null;
 
     async function ensureDomains(portal){
         if (_domainsLoaded) return;
@@ -659,6 +658,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     });
     refreshFilterCounts();
     renderList();
+    if (_activeTab === "cartographie") renderMapFromCache();
   }
 
   function updateMetrics(items){
@@ -1034,101 +1034,116 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
   }
 
   function selectedMapDomaines(){
-    return Array.from(document.querySelectorAll("#catCompsMapDomainesList input[data-id-domaine]:checked"))
-      .map(input => String(input.getAttribute("data-id-domaine") || "").trim())
+    return Array.from(_dom || [])
+      .map(id => String(id || "").trim())
       .filter(Boolean);
   }
 
-  function buildMapModel(data){
-    const domaines = (Array.isArray(data?.domaines) ? data.domaines : []).filter(d => d && d.id_domaine_competence);
-    const postes = Array.isArray(data?.postes) ? data.postes : [];
-    const links = Array.isArray(data?.links) ? data.links : [];
-    const matrix = Array.isArray(data?.matrix) ? data.matrix : [];
-    const matrixMap = new Map();
-
-    matrix.forEach(c => {
-      const pid = String(c?.id_poste || "").trim();
-      const did = String(c?.id_domaine_competence || "").trim();
-      if (!pid || !did) return;
-      if (!matrixMap.has(pid)) matrixMap.set(pid, new Map());
-      matrixMap.get(pid).set(did, Number(c?.nb_competences || 0));
-    });
-
-    return { domaines, postes, links, matrixMap };
-  }
-
-  function renderMapDomaines(domaines){
-    const host = byId("catCompsMapDomainesList");
-    if (!host) return;
-
-    const previous = new Set(selectedMapDomaines());
-    host.innerHTML = "";
-
-    if (!Array.isArray(domaines) || !domaines.length){
-      const empty = document.createElement("div");
-      empty.className = "card-sub";
-      empty.style.margin = "0";
-      empty.textContent = "Aucun domaine disponible.";
-      host.appendChild(empty);
-      return;
-    }
-
-    domaines.forEach(d => {
-      const id = String(d.id_domaine_competence || "").trim();
-      if (!id) return;
-
-      const label = document.createElement("label");
-      label.className = "map-domain-check";
-      label.title = String(d.titre_court || d.titre || id);
-
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.setAttribute("data-id-domaine", id);
-      input.checked = previous.size ? previous.has(id) : true;
-      input.addEventListener("change", () => renderMapFromCache());
-
-      const dot = document.createElement("span");
-      dot.className = "map-domain-dot";
-      dot.style.setProperty("--dom-color", normalizeMapColor(d.couleur));
-      dot.setAttribute("aria-hidden", "true");
-
-      const txt = document.createElement("span");
-      txt.className = "map-domain-label";
-      txt.textContent = String(d.titre_court || d.titre || id);
-
-      label.appendChild(input);
-      label.appendChild(dot);
-      label.appendChild(txt);
-      host.appendChild(label);
-    });
-  }
-
-  function filterMapPostes(postes){
-    const q = String(byId("catCompsMapSearch")?.value || "")
+  function normalizeMapText(value){
+    return String(value || "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .trim()
       .toLowerCase();
+  }
 
-    const rows = Array.isArray(postes) ? postes : [];
-    if (!q) return rows;
+  function mapLinkAllowedByStatus(link){
+    const archived = !!link?.masque;
+    if (_show === "archived") return archived;
+    if (_show === "all") return true;
+    return !archived;
+  }
 
-    return rows.filter(p => {
-      const hay = [p?.codif_poste, p?.codif_client, p?.intitule_poste]
-        .map(v => String(v || ""))
-        .join(" ")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
+  function getFilteredMapLinks(data){
+    const links = Array.isArray(data?.links) ? data.links : [];
+    const postes = Array.isArray(data?.postes) ? data.postes : [];
+    const postesById = new Map(postes.map(p => [String(p?.id_poste || "").trim(), p]));
+    const selected = new Set(selectedMapDomaines());
+    const q = normalizeMapText(_q);
+
+    return links.filter(link => {
+      const did = String(link?.id_domaine_competence || "").trim();
+      if (!did) return false;
+      if (selected.size && !selected.has(did)) return false;
+      if (!mapLinkAllowedByStatus(link)) return false;
+      if (_onlyPending && !pendingKey(link?.etat)) return false;
+      if (!q) return true;
+
+      const poste = postesById.get(String(link?.id_poste || "").trim()) || {};
+      const hay = normalizeMapText([
+        poste?.codif_poste,
+        poste?.codif_client,
+        poste?.intitule_poste,
+        link?.code,
+        link?.intitule,
+        link?.domaine_titre,
+        link?.domaine_titre_court
+      ].join(" "));
+
       return hay.includes(q);
     });
   }
 
+  function buildMapModel(data){
+    const rawDomaines = Array.isArray(data?.domaines) ? data.domaines : [];
+    const postes = Array.isArray(data?.postes) ? data.postes : [];
+    const links = getFilteredMapLinks(data);
+    const domainesById = new Map();
+    const matrixMap = new Map();
+    const posteIds = new Set();
+
+    rawDomaines.forEach(d => {
+      const id = String(d?.id_domaine_competence || "").trim();
+      if (id) domainesById.set(id, d);
+    });
+
+    links.forEach(link => {
+      const pid = String(link?.id_poste || "").trim();
+      const did = String(link?.id_domaine_competence || "").trim();
+      if (!pid || !did) return;
+
+      posteIds.add(pid);
+      if (!domainesById.has(did)) {
+        domainesById.set(did, {
+          id_domaine_competence: did,
+          titre: link?.domaine_titre || link?.domaine_titre_court || did,
+          titre_court: link?.domaine_titre_court || link?.domaine_titre || did,
+          couleur: link?.domaine_couleur
+        });
+      }
+
+      if (!matrixMap.has(pid)) matrixMap.set(pid, new Map());
+      matrixMap.get(pid).set(did, Number(matrixMap.get(pid).get(did) || 0) + 1);
+    });
+
+    const domainesUsed = new Set(links.map(link => String(link?.id_domaine_competence || "").trim()).filter(Boolean));
+    const domaines = Array.from(domainesById.values())
+      .filter(d => domainesUsed.has(String(d?.id_domaine_competence || "").trim()))
+      .sort((a, b) => {
+        const oa = a?.ordre_affichage === null || a?.ordre_affichage === undefined ? 999999 : Number(a.ordre_affichage);
+        const ob = b?.ordre_affichage === null || b?.ordre_affichage === undefined ? 999999 : Number(b.ordre_affichage);
+        if (oa !== ob) return oa - ob;
+        return String(a?.titre_court || a?.titre || "").localeCompare(String(b?.titre_court || b?.titre || ""), "fr", { sensitivity:"base" });
+      });
+
+    const postesShown = postes
+      .filter(p => posteIds.has(String(p?.id_poste || "").trim()))
+      .sort((a, b) => {
+        const ac = normalizeMapText(mapPosteCode(a));
+        const bc = normalizeMapText(mapPosteCode(b));
+        const cmp = ac.localeCompare(bc, "fr", { sensitivity:"base", numeric:true });
+        if (cmp !== 0) return cmp;
+        return normalizeMapText(a?.intitule_poste).localeCompare(normalizeMapText(b?.intitule_poste), "fr", { sensitivity:"base", numeric:true });
+      });
+
+    return { domaines, postes: postesShown, links, matrixMap };
+  }
+
   function mapCellLinks(pid, did){
-    const links = Array.isArray(_mapRaw?.links) ? _mapRaw.links : [];
+    const model = _mapRaw ? buildMapModel(_mapRaw) : { links: [] };
     const posteId = String(pid || "").trim();
     const domId = String(did || "").trim();
-    return links.filter(l => {
+    return (model.links || []).filter(l => {
       const samePoste = String(l?.id_poste || "").trim() === posteId;
       const sameDom = !domId || String(l?.id_domaine_competence || "").trim() === domId;
       return samePoste && sameDom;
@@ -1271,11 +1286,8 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
   function renderMapFromCache(){
     if (!_mapRaw) return;
     const model = buildMapModel(_mapRaw);
-    const selected = new Set(selectedMapDomaines());
-    const domainesShown = selected.size
-      ? model.domaines.filter(d => selected.has(String(d.id_domaine_competence || "")))
-      : model.domaines;
-    const postesShown = filterMapPostes(model.postes);
+    const domainesShown = model.domaines;
+    const postesShown = model.postes;
 
     renderMapHistogram(domainesShown, postesShown, model.matrixMap);
 
@@ -1305,8 +1317,6 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       const data = await portal.apiJson(`${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/cartographie`);
       _mapRaw = data || {};
       _mapLoaded = true;
-      const model = buildMapModel(_mapRaw);
-      renderMapDomaines(model.domaines);
       renderMapFromCache();
     } catch(e){
       _mapRaw = null;
@@ -1321,17 +1331,6 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       setMapText("catCompsMapStatus", "Erreur de chargement de la cartographie.", "");
       portal.showAlert("error", e?.message || String(e));
     }
-  }
-
-  function toggleMapCard(cardId, btnId){
-    const card = byId(cardId);
-    const btn = byId(btnId);
-    if (!card || !btn) return;
-    const collapsed = !card.classList.contains("is-collapsed");
-    card.classList.toggle("is-collapsed", collapsed);
-    btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    btn.setAttribute("title", collapsed ? "Déplier" : "Replier");
-    btn.setAttribute("aria-label", collapsed ? "Déplier" : "Replier");
   }
 
   function switchCatalogTab(portal, tab){
@@ -1350,8 +1349,6 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       panel.hidden = !active;
     });
 
-    const layout = document.querySelector("#view-catalog_competences .studio-catalog-comp-layout");
-    if (layout) layout.classList.toggle("is-cartography-active", next === "cartographie");
 
     if (next === "cartographie") loadCartographie(portal, false).catch(() => {});
   }
@@ -1656,19 +1653,6 @@ function openArchive(it){
       btn.addEventListener("click", () => switchCatalogTab(portal, btn.getAttribute("data-cat-comp-tab")));
     });
 
-    byId("btnCatCompsMapReset")?.addEventListener("click", () => {
-      const input = byId("catCompsMapSearch");
-      if (input) input.value = "";
-      document.querySelectorAll("#catCompsMapDomainesList input[data-id-domaine]").forEach(cb => { cb.checked = true; });
-      renderMapFromCache();
-    });
-    byId("btnCatCompsMapApply")?.addEventListener("click", () => renderMapFromCache());
-    byId("catCompsMapSearch")?.addEventListener("input", () => {
-      if (_mapSearchTimer) clearTimeout(_mapSearchTimer);
-      _mapSearchTimer = setTimeout(() => renderMapFromCache(), 180);
-    });
-    byId("btnCatCompsMapFiltersToggle")?.addEventListener("click", () => toggleMapCard("catCompsMapFilterCard", "btnCatCompsMapFiltersToggle"));
-    byId("btnCatCompsMapDomainesToggle")?.addEventListener("click", () => toggleMapCard("catCompsMapDomainCard", "btnCatCompsMapDomainesToggle"));
     byId("catCompsMapGrid")?.addEventListener("click", (e) => {
       const cell = e.target.closest("[data-cat-comp-map-poste]");
       if (!cell) return;

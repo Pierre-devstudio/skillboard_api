@@ -11437,10 +11437,11 @@ body.studio-rh-calendar-expanded{
 
 #view-catalog_competences .studio-catalog-comp-list-head{
   display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
+  align-items:flex-end;
+  justify-content:flex-start;
   gap:14px;
-  margin-bottom:14px;
+  margin:-2px 0 14px 0;
+  border-bottom:1px solid #e7eaf0;
 }
 
 #view-catalog_competences .studio-catalog-comp-list-titleline{
@@ -11830,48 +11831,38 @@ body.studio-rh-calendar-expanded{
   min-height:62px;
 }
 
-#view-catalog_competences .studio-catalog-comp-layout.is-cartography-active{
-  grid-template-columns:minmax(0, 1fr);
-}
-
-#view-catalog_competences .studio-catalog-comp-layout.is-cartography-active .studio-catalog-comp-filter-panel{
-  display:none;
-}
-
 #view-catalog_competences .studio-catalog-comp-tabs{
   display:inline-flex;
-  align-items:center;
-  gap:4px;
-  padding:4px;
-  border:1px solid #e2e8f0;
-  border-radius:12px;
-  background:#f8fafc;
+  align-items:flex-end;
+  gap:20px;
+  padding:0;
+  border:0;
+  background:transparent;
   flex:0 0 auto;
 }
 
 #view-catalog_competences .studio-catalog-comp-tab{
   appearance:none;
   -webkit-appearance:none;
-  min-height:30px;
-  padding:0 12px;
+  min-height:38px;
+  padding:0 0 10px 0;
   border:0;
-  border-radius:9px;
+  border-bottom:2px solid transparent;
+  border-radius:0;
   background:transparent;
   color:#64748b;
-  font-size:12.5px;
+  font-size:13px;
   font-weight:700;
   cursor:pointer;
 }
 
 #view-catalog_competences .studio-catalog-comp-tab:hover{
   color:#111827;
-  background:#fff;
 }
 
 #view-catalog_competences .studio-catalog-comp-tab.is-active{
-  background:#fff;
   color:#111827;
-  box-shadow:0 1px 2px rgba(15,23,42,.08);
+  border-bottom-color:var(--accent);
 }
 
 #view-catalog_competences .studio-catalog-comp-tab-panel{
@@ -11885,7 +11876,7 @@ body.studio-rh-calendar-expanded{
 #view-catalog_competences .studio-catalog-comp-panel-head{
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:flex-end;
   gap:12px;
   margin-bottom:12px;
 }
@@ -11915,16 +11906,14 @@ body.studio-rh-calendar-expanded{
 
 #view-catalog_competences .studio-catalog-comp-map-workspace{
   margin-top:0;
-  grid-template-columns:280px minmax(0, 1fr);
+  grid-template-columns:minmax(0, 1fr);
 }
 
 #view-catalog_competences .studio-catalog-comp-map-workspace .card{
   box-shadow:none;
 }
 
-#view-catalog_competences .studio-catalog-comp-map-matrix-card,
-#view-catalog_competences .studio-catalog-comp-map-filter-card,
-#view-catalog_competences .studio-catalog-comp-map-domain-card{
+#view-catalog_competences .studio-catalog-comp-map-matrix-card{
   border-color:#e7eaf0;
 }
 
@@ -12019,7 +12008,6 @@ body.studio-rh-calendar-expanded{
     flex-direction:column;
   }
 
-  #view-catalog_competences .studio-catalog-comp-tabs,
   #view-catalog_competences .studio-catalog-comp-map-kpis{
     grid-template-columns:1fr;
   }
