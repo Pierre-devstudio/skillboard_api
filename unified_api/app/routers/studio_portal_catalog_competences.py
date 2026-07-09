@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Optional, Any, Dict, List
 from psycopg.rows import dict_row
 import uuid
 import os
 import json
+import re
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import (
@@ -587,6 +588,191 @@ def studio_catalog_list_competences(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/catalog/competences list error: {e}")
+
+
+@router.get("/studio/catalog/competences/{id_owner}/cartographie")
+def studio_catalog_competences_cartographie(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "supervisor")
+
+                cur.execute(
+                    """
+                    SELECT
+                      fp.id_poste,
+                      fp.codif_poste,
+                      fp.codif_client,
+                      fp.intitule_poste,
+                      fp.id_service,
+                      o.nom_service
+                    FROM public.tbl_fiche_poste fp
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = fp.id_ent
+                     AND o.id_service = fp.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    WHERE fp.id_owner = %s
+                      AND COALESCE(fp.actif, TRUE) = TRUE
+                    ORDER BY lower(COALESCE(fp.codif_client, fp.codif_poste, '')), lower(fp.intitule_poste)
+                    """,
+                    (oid,),
+                )
+                postes_rows = cur.fetchall() or []
+
+                cur.execute(
+                    """
+                    SELECT
+                      fp.id_poste,
+                      c.domaine AS id_domaine_competence,
+                      COUNT(DISTINCT c.id_comp)::int AS nb_competences,
+                      d.titre,
+                      d.titre_court,
+                      d.ordre_affichage,
+                      d.couleur
+                    FROM public.tbl_fiche_poste fp
+                    JOIN public.tbl_fiche_poste_competence fpc
+                      ON fpc.id_poste = fp.id_poste
+                     AND COALESCE(fpc.masque, FALSE) = FALSE
+                    JOIN public.tbl_competence c
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                     AND c.id_owner = %s
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
+                     AND COALESCE(d.masque, FALSE) = FALSE
+                    WHERE fp.id_owner = %s
+                      AND COALESCE(fp.actif, TRUE) = TRUE
+                      AND NULLIF(BTRIM(COALESCE(c.domaine, '')), '') IS NOT NULL
+                    GROUP BY
+                      fp.id_poste,
+                      c.domaine,
+                      d.titre,
+                      d.titre_court,
+                      d.ordre_affichage,
+                      d.couleur
+                    """,
+                    (oid, oid),
+                )
+                matrix_rows = cur.fetchall() or []
+
+                cur.execute(
+                    """
+                    SELECT
+                      fp.id_poste,
+                      c.domaine AS id_domaine_competence,
+                      c.id_comp,
+                      c.code,
+                      c.intitule,
+                      fpc.niveau_requis,
+                      d.titre AS domaine_titre,
+                      d.titre_court AS domaine_titre_court,
+                      d.couleur AS domaine_couleur
+                    FROM public.tbl_fiche_poste fp
+                    JOIN public.tbl_fiche_poste_competence fpc
+                      ON fpc.id_poste = fp.id_poste
+                     AND COALESCE(fpc.masque, FALSE) = FALSE
+                    JOIN public.tbl_competence c
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                     AND c.id_owner = %s
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
+                     AND COALESCE(d.masque, FALSE) = FALSE
+                    WHERE fp.id_owner = %s
+                      AND COALESCE(fp.actif, TRUE) = TRUE
+                      AND NULLIF(BTRIM(COALESCE(c.domaine, '')), '') IS NOT NULL
+                    ORDER BY lower(COALESCE(c.code, '')), lower(COALESCE(c.intitule, ''))
+                    """,
+                    (oid, oid),
+                )
+                link_rows = cur.fetchall() or []
+
+        domaines_map: Dict[str, Dict[str, Any]] = {}
+        tot_poste: Dict[str, int] = {}
+        tot_dom: Dict[str, int] = {}
+        matrix: List[Dict[str, Any]] = []
+
+        for r in matrix_rows:
+            did = (r.get("id_domaine_competence") or "").strip()
+            pid = (r.get("id_poste") or "").strip()
+            if not did or not pid:
+                continue
+
+            if did not in domaines_map:
+                domaines_map[did] = {
+                    "id_domaine_competence": did,
+                    "titre": r.get("titre"),
+                    "titre_court": r.get("titre_court"),
+                    "ordre_affichage": r.get("ordre_affichage"),
+                    "couleur": r.get("couleur"),
+                }
+
+            nb = int(r.get("nb_competences") or 0)
+            matrix.append({"id_poste": pid, "id_domaine_competence": did, "nb_competences": nb})
+            tot_poste[pid] = int(tot_poste.get(pid, 0)) + nb
+            tot_dom[did] = int(tot_dom.get(did, 0)) + nb
+
+        postes = []
+        for r in postes_rows:
+            pid = (r.get("id_poste") or "").strip()
+            postes.append(
+                {
+                    "id_poste": pid,
+                    "codif_poste": r.get("codif_poste"),
+                    "codif_client": r.get("codif_client"),
+                    "intitule_poste": r.get("intitule_poste"),
+                    "id_service": r.get("id_service"),
+                    "nom_service": r.get("nom_service"),
+                    "total_competences": int(tot_poste.get(pid, 0)),
+                }
+            )
+
+        domaines = sorted(
+            domaines_map.values(),
+            key=lambda d: (
+                d.get("ordre_affichage") if d.get("ordre_affichage") is not None else 999999,
+                (d.get("titre_court") or d.get("titre") or d.get("id_domaine_competence") or "").lower(),
+            ),
+        )
+
+        links = []
+        for r in link_rows:
+            links.append(
+                {
+                    "id_poste": r.get("id_poste"),
+                    "id_domaine_competence": r.get("id_domaine_competence"),
+                    "id_comp": r.get("id_comp"),
+                    "code": r.get("code"),
+                    "intitule": r.get("intitule"),
+                    "niveau_requis": r.get("niveau_requis"),
+                    "domaine_titre": r.get("domaine_titre"),
+                    "domaine_titre_court": r.get("domaine_titre_court"),
+                    "domaine_couleur": r.get("domaine_couleur"),
+                }
+            )
+
+        return {
+            "domaines": domaines,
+            "postes": postes,
+            "matrix": matrix,
+            "links": links,
+            "totaux_domaines": [
+                {"id_domaine_competence": did, "total_competences": int(total)}
+                for did, total in sorted(tot_dom.items(), key=lambda kv: kv[1], reverse=True)
+            ],
+            "total_postes": len(postes),
+            "total_competences": int(sum(tot_poste.values()) if tot_poste else 0),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences cartographie error: {e}")
 
 
 @router.get("/studio/catalog/competences/{id_owner}/next_code")

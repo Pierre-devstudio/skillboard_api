@@ -14,6 +14,10 @@
   let _sortDir = "asc";
   let _page = 1;
   let _pageSize = 25;
+  let _activeTab = "referentiel";
+  let _mapLoaded = false;
+  let _mapRaw = null;
+  let _mapSearchTimer = null;
 
     async function ensureDomains(portal){
         if (_domainsLoaded) return;
@@ -1009,6 +1013,349 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     setStatus(`${_items.length} compétence${suffix} affichée${suffix}.`);
   }
 
+  function normalizeMapColor(raw){
+    const rgb = argbIntToRgbTuple(raw);
+    if (rgb) return `rgb(${rgb.css})`;
+    const s = String(raw ?? "").trim();
+    if (!s) return "#9ca3af";
+    if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+    return "#9ca3af";
+  }
+
+  function mapPosteCode(p){
+    return String(p?.codif_client || p?.codif_poste || "").trim();
+  }
+
+  function setMapText(id, value, fallback = "–"){
+    const el = byId(id);
+    if (!el) return;
+    const v = value === null || value === undefined || value === "" ? fallback : value;
+    el.textContent = String(v);
+  }
+
+  function selectedMapDomaines(){
+    return Array.from(document.querySelectorAll("#catCompsMapDomainesList input[data-id-domaine]:checked"))
+      .map(input => String(input.getAttribute("data-id-domaine") || "").trim())
+      .filter(Boolean);
+  }
+
+  function buildMapModel(data){
+    const domaines = (Array.isArray(data?.domaines) ? data.domaines : []).filter(d => d && d.id_domaine_competence);
+    const postes = Array.isArray(data?.postes) ? data.postes : [];
+    const links = Array.isArray(data?.links) ? data.links : [];
+    const matrix = Array.isArray(data?.matrix) ? data.matrix : [];
+    const matrixMap = new Map();
+
+    matrix.forEach(c => {
+      const pid = String(c?.id_poste || "").trim();
+      const did = String(c?.id_domaine_competence || "").trim();
+      if (!pid || !did) return;
+      if (!matrixMap.has(pid)) matrixMap.set(pid, new Map());
+      matrixMap.get(pid).set(did, Number(c?.nb_competences || 0));
+    });
+
+    return { domaines, postes, links, matrixMap };
+  }
+
+  function renderMapDomaines(domaines){
+    const host = byId("catCompsMapDomainesList");
+    if (!host) return;
+
+    const previous = new Set(selectedMapDomaines());
+    host.innerHTML = "";
+
+    if (!Array.isArray(domaines) || !domaines.length){
+      const empty = document.createElement("div");
+      empty.className = "card-sub";
+      empty.style.margin = "0";
+      empty.textContent = "Aucun domaine disponible.";
+      host.appendChild(empty);
+      return;
+    }
+
+    domaines.forEach(d => {
+      const id = String(d.id_domaine_competence || "").trim();
+      if (!id) return;
+
+      const label = document.createElement("label");
+      label.className = "map-domain-check";
+      label.title = String(d.titre_court || d.titre || id);
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.setAttribute("data-id-domaine", id);
+      input.checked = previous.size ? previous.has(id) : true;
+      input.addEventListener("change", () => renderMapFromCache());
+
+      const dot = document.createElement("span");
+      dot.className = "map-domain-dot";
+      dot.style.setProperty("--dom-color", normalizeMapColor(d.couleur));
+      dot.setAttribute("aria-hidden", "true");
+
+      const txt = document.createElement("span");
+      txt.className = "map-domain-label";
+      txt.textContent = String(d.titre_court || d.titre || id);
+
+      label.appendChild(input);
+      label.appendChild(dot);
+      label.appendChild(txt);
+      host.appendChild(label);
+    });
+  }
+
+  function filterMapPostes(postes){
+    const q = String(byId("catCompsMapSearch")?.value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+
+    const rows = Array.isArray(postes) ? postes : [];
+    if (!q) return rows;
+
+    return rows.filter(p => {
+      const hay = [p?.codif_poste, p?.codif_client, p?.intitule_poste]
+        .map(v => String(v || ""))
+        .join(" ")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function mapCellLinks(pid, did){
+    const links = Array.isArray(_mapRaw?.links) ? _mapRaw.links : [];
+    const posteId = String(pid || "").trim();
+    const domId = String(did || "").trim();
+    return links.filter(l => {
+      const samePoste = String(l?.id_poste || "").trim() === posteId;
+      const sameDom = !domId || String(l?.id_domaine_competence || "").trim() === domId;
+      return samePoste && sameDom;
+    });
+  }
+
+  function openMapDetail(pid, did){
+    if (!_mapRaw) return;
+
+    const model = buildMapModel(_mapRaw);
+    const poste = (model.postes || []).find(p => String(p.id_poste || "") === String(pid || ""));
+    const dom = (model.domaines || []).find(d => String(d.id_domaine_competence || "") === String(did || ""));
+    const links = mapCellLinks(pid, did);
+
+    const title = byId("catCompsMapModalTitle");
+    const sub = byId("catCompsMapModalSub");
+    const body = byId("catCompsMapModalBody");
+
+    const code = mapPosteCode(poste);
+    if (title) title.textContent = `${code ? code + " — " : ""}${poste?.intitule_poste || "Poste"}`;
+    if (sub) sub.textContent = did ? `Domaine : ${dom?.titre_court || dom?.titre || "—"}` : "Toutes les compétences rattachées au poste.";
+
+    if (body){
+      if (!links.length){
+        body.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compétence rattachée.</div>`;
+      } else {
+        body.innerHTML = `
+          <div class="studio-catalog-comp-map-detail-list">
+            ${links.map(l => `
+              <div class="studio-catalog-comp-map-detail-row">
+                <div class="studio-catalog-comp-map-detail-main">
+                  <span class="sb-badge sb-badge--comp">${htmlEsc(l.code || "—")}</span>
+                  <div class="studio-catalog-comp-map-detail-title">${htmlEsc(l.intitule || "")}</div>
+                </div>
+                <div class="studio-catalog-comp-map-detail-side">
+                  ${l.niveau_requis ? `<span class="sb-badge sb-badge-niv sb-badge-niv-${htmlEsc(String(l.niveau_requis).toLowerCase())}">${htmlEsc(l.niveau_requis)}</span>` : ""}
+                  <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-cat-comp-map-pdf="${htmlEsc(l.id_comp || "")}" title="Exporter la fiche compétence" aria-label="Exporter la fiche compétence">${iconSvg("pdf")}</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>`;
+      }
+    }
+
+    openModal("modalCatCompsMapDetail");
+  }
+
+  function renderMapHistogram(domaines, postes, matrixMap){
+    const grid = byId("catCompsMapGrid");
+    const empty = byId("catCompsMapEmpty");
+    if (!grid) return;
+
+    const doms = Array.isArray(domaines) ? domaines : [];
+    const rows = Array.isArray(postes) ? postes : [];
+    const map = matrixMap instanceof Map ? matrixMap : new Map();
+
+    if (!doms.length || !rows.length){
+      grid.innerHTML = "";
+      if (empty) empty.style.display = "";
+      return;
+    }
+
+    if (empty) empty.style.display = "none";
+
+    const rowTotal = new Map();
+    const colTotal = new Map();
+    let maxVal = 0;
+
+    rows.forEach(p => {
+      const r = map.get(p.id_poste);
+      let sum = 0;
+      doms.forEach(d => {
+        const v = r ? Number(r.get(d.id_domaine_competence) || 0) : 0;
+        sum += v;
+        colTotal.set(d.id_domaine_competence, Number(colTotal.get(d.id_domaine_competence) || 0) + v);
+        if (v > maxVal) maxVal = v;
+      });
+      rowTotal.set(p.id_poste, sum);
+    });
+
+    const barHeight = (v) => {
+      v = Number(v || 0);
+      if (v <= 0 || maxVal <= 0) return 0;
+      return Math.max(2, Math.round((v / maxVal) * 30));
+    };
+
+    let head = `<th class="hb-sticky hb-rowhead">Poste</th>`;
+    doms.forEach(d => {
+      const label = String(d.titre_court || d.titre || d.id_domaine_competence || "").trim();
+      const color = normalizeMapColor(d.couleur);
+      head += `<th title="${htmlEsc(label)}"><span class="hb-dom-dot" style="background:${htmlEsc(color)}; border-color:${htmlEsc(color)};"></span></th>`;
+    });
+    head += `<th>Total</th>`;
+
+    let body = "";
+    rows.forEach(p => {
+      const r = map.get(p.id_poste);
+      const code = mapPosteCode(p);
+      const intitule = String(p.intitule_poste || "").trim();
+      const cells = doms.map(d => {
+        const v = r ? Number(r.get(d.id_domaine_competence) || 0) : 0;
+        const h = barHeight(v);
+        const color = normalizeMapColor(d.couleur);
+        return `
+          <td class="hb-cell" data-cat-comp-map-poste="${htmlEsc(p.id_poste)}" data-cat-comp-map-domaine="${htmlEsc(d.id_domaine_competence)}" data-value="${v}" title="${htmlEsc((code ? code + " — " : "") + (intitule || "Poste") + " | " + (d.titre_court || d.titre || "Domaine") + " : " + v)}">
+            <div class="hb-barbox">${h > 0 ? `<div class="hb-bar" style="height:${h}px; background:${htmlEsc(color)};"></div>` : ""}</div>
+          </td>`;
+      }).join("");
+      const total = rowTotal.get(p.id_poste) || 0;
+      body += `
+        <tr>
+          <td class="hb-rowhead">
+            <div class="hb-poste-line">
+              ${code ? `<span class="sb-badge sb-badge-ref-poste-code hb-poste-code">${htmlEsc(code)}</span>` : ""}
+              <span class="hb-poste-title">${htmlEsc(intitule || "—")}</span>
+            </div>
+          </td>
+          ${cells}
+          <td class="hb-totalcell hb-totalclick" data-cat-comp-map-poste="${htmlEsc(p.id_poste)}" data-cat-comp-map-domaine="" data-value="${total}" title="Voir toutes les compétences du poste (${total})">${total ? total : ""}</td>
+        </tr>`;
+    });
+
+    const grandTotal = Array.from(rowTotal.values()).reduce((a,b) => a + b, 0);
+    let totalRow = `<td class="hb-rowhead">Total</td>`;
+    doms.forEach(d => {
+      const v = colTotal.get(d.id_domaine_competence) || 0;
+      totalRow += `<td class="hb-totalcell">${v ? v : ""}</td>`;
+    });
+    totalRow += `<td class="hb-grandtotal">${grandTotal ? grandTotal : ""}</td>`;
+
+    grid.innerHTML = `
+      <div class="hb-wrap">
+        <table class="hb-table">
+          <thead><tr>${head}</tr></thead>
+          <tbody>${body}<tr class="hb-totalrow">${totalRow}</tr></tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderMapFromCache(){
+    if (!_mapRaw) return;
+    const model = buildMapModel(_mapRaw);
+    const selected = new Set(selectedMapDomaines());
+    const domainesShown = selected.size
+      ? model.domaines.filter(d => selected.has(String(d.id_domaine_competence || "")))
+      : model.domaines;
+    const postesShown = filterMapPostes(model.postes);
+
+    renderMapHistogram(domainesShown, postesShown, model.matrixMap);
+
+    let total = 0;
+    postesShown.forEach(p => {
+      const row = model.matrixMap.get(p.id_poste);
+      domainesShown.forEach(d => { total += row ? Number(row.get(d.id_domaine_competence) || 0) : 0; });
+    });
+
+    setMapText("catCompsMapKpiPostes", postesShown.length);
+    setMapText("catCompsMapKpiDomaines", domainesShown.length);
+    setMapText("catCompsMapKpiCompetences", total);
+    setMapText("catCompsMapStatus", "Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.", "");
+  }
+
+  async function loadCartographie(portal, force){
+    if (_mapLoaded && !force) {
+      renderMapFromCache();
+      return;
+    }
+
+    const ownerId = getOwnerId();
+    if (!ownerId) return;
+
+    try{
+      setMapText("catCompsMapStatus", "Chargement…", "");
+      const data = await portal.apiJson(`${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/cartographie`);
+      _mapRaw = data || {};
+      _mapLoaded = true;
+      const model = buildMapModel(_mapRaw);
+      renderMapDomaines(model.domaines);
+      renderMapFromCache();
+    } catch(e){
+      _mapRaw = null;
+      _mapLoaded = false;
+      const grid = byId("catCompsMapGrid");
+      if (grid) grid.innerHTML = "";
+      const empty = byId("catCompsMapEmpty");
+      if (empty) empty.style.display = "";
+      setMapText("catCompsMapKpiPostes", "–");
+      setMapText("catCompsMapKpiDomaines", "–");
+      setMapText("catCompsMapKpiCompetences", "–");
+      setMapText("catCompsMapStatus", "Erreur de chargement de la cartographie.", "");
+      portal.showAlert("error", e?.message || String(e));
+    }
+  }
+
+  function toggleMapCard(cardId, btnId){
+    const card = byId(cardId);
+    const btn = byId(btnId);
+    if (!card || !btn) return;
+    const collapsed = !card.classList.contains("is-collapsed");
+    card.classList.toggle("is-collapsed", collapsed);
+    btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    btn.setAttribute("title", collapsed ? "Déplier" : "Replier");
+    btn.setAttribute("aria-label", collapsed ? "Déplier" : "Replier");
+  }
+
+  function switchCatalogTab(portal, tab){
+    const next = tab === "cartographie" ? "cartographie" : "referentiel";
+    _activeTab = next;
+
+    document.querySelectorAll("#view-catalog_competences [data-cat-comp-tab]").forEach(btn => {
+      const active = btn.getAttribute("data-cat-comp-tab") === next;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    document.querySelectorAll("#view-catalog_competences [data-cat-comp-panel]").forEach(panel => {
+      const active = panel.getAttribute("data-cat-comp-panel") === next;
+      panel.classList.toggle("is-active", active);
+      panel.hidden = !active;
+    });
+
+    const layout = document.querySelector("#view-catalog_competences .studio-catalog-comp-layout");
+    if (layout) layout.classList.toggle("is-cartography-active", next === "cartographie");
+
+    if (next === "cartographie") loadCartographie(portal, false).catch(() => {});
+  }
+
   async function loadList(portal){
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error("Owner manquant (?id=...).");
@@ -1223,6 +1570,8 @@ async function save(portal){
     portal.showAlert("", "");
     await loadMetrics(portal);
     await loadList(portal);
+    _mapLoaded = false;
+    if (_activeTab === "cartographie") await loadCartographie(portal, true);
   }
 
 function openArchive(it){
@@ -1245,6 +1594,8 @@ function openArchive(it){
     portal.showAlert("", "");
     await loadMetrics(portal);
     await loadList(portal);
+    _mapLoaded = false;
+    if (_activeTab === "cartographie") await loadCartographie(portal, true);
   }
 
   function toggleFilters(){
@@ -1299,7 +1650,49 @@ function openArchive(it){
       if (b) b.style.display = "none";
     }
 
-    byId("btnCompNew").addEventListener("click", () => openCreate(portal));
+    byId("btnCompNew")?.addEventListener("click", () => openCreate(portal));
+
+    document.querySelectorAll("#view-catalog_competences [data-cat-comp-tab]").forEach(btn => {
+      btn.addEventListener("click", () => switchCatalogTab(portal, btn.getAttribute("data-cat-comp-tab")));
+    });
+
+    byId("btnCatCompsMapReset")?.addEventListener("click", () => {
+      const input = byId("catCompsMapSearch");
+      if (input) input.value = "";
+      document.querySelectorAll("#catCompsMapDomainesList input[data-id-domaine]").forEach(cb => { cb.checked = true; });
+      renderMapFromCache();
+    });
+    byId("btnCatCompsMapApply")?.addEventListener("click", () => renderMapFromCache());
+    byId("catCompsMapSearch")?.addEventListener("input", () => {
+      if (_mapSearchTimer) clearTimeout(_mapSearchTimer);
+      _mapSearchTimer = setTimeout(() => renderMapFromCache(), 180);
+    });
+    byId("btnCatCompsMapFiltersToggle")?.addEventListener("click", () => toggleMapCard("catCompsMapFilterCard", "btnCatCompsMapFiltersToggle"));
+    byId("btnCatCompsMapDomainesToggle")?.addEventListener("click", () => toggleMapCard("catCompsMapDomainCard", "btnCatCompsMapDomainesToggle"));
+    byId("catCompsMapGrid")?.addEventListener("click", (e) => {
+      const cell = e.target.closest("[data-cat-comp-map-poste]");
+      if (!cell) return;
+      const value = Number(cell.getAttribute("data-value") || "0");
+      if (!value) return;
+      openMapDetail(cell.getAttribute("data-cat-comp-map-poste"), cell.getAttribute("data-cat-comp-map-domaine") || "");
+    });
+    byId("catCompsMapModalBody")?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-cat-comp-map-pdf]");
+      if (!btn) return;
+      const idComp = String(btn.getAttribute("data-cat-comp-map-pdf") || "").trim();
+      if (!idComp) return;
+      const item = { id_comp: idComp, code: btn.closest(".studio-catalog-comp-map-detail-row")?.querySelector(".sb-badge--comp")?.textContent || "" };
+      let popupWin = null;
+      try{
+        popupWin = openPdfLoadingWindow("Fiche compétence");
+        await openSkillSheetPdf(portal, item, popupWin);
+      } catch(err){
+        try { if (popupWin && !popupWin.closed) popupWin.close(); } catch(_) {}
+        portal.showAlert("error", err?.message || String(err));
+      }
+    });
+    byId("btnCatCompsMapModalX")?.addEventListener("click", () => closeModal("modalCatCompsMapDetail"));
+    byId("btnCatCompsMapModalClose")?.addEventListener("click", () => closeModal("modalCatCompsMapDetail"));
 
     byId("btnCompX").addEventListener("click", () => closeModal("modalCompEdit"));
     byId("btnCompCancel").addEventListener("click", () => closeModal("modalCompEdit"));
