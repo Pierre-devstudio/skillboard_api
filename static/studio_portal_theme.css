@@ -11561,6 +11561,53 @@ body.studio-rh-calendar-expanded{
   font-weight:600;
 }
 
+#view-catalog_competences .studio-catalog-comp-sort-head{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color:inherit;
+  padding:0;
+  margin:0;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font:inherit;
+  font-weight:600;
+  cursor:pointer;
+}
+
+#view-catalog_competences .studio-catalog-comp-sort-head:hover{
+  color:#0f172a;
+}
+
+#view-catalog_competences .studio-catalog-comp-sort-head.is-active{
+  color:#111827;
+}
+
+#view-catalog_competences .studio-catalog-comp-sort-arrows{
+  display:inline-flex;
+  flex-direction:column;
+  gap:0;
+  line-height:1;
+  font-size:8px;
+  color:#cbd5e1;
+  opacity:0;
+}
+
+#view-catalog_competences .studio-catalog-comp-sort-head.is-active .studio-catalog-comp-sort-arrows,
+#view-catalog_competences .studio-catalog-comp-sort-head:hover .studio-catalog-comp-sort-arrows{
+  opacity:1;
+}
+
+#view-catalog_competences .studio-catalog-comp-sort-arrow{
+  height:8px;
+  display:block;
+}
+
+#view-catalog_competences .studio-catalog-comp-sort-arrow.is-active{
+  color:#111827;
+}
+
 #view-catalog_competences .studio-catalog-comp-table-cell{
   min-width:0;
   padding:9px 12px;
@@ -11617,6 +11664,115 @@ body.studio-rh-calendar-expanded{
   text-align:center;
 }
 
+#view-catalog_competences .studio-catalog-comp-table-head .studio-catalog-comp-table-cell--actions{
+  align-items:center;
+}
+
+#view-catalog_competences .sb-icon-btn--doc{
+  background:#fff;
+  border-color:#cbd5e1;
+  color:#334155;
+  box-shadow:none;
+}
+
+#view-catalog_competences .sb-icon-btn--doc:hover{
+  background:#f8fafc;
+  border-color:#94a3b8;
+  color:#111827;
+}
+
+#view-catalog_competences .studio-catalog-comp-table-foot{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:12px;
+  padding:12px 0 0 0;
+  color:#64748b;
+  font-size:12px;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-size-wrap{
+  justify-self:start;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-size-select{
+  width:auto;
+  min-width:118px;
+  height:34px;
+  border-radius:10px;
+  padding:0 34px 0 10px;
+  color:#0f172a;
+  background-color:#fff;
+}
+
+#view-catalog_competences .studio-catalog-comp-pagination{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-btn{
+  width:24px;
+  height:24px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#0f172a;
+  font-size:12px;
+  font-weight:650;
+  cursor:pointer;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-btn:hover{
+  background:#f1f5f9;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-btn.is-active{
+  background:var(--accent);
+  color:#111827;
+  box-shadow:none;
+  font-weight:700;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-ellipsis{
+  min-width:18px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#94a3b8;
+  font-size:12px;
+  font-weight:600;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-nav{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-nav svg{
+  width:14px;
+  height:14px;
+}
+
+#view-catalog_competences .studio-catalog-comp-page-nav[disabled]{
+  opacity:.45;
+  pointer-events:none;
+}
+
+#view-catalog_competences .studio-catalog-comp-range-label{
+  justify-self:end;
+  margin:0;
+  color:#64748b;
+  font-size:12px;
+}
+
 #view-catalog_competences .studio-catalog-comp-empty{
   margin:12px 0 0 0;
 }
@@ -11628,6 +11784,18 @@ body.studio-rh-calendar-expanded{
   #view-catalog_competences .studio-catalog-comp-filter-panel{
     position:relative;
     top:auto;
+  }
+}
+
+@media (max-width:860px){
+  #view-catalog_competences .studio-catalog-comp-table-foot{
+    grid-template-columns:1fr;
+    justify-items:center;
+  }
+
+  #view-catalog_competences .studio-catalog-comp-page-size-wrap,
+  #view-catalog_competences .studio-catalog-comp-range-label{
+    justify-self:center;
   }
 }
 

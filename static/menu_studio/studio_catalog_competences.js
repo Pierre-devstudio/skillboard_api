@@ -10,6 +10,10 @@
   let _domainsLoaded = false;
   let _domainItems = [];
   let _metricsLoaded = false;
+  let _sortKey = "competence";
+  let _sortDir = "asc";
+  let _page = 1;
+  let _pageSize = 25;
 
     async function ensureDomains(portal){
         if (_domainsLoaded) return;
@@ -429,13 +433,13 @@
 
   function iconSvg(kind){
     if (kind === "edit") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.5L19 9.5a2.1 2.1 0 0 0-3-3L5.5 17H4v3Z"></path><path d="M14.5 7 17 9.5"></path></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
     }
     if (kind === "archive") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M6 7l1 13h10l1-13"></path><path d="M9 7V4h6v3"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
     }
     if (kind === "pdf") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/><path d="M13 13v3"/><path d="M13 13h3"/><path d="M16 13v3"/></svg>`;
     }
     return "";
   }
@@ -606,6 +610,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       input.addEventListener("change", () => {
         if (input.checked) _dom.add(d.id);
         else _dom.delete(d.id);
+        _page = 1;
         refreshFilterCounts();
         applyUiFiltersAndRender();
       });
@@ -691,6 +696,174 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     return dom;
   }
 
+  function normalizeSortValue(value){
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function getSortValue(it, key){
+    if (key === "competence") {
+      return normalizeSortValue(`${it?.code || ""} ${it?.intitule || ""}`);
+    }
+    if (key === "domaine") {
+      return normalizeSortValue(`${it?.domaine_titre_court || it?.domaine || ""} ${it?.intitule || ""}`);
+    }
+    return "";
+  }
+
+  function getSortedItems(items){
+    const arr = Array.isArray(items) ? items.slice() : [];
+    const dir = _sortDir === "desc" ? -1 : 1;
+    const key = _sortKey || "competence";
+
+    arr.sort((a, b) => {
+      const va = getSortValue(a, key);
+      const vb = getSortValue(b, key);
+      const cmp = va.localeCompare(vb, "fr", { sensitivity: "base", numeric: true });
+      if (cmp !== 0) return cmp * dir;
+      return getSortValue(a, "competence").localeCompare(getSortValue(b, "competence"), "fr", { sensitivity: "base", numeric: true });
+    });
+
+    return arr;
+  }
+
+  function getPageData(items){
+    const list = Array.isArray(items) ? items : [];
+    const total = list.length;
+    const size = Math.max(1, Number(_pageSize) || 25);
+    const totalPages = Math.max(1, Math.ceil(total / size));
+
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+
+    const start = total ? ((_page - 1) * size) : 0;
+    const end = Math.min(start + size, total);
+
+    return {
+      total,
+      totalPages,
+      page: _page,
+      pageSize: size,
+      start,
+      end,
+      items: list.slice(start, end)
+    };
+  }
+
+  function buildPaginationTokens(totalPages, page){
+    if (totalPages <= 5) {
+      const all = [];
+      for (let i = 1; i <= totalPages; i += 1) all.push(i);
+      return all;
+    }
+
+    const tokens = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+
+    if (start > 2) tokens.push("ellipsis-left");
+    for (let i = start; i <= end; i += 1) tokens.push(i);
+    if (end < totalPages - 1) tokens.push("ellipsis-right");
+    tokens.push(totalPages);
+    return tokens;
+  }
+
+  function renderSortHead(key, label){
+    const active = _sortKey === key;
+    const dir = active ? _sortDir : "";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `studio-catalog-comp-sort-head${active ? " is-active" : ""}`;
+    btn.setAttribute("data-cat-comp-sort", key);
+    btn.setAttribute("aria-sort", active ? (_sortDir === "desc" ? "descending" : "ascending") : "none");
+
+    const text = document.createElement("span");
+    text.textContent = label;
+
+    const arrows = document.createElement("span");
+    arrows.className = "studio-catalog-comp-sort-arrows";
+    arrows.setAttribute("aria-hidden", "true");
+    arrows.innerHTML = `<span class="studio-catalog-comp-sort-arrow${active && dir === "asc" ? " is-active" : ""}">▲</span><span class="studio-catalog-comp-sort-arrow${active && dir === "desc" ? " is-active" : ""}">▼</span>`;
+
+    btn.appendChild(text);
+    btn.appendChild(arrows);
+    return btn;
+  }
+
+  function renderPagination(pageData){
+    const total = pageData.total || 0;
+    const totalPages = pageData.totalPages || 1;
+    const page = pageData.page || 1;
+    const foot = document.createElement("div");
+    foot.className = "studio-catalog-comp-table-foot";
+
+    const sizeWrap = document.createElement("div");
+    sizeWrap.className = "studio-catalog-comp-page-size-wrap";
+    sizeWrap.innerHTML = `
+      <select class="sb-select studio-catalog-comp-page-size-select" data-cat-comp-page-size aria-label="Nombre d'éléments par page">
+        <option value="25"${_pageSize === 25 ? " selected" : ""}>25 par page</option>
+        <option value="50"${_pageSize === 50 ? " selected" : ""}>50 par page</option>
+        <option value="100"${_pageSize === 100 ? " selected" : ""}>100 par page</option>
+      </select>
+    `;
+
+    const pagination = document.createElement("div");
+    pagination.className = "studio-catalog-comp-pagination";
+    pagination.setAttribute("aria-label", "Pagination compétences");
+
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "sb-icon-btn studio-catalog-comp-page-nav";
+    prev.setAttribute("data-cat-comp-page-nav", "prev");
+    prev.title = "Page précédente";
+    prev.setAttribute("aria-label", "Page précédente");
+    prev.disabled = page <= 1;
+    prev.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>`;
+    pagination.appendChild(prev);
+
+    buildPaginationTokens(totalPages, page).forEach(t => {
+      if (typeof t === "string") {
+        const ellipsis = document.createElement("span");
+        ellipsis.className = "studio-catalog-comp-page-ellipsis";
+        ellipsis.setAttribute("aria-hidden", "true");
+        ellipsis.textContent = "…";
+        pagination.appendChild(ellipsis);
+        return;
+      }
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `studio-catalog-comp-page-btn${t === page ? " is-active" : ""}`;
+      btn.setAttribute("data-cat-comp-page", String(t));
+      btn.setAttribute("aria-label", `Page ${t}`);
+      btn.setAttribute("aria-current", t === page ? "page" : "false");
+      btn.textContent = String(t);
+      pagination.appendChild(btn);
+    });
+
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "sb-icon-btn studio-catalog-comp-page-nav";
+    next.setAttribute("data-cat-comp-page-nav", "next");
+    next.title = "Page suivante";
+    next.setAttribute("aria-label", "Page suivante");
+    next.disabled = page >= totalPages;
+    next.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>`;
+    pagination.appendChild(next);
+
+    const range = document.createElement("div");
+    range.className = "studio-catalog-comp-range-label";
+    range.textContent = total ? `${pageData.start + 1} – ${pageData.end} sur ${total}` : "0 sur 0";
+
+    foot.appendChild(sizeWrap);
+    foot.appendChild(pagination);
+    foot.appendChild(range);
+    return foot;
+  }
+
   function renderList(){
     const host = byId("catCompsList");
     const empty = byId("catCompsEmpty");
@@ -704,20 +877,33 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       return;
     }
 
+    const sortedItems = getSortedItems(_items);
+    const pageData = getPageData(sortedItems);
+
     const table = document.createElement("div");
     table.className = "studio-catalog-comp-table";
 
     const head = document.createElement("div");
     head.className = "studio-catalog-comp-table-row studio-catalog-comp-table-head";
-    ["Compétence", "Domaine", "Actions"].forEach((label, idx) => {
-      const cell = document.createElement("div");
-      cell.className = `studio-catalog-comp-table-cell${idx === 2 ? " studio-catalog-comp-table-cell--actions" : ""}`;
-      cell.textContent = label;
-      head.appendChild(cell);
-    });
+
+    const compHead = document.createElement("div");
+    compHead.className = "studio-catalog-comp-table-cell studio-catalog-comp-table-cell--competence";
+    compHead.appendChild(renderSortHead("competence", "Compétence"));
+    head.appendChild(compHead);
+
+    const domainHead = document.createElement("div");
+    domainHead.className = "studio-catalog-comp-table-cell studio-catalog-comp-table-cell--domain";
+    domainHead.appendChild(renderSortHead("domaine", "Domaine"));
+    head.appendChild(domainHead);
+
+    const actionHead = document.createElement("div");
+    actionHead.className = "studio-catalog-comp-table-cell studio-catalog-comp-table-cell--actions";
+    actionHead.textContent = "Actions";
+    head.appendChild(actionHead);
+
     table.appendChild(head);
 
-    _items.forEach(it => {
+    pageData.items.forEach(it => {
       const row = document.createElement("div");
       row.className = "studio-catalog-comp-table-row";
       if (it.masque) row.classList.add("is-archived");
@@ -817,6 +1003,8 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     });
 
     host.appendChild(table);
+    host.appendChild(renderPagination(pageData));
+
     const suffix = _items.length > 1 ? "s" : "";
     setStatus(`${_items.length} compétence${suffix} affichée${suffix}.`);
   }
@@ -1096,6 +1284,7 @@ function openArchive(it){
     _show = "active";
     _onlyPending = false;
     _dom = new Set();
+    _page = 1;
 
     refreshDomainChecks();
     loadList(portal).catch(() => {});
@@ -1188,6 +1377,7 @@ function openArchive(it){
     const s = byId("catCompsSearch");
     s?.addEventListener("input", () => {
       _q = (s.value || "").trim();
+      _page = 1;
       if (_qTimer) clearTimeout(_qTimer);
       _qTimer = setTimeout(() => loadList(portal).catch(() => {}), 250);
     });
@@ -1195,6 +1385,7 @@ function openArchive(it){
     const sh = byId("catCompsShow");
     sh?.addEventListener("change", () => {
       _show = (sh.value || "active").trim();
+      _page = 1;
       _dom = new Set();
       loadList(portal).catch(() => {});
     });
@@ -1202,13 +1393,12 @@ function openArchive(it){
     const pending = byId("catCompsOnlyPending");
     pending?.addEventListener("change", () => {
       _onlyPending = !!pending.checked;
+      _page = 1;
       refreshFilterCounts();
       applyUiFiltersAndRender();
     });
 
     byId("catCompsResetFilters")?.addEventListener("click", () => resetFilters(portal));
-    byId("catCompsFiltersToggle")?.addEventListener("click", toggleFilters);
-
     byId("catCompsKpiToValidate")?.addEventListener("click", () => {
       const previousShow = _show;
       _onlyPending = !_onlyPending;
@@ -1219,9 +1409,52 @@ function openArchive(it){
       }
       const input = byId("catCompsOnlyPending");
       if (input) input.checked = _onlyPending;
+      _page = 1;
       refreshFilterCounts();
       if (_onlyPending && previousShow !== "active") loadList(portal).catch(() => {});
       else applyUiFiltersAndRender();
+    });
+
+    byId("catCompsList")?.addEventListener("change", (e) => {
+      const pageSizeSelect = e.target.closest("[data-cat-comp-page-size]");
+      if (!pageSizeSelect) return;
+
+      const nextSize = parseInt(pageSizeSelect.value, 10);
+      _pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 25;
+      _page = 1;
+      renderList();
+    });
+
+    byId("catCompsList")?.addEventListener("click", (e) => {
+      const sortBtn = e.target.closest("[data-cat-comp-sort]");
+      if (sortBtn) {
+        const key = String(sortBtn.getAttribute("data-cat-comp-sort") || "").trim();
+        if (key) {
+          if (_sortKey === key) _sortDir = _sortDir === "asc" ? "desc" : "asc";
+          else {
+            _sortKey = key;
+            _sortDir = "asc";
+          }
+          _page = 1;
+          renderList();
+        }
+        return;
+      }
+
+      const pageBtn = e.target.closest("[data-cat-comp-page], [data-cat-comp-page-nav]");
+      if (!pageBtn) return;
+
+      const pageData = getPageData(getSortedItems(_items));
+      const nav = pageBtn.getAttribute("data-cat-comp-page-nav") || "";
+      const rawPage = pageBtn.getAttribute("data-cat-comp-page") || "";
+
+      if (nav === "prev") _page = Math.max(1, pageData.page - 1);
+      else if (nav === "next") _page = Math.min(pageData.totalPages, pageData.page + 1);
+      else {
+        const nextPage = parseInt(rawPage, 10);
+        if (Number.isFinite(nextPage)) _page = Math.min(Math.max(1, nextPage), pageData.totalPages);
+      }
+      renderList();
     });
 
     document.querySelectorAll('#view-catalog_competences [data-cat-comp-filter-toggle]').forEach(btn => {
