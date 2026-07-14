@@ -12254,3 +12254,247 @@ body.studio-rh-calendar-expanded{
 @media (max-width:800px){
   #modalPoste .studio-poste-kpis{ grid-template-columns:repeat(2, minmax(0,1fr)); }
 }
+
+
+/* ======================================================
+   Studio > Fiche poste dédiée V02
+   ====================================================== */
+#modalPoste.is-poste-page .studio-poste-modal-head{
+  position:sticky;
+  top:0;
+  z-index:35;
+  margin:0 -14px;
+  padding:10px 14px 0;
+  border-bottom:1px solid #e7eaf0;
+  background:rgba(248,250,252,.96);
+  box-shadow:0 8px 20px rgba(15,23,42,.05);
+  backdrop-filter:blur(10px);
+}
+
+#modalPoste.is-poste-page .studio-poste-modal-nav{
+  margin-top:12px;
+}
+
+#modalPoste.is-poste-page .studio-poste-titleline .sb-title-text{
+  font-size:19px;
+  font-weight:800;
+  letter-spacing:-.01em;
+}
+
+#modalPoste.is-poste-page #posteModalSub{
+  margin-top:6px;
+  font-size:12px;
+}
+
+#modalPoste.is-poste-page .studio-poste-kpis{
+  gap:14px;
+  margin:18px 0 14px;
+}
+
+#modalPoste.is-poste-page .studio-poste-kpi{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-height:92px;
+  padding:14px 16px;
+  border-color:#e2e8f0;
+  border-radius:16px;
+  box-shadow:0 8px 22px rgba(15,23,42,.055);
+}
+
+#modalPoste .studio-poste-kpi__icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:48px;
+  height:48px;
+  border-radius:14px;
+}
+
+#modalPoste .studio-poste-kpi__icon svg{
+  width:23px;
+  height:23px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalPoste .studio-poste-kpi--collabs .studio-poste-kpi__icon{ background:#f1eafe; color:#6d28d9; }
+#modalPoste .studio-poste-kpi--competences .studio-poste-kpi__icon{ background:#fff0e2; color:#ea580c; }
+#modalPoste .studio-poste-kpi--certifications .studio-poste-kpi__icon{ background:#e8f2ff; color:#2563eb; }
+#modalPoste .studio-poste-kpi--criticite .studio-poste-kpi__icon{ background:#e9f7e7; color:#3f8f2f; }
+
+#modalPoste .studio-poste-kpi__content{
+  display:block;
+  min-width:0;
+}
+
+#modalPoste .studio-poste-kpi__label{
+  color:#475569;
+  font-size:12px;
+  font-weight:750;
+}
+
+#modalPoste .studio-poste-kpi__content strong{
+  margin-top:5px;
+  font-size:23px;
+  font-weight:850;
+}
+
+#modalPoste .studio-poste-kpi__content small{
+  display:block;
+  margin-top:5px;
+  color:#64748b;
+  font-size:11px;
+  font-weight:650;
+}
+
+#modalPoste .studio-poste-kpi--competences small{ color:#c2410c; }
+#modalPoste .studio-poste-kpi--collabs small{ color:#6d28d9; }
+#modalPoste .studio-poste-kpi--certifications small{ color:#2563eb; }
+
+#modalPoste .studio-poste-overview-grid{
+  grid-template-columns:minmax(0, 1.72fr) minmax(330px, .86fr);
+  gap:16px;
+}
+
+#modalPoste .studio-poste-overview-main,
+#modalPoste .studio-poste-overview-side{
+  gap:14px;
+}
+
+#modalPoste .studio-poste-overview-card{
+  border-color:#e2e8f0;
+  border-radius:16px;
+  box-shadow:0 8px 24px rgba(15,23,42,.05);
+}
+
+#modalPoste .studio-poste-overview-card__head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+#modalPoste .studio-poste-overview-card__icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:27px;
+  height:27px;
+  border-radius:9px;
+  background:#fff0f0;
+  color:#dc2626;
+  font-size:14px;
+  font-weight:850;
+}
+
+#modalPoste .studio-poste-overview-card__icon--violet{ background:#f1eafe; color:#7c3aed; }
+#modalPoste .studio-poste-overview-card__icon--blue{ background:#e8f2ff; color:#2563eb; }
+#modalPoste .studio-poste-overview-card__icon--orange{ background:#fff1e6; color:#ea580c; }
+
+#modalPoste .studio-poste-overview-card .studio-rh-panel-title{
+  font-size:14px;
+  font-weight:800;
+}
+
+#modalPoste .studio-poste-overview-text{
+  margin-top:0;
+  font-size:12.5px;
+  line-height:1.6;
+}
+
+#modalPoste .studio-poste-activities{
+  list-style:none;
+  gap:9px;
+  margin:0;
+  padding:0;
+  counter-reset:poste-activity;
+}
+
+#modalPoste .studio-poste-activities li{
+  position:relative;
+  min-height:24px;
+  padding:4px 0 4px 34px;
+  counter-increment:poste-activity;
+}
+
+#modalPoste .studio-poste-activities li::before{
+  content:counter(poste-activity);
+  position:absolute;
+  left:0;
+  top:2px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:24px;
+  height:24px;
+  border-radius:999px;
+  background:#fff0f0;
+  color:#dc2626;
+  font-size:11px;
+  font-weight:850;
+}
+
+#modalPoste .studio-poste-overview-list > div{
+  min-height:32px;
+  padding:8px 0;
+}
+
+#modalPoste .studio-poste-overview-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:76px;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:10px !important;
+  font-weight:800;
+}
+#modalPoste .studio-poste-overview-badge--a{ background:#fff1e6; color:#c2410c; }
+#modalPoste .studio-poste-overview-badge--b{ background:#ffedd5; color:#c2410c; }
+#modalPoste .studio-poste-overview-badge--c{ background:#e8f5e9; color:#2e7d32; }
+#modalPoste .studio-poste-overview-badge--d{ background:#ede9fe; color:#6d28d9; }
+#modalPoste .studio-poste-overview-badge--cert{ background:#e8f2ff; color:#1d4ed8; }
+#modalPoste .studio-poste-overview-badge--default{ background:#f1f5f9; color:#475569; }
+
+#modalPoste .studio-poste-overview dl{
+  gap:8px 14px;
+  margin-top:0;
+}
+
+#modalPoste .studio-poste-overview dd{
+  text-align:left;
+}
+
+#modalPoste .studio-poste-overview-note{
+  margin-top:10px;
+  padding:9px 10px;
+  border-radius:10px;
+  background:#f8fafc;
+  color:#64748b;
+  font-size:11px;
+  line-height:1.45;
+}
+
+#modalPoste .studio-poste-overview-link--block{
+  width:100%;
+  margin-top:12px;
+  padding:9px 12px;
+  border:1px solid color-mix(in srgb, var(--accent) 55%, #d1d5db);
+  border-radius:10px;
+  background:#fff;
+  text-align:center;
+}
+
+#modalPoste .studio-poste-overview-link--block:hover{
+  background:color-mix(in srgb, var(--accent) 9%, #fff);
+}
+
+@media (max-width:1200px){
+  #modalPoste.is-poste-page .studio-poste-modal-head{ position:relative; margin:0; padding:4px 0 12px; }
+}

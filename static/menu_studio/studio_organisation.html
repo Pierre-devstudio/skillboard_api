@@ -246,37 +246,49 @@
         <!-- Vue d’ensemble -->
         <div class="sb-tab-panel is-active studio-poste-overview" data-panel="overview">
           <div class="studio-poste-kpis">
-            <div class="studio-poste-kpi"><span>Collaborateurs en poste</span><strong id="posteOverviewCollabs">—</strong></div>
-            <div class="studio-poste-kpi"><span>Compétences requises</span><strong id="posteOverviewCompetences">—</strong></div>
-            <div class="studio-poste-kpi"><span>Certifications requises</span><strong id="posteOverviewCertifications">—</strong></div>
-            <div class="studio-poste-kpi"><span>Criticité</span><strong id="posteOverviewCriticite">—</strong></div>
+            <div class="studio-poste-kpi studio-poste-kpi--collabs">
+              <span class="studio-poste-kpi__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg></span>
+              <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Collaborateurs en poste</span><strong id="posteOverviewCollabs">—</strong><small id="posteOverviewCollabsMeta">Titularisation du poste</small></span>
+            </div>
+            <div class="studio-poste-kpi studio-poste-kpi--competences">
+              <span class="studio-poste-kpi__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="m17 3 1 2 2 .5-1.5 1.5.5 2-2-1-2 1 .5-2L13 5.5 15 5z"/></svg></span>
+              <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Compétences requises</span><strong id="posteOverviewCompetences">—</strong><small id="posteOverviewCompetencesMeta">— critique</small></span>
+            </div>
+            <div class="studio-poste-kpi studio-poste-kpi--certifications">
+              <span class="studio-poste-kpi__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
+              <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Certifications requises</span><strong id="posteOverviewCertifications">—</strong><small id="posteOverviewCertificationsMeta">Exigences du poste</small></span>
+            </div>
+            <div class="studio-poste-kpi studio-poste-kpi--criticite">
+              <span class="studio-poste-kpi__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Criticité</span><strong id="posteOverviewCriticite">—</strong><small id="posteOverviewCriticiteMeta">Impact sur l’activité</small></span>
+            </div>
           </div>
           <div class="studio-poste-overview-grid">
             <div class="studio-poste-overview-main">
-              <section class="studio-rh-panel">
-                <div class="studio-rh-panel-title">Mission principale</div>
+              <section class="studio-rh-panel studio-poste-overview-card">
+                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">◎</span><div class="studio-rh-panel-title">Mission principale</div></div>
                 <div class="studio-poste-overview-text" id="posteOverviewMission">—</div>
               </section>
-              <section class="studio-rh-panel">
-                <div class="studio-rh-panel-title">Activités principales</div>
+              <section class="studio-rh-panel studio-poste-overview-card">
+                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">≡</span><div class="studio-rh-panel-title">Activités principales</div></div>
                 <ol class="studio-poste-activities" id="posteOverviewActivities"></ol>
               </section>
-              <section class="studio-rh-panel">
-                <div class="studio-rh-panel-title">Compétences requises</div>
+              <section class="studio-rh-panel studio-poste-overview-card">
+                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet" aria-hidden="true">◇</span><div class="studio-rh-panel-title">Compétences requises</div></div>
                 <div id="posteOverviewCompList" class="studio-poste-overview-list"></div>
                 <button type="button" class="studio-poste-overview-link" data-go-tab="exi">Voir toutes les compétences</button>
               </section>
-              <section class="studio-rh-panel">
-                <div class="studio-rh-panel-title">Certifications requises</div>
+              <section class="studio-rh-panel studio-poste-overview-card">
+                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--blue" aria-hidden="true">✓</span><div class="studio-rh-panel-title">Certifications requises</div></div>
                 <div id="posteOverviewCertList" class="studio-poste-overview-list"></div>
                 <button type="button" class="studio-poste-overview-link" data-go-tab="exi">Voir toutes les certifications</button>
               </section>
             </div>
             <aside class="studio-poste-overview-side">
-              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Informations clés</div><dl id="posteOverviewInfo"></dl></section>
-              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Contraintes</div><dl id="posteOverviewConstraints"></dl></section>
-              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Commentaire RH</div><div class="studio-poste-overview-text" id="posteOverviewComment">—</div></section>
-              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Cotation conventionnelle</div><div id="posteOverviewCcnSummary" class="studio-poste-overview-text">Consultez l’onglet dédié pour le résultat et sa justification.</div><button type="button" class="studio-poste-overview-link" data-go-tab="ccn">Accéder au détail de la cotation</button></section>
+              <section class="studio-rh-panel studio-poste-overview-card"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">i</span><div class="studio-rh-panel-title">Informations clés</div></div><dl id="posteOverviewInfo"></dl></section>
+              <section class="studio-rh-panel studio-poste-overview-card"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--orange" aria-hidden="true">!</span><div class="studio-rh-panel-title">Contraintes</div></div><dl id="posteOverviewConstraints"></dl></section>
+              <section class="studio-rh-panel studio-poste-overview-card"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet" aria-hidden="true">□</span><div class="studio-rh-panel-title">Commentaire RH</div></div><div class="studio-poste-overview-text" id="posteOverviewComment">—</div></section>
+              <section class="studio-rh-panel studio-poste-overview-card studio-poste-overview-card--ccn"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">⚖</span><div class="studio-rh-panel-title">Cotation conventionnelle</div></div><div id="posteOverviewCcnSummary" class="studio-poste-overview-text">Consultez l’onglet dédié pour le résultat et sa justification.</div><div class="studio-poste-overview-note">La justification détaillée est disponible dans l’onglet dédié.</div><button type="button" class="studio-poste-overview-link studio-poste-overview-link--block" data-go-tab="ccn">Accéder au détail de la cotation</button></section>
             </aside>
           </div>
         </div>

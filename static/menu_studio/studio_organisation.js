@@ -5232,11 +5232,23 @@ function refreshPosteCompEditCritDisplay(){
 
     function renderPosteOverview(detail){
         const d = detail || {};
-        _setValue("posteOverviewCollabs", String(_editingPosteListItem?.nb_collabs ?? _editingPosteListItem?.nb_collaborateurs ?? "—"));
+        const collabs = _editingPosteListItem?.nb_collabs ?? _editingPosteListItem?.nb_collaborateurs ?? "—";
+        const target = d.nb_titulaires_cible ?? "—";
+        const criticalCompetences = (_posteCompItems || []).filter(it => {
+            const score = Number.parseInt(it?.poids_criticite ?? "", 10);
+            return Number.isFinite(score) && score > 79;
+        }).length;
+
+        _setValue("posteOverviewCollabs", String(collabs));
+        _setValue("posteOverviewCollabsMeta", target === "—" ? "Titularisation du poste" : `${collabs} sur ${target} titulaire${Number(target) > 1 ? "s" : ""} cible${Number(target) > 1 ? "s" : ""}`);
         _setValue("posteOverviewCompetences", String((_posteCompItems || []).length));
+        _setValue("posteOverviewCompetencesMeta", `${criticalCompetences} critique${criticalCompetences > 1 ? "s" : ""} (> 79 %)`);
         _setValue("posteOverviewCertifications", String((_posteCertItems || []).length));
+        _setValue("posteOverviewCertificationsMeta", (_posteCertItems || []).length ? "Exigences du poste" : "Aucune certification requise");
         const crit = d.criticite_poste ?? "";
-        _setValue("posteOverviewCriticite", ({1:"Faible",2:"Modérée",3:"Élevée",4:"Critique"})[String(crit)] || String(crit || "—"));
+        const critLabel = ({1:"Faible",2:"Modérée",3:"Élevée",4:"Critique"})[String(crit)] || String(crit || "—");
+        _setValue("posteOverviewCriticite", critLabel);
+        _setValue("posteOverviewCriticiteMeta", critLabel === "—" ? "Non renseignée" : "Impact sur l’activité");
         _setValue("posteOverviewMission", d.mission_principale || "—");
         _setValue("posteOverviewComment", d.param_rh_commentaire || "—");
 
@@ -5254,7 +5266,8 @@ function refreshPosteCompEditCritDisplay(){
             compHost.innerHTML = "";
             (_posteCompItems || []).slice(0, 6).forEach(it => {
                 const row = document.createElement("div");
-                row.innerHTML = `<span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span><strong>${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                const levelKey = nsLevelKey(it.niveau_requis || it.niveau || "").toLowerCase();
+                row.innerHTML = `<span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
                 compHost.appendChild(row);
             });
             if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
@@ -5265,7 +5278,8 @@ function refreshPosteCompEditCritDisplay(){
             certHost.innerHTML = "";
             (_posteCertItems || []).slice(0, 4).forEach(it => {
                 const row = document.createElement("div");
-                row.innerHTML = `<span>${htmlEsc(it.intitule_certification || it.nom_certification || it.intitule || "Certification")}</span><strong>${htmlEsc(it.obligatoire ? "Obligatoire" : "Recommandée")}</strong>`;
+                const certStatus = it.obligatoire ? "Obligatoire" : "Recommandée";
+                row.innerHTML = `<span>${htmlEsc(it.intitule_certification || it.nom_certification || it.intitule || "Certification")}</span><strong class="studio-poste-overview-badge studio-poste-overview-badge--cert">${htmlEsc(certStatus)}</strong>`;
                 certHost.appendChild(row);
             });
             if (!certHost.children.length) certHost.textContent = "Aucune certification rattachée.";
