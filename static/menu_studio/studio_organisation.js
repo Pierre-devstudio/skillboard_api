@@ -5193,8 +5193,10 @@ function refreshPosteCompEditCritDisplay(){
     function setPostePageMode(enabled){
         const root = getOrganisationRoot();
         const modal = byId("modalPoste");
+        const content = root ? root.closest(".content") : null;
         if (root) root.classList.toggle("is-poste-page", !!enabled);
         if (modal) modal.classList.toggle("is-poste-page", !!enabled);
+        if (content) content.classList.toggle("is-poste-page", !!enabled);
         const actions = byId("postePageActions");
         if (actions) actions.style.display = enabled ? "flex" : "none";
         const close = byId("btnClosePoste");
