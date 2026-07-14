@@ -201,7 +201,11 @@
           <div class="card-sub" id="posteModalSub">—</div>
 
           <div class="studio-poste-modal-nav" id="posteTabbar" role="tablist" aria-label="Navigation fiche poste">
-            <button type="button" class="studio-poste-nav-btn is-active" data-tab="def" role="tab" aria-selected="true">
+            <button type="button" class="studio-poste-nav-btn is-active studio-poste-nav-btn--overview" data-tab="overview" role="tab" aria-selected="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h6v6h-6z"/></svg>
+              <span>Vue d’ensemble</span>
+            </button>
+            <button type="button" class="studio-poste-nav-btn" data-tab="def" role="tab" aria-selected="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
               <span>Définition</span>
             </button>
@@ -213,15 +217,72 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
               <span>Paramétrage RH</span>
             </button>
+            <button type="button" class="studio-poste-nav-btn" data-tab="ccn" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
+              <span>Cotation conventionnelle</span>
+            </button>
           </div>
         </div>
 
+        <div class="studio-poste-page-actions" id="postePageActions" style="display:none;">
+          <div class="studio-poste-actions-menu">
+            <button type="button" class="sb-btn sb-btn--secondary" id="btnPostePageActions" aria-expanded="false">
+              <span>Actions</span><span aria-hidden="true">⌄</span>
+            </button>
+            <div class="studio-poste-actions-dropdown" id="postePageActionsDropdown" style="display:none;">
+              <button type="button" id="btnPostePageArchive">Archiver</button>
+              <button type="button" id="btnPostePageDuplicate">Dupliquer</button>
+              <button type="button" id="btnPostePagePdf">Imprimer en PDF</button>
+            </div>
+          </div>
+          <button type="button" class="sb-btn sb-btn--ai" id="btnPostePageAi">Générer avec l’IA</button>
+          <button type="button" class="sb-btn sb-btn--accent" id="btnPostePageSave">Enregistrer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPostePageBack">Retour à l’organisation</button>
+        </div>
         <button type="button" class="sb-modal-x" id="btnClosePoste" aria-label="Fermer">&times;</button>
       </div>
 
       <div class="sb-modal-body studio-poste-modal-body">
+        <!-- Vue d’ensemble -->
+        <div class="sb-tab-panel is-active studio-poste-overview" data-panel="overview">
+          <div class="studio-poste-kpis">
+            <div class="studio-poste-kpi"><span>Collaborateurs en poste</span><strong id="posteOverviewCollabs">—</strong></div>
+            <div class="studio-poste-kpi"><span>Compétences requises</span><strong id="posteOverviewCompetences">—</strong></div>
+            <div class="studio-poste-kpi"><span>Certifications requises</span><strong id="posteOverviewCertifications">—</strong></div>
+            <div class="studio-poste-kpi"><span>Criticité</span><strong id="posteOverviewCriticite">—</strong></div>
+          </div>
+          <div class="studio-poste-overview-grid">
+            <div class="studio-poste-overview-main">
+              <section class="studio-rh-panel">
+                <div class="studio-rh-panel-title">Mission principale</div>
+                <div class="studio-poste-overview-text" id="posteOverviewMission">—</div>
+              </section>
+              <section class="studio-rh-panel">
+                <div class="studio-rh-panel-title">Activités principales</div>
+                <ol class="studio-poste-activities" id="posteOverviewActivities"></ol>
+              </section>
+              <section class="studio-rh-panel">
+                <div class="studio-rh-panel-title">Compétences requises</div>
+                <div id="posteOverviewCompList" class="studio-poste-overview-list"></div>
+                <button type="button" class="studio-poste-overview-link" data-go-tab="exi">Voir toutes les compétences</button>
+              </section>
+              <section class="studio-rh-panel">
+                <div class="studio-rh-panel-title">Certifications requises</div>
+                <div id="posteOverviewCertList" class="studio-poste-overview-list"></div>
+                <button type="button" class="studio-poste-overview-link" data-go-tab="exi">Voir toutes les certifications</button>
+              </section>
+            </div>
+            <aside class="studio-poste-overview-side">
+              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Informations clés</div><dl id="posteOverviewInfo"></dl></section>
+              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Contraintes</div><dl id="posteOverviewConstraints"></dl></section>
+              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Commentaire RH</div><div class="studio-poste-overview-text" id="posteOverviewComment">—</div></section>
+              <section class="studio-rh-panel"><div class="studio-rh-panel-title">Cotation conventionnelle</div><div id="posteOverviewCcnSummary" class="studio-poste-overview-text">Consultez l’onglet dédié pour le résultat et sa justification.</div><button type="button" class="studio-poste-overview-link" data-go-tab="ccn">Accéder au détail de la cotation</button></section>
+            </aside>
+          </div>
+        </div>
+
         <!-- Définition -->
-        <div class="sb-tab-panel is-active" data-panel="def">
+        <div class="sb-tab-panel" data-panel="def">
           <div class="card sb-card-compact studio-poste-card studio-poste-def-card">
             <div class="studio-section-titleline">
               <span class="studio-section-titleline__icon" aria-hidden="true">
@@ -543,8 +604,12 @@
               </div>
             </section>
 
-            <div id="posteCcnSlot"></div>
           </div>
+        </div>
+
+        <!-- Cotation conventionnelle -->
+        <div class="sb-tab-panel" data-panel="ccn">
+          <div id="posteCcnSlot"></div>
         </div>
       </div>
 

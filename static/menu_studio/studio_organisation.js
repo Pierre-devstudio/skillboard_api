@@ -24,6 +24,7 @@
 
     let _posteModalMode = "create"; // create | edit
     let _editingPosteId = null;
+    let _editingPosteListItem = null;
 
     // --- Poste > Compétences (Exigences)
     let _posteCompItems = [];
@@ -5189,6 +5190,104 @@ function refreshPosteCompEditCritDisplay(){
         sel.value = selectedId || "";
     }
 
+    function setPostePageMode(enabled){
+        const root = getOrganisationRoot();
+        const modal = byId("modalPoste");
+        if (root) root.classList.toggle("is-poste-page", !!enabled);
+        if (modal) modal.classList.toggle("is-poste-page", !!enabled);
+        const actions = byId("postePageActions");
+        if (actions) actions.style.display = enabled ? "flex" : "none";
+        const close = byId("btnClosePoste");
+        if (close) close.style.display = enabled ? "none" : "";
+    }
+
+    function textFromHtml(html){
+        const box = document.createElement("div");
+        box.innerHTML = html || "";
+        return (box.textContent || "").replace(/\s+/g, " ").trim();
+    }
+
+    function extractMainActivities(html){
+        const box = document.createElement("div");
+        box.innerHTML = html || "";
+        const ordered = Array.from(box.querySelectorAll("ol > li")).map(li => {
+            const clone = li.cloneNode(true);
+            clone.querySelectorAll("ul,ol").forEach(x => x.remove());
+            return (clone.textContent || "").replace(/\s+/g, " ").trim();
+        }).filter(Boolean);
+        if (ordered.length) return ordered.slice(0, 8);
+        return textFromHtml(html).split(/(?:\n|\r|•)/).map(x => x.trim()).filter(Boolean).slice(0, 8);
+    }
+
+    function setOverviewDl(id, rows){
+        const host = byId(id);
+        if (!host) return;
+        host.innerHTML = "";
+        (rows || []).forEach(([label, value]) => {
+            const dt = document.createElement("dt"); dt.textContent = label;
+            const dd = document.createElement("dd"); dd.textContent = value || "—";
+            host.append(dt, dd);
+        });
+    }
+
+    function renderPosteOverview(detail){
+        const d = detail || {};
+        _setValue("posteOverviewCollabs", String(_editingPosteListItem?.nb_collabs ?? _editingPosteListItem?.nb_collaborateurs ?? "—"));
+        _setValue("posteOverviewCompetences", String((_posteCompItems || []).length));
+        _setValue("posteOverviewCertifications", String((_posteCertItems || []).length));
+        const crit = d.criticite_poste ?? "";
+        _setValue("posteOverviewCriticite", ({1:"Faible",2:"Modérée",3:"Élevée",4:"Critique"})[String(crit)] || String(crit || "—"));
+        _setValue("posteOverviewMission", d.mission_principale || "—");
+        _setValue("posteOverviewComment", d.param_rh_commentaire || "—");
+
+        const activities = byId("posteOverviewActivities");
+        if (activities){
+            activities.innerHTML = "";
+            const items = extractMainActivities(d.responsabilites || "");
+            (items.length ? items : ["Aucune activité principale renseignée."]).forEach(x => {
+                const li = document.createElement("li"); li.textContent = x; activities.appendChild(li);
+            });
+        }
+
+        const compHost = byId("posteOverviewCompList");
+        if (compHost){
+            compHost.innerHTML = "";
+            (_posteCompItems || []).slice(0, 6).forEach(it => {
+                const row = document.createElement("div");
+                row.innerHTML = `<span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span><strong>${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                compHost.appendChild(row);
+            });
+            if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
+        }
+
+        const certHost = byId("posteOverviewCertList");
+        if (certHost){
+            certHost.innerHTML = "";
+            (_posteCertItems || []).slice(0, 4).forEach(it => {
+                const row = document.createElement("div");
+                row.innerHTML = `<span>${htmlEsc(it.intitule_certification || it.nom_certification || it.intitule || "Certification")}</span><strong>${htmlEsc(it.obligatoire ? "Obligatoire" : "Recommandée")}</strong>`;
+                certHost.appendChild(row);
+            });
+            if (!certHost.children.length) certHost.textContent = "Aucune certification rattachée.";
+        }
+
+        setOverviewDl("posteOverviewInfo", [
+            ["Service", d.nom_service || _editingPosteListItem?.nom_service],
+            ["Code client", d.codif_client],
+            ["Statut du poste", d.statut_poste],
+            ["Stratégie de pourvoi", d.strategie_pourvoi],
+            ["Nb titulaires cible", String(d.nb_titulaires_cible ?? "—")],
+            ["Début de validité", d.date_debut_validite],
+            ["Fin de validité", d.date_fin_validite]
+        ]);
+        setOverviewDl("posteOverviewConstraints", [
+            ["Mobilité", d.mobilite],
+            ["Risques physiques", d.risque_physique],
+            ["Perspectives d’évolution", d.perspectives_evolution],
+            ["Niveau de contraintes", d.niveau_contrainte]
+        ]);
+    }
+
     function openCreatePosteModal(portal){
         if (!hasStudioOrgServices()){
             openCreateService("poste_create");
@@ -5197,6 +5296,8 @@ function refreshPosteCompEditCritDisplay(){
 
         _posteModalMode = "create";
         _editingPosteId = null;
+        _editingPosteListItem = null;
+        setPostePageMode(false);
         resetPosteSaveInlineMsg();
 
         refreshPosteImportButton();
@@ -5259,6 +5360,8 @@ function refreshPosteCompEditCritDisplay(){
 
     function openEditPosteModal(portal, p){
         _posteModalMode = "edit";
+        _editingPosteListItem = p || null;
+        setPostePageMode(true);
         resetPosteSaveInlineMsg();
         const pid = (p && p.id_poste) ? String(p.id_poste).trim() : "";
 
@@ -5311,7 +5414,7 @@ function refreshPosteCompEditCritDisplay(){
         _posteCertItems = [];
         renderPosteCertifications();
 
-        setPosteTab("def");
+        setPosteTab("overview");
         openModal("modalPoste");
 
         // Charge le détail (définition + exigences/contraintes)
@@ -5328,6 +5431,7 @@ function refreshPosteCompEditCritDisplay(){
             await loadPosteCcnContext(portal);
             await loadPosteCompetences(portal);
             await loadPosteCertifications(portal);
+            renderPosteOverview(d);
 
             // --- Définition (remplissage robuste: si champ supprimé, pas d'erreur)
             const elCodCli = byId("posteCodifClient"); if (elCodCli) elCodCli.value = (d.codif_client || "");
@@ -5367,6 +5471,7 @@ function refreshPosteCompEditCritDisplay(){
         closeModal("modalPoste");
         resetPosteSaveInlineMsg();
         resetPosteImportState();
+        setPostePageMode(false);
     }
 
         function getPosteModalActif(){
@@ -5994,6 +6099,32 @@ function refreshPosteCompEditCritDisplay(){
                 if (e.key === "Escape" && el && el.style.display === "flex") closePosteModal();
             });
         }
+
+        byId("btnPostePageBack")?.addEventListener("click", () => closePosteModal());
+        byId("btnPostePageSave")?.addEventListener("click", () => byId("btnPosteSave")?.click());
+        byId("btnPostePageAi")?.addEventListener("click", () => byId("btnPosteAi")?.click());
+        byId("btnPostePageArchive")?.addEventListener("click", () => { byId("postePageActionsDropdown").style.display = "none"; byId("btnPosteArchive")?.click(); });
+        byId("btnPostePageDuplicate")?.addEventListener("click", () => { byId("postePageActionsDropdown").style.display = "none"; byId("btnPosteDuplicate")?.click(); });
+        byId("btnPostePagePdf")?.addEventListener("click", async () => {
+            byId("postePageActionsDropdown").style.display = "none";
+            try { await openPosteFichePdf(portal, _editingPosteId); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+        byId("btnPostePageActions")?.addEventListener("click", (e) => {
+            e.preventDefault(); e.stopPropagation();
+            const menu = byId("postePageActionsDropdown");
+            if (!menu) return;
+            const open = menu.style.display !== "none";
+            menu.style.display = open ? "none" : "block";
+            e.currentTarget.setAttribute("aria-expanded", open ? "false" : "true");
+        });
+        getOrganisationRoot()?.addEventListener("click", (e) => {
+            const go = e.target.closest("[data-go-tab]");
+            if (go){ e.preventDefault(); setPosteTab(go.getAttribute("data-go-tab")); }
+            if (!e.target.closest(".studio-poste-actions-menu")){
+                const menu = byId("postePageActionsDropdown"); if (menu) menu.style.display = "none";
+            }
+        });
 
         byId("btnPosteSave")?.addEventListener("click", async () => {
             try {

@@ -356,6 +356,25 @@
       setValue("posteCcnFinalCategorie", computeCategory(coef, criteria));
     }
 
+    function renderPageCriteria(analysis){
+      const tbody = byId("posteCcnPageCriteriaTbody");
+      const empty = byId("posteCcnPageCriteriaEmpty");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      const rows = analysis?.criteres || analysis?.bonifications || [];
+      rows.forEach(x => {
+        const tr = document.createElement("tr");
+        [x?.critere_label || x?.label || x?.critere || "—", x?.niveau ?? x?.degre ?? "—", x?.points ?? "—", x?.justification || "—"].forEach((value, idx) => {
+          const td = document.createElement("td");
+          td.textContent = value;
+          if (idx === 1 || idx === 2) td.style.textAlign = "center";
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      if (empty) empty.style.display = rows.length ? "none" : "";
+    }
+
     function fillContext(ctx){
       _ctx = ctx || null;
       applyResultLabels();
@@ -404,6 +423,8 @@
       setValue("posteCcnResult", result);
       setValue("posteCcnCategory", category);
       setValue("posteCcnSummary", summary);
+      setValue("posteCcnPageJustification", validation?.justification || proposal?.justification_globale || proposal?.proposal?.resume_cotation || defaultSummary(false));
+      renderPageCriteria(proposal);
 
       fillProposal(proposal && Object.keys(proposal).length ? proposal : null);
 
@@ -494,6 +515,8 @@
         const analysis = res?.proposition || null;
 
         fillProposal(analysis);
+        setValue("posteCcnPageJustification", analysis?.justification_globale || analysis?.proposal?.resume_cotation || "");
+        renderPageCriteria(analysis);
         reuseProposal();
 
         if (_ctx){
