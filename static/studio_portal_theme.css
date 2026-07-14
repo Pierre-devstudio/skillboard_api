@@ -12498,3 +12498,8 @@ body.studio-rh-calendar-expanded{
 @media (max-width:1200px){
   #modalPoste.is-poste-page .studio-poste-modal-head{ position:relative; margin:0; padding:4px 0 12px; }
 }
+
+/* Studio > Fiche poste dédiée V03 : raccord direct sous la topbar */
+#view-organisation.is-poste-page{
+  margin-top:-18px;
+}
