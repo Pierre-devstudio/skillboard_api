@@ -2173,7 +2173,7 @@ body {
         const tbody = document.createElement("tbody");
         const iconEdit = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>';
         const iconPdf = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-2afcccc2e903"></use></svg>';
-        const iconArchive = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e9e37938472f"></use></svg>';
+        const iconArchive = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>';
         const iconRestore = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3b373ae03afc"></use></svg>';
 
         pagePostes.forEach(p => {

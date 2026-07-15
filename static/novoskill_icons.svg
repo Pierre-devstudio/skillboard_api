@@ -3,7 +3,9 @@
     <path d="M21 21H3"/><path d="M7 17V9"/><path d="M12 17V5"/><path d="M17 17v-6"/>
   </symbol>
   <symbol id="ns-icon-archive" viewBox="0 0 24 24">
-    <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+    <rect x="4" y="8" width="16" height="12" rx="2"/>
+    <rect x="3" y="4" width="18" height="4" rx="1.5"/>
+    <path d="M9 12h6"/>
   </symbol>
   <symbol id="ns-icon-calendar" viewBox="0 0 24 24">
     <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/>
@@ -15,7 +17,13 @@
     <path d="M20 7 9 18l-5-5"/>
   </symbol>
   <symbol id="ns-icon-competence" viewBox="0 0 24 24">
-    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M8 7h8"/><path d="M8 11h8"/>
+    <circle cx="10" cy="10" r="7"/>
+    <circle cx="10" cy="10" r="3"/>
+    <path d="M10 3V1.5"/>
+    <path d="M10 18.5V17"/>
+    <path d="M3 10H1.5"/>
+    <path d="M18.5 10H17"/>
+    <path d="m14.5 18 2 2 4-5"/>
   </symbol>
   <symbol id="ns-icon-constraints" viewBox="0 0 24 24">
     <path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/>
@@ -699,8 +707,18 @@
   <symbol id="ns-icon-simulation" viewBox="0 0 24 24">
     <path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h8"/><path d="m17 14 3 3 3-5"/>
   </symbol>
+  <symbol id="ns-icon-organisation" viewBox="0 0 24 24">
+    <path d="M4 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16"/>
+    <path d="M9 21v-4h3v4"/>
+    <path d="M8 7h.01"/>
+    <path d="M12 7h.01"/>
+    <path d="M8 11h.01"/>
+    <path d="M12 11h.01"/>
+    <path d="M17 9h3v12"/>
+  </symbol>
   <symbol id="ns-icon-user" viewBox="0 0 24 24">
-    <path d="M4 20h16"/><path d="M7 20V8h10v12"/><path d="M9 12h2"/><path d="M13 12h2"/><path d="M9 16h2"/><path d="M13 16h2"/><path d="M9 4h6v4H9z"/>
+    <circle cx="12" cy="7" r="4"/>
+    <path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>
   </symbol>
   <symbol id="ns-icon-users" viewBox="0 0 24 24">
     <path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/>
