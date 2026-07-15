@@ -1536,7 +1536,7 @@
 
     pop.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <div style="font-weight:600;">Guide de notation</div>
+        <div style="font-weight:var(--ns-weight-semibold, 600);">Guide de notation</div>
         <button type="button" class="sb-modal-x" id="btnCloseCollabSkillGuide" aria-label="Fermer">×</button>
       </div>
       <div class="card-sub" id="collabSkillGuideTitle" style="margin-top:6px;"></div>
@@ -2031,7 +2031,7 @@
 
     if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = collabSkillLevelLabel(niveau);
     if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = `Dernière éval : ${formatDateFR(res?.date_audit)}`;
-    
+
     const methodSel = byId('collabSkillEvalMethod');
     if (methodSel){
       methodSel.value = normalizeCollabSkillEvalMethod(res?.methode_eval || methodeEval);
@@ -2150,7 +2150,7 @@
       height:100%;
       margin:0;
       background:#f3f4f6;
-      font-family:Arial,sans-serif;
+      font-family:var(--ns-font-ui);
       color:#111827;
     }
     .pdf-loading{
@@ -2170,7 +2170,7 @@
       animation:pdfSpin .8s linear infinite;
     }
     .pdf-loading__text{
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       color:#475467;
     }
     iframe{
@@ -4346,7 +4346,7 @@
       } catch (e) {
         portal.showAlert('error', getErrorMessage(e));
       }
-    });    
+    });
 
     byId('btnCollabSkillEvalSave')?.addEventListener('click', async () => {
       try {

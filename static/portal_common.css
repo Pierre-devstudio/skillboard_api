@@ -1,5 +1,5 @@
 :root {
-  font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: var(--ns-font-ui);
 
   /* Thème par défaut (override dans le thème Skills) */
   --accent: #1d4ed8;
@@ -37,13 +37,13 @@ body {
   z-index: 50;
 }
 .sidebar-header {
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: var(--ns-weight-semibold, 600);
+  font-size: var(--ns-title-sm, 1.0625rem);
   margin-bottom: 16px;
   text-align: center;
 }
 .sidebar-sub {
-  font-size: 12px;
+  font-size: var(--ns-text-xs, 0.75rem);
   color: var(--sidebar-sub);
   text-align: center;
   margin-bottom: 16px;
@@ -57,7 +57,7 @@ body {
 .menu-item {
   padding: 8px 10px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--ns-text-md, 0.875rem);
   cursor: pointer;
   color: #e5e7eb;
   user-select: none;
@@ -103,14 +103,14 @@ body {
   gap: 12px;
 }
 .topbar-left {
-  font-size: 14px;
+  font-size: var(--ns-text-md, 0.875rem);
   color: var(--muted-2);
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .topbar-right {
-  font-size: 13px;
+  font-size: var(--ns-text-sm, 0.8125rem);
   color: var(--muted);
   text-align: right;
   flex-shrink: 0;
@@ -128,8 +128,8 @@ body {
   color:#111827;
   padding:6px 10px;
   border-radius:10px;
-  font-size:12px;
-  font-weight:700;
+  font-size:var(--ns-text-xs, 0.75rem);
+  font-weight:var(--ns-weight-semibold, 600);
   cursor:pointer;
 }
 .sb-btn-ghost:hover{
@@ -142,8 +142,8 @@ body {
   max-width: 340px;
   padding: 6px 10px;
   border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--ns-text-xs, 0.75rem);
+  font-weight: var(--ns-weight-semibold, 600);
   background: #fff;
 }
 
@@ -151,7 +151,7 @@ body {
   display: none;
   border: none;
   background: transparent;
-  font-size: 20px;
+  font-size: var(--ns-title-md, 1.25rem);
   cursor: pointer;
   color: var(--text);
   padding: 4px 8px;
@@ -171,12 +171,12 @@ body {
   margin-bottom: 16px;
 }
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--ns-title-sm, 1.0625rem);
+  font-weight: var(--ns-weight-semibold, 600);
   margin-bottom: 8px;
 }
 .card-sub {
-  font-size: 13px;
+  font-size: var(--ns-text-sm, 0.8125rem);
   color: var(--muted);
   margin-bottom: 10px;
 }
@@ -189,24 +189,24 @@ body {
 }
 .info-item {
   min-width: 180px;
-  font-size: 14px;
+  font-size: var(--ns-text-md, 0.875rem);
   flex: 1;
 }
 .label {
-  font-size: 12px;
+  font-size: var(--ns-text-xs, 0.75rem);
   color: var(--muted);
   margin-bottom: 2px;
 }
 .value {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--ns-text-md, 0.875rem);
+  font-weight: var(--ns-weight-medium, 500);
   color: var(--text);
 }
 
 .alert {
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--ns-text-sm, 0.8125rem);
   margin-bottom: 12px;
 }
 .alert.error {
@@ -237,7 +237,7 @@ textarea {
   border-radius: 6px;
   border: 1px solid #d1d5db;
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--ns-text-md, 0.875rem);
   background: #ffffff;
 }
 
@@ -257,7 +257,7 @@ textarea:focus {
   border: 0;
   background: var(--accent);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--ns-text-md, 0.875rem);
   cursor: pointer;
 }
 .btn-secondary {
@@ -266,13 +266,13 @@ textarea:focus {
   border: 1px solid #d1d5db;
   background: #ffffff;
   color: #374151;
-  font-size: 14px;
+  font-size: var(--ns-text-md, 0.875rem);
   cursor: pointer;
   margin-left: 8px;
 }
 
 .hint {
-  font-size: 12px;
+  font-size: var(--ns-text-xs, 0.75rem);
   color: var(--muted);
   margin-top: 6px;
 }
@@ -295,8 +295,8 @@ textarea:focus {
 
 .sb-table thead th{
   text-align: left;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: var(--ns-weight-semibold, 600);
+  font-size: var(--ns-text-sm, 0.8125rem);
   color: #111827;
   padding: 12px 16px;
   border-bottom: 1px solid #e5e7eb;
@@ -384,15 +384,15 @@ textarea:focus {
 .sb-tree-item:hover { background: #f9fafb; }
 .sb-tree-item.active { background: rgba(0,0,0,0.04); }
 
-.sb-tree-name { font-weight: 600; font-size: 13px; color: var(--text); }
-.sb-tree-meta { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.sb-tree-name { font-weight: var(--ns-weight-semibold, 600); font-size: var(--ns-text-sm, 0.8125rem); color: var(--text); }
+.sb-tree-meta { font-size: var(--ns-text-xs, 0.75rem); color: var(--muted); white-space: nowrap; }
 
 .sb-badge {
   display: inline-block;
   padding: 2px 8px;
   border: 1px solid #d1d5db;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--ns-text-xs, 0.75rem);
   color: #374151;
   background: #ffffff;
   white-space: nowrap;
@@ -423,8 +423,8 @@ textarea:focus {
 .sb-accordion summary::-webkit-details-marker { display: none; }
 
 .sb-acc-left { min-width: 0; }
-.sb-acc-title { font-weight: 600; font-size: 13px; color: var(--text); }
-.sb-acc-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.sb-acc-title { font-weight: var(--ns-weight-semibold, 600); font-size: var(--ns-text-sm, 0.8125rem); color: var(--text); }
+.sb-acc-sub { font-size: var(--ns-text-xs, 0.75rem); color: var(--muted); margin-top: 2px; }
 
 .sb-acc-right { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .sb-acc-body { padding: 12px; }
@@ -434,11 +434,11 @@ textarea:focus {
 
 /* Texte long (responsabilités, missions, etc.) */
 .text-block {
-  white-space: pre-wrap;      
-  line-height: 1.6;           
-  font-size: 14px;            
-  max-width: 900px;           
-  overflow-wrap: anywhere;    
+  white-space: pre-wrap;
+  line-height: var(--ns-leading-long, 1.6);
+  font-size: var(--ns-text-md, 0.875rem);
+  max-width: 900px;
+  overflow-wrap: anywhere;
 }
 
 /* =========================
@@ -494,7 +494,7 @@ textarea:focus {
 .modal-x {
   border: 0;
   background: transparent;
-  font-size: 20px;
+  font-size: var(--ns-title-md, 1.25rem);
   cursor: pointer;
   padding: 0 8px;
   color: #6b7280;
@@ -519,9 +519,9 @@ textarea:focus {
   border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:12px;
-  font-weight:700;
-  line-height:1;
+  font-size:var(--ns-text-xs, 0.75rem);
+  font-weight:var(--ns-weight-semibold, 600);
+  line-height:var(--ns-leading-tight, 1.15);
   white-space:nowrap;
   box-sizing:border-box;
 }
@@ -560,7 +560,7 @@ textarea:focus {
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold, 600);
   white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
@@ -588,17 +588,17 @@ textarea:focus {
   width:20px; height:20px; border-radius:999px;
   border:1px solid rgba(17,24,39,.16); background:#fff; color:#374151;
   display:inline-flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:800; line-height:1; cursor:pointer; padding:0;
+  font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700); line-height:var(--ns-leading-tight, 1.15); cursor:pointer; padding:0;
 }
 .sb-help-dot:hover{ border-color:rgba(17,24,39,.32); background:#f9fafb; }
 .sb-connexion-status{
   display:inline-flex; align-items:center; gap:6px; border-radius:999px;
-  padding:5px 10px; font-size:12px; font-weight:700;
+  padding:5px 10px; font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-semibold, 600);
   border:1px solid rgba(17,24,39,.10); background:#f9fafb; color:#374151;
 }
 .sb-connexion-status[data-status="actif"]{ background:#ecfdf3; border-color:rgba(22,163,74,.20); color:#166534; }
 .sb-connexion-status[data-status="configuration"], .sb-connexion-status[data-status="a_tester"]{ background:#fff7ed; border-color:rgba(234,88,12,.22); color:#9a3412; }
 .sb-connexion-status[data-status="erreur"]{ background:#fef2f2; border-color:rgba(180,35,24,.22); color:#991b1b; }
-.sb-connexion-mini{ color:#6b7280; font-size:12px; line-height:1.4; }
-.sb-connexion-technical{ min-height:76px; resize:vertical; font-family:Consolas, Monaco, monospace; font-size:12px; }
+.sb-connexion-mini{ color:#6b7280; font-size:var(--ns-text-xs, 0.75rem); line-height:var(--ns-leading-ui, 1.35); }
+.sb-connexion-technical{ min-height:76px; resize:vertical; font-family:var(--ns-font-mono); font-size:var(--ns-text-xs, 0.75rem); }
 

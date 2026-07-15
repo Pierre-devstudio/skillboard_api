@@ -58,7 +58,7 @@
 
         sel.value = keep || "";
     }
-    
+
     function fillAiDomainSelect(selectedId){
         const sel = byId("compAiDomaine");
         if (!sel) return;
@@ -471,10 +471,10 @@
 <meta charset="utf-8">
 <title>${safeTitle}</title>
 <style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;}
+html,body{height:100%;margin:0;background:#f3f4f6;font-family:var(--ns-font-ui);color:#111827;}
 .pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
 .pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite;}
-.pdf-loading__text{font-size:14px;color:#475467;}
+.pdf-loading__text{font-size:var(--ns-text-md, 0.875rem);color:#475467;}
 iframe{width:100%;height:100%;border:0;background:#fff;}
 @keyframes pdfSpin{to{transform:rotate(360deg);}}
 </style>

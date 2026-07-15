@@ -227,7 +227,7 @@
     ctx.fillStyle = "#111827";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = '72px "Brush Script MT", "Segoe Script", cursive';
+    ctx.font = '72px "Segoe Script", "Brush Script MT", cursive';
     ctx.fillText(signatureName(), canvas.width / 2, canvas.height / 2);
 
     return canvas.toDataURL("image/png");

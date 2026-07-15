@@ -394,7 +394,7 @@
       tdComp.innerHTML = `
         <div>
           <div><span class="sb-badge sb-badge-accent">${code || "—"}</span></div>
-          <div style="margin-top:4px; font-size:13px;">${intitule || "—"}</div>
+          <div style="margin-top:4px; font-size:var(--ns-text-sm, 0.8125rem);">${intitule || "—"}</div>
         </div>
       `;
 
@@ -444,7 +444,7 @@
 
     pop.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <div style="font-weight:600;">Guide de notation</div>
+        <div style="font-weight:var(--ns-weight-semibold, 600);">Guide de notation</div>
         <button type="button" class="modal-x" id="ep_popGuideClose" aria-label="Fermer">×</button>
       </div>
       <div class="card-sub" id="ep_popGuideTitle" style="margin-top:6px;"></div>
@@ -837,7 +837,7 @@
     }
 
     renderEvalDomainBadge("", "");
-  
+
     setText("ep_evalHint", "Sélectionne une compétence.");
     setText("ep_compTitle", "—");
     setText("ep_compDomain", "");
@@ -1317,7 +1317,7 @@
   async function epOpenCompetencePdfFromPunctual(item) {
     const popup = window.open("about:blank", "_blank");
     if (popup) {
-      try { popup.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
+      try { popup.document.write("<p style='font-family:var(--ns-font-ui);padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
     }
 
     try {
@@ -3808,7 +3808,7 @@ function getCollaborateurInitials(c) {
 
     const popup = window.open("about:blank", "_blank");
     if (popup) {
-      try { popup.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
+      try { popup.document.write("<p style='font-family:var(--ns-font-ui);padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
     }
 
     try {
@@ -5368,7 +5368,7 @@ function getCollaborateurInitials(c) {
             };
 
             const openHistoryEvaluationDetail = async (x, group) => {
-              
+
 
               const code = (x.code || "").toString().trim();
               const intitule = (x.intitule || "").toString().trim();

@@ -235,7 +235,7 @@
     modal.setAttribute("aria-hidden", "true");
   }
 
-  
+
   async function loadServices(portal) {
     // Filtre service : géré UNE SEULE FOIS (portal_common.js)
     await portal.serviceFilter.populateSelect({
@@ -766,7 +766,7 @@
 
     try {
       popup.document.open();
-      popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Génération du PDF</title></head><body style="font-family:Arial,sans-serif;color:#111827;padding:24px;">Génération du PDF…</body></html>`);
+      popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Génération du PDF</title></head><body style="font-family:var(--ns-font-ui);color:#111827;padding:24px;">Génération du PDF…</body></html>`);
       popup.document.close();
 
       setAdvancedStatus("Génération du PDF en cours…");
@@ -1291,13 +1291,13 @@
         try {
           popup = window.open("about:blank", "_blank");
           if (popup) {
-            popup.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du PDF…</p>");
+            popup.document.write("<p style='font-family:var(--ns-font-ui);padding:20px;'>Génération du PDF…</p>");
           }
           await openMapCompetenceFichePdf(portal, comp, popup);
         } catch (e) {
           try {
             if (popup && !popup.closed) {
-              popup.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">${escapeHtml(e.message || "Erreur PDF")}</pre>`;
+              popup.document.body.innerHTML = `<pre style="font-family:var(--ns-font-ui);white-space:pre-wrap;padding:20px;color:#991b1b;">${escapeHtml(e.message || "Erreur PDF")}</pre>`;
             }
           } catch (_) {}
           portal.showAlert("error", (e && e.message) ? e.message : "Action indisponible.");
@@ -1653,7 +1653,7 @@
     onShow: async (portal) => {
       try {
         bindOnce(portal);
-        
+
         if (!_servicesLoaded) {
           await loadServices(portal);
 

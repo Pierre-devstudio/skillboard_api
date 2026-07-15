@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
+  <link rel="stylesheet" href="novoskill_typography.css">
   <meta charset="utf-8" />
   <title>Novoskill Insights — Connexion</title>
 
@@ -84,14 +85,14 @@
       box-shadow:0 6px 20px rgba(0,0,0,.06);
     }
     .login-title{
-      font-size:18px;
-      font-weight:700;
+      font-size:var(--ns-title-sm, 1.0625rem);
+      font-weight:var(--ns-weight-semibold, 600);
       margin:0 0 6px 0;
     }
     .login-sub{
       margin:0 0 14px 0;
       color:#4b5563;
-      font-size:13px;
+      font-size:var(--ns-text-sm, 0.8125rem);
     }
     .login-row{
       display:flex;
@@ -100,15 +101,15 @@
       margin-bottom:12px;
     }
     .login-row label{
-      font-size:12px;
+      font-size:var(--ns-text-xs, 0.75rem);
       color:#374151;
-      font-weight:600;
+      font-weight:var(--ns-weight-semibold, 600);
     }
     .login-row input{
       border:1px solid #d1d5db;
       border-radius:10px;
       padding:10px 12px;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       outline:none;
       background:#fff;
     }
@@ -129,9 +130,9 @@
       color:#fff;
       padding:10px 14px;
       border-radius:10px;
-      font-weight:700;
+      font-weight:var(--ns-weight-semibold, 600);
       cursor:pointer;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
     }
     .btn-primary:disabled{
       opacity:.6;
@@ -140,22 +141,22 @@
     .link{
       color: var(--accent, #c1272d);
       text-decoration:none;
-      font-weight:600;
-      font-size:13px;
+      font-weight:var(--ns-weight-semibold, 600);
+      font-size:var(--ns-text-sm, 0.8125rem);
       cursor:pointer;
       user-select:none;
     }
     .hint{
-      font-size:12px;
+      font-size:var(--ns-text-xs, 0.75rem);
       color:#6b7280;
       margin-top:10px;
-      line-height:1.35;
+      line-height:var(--ns-leading-ui, 1.35);
     }
     .panel{ display:none; }
     .panel.active{ display:block; }
     .msg{
       margin: 10px 0 0 0;
-      font-size: 13px;
+      font-size: var(--ns-text-sm, 0.8125rem);
       color:#111827;
     }
     .msg.error{ color:#b91c1c; }
@@ -166,12 +167,12 @@
       gap:10px;
       margin-bottom:12px;
     }
-    
+
     .brand-name{
-      font-size:13px;
-      font-weight:800;
+      font-size:var(--ns-text-sm, 0.8125rem);
+      font-weight:var(--ns-weight-bold, 700);
       color:#111827;
-      letter-spacing:.2px;
+      letter-spacing:0;
     }
     .brand-module{
       display:inline-flex;
@@ -180,9 +181,9 @@
       border-radius:999px;
       background: var(--accent, #c1272d);
       color:#fff;
-      font-size:12px;
-      font-weight:800;
-      letter-spacing:.2px;
+      font-size:var(--ns-text-xs, 0.75rem);
+      font-weight:var(--ns-weight-bold, 700);
+      letter-spacing:0;
       box-shadow: 0 4px 12px rgba(193,39,45,.18);
     }
 
@@ -200,7 +201,7 @@
 
         <!-- PANEL LOGIN -->
         <div class="panel active" id="panelLogin">
-          <h1 class="login-title">Connexion</h1>          
+          <h1 class="login-title">Connexion</h1>
 
           <div class="login-row">
             <label for="loginEmail">Email</label>

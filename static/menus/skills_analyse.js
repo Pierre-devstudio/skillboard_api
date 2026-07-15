@@ -163,7 +163,7 @@
         <span title="${escapeHtml(title)}"
               style="display:inline-flex; align-items:center; justify-content:center;
                      width:22px; height:22px; border-radius:6px;
-                     font-size:12px; font-weight:800; color:#fff;
+                     font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700); color:#fff;
                      background:${bg}; border:1px solid rgba(0,0,0,.12);">
           ${n}
         </span>
@@ -571,14 +571,14 @@
       return;
     }
     try {
-      win.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du document…</p>");
+      win.document.write("<p style='font-family:var(--ns-font-ui);padding:20px;'>Génération du document…</p>");
       const blob = await analyseApiBlob(url);
       const blobUrl = URL.createObjectURL(blob);
       win.location.href = blobUrl;
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (e) {
       try {
-        win.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur génération document : ${escapeHtml(errMsg(e))}</pre>`;
+        win.document.body.innerHTML = `<pre style="font-family:var(--ns-font-ui);white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur génération document : ${escapeHtml(errMsg(e))}</pre>`;
       } catch (_) {}
       showAnalyseHelp("Document indisponible", `<p>${escapeHtml(errMsg(e))}</p>`);
     }
@@ -1566,7 +1566,7 @@
 
   const _riskDetailCache = new Map();
   let _riskDetailReqSeq = 0;
-  
+
 
 
   function sbNormLevel(v) {
@@ -1768,8 +1768,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                     transform="rotate(-90 ${size / 2} ${size / 2})" />
           </svg>
           <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-            <div style="font-weight:900; font-size:28px; line-height:1;">
-              ${s}<span style="font-size:12px; font-weight:800;">%</span>
+            <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">
+              ${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span>
             </div>
           </div>
         </div>
@@ -1777,7 +1777,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
     `;
   }
- 
+
   function priorityPill(label, score100) {
     const hue = scoreHue(score100);
     const border = `hsl(${hue} 70% 45% / 0.55)`;
@@ -1788,7 +1788,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid ${border};
-        background:${bg}; color:${fg}; font-weight:900; font-size:12px; white-space:nowrap;">
+        background:${bg}; color:${fg}; font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;">
         ${escapeHtml(label || "—")}
       </span>
     `;
@@ -1805,7 +1805,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
-        background:#fff; color:#374151; font-weight:900; font-size:12px; white-space:nowrap;">
+        background:#fff; color:#374151; font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;">
         ${escapeHtml(txt || "—")}
       </span>
     `;
@@ -1946,7 +1946,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 <tr>
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
                   <td style="min-width:280px;">
-                    <div style="font-size:14px; font-weight:700; color:#111827;">${intit}</div>
+                    <div style="font-size:var(--ns-text-md, 0.875rem); font-weight:var(--ns-weight-semibold, 600); color:#111827;">${intit}</div>
                   </td>
                   <td class="col-center" style="white-space:nowrap;">${crit}</td>
                   <td class="col-center" style="white-space:nowrap;">${niveau}</td>
@@ -1982,8 +1982,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               ${list.map(r => `
                 <tr>
                   <td>
-                    <div style="font-size:14px; font-weight:800;">${escapeHtml(r?.full || "Collaborateur")}</div>
-                    <div class="card-sub" style="margin:2px 0 0; font-size:12px;">${escapeHtml(String(r?.competences_ok ?? 0))}/${escapeHtml(String(r?.competences_total ?? 0))} compétences au niveau requis</div>
+                    <div style="font-size:var(--ns-text-md, 0.875rem); font-weight:var(--ns-weight-bold, 700);">${escapeHtml(r?.full || "Collaborateur")}</div>
+                    <div class="card-sub" style="margin:2px 0 0; font-size:var(--ns-text-xs, 0.75rem);">${escapeHtml(String(r?.competences_ok ?? 0))}/${escapeHtml(String(r?.competences_total ?? 0))} compétences au niveau requis</div>
                   </td>
                   <td class="col-center"><span class="sb-badge">${escapeHtml(String(r?.maitrise_actuelle_pct ?? 0))}%</span></td>
                   <td class="col-center"><span class="sb-badge sb-badge--dep-none">-${escapeHtml(String(r?.ecart_pct ?? 0))}%</span></td>
@@ -2026,9 +2026,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               return `
                 <tr>
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
-                  <td style="min-width:280px;"><div style="font-size:14px; font-weight:700;">${intit}</div></td>
+                  <td style="min-width:280px;"><div style="font-size:var(--ns-text-md, 0.875rem); font-weight:var(--ns-weight-semibold, 600);">${intit}</div></td>
                   <td class="col-center" style="white-space:nowrap;">${req}</td>
-                  <td class="col-center" style="white-space:nowrap;"><span class="sb-badge">${escapeHtml(String(nDef))}</span><span style="color:#6b7280; font-size:12px; margin-left:6px;">/ ${escapeHtml(String(nTit))}</span></td>
+                  <td class="col-center" style="white-space:nowrap;"><span class="sb-badge">${escapeHtml(String(nDef))}</span><span style="color:#6b7280; font-size:var(--ns-text-xs, 0.75rem); margin-left:6px;">/ ${escapeHtml(String(nTit))}</span></td>
                 </tr>
               `;
             }).join("")}
@@ -2271,8 +2271,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const v = (value === null || value === undefined || value === "") ? "—" : String(value);
     return `
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:7px 0; border-bottom:1px solid #eef2f7;">
-        <span style="font-size:13px; color:#64748b; line-height:1.35;">${escapeHtml(label)}</span>
-        <span style="font-size:13px; color:#0f172a; font-weight:800; text-align:right; line-height:1.35;">${escapeHtml(v)}</span>
+        <span style="font-size:var(--ns-text-sm, 0.8125rem); color:#64748b; line-height:var(--ns-leading-ui, 1.35);">${escapeHtml(label)}</span>
+        <span style="font-size:var(--ns-text-sm, 0.8125rem); color:#0f172a; font-weight:var(--ns-weight-bold, 700); text-align:right; line-height:var(--ns-leading-ui, 1.35);">${escapeHtml(v)}</span>
       </div>
     `;
   }
@@ -2290,10 +2290,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div style="flex:1; min-width:320px;">
           <div class="card-title" style="margin:0;">Diagnostic</div>
 
-          <div class="card-sub" style="margin:8px 0 8px 0;font-size:14px;line-height:1.55;">
+          <div class="card-sub" style="margin:8px 0 8px 0;font-size:var(--ns-text-md, 0.875rem);line-height:var(--ns-leading-body, 1.5);">
             ${posteDiagLecture(s)}
           </div>
-          <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
+          <div class="card-sub" style="margin:0 0 8px 0;font-size:var(--ns-text-sm, 0.8125rem);line-height:var(--ns-leading-body, 1.5);font-weight:var(--ns-weight-bold, 700);color:#475569;">
             Éléments pris en compte :
           </div>
           <div style="max-width:660px;">
@@ -2907,8 +2907,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                       transform="rotate(-90 ${size / 2} ${size / 2})" />
             </svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-              <div style="font-weight:900; font-size:28px; line-height:1;">
-                ${s}<span style="font-size:12px; font-weight:800;">%</span>
+              <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">
+                ${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span>
               </div>
             </div>
           </div>
@@ -2979,8 +2979,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
         return `
           <tr>
-            <td style="padding:7px 8px; ${border} font-weight:500; color:#111827; vertical-align:top;">${escapeHtml(title)}</td>
-            <td style="padding:7px 8px; ${border} width:70px; text-align:center; font-weight:700; color:#111827; vertical-align:top;">${escapeHtml(pts)}</td>
+            <td style="padding:7px 8px; ${border} font-weight:var(--ns-weight-medium, 500); color:#111827; vertical-align:top;">${escapeHtml(title)}</td>
+            <td style="padding:7px 8px; ${border} width:70px; text-align:center; font-weight:var(--ns-weight-semibold, 600); color:#111827; vertical-align:top;">${escapeHtml(pts)}</td>
             <td style="padding:7px 8px; ${border} color:#6b7280; vertical-align:top;">${escapeHtml(lib)}</td>
           </tr>
         `;
@@ -2990,7 +2990,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <tr data-crit-row="${escapeHtml(uid)}" style="display:none;">
           <td colspan="8" style="padding:0;">
             <div style="padding:10px 12px; border-top:1px dashed #e5e7eb; background:#fbfbfb;">
-              <table style="width:100%; border-collapse:collapse; font-size:12px; line-height:1.35;">
+              <table style="width:100%; border-collapse:collapse; font-size:var(--ns-text-xs, 0.75rem); line-height:var(--ns-leading-ui, 1.35);">
                 <tbody>${rows}</tbody>
               </table>
             </div>
@@ -3038,7 +3038,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <tr>
           <td style="vertical-align:top;">
             ${badgesTop}
-            <div style="font-weight:500; font-size:13px; line-height:1.28; color:#111827; margin-top:4px;">${escapeHtml(intitule)}</div>
+            <div style="font-weight:var(--ns-weight-medium, 500); font-size:var(--ns-text-sm, 0.8125rem); line-height:var(--ns-leading-title, 1.25); color:#111827; margin-top:4px;">${escapeHtml(intitule)}</div>
             ${btnCrit}
           </td>
           <td class="col-center">${critBadgeHtml(poids)}</td>
@@ -3173,7 +3173,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="card" style="padding:12px; margin:0;">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
             <div style="min-width:0;">
-              <div style="font-weight:700; font-size:16px; line-height:1.2; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              <div style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-title-sm, 1.0625rem); line-height:var(--ns-leading-tight, 1.15); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                 ${escapeHtml(personLabel)}
               </div>
 
@@ -3204,7 +3204,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <button type="button" data-match-accordion-toggle="radar" aria-expanded="true"
                   style="width:100%; border:0; background:transparent; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; text-align:left;">
             <span class="card-title" style="margin:0;">Radar</span>
-            <span data-match-accordion-caret="radar" style="font-weight:900; color:#6b7280;">▾</span>
+            <span data-match-accordion-caret="radar" style="font-weight:var(--ns-weight-bold, 700); color:#6b7280;">▾</span>
           </button>
           <div id="matchPersonRadarPanel" data-match-accordion-panel="radar" style="padding:0 12px 12px 12px;">
             <div class="sb-actions" style="justify-content:flex-start; margin:0 0 10px 0; gap:6px;">
@@ -3220,7 +3220,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <button type="button" data-match-accordion-toggle="table" aria-expanded="false"
                   style="width:100%; border:0; background:transparent; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; text-align:left;">
             <span class="card-title" style="margin:0;">Détail des compétences</span>
-            <span data-match-accordion-caret="table" style="font-weight:900; color:#6b7280;">▸</span>
+            <span data-match-accordion-caret="table" style="font-weight:var(--ns-weight-bold, 700); color:#6b7280;">▸</span>
           </button>
           <div id="matchPersonTablePanel" data-match-accordion-panel="table" style="display:none; padding:0 12px 12px 12px;">
             <div class="table-wrap" style="margin-top:0;">
@@ -3667,10 +3667,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 data-match-id_poste="${escapeHtml(idp)}"
                 ${titleAttr}
                 style="text-align:left; margin:0; ${style}">
-          <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          <div style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-sm, 0.8125rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${escapeHtml(intitule)}
           </div>
-          <div style="font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          <div style="font-size:var(--ns-text-xs, 0.75rem); color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${escapeHtml(bottom)}
           </div>
         </button>
@@ -3825,8 +3825,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               style="display:inline-flex; align-items:center; justify-content:center;
                      min-width:56px; padding:5px 10px; border-radius:999px;
                      border:1px solid ${border}; background:${bg}; color:${color};
-                     font-size:12px; font-weight:900; line-height:1; white-space:nowrap;">
-          ${s}<span style="font-size:11px; font-weight:800; margin-left:1px;">%</span>
+                     font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700); line-height:var(--ns-leading-tight, 1.15); white-space:nowrap;">
+          ${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700); margin-left:1px;">%</span>
         </span>
       `;
     }
@@ -3840,7 +3840,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       return `
         <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}">
-          <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
+          <td style="font-weight:var(--ns-weight-semibold, 600);">${escapeHtml(c.full || "—")}</td>
           <td>${escapeHtml(c.nom_service || "—")}</td>
           <td class="col-center">${scoreBadge(score)}</td>
           <td class="col-center">
@@ -3956,7 +3956,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       code: isCode ? raw : null,
       id_comp: !isCode ? raw : null,          // nom courant côté backend
       id_competence: !isCode ? raw : null,    // alias au cas où
-      id_service: svc || null,      
+      id_service: svc || null,
       limit_postes: 500,
       limit_porteurs: 500
     });
@@ -3969,7 +3969,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     _compDetailCache.set(key, data);
     return data;
   }
-  
+
   function openAnalysePosteModal(title, subHtml) {
     const modal = byId("modalAnalysePoste");
     if (!modal) return;
@@ -4212,7 +4212,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           display:inline-flex; align-items:center; justify-content:center;
           padding:4px 10px; border-radius:999px;
           border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;
+          font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;
         ">
           ${esc(label)}
         </span>
@@ -4237,7 +4237,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                       transform="rotate(-90 ${size / 2} ${size / 2})" />
             </svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-              <div style="font-weight:900; font-size:28px; line-height:1;">${s}<span style="font-size:12px; font-weight:800;">%</span></div>
+              <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span></div>
             </div>
           </div>
           <div class="card-sub" style="margin:0;">Fragilité</div>
@@ -4296,8 +4296,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function diagLine(label, value) {
       return `
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:7px 0; border-bottom:1px solid #eef2f7;">
-          <span style="font-size:13px; color:#64748b; line-height:1.35;">${esc(label)}</span>
-          <span style="font-size:13px; color:#0f172a; font-weight:800; text-align:right; line-height:1.35;">${esc(valueOrDash(value))}</span>
+          <span style="font-size:var(--ns-text-sm, 0.8125rem); color:#64748b; line-height:var(--ns-leading-ui, 1.35);">${esc(label)}</span>
+          <span style="font-size:var(--ns-text-sm, 0.8125rem); color:#0f172a; font-weight:var(--ns-weight-bold, 700); text-align:right; line-height:var(--ns-leading-ui, 1.35);">${esc(valueOrDash(value))}</span>
         </div>
       `;
     }
@@ -4305,9 +4305,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function smallMetric(label, value, help) {
       return `
         <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;">
-          <div class="label" style="font-size:12px; line-height:1.25;">${esc(label)}</div>
-          <div class="value" style="font-size:20px; line-height:1.15;">${esc(valueOrDash(value))}</div>
-          ${help ? `<div class="card-sub" style="margin:3px 0 0 0; font-size:12px; line-height:1.35;">${esc(help)}</div>` : ``}
+          <div class="label" style="font-size:var(--ns-text-xs, 0.75rem); line-height:var(--ns-leading-title, 1.25);">${esc(label)}</div>
+          <div class="value" style="font-size:var(--ns-title-md, 1.25rem); line-height:var(--ns-leading-tight, 1.15);">${esc(valueOrDash(value))}</div>
+          ${help ? `<div class="card-sub" style="margin:3px 0 0 0; font-size:var(--ns-text-xs, 0.75rem); line-height:var(--ns-leading-ui, 1.35);">${esc(help)}</div>` : ``}
         </div>
       `;
     }
@@ -4350,7 +4350,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   <td>
                     <div style="display:flex;align-items:center;gap:8px;min-width:320px;">
                       <span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span>
-                      <span style="font-size:14px;font-weight:750;color:#0f172a;white-space:normal;line-height:1.25;">${esc(it.intitule_poste || "—")}</span>
+                      <span style="font-size:var(--ns-text-md, 0.875rem);font-weight:var(--ns-weight-semibold, 600);color:#0f172a;white-space:normal;line-height:var(--ns-leading-title, 1.25);">${esc(it.intitule_poste || "—")}</span>
                     </div>
                   </td>
                   <td class="col-center">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
@@ -4410,7 +4410,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
             ${items.length ? items.map(it => `
               <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;">
-                <span style="font-size:13px; color:#334155; font-weight:750;">${esc(it.label || "Point à vérifier")}</span>
+                <span style="font-size:var(--ns-text-sm, 0.8125rem); color:#334155; font-weight:var(--ns-weight-semibold, 600);">${esc(it.label || "Point à vérifier")}</span>
                 <span class="sb-badge">${esc(String(it.value ?? "—"))}</span>
               </div>`).join("") : `<div class="card-sub" style="margin:0;">Aucune donnée à vérifier.</div>`}
           </div>`;
@@ -4423,7 +4423,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
           <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-            ${causeDot(c?.severity)}<span style="font-weight:650;color:#1f2937;">${esc(c?.titre || "Cause")}</span>
+            ${causeDot(c?.severity)}<span style="font-weight:var(--ns-weight-semibold, 600);color:#1f2937;">${esc(c?.titre || "Cause")}</span>
           </span>
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
             ${shareBadge(c)}
@@ -4465,8 +4465,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:320px;">
             <div class="card-title" style="margin-bottom:8px;">Diagnostic</div>
-            <div class="card-sub" style="margin:0 0 8px 0;font-size:14px;line-height:1.55;">${esc(lecture)}</div>
-            <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
+            <div class="card-sub" style="margin:0 0 8px 0;font-size:var(--ns-text-md, 0.875rem);line-height:var(--ns-leading-body, 1.5);">${esc(lecture)}</div>
+            <div class="card-sub" style="margin:0 0 8px 0;font-size:var(--ns-text-sm, 0.8125rem);line-height:var(--ns-leading-body, 1.5);font-weight:var(--ns-weight-bold, 700);color:#475569;">
               Éléments pris en compte :
             </div>
             <div style="max-width:660px;">
@@ -4501,7 +4501,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       <div class="card analyse-competence-reading-card" style="padding:14px;margin-top:12px;">
         <div class="card-title" style="margin-bottom:6px;">Lecture transversale</div>
-        <div class="card-sub" style="margin:0;line-height:1.45;">
+        <div class="card-sub" style="margin:0;line-height:var(--ns-leading-body, 1.5);">
           Cette vue sert à comprendre où la compétence est fragile : postes concernés, porteurs identifiés,
           couverture disponible et données à confirmer. Les besoins individuels de montée en compétences
           se traitent depuis l’adéquation titulaire ou le menu Besoins & formations, quand une personne et son poste actuel sont clairement identifiés.
@@ -4592,16 +4592,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   style="width:10px; height:10px; border-radius:2px; background:${sqColor}; border:1px solid rgba(0,0,0,.12); flex:0 0 auto;">
             </span>
 
-            <span style="font-weight:600; color:#111827; font-size:12px; overflow:hidden; text-overflow:ellipsis;">
+            <span style="font-weight:var(--ns-weight-semibold, 600); color:#111827; font-size:var(--ns-text-xs, 0.75rem); overflow:hidden; text-overflow:ellipsis;">
               ${escapeHtml(full)}
             </span>
 
-            <span style="font-weight:600; color:#6b7280; font-size:11px; flex:0 0 auto;">
+            <span style="font-weight:var(--ns-weight-semibold, 600); color:#6b7280; font-size:var(--ns-text-xs, 0.75rem); flex:0 0 auto;">
               (${escapeHtml(niv)})
             </span>
           </span>
 
-          <span style="color:#6b7280; font-size:11px; white-space:nowrap;">
+          <span style="color:#6b7280; font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;">
             ${escapeHtml(right)}
           </span>
         </div>
@@ -4696,7 +4696,7 @@ function renderAnalysePosteCompetencesTab(data) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
-        background:#fff; color:#374151; font-weight:900; font-size:12px; white-space:nowrap;">
+        background:#fff; color:#374151; font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;">
         ${escapeHtml(txt || "—")}
       </span>
     `;
@@ -4713,7 +4713,7 @@ function renderAnalysePosteCompetencesTab(data) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
-        background:var(--chip-bg, #f3f4f6); color:#111827; font-weight:900; font-size:12px; white-space:nowrap;">
+        background:var(--chip-bg, #f3f4f6); color:#111827; font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;">
         ${escapeHtml(label)}
       </span>
     `;
@@ -4787,9 +4787,9 @@ function renderAnalysePosteCompetencesTab(data) {
 
             return `
               <tr>
-                <td style="font-weight:800; white-space:nowrap;">${code}</td>
+                <td style="font-weight:var(--ns-weight-bold, 700); white-space:nowrap;">${code}</td>
                 <td style="min-width:280px;">
-                  <div style="font-size:14px; font-weight:700;">${intit}</div>
+                  <div style="font-size:var(--ns-text-md, 0.875rem); font-weight:var(--ns-weight-semibold, 600);">${intit}</div>
                 </td>
                 <td class="col-center">${pill(nr)}</td>
                 <td class="col-center" style="white-space:nowrap;">${crit}</td>
@@ -5263,8 +5263,8 @@ function renderDetail(mode) {
           <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
             <div style="height:100%; width:${s}%; background:${fill};"></div>
           </div>
-          <div style="min-width:44px; text-align:right; font-weight:800;">
-            ${s}<span style="font-weight:700; font-size:12px;">%</span>
+          <div style="min-width:44px; text-align:right; font-weight:var(--ns-weight-bold, 700);">
+            ${s}<span style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-xs, 0.75rem);">%</span>
           </div>
         </div>
       `;
@@ -5290,7 +5290,7 @@ function renderDetail(mode) {
           display:inline-flex; align-items:center; justify-content:center;
           padding:4px 10px; border-radius:999px;
           border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;
+          font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;
         ">
           ${escapeHtml(label)}
         </span>
@@ -5316,7 +5316,7 @@ function renderDetail(mode) {
                 </span>
               </th>
 
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
+              <th class="col-center" style="width:110px; white-space:normal; line-height:var(--ns-leading-tight, 1.15);">
                 État
               </th>
 
@@ -5345,7 +5345,7 @@ function renderDetail(mode) {
                   <td class="risk-poste-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                       <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
-                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                      <span style="font-weight:var(--ns-weight-semibold, 600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(intitule)}
                       </span>
                     </div>
@@ -5404,8 +5404,8 @@ function renderDetail(mode) {
           <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
             <div style="height:100%; width:${s}%; background:${fill};"></div>
           </div>
-          <div style="min-width:44px; text-align:right; font-weight:800;">
-            ${s}<span style="font-weight:700; font-size:12px;">%</span>
+          <div style="min-width:44px; text-align:right; font-weight:var(--ns-weight-bold, 700);">
+            ${s}<span style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-xs, 0.75rem);">%</span>
           </div>
         </div>
       `;
@@ -5431,7 +5431,7 @@ function renderDetail(mode) {
           display:inline-flex; align-items:center; justify-content:center;
           padding:4px 10px; border-radius:999px;
           border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;
+          font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;
         ">
           ${escapeHtml(label)}
         </span>
@@ -5457,7 +5457,7 @@ function renderDetail(mode) {
                 </span>
               </th>
 
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
+              <th class="col-center" style="width:110px; white-space:normal; line-height:var(--ns-leading-tight, 1.15);">
                 État
               </th>
 
@@ -5482,7 +5482,7 @@ function renderDetail(mode) {
                   <td class="risk-comp-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                       <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
-                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                      <span style="font-weight:var(--ns-weight-semibold, 600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(intit)}
                       </span>
                     </div>
@@ -5550,7 +5550,7 @@ function renderDetail(mode) {
     const tone = k.includes("crit") ? "#991b1b" : (k.includes("élev") || k.includes("elev") ? "#9a3412" : (k.includes("mod") ? "#854d0e" : "#166534"));
     const bg = k.includes("crit") ? "#fee2e2" : (k.includes("élev") || k.includes("elev") ? "#ffedd5" : (k.includes("mod") ? "#fef3c7" : "#dcfce7"));
     const br = k.includes("crit") ? "#fecaca" : (k.includes("élev") || k.includes("elev") ? "#fed7aa" : (k.includes("mod") ? "#fde68a" : "#bbf7d0"));
-    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid ${br}; background:${bg}; color:${tone}; font-weight:800; font-size:12px; white-space:nowrap;">${escapeHtml(txt)}</span>`;
+    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid ${br}; background:${bg}; color:${tone}; font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;">${escapeHtml(txt)}</span>`;
   }
 
   function analysePrevisionDate(v) {
@@ -5874,7 +5874,7 @@ function renderDetail(mode) {
   function analysePrevisionFragilityBadge(value) {
     const s = analysePrevisionPct(value);
     const hue = Math.round(120 * (1 - s / 100));
-    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid hsl(${hue} 70% 80%); background:hsl(${hue} 70% 95%); color:hsl(${hue} 70% 28%); font-weight:800; font-size:12px; white-space:nowrap;">${escapeHtml(String(s))}%</span>`;
+    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid hsl(${hue} 70% 80%); background:hsl(${hue} 70% 95%); color:hsl(${hue} 70% 28%); font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-text-xs, 0.75rem); white-space:nowrap;">${escapeHtml(String(s))}%</span>`;
   }
 
   function ensureAnalysePrevisionActionModal() {
@@ -6012,10 +6012,10 @@ function renderDetail(mode) {
         <div class="sb-prev-actions-card card" style="padding:14px; margin:0;">
           <div class="sb-prev-modal-title" style="margin-bottom:10px;">Identification du sortant</div>
           <div style="display:flex; flex-direction:column; gap:7px; min-width:0;">
-            <div style="font-weight:700; font-size:17px; line-height:1.2; color:#111827;">${escapeHtml(full)}</div>
+            <div style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-title-sm, 1.0625rem); line-height:var(--ns-leading-tight, 1.15); color:#111827;">${escapeHtml(full)}</div>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
               ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}
-              <span style="font-size:13px; font-weight:700; color:#111827; min-width:0;">${escapeHtml(poste)}</span>
+              <span style="font-size:var(--ns-text-sm, 0.8125rem); font-weight:var(--ns-weight-semibold, 600); color:#111827; min-width:0;">${escapeHtml(poste)}</span>
             </div>
             <div class="card-sub" style="margin:0; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
               <span>${escapeHtml(dateLabel)}</span>
@@ -6406,7 +6406,7 @@ function renderDetail(mode) {
           </svg>
         `;
         const evolBadge = (delta, isToday) => {
-          if (isToday) return `<span style="font-weight:700; color:var(--sb-gray-500);">—</span>`;
+          if (isToday) return `<span style="font-weight:var(--ns-weight-semibold, 600); color:var(--sb-gray-500);">—</span>`;
           const d = Math.round(Number(delta) || 0);
           const cls = d > 0 ? "sb-badge--danger" : (d < 0 ? "sb-badge--success" : "");
           const txt = d === 0 ? "Stable" : `${d > 0 ? "+" : ""}${d}%`;
@@ -7284,7 +7284,7 @@ function bindOnce(portal) {
       <div class="modal" id="modalRiskEvol3m" aria-hidden="true">
         <div class="modal-card modal-card--wide">
           <div class="modal-header">
-            <div style="font-weight:600;" id="riskEvol3mModalTitle">Évolution</div>
+            <div style="font-weight:var(--ns-weight-semibold, 600);" id="riskEvol3mModalTitle">Évolution</div>
             <button type="button" class="modal-x" id="btnCloseRiskEvol3mModal" aria-label="Fermer">×</button>
           </div>
 
@@ -7397,7 +7397,7 @@ function bindOnce(portal) {
                     <div style="min-width:0;">
                       <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                         <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "—")}</span>
-                        <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <span style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-sm, 0.8125rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                           ${escapeHtml(r.label || "—")}
                         </span>
                       </div>
@@ -7456,7 +7456,7 @@ function bindOnce(portal) {
                     <div style="min-width:0;">
                       <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                         <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(r.code || "—")}</span>
-                        <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <span style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-sm, 0.8125rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                           ${escapeHtml(r.label || "—")}
                         </span>
                       </div>
@@ -7531,7 +7531,7 @@ function bindOnce(portal) {
               <div style="border:1px solid var(--sb-gray-200); border-radius:12px; padding:10px 12px; background:#fff;">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
                   <div style="min-width:0;">
-                    <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(person)}</div>
+                    <div style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-sm, 0.8125rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(person)}</div>
                     <div class="card-sub" style="margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(poste)}</div>
                     ${motif}
                   </div>

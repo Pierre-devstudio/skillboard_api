@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="fr">
 <head>
+  <link rel="stylesheet" href="novoskill_typography.css">
   <meta charset="utf-8" />
   <title>Portail consultant — Skillboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    :root { font-family: var(--ns-font-ui); }
     body {
       margin: 0;
       background:#f3f4f6;
@@ -27,13 +28,13 @@
       z-index:50;
     }
     .sidebar-header {
-      font-weight:600;
-      font-size:18px;
+      font-weight:var(--ns-weight-semibold, 600);
+      font-size:var(--ns-title-sm, 1.0625rem);
       margin-bottom:16px;
       text-align:center;
     }
     .sidebar-sub {
-      font-size:12px;
+      font-size:var(--ns-text-xs, 0.75rem);
       color:#9ca3af;
       text-align:center;
       margin-bottom:16px;
@@ -47,7 +48,7 @@
     .menu-item {
       padding:8px 10px;
       border-radius:6px;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       cursor:pointer;
       color:#e5e7eb;
     }
@@ -90,14 +91,14 @@
       gap:12px;
     }
     .topbar-left {
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       color:#4b5563;
       display:flex;
       align-items:center;
       gap:10px;
     }
     .topbar-right {
-      font-size:13px;
+      font-size:var(--ns-text-sm, 0.8125rem);
       color:#6b7280;
       text-align:right;
       flex-shrink:0;
@@ -107,7 +108,7 @@
       display:none;
       border:none;
       background:transparent;
-      font-size:20px;
+      font-size:var(--ns-title-md, 1.25rem);
       cursor:pointer;
       color:#111827;
       padding:4px 8px;
@@ -127,12 +128,12 @@
       margin-bottom:16px;
     }
     .card-title {
-      font-size:16px;
-      font-weight:600;
+      font-size:var(--ns-title-sm, 1.0625rem);
+      font-weight:var(--ns-weight-semibold, 600);
       margin-bottom:8px;
     }
     .card-sub {
-      font-size:13px;
+      font-size:var(--ns-text-sm, 0.8125rem);
       color:#6b7280;
       margin-bottom:10px;
     }
@@ -144,23 +145,23 @@
     }
     .info-item {
       min-width:180px;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
     }
     .label {
-      font-size:12px;
+      font-size:var(--ns-text-xs, 0.75rem);
       color:#6b7280;
       margin-bottom:2px;
     }
     .value {
-      font-size:14px;
-      font-weight:500;
+      font-size:var(--ns-text-md, 0.875rem);
+      font-weight:var(--ns-weight-medium, 500);
       color:#111827;
     }
 
     .alert {
       padding:10px 12px;
       border-radius:8px;
-      font-size:13px;
+      font-size:var(--ns-text-sm, 0.8125rem);
       margin-bottom:12px;
     }
     .alert.error {
@@ -189,7 +190,7 @@
       padding:6px 8px;
       border-radius:6px;
       border:1px solid #d1d5db;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       background:#ffffff;
     }
 
@@ -209,8 +210,8 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      font-weight:600;
-      font-size:22px;
+      font-weight:var(--ns-weight-semibold, 600);
+      font-size:var(--ns-title-md, 1.25rem);
       color:#4b5563;
       overflow:hidden;
       flex-shrink:0;
@@ -241,7 +242,7 @@
       border:0;
       background:#1d4ed8;
       color:#fff;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       cursor:pointer;
     }
     .btn-secondary {
@@ -250,7 +251,7 @@
       border:1px solid #d1d5db;
       background:#ffffff;
       color:#374151;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       cursor:pointer;
       margin-left:8px;
     }
@@ -298,9 +299,9 @@
     }
     .sb-table th {
       text-align:left;
-      font-size:12px;
+      font-size:var(--ns-text-xs, 0.75rem);
       color:#6b7280;
-      font-weight:600;
+      font-weight:var(--ns-weight-semibold, 600);
       padding:8px 10px;
       border-bottom:1px solid #e5e7eb;
       white-space:nowrap;
@@ -308,7 +309,7 @@
     .sb-table td {
       padding:8px 10px;
       border-bottom:1px solid #f3f4f6;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       vertical-align:middle;
     }
     .sb-table tr:hover td { background:#f9fafb; }
@@ -370,7 +371,7 @@
     .modal-x {
       border:0;
       background:transparent;
-      font-size:20px;
+      font-size:var(--ns-title-md, 1.25rem);
       cursor:pointer;
       padding:0 8px;
       color:#6b7280;
@@ -386,18 +387,18 @@
       padding:8px 10px;
       cursor:pointer;
       border-bottom:1px solid #f3f4f6;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
     }
     .result-item:last-child { border-bottom:0; }
     .result-item:hover { background:#f9fafb; }
 
     .result-code {
-      font-weight:600;
+      font-weight:var(--ns-weight-semibold, 600);
       color:#111827;
     }
     .result-title {
       color:#6b7280;
-      font-size:13px;
+      font-size:var(--ns-text-sm, 0.8125rem);
     }
 
     /* =========================
@@ -417,14 +418,14 @@
   padding:2px 8px;
   border:1px solid #d1d5db;
   border-radius:999px;
-  font-size:12px;
+  font-size:var(--ns-text-xs, 0.75rem);
   color:#374151;
   background:#ffffff;
 }
 
 .muted {
   color:#6b7280;
-  font-size:12px;
+  font-size:var(--ns-text-xs, 0.75rem);
 }
 
 @media (max-width: 640px) {
@@ -461,8 +462,8 @@
   list-style: none;
   cursor: pointer;
   padding: 10px 12px;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: var(--ns-weight-semibold, 600);
+  font-size: var(--ns-text-sm, 0.8125rem);
   color: #111827;
   background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -476,8 +477,8 @@
 }
 
 .domain-count {
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: var(--ns-weight-semibold, 600);
+  font-size: var(--ns-text-xs, 0.75rem);
   color: #6b7280;
 }
 
@@ -533,17 +534,17 @@
 }
 
 .domaines-title {
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: var(--ns-weight-semibold, 600);
+  font-size: var(--ns-text-md, 0.875rem);
   color: #111827;
-  line-height: 1.2;
+  line-height: var(--ns-leading-tight, 1.15);
 }
 
 .domaines-desc {
-  font-size: 12px;
+  font-size: var(--ns-text-xs, 0.75rem);
   color: #6b7280;
   margin-top: 4px;
-  line-height: 1.25;
+  line-height: var(--ns-leading-title, 1.25);
   white-space: normal;
 }
 
@@ -558,7 +559,7 @@
 }
 
 .domaines-hint {
-  font-size: 12px;
+  font-size: var(--ns-text-xs, 0.75rem);
   color: #6b7280;
 }
 
@@ -843,7 +844,7 @@
       <div class="modal" id="modalAddCompetence" aria-hidden="true">
         <div class="modal-card">
           <div class="modal-header">
-            <div style="font-weight:600;">Ajouter une compétence</div>
+            <div style="font-weight:var(--ns-weight-semibold, 600);">Ajouter une compétence</div>
             <button type="button" class="modal-x" id="btnCloseAddCompetence" aria-label="Fermer">×</button>
           </div>
 
@@ -1661,7 +1662,7 @@ async function initDomainesFormationUI(id_consultant) {
 
     window.addEventListener("DOMContentLoaded", () => {
       const id = getQueryParam("id");
-      
+
       if (!id) {
         showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
         return;

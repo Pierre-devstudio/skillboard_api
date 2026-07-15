@@ -19,7 +19,7 @@
     let _serviceModalMode = "create"; // create | edit
     let _editingServiceId = null;
     let _serviceModalReturnTarget = null; // null | poste_create | poste_select
-    
+
     let _showArchivedPostes = false;
 
     let _posteModalMode = "create"; // create | edit
@@ -79,7 +79,7 @@
     let _posteImportFile = null;
     let _posteCcnContext = null;
     let _posteCcnAnalysis = null;
-    
+
     let _orgCcnController = null;
     let _orgCcnAssetsPromise = null;
     let _posteSaveInlineTimer = null;
@@ -1288,7 +1288,7 @@ function refreshPosteCompNivCards(){
         height:100%;
         margin:0;
         background:#f3f4f6;
-        font-family:Arial,sans-serif;
+        font-family:var(--ns-font-ui);
         color:#111827;
         }
         .pdf-loading{
@@ -1308,7 +1308,7 @@ function refreshPosteCompNivCards(){
         animation:pdfSpin .8s linear infinite;
         }
         .pdf-loading__text{
-        font-size:14px;
+        font-size:var(--ns-text-md, 0.875rem);
         color:#475467;
         }
         iframe{
@@ -1488,7 +1488,7 @@ body {
   box-sizing: border-box;
   border-bottom: 1px solid #d7dbe2;
   background: #ffffff;
-  font: 14px/1.2 Arial, sans-serif;
+  font: var(--ns-text-md, 0.875rem)/var(--ns-leading-tight, 1.15) var(--ns-font-ui, "Inter", "Segoe UI", Arial, sans-serif);
   color: #1f2937;
 }
 .bar__title {
@@ -1496,7 +1496,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold, 600);
 }
 .bar__btn {
   display: inline-flex;
@@ -1509,7 +1509,7 @@ body {
   background: #eef4ff;
   color: #28407a;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold, 600);
   flex: 0 0 auto;
 }
 .viewer {
@@ -1630,7 +1630,7 @@ body {
   box-sizing: border-box;
   border-bottom: 1px solid #d7dbe2;
   background: #ffffff;
-  font: 14px/1.2 Arial, sans-serif;
+  font: var(--ns-text-md, 0.875rem)/var(--ns-leading-tight, 1.15) var(--ns-font-ui, "Inter", "Segoe UI", Arial, sans-serif);
   color: #1f2937;
 }
 .bar__title {
@@ -1638,7 +1638,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold, 600);
 }
 .bar__btn {
   display: inline-flex;
@@ -1651,7 +1651,7 @@ body {
   background: #eef4ff;
   color: #28407a;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold, 600);
   flex: 0 0 auto;
 }
 .viewer {
@@ -3644,7 +3644,7 @@ function renderPosteCompAiResults(){
             }
         }
     }
-    
+
     async function ensureEditingPoste(portal){
         if (_posteModalMode === "edit" && _editingPosteId) return _editingPosteId;
         await savePosteFromModal(portal, { keepOpen: true, silent: true, statusMessage: "Poste créé." });
@@ -3729,7 +3729,7 @@ function renderPosteCompAiResults(){
         _posteCompExpanded = false;
         renderPosteCompetences();
     }
-    
+
     function renderPosteCompetences(){
         const tb = byId("posteCompTbody");
         const empty = byId("posteCompEmpty");
@@ -4133,7 +4133,7 @@ function renderPosteCompAiResults(){
             <div class="sb-modal-body">
               <input type="file" id="posteCompImportFileInput" accept=".pdf,.doc,.docx" style="display:none;" />
               <div id="posteCompImportDropzone" class="sb-import-drop" style="border:1px dashed #cbd5e1;border-radius:14px;padding:18px;background:#f8fafc;cursor:pointer;">
-                <div style="font-weight:700;margin-bottom:4px;">Déposer un document ou cliquer pour sélectionner</div>
+                <div style="font-weight:var(--ns-weight-semibold, 600);margin-bottom:4px;">Déposer un document ou cliquer pour sélectionner</div>
                 <div class="card-sub" id="posteCompImportEmpty">Aucun document sélectionné.</div>
               </div>
               <div id="posteCompImportFileCard" class="sb-row-card" style="display:none;margin-top:12px;">
@@ -5472,7 +5472,7 @@ function refreshPosteCompEditCritDisplay(){
 
         fillPosteServiceSelect(defaultSid);
 
-        
+
         byId("posteCodifClient").value = "";
         byId("posteIntitule").value = "";
         byId("posteMission").value = "";
@@ -5522,7 +5522,7 @@ function refreshPosteCompEditCritDisplay(){
         refreshPosteImportButton();
         resetPosteImportState();
         closePosteImportModal();
-        
+
         if (!pid) return;
 
         _posteModalMode = "edit";

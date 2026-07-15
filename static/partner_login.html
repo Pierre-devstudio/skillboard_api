@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
+  <link rel="stylesheet" href="novoskill_typography.css">
   <meta charset="utf-8" />
   <title>Novoskill Partner — Connexion</title>
 
@@ -83,8 +84,8 @@
     }
 
     .login-title{
-      font-size:18px;
-      font-weight:700;
+      font-size:var(--ns-title-sm, 1.0625rem);
+      font-weight:var(--ns-weight-semibold, 600);
       margin:0 0 6px 0;
     }
 
@@ -96,16 +97,16 @@
     }
 
     .login-row label{
-      font-size:12px;
+      font-size:var(--ns-text-xs, 0.75rem);
       color:#374151;
-      font-weight:600;
+      font-weight:var(--ns-weight-semibold, 600);
     }
 
     .login-row input{
       border:1px solid #d1d5db;
       border-radius:10px;
       padding:10px 12px;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
       outline:none;
       background:#fff;
     }
@@ -129,9 +130,9 @@
       color:#fff;
       padding:10px 14px;
       border-radius:10px;
-      font-weight:800;
+      font-weight:var(--ns-weight-bold, 700);
       cursor:pointer;
-      font-size:14px;
+      font-size:var(--ns-text-md, 0.875rem);
     }
 
     .btn-primary:disabled{
@@ -142,8 +143,8 @@
     .link{
       color:var(--accent);
       text-decoration:none;
-      font-weight:700;
-      font-size:13px;
+      font-weight:var(--ns-weight-semibold, 600);
+      font-size:var(--ns-text-sm, 0.8125rem);
       cursor:pointer;
       user-select:none;
     }
@@ -153,7 +154,7 @@
 
     .msg{
       margin:10px 0 0 0;
-      font-size:13px;
+      font-size:var(--ns-text-sm, 0.8125rem);
       color:#111827;
     }
 
@@ -168,10 +169,10 @@
     }
 
     .brand-name{
-      font-size:13px;
-      font-weight:800;
+      font-size:var(--ns-text-sm, 0.8125rem);
+      font-weight:var(--ns-weight-bold, 700);
       color:#111827;
-      letter-spacing:.2px;
+      letter-spacing:0;
     }
 
     .brand-module{
@@ -181,9 +182,9 @@
       border-radius:999px;
       background:var(--accent);
       color:#fff;
-      font-size:12px;
-      font-weight:900;
-      letter-spacing:.2px;
+      font-size:var(--ns-text-xs, 0.75rem);
+      font-weight:var(--ns-weight-bold, 700);
+      letter-spacing:0;
       box-shadow:0 4px 12px rgba(var(--partner-accent-rgb), .18);
     }
   </style>

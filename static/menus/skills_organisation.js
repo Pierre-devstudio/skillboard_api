@@ -574,7 +574,7 @@
       // refresh UI (retour lecture)
       fillPosteParamRhTab(merged);
       _showInlineMsg("orgRhMsg", "success", "Paramétrage RH enregistré.");
-      
+
     } catch (e) {
       _showInlineMsg("orgRhMsg", "danger", "Erreur enregistrement RH : " + e.message);
     }
@@ -735,7 +735,7 @@
     const win = window.open("", "_blank");
     if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
     win.document.open();
-    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bar__status{display:flex;align-items:center;gap:10px;color:#667085}.bar__spinner{width:18px;height:18px;border-radius:999px;border:3px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}@keyframes pdfSpin{to{transform:rotate(360deg)}} </style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><div class="bar__status"><div class="bar__spinner"></div><span>Génération du PDF…</span></div></div><div class="viewer"></div></body></html>`);
+    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font: var(--ns-text-md, 0.875rem)/var(--ns-leading-tight, 1.15) var(--ns-font-ui, "Inter", "Segoe UI", Arial, sans-serif);color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--ns-weight-semibold, 600)}.bar__status{display:flex;align-items:center;gap:10px;color:#667085}.bar__spinner{width:18px;height:18px;border-radius:999px;border:3px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}@keyframes pdfSpin{to{transform:rotate(360deg)}} </style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><div class="bar__status"><div class="bar__spinner"></div><span>Génération du PDF…</span></div></div><div class="viewer"></div></body></html>`);
     win.document.close();
     return win;
   }
@@ -753,7 +753,7 @@
     }
 
     win.document.open();
-    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bar__btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#334155;text-decoration:none;font-weight:600}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}</style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><a class="bar__btn" href="${blobUrl}" download="${safeTitle}">Télécharger</a></div><div class="viewer"><iframe src="${blobUrl}" title="${safeTitle}"></iframe></div></body></html>`);
+    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font: var(--ns-text-md, 0.875rem)/var(--ns-leading-tight, 1.15) var(--ns-font-ui, "Inter", "Segoe UI", Arial, sans-serif);color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--ns-weight-semibold, 600)}.bar__btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#334155;text-decoration:none;font-weight:var(--ns-weight-semibold, 600)}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}</style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><a class="bar__btn" href="${blobUrl}" download="${safeTitle}">Télécharger</a></div><div class="viewer"><iframe src="${blobUrl}" title="${safeTitle}"></iframe></div></body></html>`);
     win.document.close();
     try { win.addEventListener("beforeunload", () => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, { once:true }); } catch(_) {}
     setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, 5 * 60 * 1000);
@@ -2070,7 +2070,7 @@
       bindOrgPosteModalOnce();
 
       try {
-        bindOnce(portal);        
+        bindOnce(portal);
         if (!_servicesLoaded) await loadServices(portal);
         await processReferentielPendingPosteAction(portal);
       } catch (e) {

@@ -329,7 +329,7 @@
           : (Number(it.duree_validite) === 0 ? "Permanent" : `${it.duree_validite} mois`);
 
       tr.innerHTML = `
-        <td class="col-title" style="font-weight:600;">${escapeHtml(it.nom_certification)}</td>
+        <td class="col-title" style="font-weight:var(--ns-weight-semibold, 600);">${escapeHtml(it.nom_certification)}</td>
         <td>${escapeHtml(it.categorie || "—")}</td>
         <td style="white-space:nowrap;">${escapeHtml(validite)}</td>
         <td class="col-center" style="white-space:nowrap;">${certifRequirementBadge(it.niveau_exigence_max)}</td>
@@ -387,7 +387,7 @@
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
   }
-  
+
   async function loadServices(portal) {
     portal.showAlert("", "");
 
@@ -1047,7 +1047,7 @@
     const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
 
     const popupWin = window.open("about:blank", "_blank");
-    if (popupWin) popupWin.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>");
+    if (popupWin) popupWin.document.write("<p style='font-family:var(--ns-font-ui);padding:16px;'>Ouverture du PDF…</p>");
 
     try {
       const blob = await fetchReferentielCompetencePdfBlob(portal, id_contact, id_service, id_comp);
@@ -1428,7 +1428,7 @@
       window.__skillsPortalInstance = portal;
 
       try {
-        bindOnce(portal);       
+        bindOnce(portal);
 
 
         if (!_servicesLoaded) await loadServices(portal);

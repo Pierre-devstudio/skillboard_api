@@ -1,18 +1,19 @@
 <!doctype html>
 <html lang="fr">
 <head>
+  <link rel="stylesheet" href="novoskill_typography.css">
   <meta charset="utf-8" />
   <title>Recueil des Attentes — Skillboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    :root { font-family: var(--ns-font-ui); }
     body { margin: 24px; background:#fafafa; color:#222; }
-    h1 { margin: 0 0 16px; font-size: 22px; }
+    h1 { margin: 0 0 16px; font-size: var(--ns-title-md, 1.25rem); }
     fieldset { border:1px solid #ddd; border-radius:8px; padding:16px; background:#fff; }
     legend { padding:0 8px; color:#555; }
     .row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
     .col { display:flex; flex-direction:column; min-width:180px; flex:1; }
-    label { font-size:13px; color:#444; margin-bottom:4px; }
+    label { font-size:var(--ns-text-sm, 0.8125rem); color:#444; margin-bottom:4px; }
     textarea {
       width:100%; min-height:120px; resize:vertical;
       padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff;
@@ -28,7 +29,7 @@
     }
     .btn { background:#0ea5e9; color:#fff; }
     .btn.secondary { background:#e2e8f0; color:#111; }
-    .muted { color:#666; font-size:16px; }
+    .muted { color:#666; font-size:var(--ns-title-sm, 1.0625rem); }
     .success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin-top:16px; }
     .error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px; border-radius:8px; margin-top:16px; }
   </style>
@@ -36,15 +37,15 @@
 <body>
   <header style="margin-bottom:20px; text-align:center;">
     <img src="/logo.png" alt="Logo" style="max-height:80px;">
-    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:22px;"></div>
+    <div id="formationTitle" style="margin-top:8px; font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-title-md, 1.25rem);"></div>
   </header>
 
   <h1>Recueil des attentes et autoévaluation</h1>
 
-  <div id="participantInfo" style="font-weight: 600; margin-bottom: 10px;"></div>
+  <div id="participantInfo" style="font-weight: var(--ns-weight-semibold, 600); margin-bottom: 10px;"></div>
 
   <p class="muted" id="introText">
-    Vous êtes inscrit(e) à une formation organisée par JMB Consultant.  
+    Vous êtes inscrit(e) à une formation organisée par JMB Consultant.
     Merci de décrire vos attentes vis-à-vis de cette formation et d’évaluer votre niveau sur les prérequis indiqués ci-dessous.
   </p>
 

@@ -740,7 +740,7 @@
 
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--soft" id="btnPosteImportCancel">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--doc" id="btnPosteImportAnalyze" disabled>Lancer l’analyse</button>        
+        <button type="button" class="sb-btn sb-btn--doc" id="btnPosteImportAnalyze" disabled>Lancer l’analyse</button>
       </div>
     </div>
   </div>
@@ -811,7 +811,7 @@
 
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--soft" id="btnPosteAiCancel">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteAiGenerate">Générer</button>        
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteAiGenerate">Générer</button>
       </div>
     </div>
   </div>
@@ -837,13 +837,13 @@
         <div class="card-sub" id="posteCompAiSummary" style="margin:0 0 10px 0; display:none;"></div>
 
         <div class="card" id="posteCompAiExistingWrap" style="padding:12px; display:none;">
-          <div class="card-title" style="font-size:14px; margin:8px 0 4px 0;">Compétences déjà présentes dans le référentiel</div>
+          <div class="card-title" style="font-size:var(--ns-text-md, 0.875rem); margin:8px 0 4px 0;">Compétences déjà présentes dans le référentiel</div>
           <div class="card-sub" style="margin:0 0 10px 0;">Tu peux les rattacher directement au poste.</div>
           <div class="sb-stack sb-stack--xs" id="posteCompAiExistingList"></div>
         </div>
 
         <div class="card" id="posteCompAiMissingWrap" style="padding:12px; margin-top:10px; display:none;">
-          <div class="card-title" style="font-size:14px; margin:8px 0 4px 0;">Compétences absentes du référentiel</div>
+          <div class="card-title" style="font-size:var(--ns-text-md, 0.875rem); margin:8px 0 4px 0;">Compétences absentes du référentiel</div>
           <div class="card-sub" style="margin:0 0 10px 0;">Création directe dans le catalogue puis ajout au poste.</div>
           <div class="sb-stack sb-stack--xs" id="posteCompAiMissingList"></div>
         </div>
@@ -871,8 +871,8 @@
       </div>
     </div>
   </div>
-  
-  
+
+
   <!-- MODAL : Cadrer la compétence avant génération de la grille IA -->
   <div class="sb-modal" id="modalPosteCompCreateFrame" style="display:none;">
     <div class="sb-modal-card">
@@ -1050,7 +1050,7 @@
 
               <div class="sb-acc-actions">
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCompCreateCritCancel">Annuler</button>
-                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompCreateCritSave">Enregistrer</button>                
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompCreateCritSave">Enregistrer</button>
               </div>
             </div>
 
@@ -1065,8 +1065,8 @@
 
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompCreateCancel">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompCreateOnly">Créer seulement</button> 
-        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompCreateAdd">Créer et ajouter</button>               
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompCreateOnly">Créer seulement</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompCreateAdd">Créer et ajouter</button>
       </div>
     </div>
   </div>
@@ -1076,7 +1076,7 @@
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin-bottom:2px;">Ajouter une compétence</div>          
+          <div class="card-title" style="margin-bottom:2px;">Ajouter une compétence</div>
         </div>
         <button type="button" class="sb-modal-x" id="btnClosePosteCompAdd" aria-label="Fermer">&times;</button>
       </div>
@@ -1127,7 +1127,7 @@
         <!-- Header content already in sb-modal-head -->
         <!-- Bloc Niveau requis -->
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="font-size:14px;">Niveau requis</div>
+          <div class="card-title" style="font-size:var(--ns-text-md, 0.875rem);">Niveau requis</div>
           <div class="card-sub" style="margin:4px 0 0 0;">Sélectionnez le niveau attendu pour ce poste.</div>
 
           <div class="sb-level-grid" id="posteCompNivGrid">
@@ -1167,7 +1167,7 @@
 
         <!-- Bloc Criticité -->
         <div class="card" style="padding:12px; margin-top:10px;">
-          <div class="card-title" style="font-size:14px;">Évaluation de la criticité</div>
+          <div class="card-title" style="font-size:var(--ns-text-md, 0.875rem);">Évaluation de la criticité</div>
           <div class="card-sub" style="margin:4px 0 0 0;">Pondération appliquée : Fréquence (x2), Impact (x5), Dépendance (x3)</div>
 
           <div class="sb-crit-grid">
@@ -1313,7 +1313,7 @@
 
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCertCreateCancel">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertCreateSave">Créer</button>        
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertCreateSave">Créer</button>
       </div>
     </div>
   </div>
@@ -1332,7 +1332,7 @@
 
       <div class="sb-modal-body">
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="font-size:14px;">Paramétrage pour le poste</div>
+          <div class="card-title" style="font-size:var(--ns-text-md, 0.875rem);">Paramétrage pour le poste</div>
           <div class="card-sub" id="posteCertEditBaseInfo" style="margin:4px 0 0 0;">—</div>
 
           <div class="row" style="margin-top:10px;">
@@ -1365,7 +1365,7 @@
 
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCertEditCancel">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertEditSave">Enregistrer</button>        
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertEditSave">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1397,7 +1397,7 @@
 
         <div class="sb-modal-actions">
           <button type="button" class="sb-btn sb-btn--soft" id="btnCancelService">Annuler</button>
-          <button type="button" class="sb-btn sb-btn--accent" id="btnSaveService">Enregistrer</button>          
+          <button type="button" class="sb-btn sb-btn--accent" id="btnSaveService">Enregistrer</button>
         </div>
       </div>
     </div>
@@ -1417,7 +1417,7 @@
       <div class="sb-modal-body">
         <div class="sb-modal-actions">
           <button type="button" class="sb-btn sb-btn--soft" id="btnCancelArchive">Annuler</button>
-          <button type="button" class="sb-btn sb-btn--accent" id="btnConfirmArchive">Confirmer</button>          
+          <button type="button" class="sb-btn sb-btn--accent" id="btnConfirmArchive">Confirmer</button>
         </div>
       </div>
     </div>

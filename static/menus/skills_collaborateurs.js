@@ -1100,7 +1100,7 @@
               const badges = [];
 
               // Badge Indisponible (si indispo en cours aujourd’hui)
-              
+
 
               if (d.archive) badges.push({ label: "Archivé", cls: "sb-badge--archive" });
               else if (d.statut_actif) badges.push({ label: "Actif", cls: "sb-badge--actif" });
@@ -1628,7 +1628,7 @@
                       note_commentaire: t("#collabComment"),
                     };
 
-                    
+
                     // Appel API (POST JSON) - IMPORTANT: passer par portal.apiJson (auth + contexte entreprise)
                     const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}`;
 
@@ -1901,7 +1901,7 @@
                     const item = items.find(x => String(x?.id_comp || "").trim() === compId) || null;
                     const popupWin = window.open("about:blank", "_blank");
                     if (popupWin) {
-                      popupWin.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Génération du PDF…</p>");
+                      popupWin.document.write("<p style='font-family:var(--ns-font-ui);padding:16px;'>Génération du PDF…</p>");
                     }
 
                     try {

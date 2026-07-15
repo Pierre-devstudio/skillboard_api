@@ -269,17 +269,17 @@
       .sim-cv-upload-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
       .sim-cv-upload-zone{display:flex;align-items:center;gap:12px;min-height:72px;border:1px dashed color-mix(in srgb,var(--accent) 35%,#cbd5e1);border-radius:14px;background:linear-gradient(180deg,#fff 0%,color-mix(in srgb,var(--accent) 4%,#fff) 100%);padding:12px;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease;}
       .sim-cv-upload-zone:hover{border-color:var(--accent);box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 10%,transparent);transform:translateY(-1px);}
-      .sim-cv-upload-icon{width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--accent);font-weight:800;font-size:18px;flex:0 0 auto;}
+      .sim-cv-upload-icon{width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--accent);font-weight:var(--ns-weight-bold, 700);font-size:var(--ns-title-sm, 1.0625rem);flex:0 0 auto;}
       .sim-cv-upload-copy{min-width:0;display:flex;flex-direction:column;gap:3px;}
-      .sim-cv-upload-copy strong{font-size:13px;font-weight:700;color:var(--sb-gray-900);}
-      .sim-cv-upload-copy small{font-size:12px;color:var(--sb-gray-500);line-height:1.35;}
-      .sim-cv-upload-copy em{font-style:normal;font-size:12px;color:var(--sb-gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+      .sim-cv-upload-copy strong{font-size:var(--ns-text-sm, 0.8125rem);font-weight:var(--ns-weight-semibold, 600);color:var(--sb-gray-900);}
+      .sim-cv-upload-copy small{font-size:var(--ns-text-xs, 0.75rem);color:var(--sb-gray-500);line-height:var(--ns-leading-ui, 1.35);}
+      .sim-cv-upload-copy em{font-style:normal;font-size:var(--ns-text-xs, 0.75rem);color:var(--sb-gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
       .sim-cv-file-input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
       .sim-cv-analysis-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
-      .sim-cv-loading-state{display:flex;align-items:center;gap:10px;color:var(--sb-gray-700);font-size:13px;}
+      .sim-cv-loading-state{display:flex;align-items:center;gap:10px;color:var(--sb-gray-700);font-size:var(--ns-text-sm, 0.8125rem);}
       .sim-cv-loading-ring{width:22px;height:22px;border-radius:50%;border:3px solid #e5e7eb;border-top-color:var(--accent);animation:simCvSpin .85s linear infinite;flex:0 0 auto;}
-      .sim-cv-error-title{font-weight:700;color:var(--sb-gray-900);margin-bottom:4px;}
-      .sim-cv-error-text{font-size:13px;line-height:1.45;color:var(--sb-gray-700);}
+      .sim-cv-error-title{font-weight:var(--ns-weight-semibold, 600);color:var(--sb-gray-900);margin-bottom:4px;}
+      .sim-cv-error-text{font-size:var(--ns-text-sm, 0.8125rem);line-height:var(--ns-leading-body, 1.5);color:var(--sb-gray-700);}
       @keyframes simCvSpin{to{transform:rotate(360deg);}}
       .sim-cv-modal-title-stack{display:flex;flex-direction:column;gap:4px;min-width:0;}
       .sim-cv-modal-title-line,.sim-cv-modal-title-sub{display:flex;align-items:center;gap:8px;min-width:0;}
@@ -288,16 +288,16 @@
       .sim-cv-modal-side{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:10px;}
       .sim-cv-modal-summary{border:1px solid var(--sb-gray-200);border-radius:14px;padding:12px;background:#fff;}
       .sim-cv-comp-cell{display:flex;align-items:center;gap:8px;min-width:0;}
-      .sim-cv-comp-cell .sim-cv-comp-title{font-size:13px;font-weight:600;color:var(--sb-gray-900);line-height:1.35;}
-      .sim-cv-proof{font-size:12px;line-height:1.45;color:var(--sb-gray-700);}
-      .sim-cv-undemonstrated{display:inline-flex;align-items:center;justify-content:center;min-width:96px;height:22px;padding:0 10px;border:1px solid rgba(124,58,237,.32);border-radius:999px;background:rgba(124,58,237,.06);color:#6d28d9;font-size:12px;font-weight:700;line-height:1;white-space:nowrap;box-sizing:border-box;}
+      .sim-cv-comp-cell .sim-cv-comp-title{font-size:var(--ns-text-sm, 0.8125rem);font-weight:var(--ns-weight-semibold, 600);color:var(--sb-gray-900);line-height:var(--ns-leading-ui, 1.35);}
+      .sim-cv-proof{font-size:var(--ns-text-xs, 0.75rem);line-height:var(--ns-leading-body, 1.5);color:var(--sb-gray-700);}
+      .sim-cv-undemonstrated{display:inline-flex;align-items:center;justify-content:center;min-width:96px;height:22px;padding:0 10px;border:1px solid rgba(124,58,237,.32);border-radius:999px;background:rgba(124,58,237,.06);color:#6d28d9;font-size:var(--ns-text-xs, 0.75rem);font-weight:var(--ns-weight-semibold, 600);line-height:var(--ns-leading-tight, 1.15);white-space:nowrap;box-sizing:border-box;}
       .sim-cv-center{text-align:center;}
-      .sim-cv-modal-summary p{margin:0;color:var(--sb-gray-700);font-size:13px;line-height:1.55;}
+      .sim-cv-modal-summary p{margin:0;color:var(--sb-gray-700);font-size:var(--ns-text-sm, 0.8125rem);line-height:var(--ns-leading-body, 1.5);}
       .sim-cv-modal-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
       .sim-cv-mini-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;}
       .sim-cv-mini-card{border:1px solid var(--sb-gray-200);border-radius:12px;padding:10px;background:#fff;}
-      .sim-cv-mini-card h4{margin:0 0 6px 0;font-size:12px;font-weight:700;color:var(--sb-gray-900);}
-      .sim-cv-mini-card ul{margin:0;padding-left:16px;color:var(--sb-gray-700);font-size:12px;line-height:1.45;}
+      .sim-cv-mini-card h4{margin:0 0 6px 0;font-size:var(--ns-text-xs, 0.75rem);font-weight:var(--ns-weight-semibold, 600);color:var(--sb-gray-900);}
+      .sim-cv-mini-card ul{margin:0;padding-left:16px;color:var(--sb-gray-700);font-size:var(--ns-text-xs, 0.75rem);line-height:var(--ns-leading-body, 1.5);}
       @media(max-width:980px){.sim-cv-upload-grid,.sim-cv-modal-grid,.sim-cv-mini-list{grid-template-columns:1fr;}}
     `;
     document.head.appendChild(style);
@@ -347,7 +347,7 @@
             <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}" transform="rotate(-90 ${size / 2} ${size / 2})" />
           </svg>
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-            <div style="font-weight:800;font-size:28px;line-height:1;">${s}<span style="font-size:12px;font-weight:700;">%</span></div>
+            <div style="font-weight:var(--ns-weight-bold, 700);font-size:var(--ns-kpi, 1.75rem);line-height:var(--ns-leading-tight, 1.15);">${s}<span style="font-size:var(--ns-text-xs, 0.75rem);font-weight:var(--ns-weight-semibold, 600);">%</span></div>
           </div>
         </div>
         <div class="card-sub" style="margin:0;">Adéquation</div>
@@ -371,12 +371,12 @@
           <div class="modal-header">
             <div class="sim-cv-modal-title-stack">
               <div class="sim-cv-modal-title-line">
-                <span id="simCvAnalysisModalTitle" style="font-weight:600;">Analyse CV</span>
+                <span id="simCvAnalysisModalTitle" style="font-weight:var(--ns-weight-semibold, 600);">Analyse CV</span>
                 <span class="sb-badge sb-badge--candidat" id="simCvAnalysisModalBadge">Candidat CV</span>
               </div>
               <div class="sim-cv-modal-title-sub">
                 <span class="sb-badge sb-badge-ref-poste-code" id="simCvAnalysisPosteCode" style="display:none;"></span>
-                <span id="simCvAnalysisPosteText" style="font-weight:600;"></span>
+                <span id="simCvAnalysisPosteText" style="font-weight:var(--ns-weight-semibold, 600);"></span>
               </div>
             </div>
             <button type="button" class="modal-x" id="btnCloseSimCvAnalysisModal" aria-label="Fermer">×</button>
@@ -434,7 +434,7 @@
             ${cvScoreRing(data.adequation_pct || 0)}
           </div>
           <div class="sim-cv-modal-summary">
-            <div class="card-title" style="font-size:15px;font-weight:700;margin:0 0 6px 0;">Avis Novoskill</div>
+            <div class="card-title" style="font-size:var(--ns-text-lg, 0.9375rem);font-weight:var(--ns-weight-semibold, 600);margin:0 0 6px 0;">Avis Novoskill</div>
             <p>${esc(data.lecture_recruteur || data.resume_profil || "Analyse disponible.")}</p>
           </div>
         </div>
@@ -1571,14 +1571,14 @@
     const win = window.open("about:blank", "_blank");
     if (!win) return setStatus("Le navigateur a bloqué l’ouverture du PDF. Autorisez les fenêtres pour Novoskill puis réessayez.", "error");
     try {
-      win.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du document…</p>");
+      win.document.write("<p style='font-family:var(--ns-font-ui);padding:20px;'>Génération du document…</p>");
       const blob = await simApiBlob(url);
       const blobUrl = URL.createObjectURL(blob);
       win.location.href = blobUrl;
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (e) {
       try {
-        win.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur génération document : ${esc(errMsg(e))}</pre>`;
+        win.document.body.innerHTML = `<pre style="font-family:var(--ns-font-ui);white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur génération document : ${esc(errMsg(e))}</pre>`;
       } catch (_) {}
       setStatus(errMsg(e), "error");
     }
@@ -1849,7 +1849,7 @@
         <div class="modal-card sim-save-modal-card">
           <div class="modal-header">
             <div class="modal-title-inline">
-              <span id="simSaveScenarioModalTitle" style="font-weight:700;">Conserver le scénario</span>
+              <span id="simSaveScenarioModalTitle" style="font-weight:var(--ns-weight-semibold, 600);">Conserver le scénario</span>
             </div>
             <button type="button" class="modal-x" id="btnCloseSimSaveScenario" aria-label="Fermer">×</button>
           </div>
@@ -2004,7 +2004,7 @@
       <div class="modal" id="modalSimScenarioSetup" aria-hidden="true">
         <div class="modal-card modal-card--medium">
           <div class="modal-header">
-            <div class="modal-title-inline"><span style="font-weight:700;">Hypothèses et réglages</span></div>
+            <div class="modal-title-inline"><span style="font-weight:var(--ns-weight-semibold, 600);">Hypothèses et réglages</span></div>
             <button type="button" class="modal-x" id="btnCloseSimScenarioSetup" aria-label="Fermer">×</button>
           </div>
           <div class="modal-body" id="simScenarioSetupBody"></div>

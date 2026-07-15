@@ -1,13 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <link rel="stylesheet" href="novoskill_typography.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validation de présence</title>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Sacramento&display=swap" rel="stylesheet">
-
-
 <style>
 #logo {
     display: block;
@@ -16,7 +13,7 @@
 }
 
 body {
-    font-family: 'Quicksand', sans-serif;
+    font-family: var(--ns-font-ui);
     background: #f4f4f4;
     margin: 0;
     padding: 20px;
@@ -34,9 +31,9 @@ body {
     margin-top: 12px;
     min-height: 20px;
     color: rgb(193,39,45);
-    font-weight: 600;
+    font-weight: var(--ns-weight-semibold, 600);
     text-align: center;
-    font-size: 15px;
+    font-size: var(--ns-text-lg, 0.9375rem);
 }
 
 h2 {
@@ -50,11 +47,11 @@ h2 {
     margin-bottom: 25px;
 }
 #formationInfo b {
-    font-size: 16px;
+    font-size: var(--ns-title-sm, 1.0625rem);
 }
 
 .label {
-    font-weight: bold;
+    font-weight: var(--ns-weight-bold, 700);
     margin-top: 10px;
 }
 
@@ -74,7 +71,7 @@ button {
     border: none;
     border-radius: 6px;
     margin-top: 15px;
-    font-size: 16px;
+    font-size: var(--ns-title-sm, 1.0625rem);
     cursor: pointer;
 }
 
@@ -128,13 +125,13 @@ button:disabled {
     border-radius: 6px;
     margin-top: 20px;
     color: #3c763d;
-    font-weight: bold;
+    font-weight: var(--ns-weight-bold, 700);
 }
 
 #signature {
     margin-top: 8px;
-    font-family: 'Sacramento', cursive;
-    font-size: 40px;
+    font-family: var(--ns-font-signature);
+    font-size: var(--ns-kpi, 1.75rem);
     text-align: left;
     color: #000;
     padding-left: 4px;

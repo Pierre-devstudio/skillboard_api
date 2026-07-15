@@ -1031,7 +1031,7 @@ async function openEdit(portal, it){
 <meta charset="utf-8">
 <title>${htmlEsc(title || "Document PDF")}</title>
 <style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
+html,body{height:100%;margin:0;background:#f3f4f6;font-family:var(--ns-font-ui);color:#111827}
 .pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
 .pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite}
 @keyframes pdfSpin{to{transform:rotate(360deg)}}

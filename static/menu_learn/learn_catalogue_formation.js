@@ -536,7 +536,7 @@
         `;
     }
 
-    
+
     function iconLms(){
         return `
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1862,14 +1862,14 @@ function iconPdf(){
                 .lf-comp-ai-doc-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#fff;color:#e100ff;box-shadow:0 8px 20px rgba(17,24,39,.08);flex:0 0 auto;}
                 .lf-comp-ai-doc-icon svg{width:23px;height:23px;}
                 .lf-comp-ai-doc-main{flex:1;min-width:0;}
-                .lf-comp-ai-doc-title{font-weight:800;color:#111827;font-size:.92rem;}
-                .lf-comp-ai-doc-sub{font-size:.82rem;color:#667085;margin-top:3px;line-height:1.35;}
-                .lf-comp-ai-doc-action{border:1px solid rgba(225,0,255,.28);background:#fff;color:#b000d4;border-radius:999px;font-weight:800;font-size:.78rem;padding:8px 12px;white-space:nowrap;}
+                .lf-comp-ai-doc-title{font-weight:var(--ns-weight-bold, 700);color:#111827;font-size:var(--ns-text-md, 0.875rem);}
+                .lf-comp-ai-doc-sub{font-size:var(--ns-text-md, 0.875rem);color:#667085;margin-top:3px;line-height:var(--ns-leading-ui, 1.35);}
+                .lf-comp-ai-doc-action{border:1px solid rgba(225,0,255,.28);background:#fff;color:#b000d4;border-radius:999px;font-weight:var(--ns-weight-bold, 700);font-size:var(--ns-text-md, 0.875rem);padding:8px 12px;white-space:nowrap;}
                 .lf-comp-ai-doc-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
                 .lf-comp-ai-doc-row{display:flex;align-items:center;gap:10px;border:1px solid rgba(15,23,42,.08);border-radius:14px;background:#fff;padding:9px 10px;}
                 .lf-comp-ai-doc-row-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
-                .lf-comp-ai-doc-row-main strong{font-size:.84rem;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-                .lf-comp-ai-doc-row-main span{font-size:.76rem;color:#667085;}
+                .lf-comp-ai-doc-row-main strong{font-size:var(--ns-text-md, 0.875rem);color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+                .lf-comp-ai-doc-row-main span{font-size:var(--ns-text-md, 0.875rem);color:#667085;}
             `;
             document.head.appendChild(style);
         }
@@ -2958,7 +2958,7 @@ function renderContentCompBadges(l){
             }
         );
     }
- 
+
     function makeTmpId(prefix){
         return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     }
@@ -5793,11 +5793,11 @@ function renderContentCompBadges(l){
         <meta charset="utf-8">
         <title>${safeTitle}</title>
         <style>
-        body{margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
+        body{margin:0;background:#f3f4f6;font-family:var(--ns-font-ui);color:#111827}
         .wrap{max-width:1100px;margin:24px auto;padding:0 18px}
-        h1{font-size:20px;margin:0 0 8px}
+        h1{font-size:var(--ns-title-md, 1.25rem);margin:0 0 8px}
         p{color:#64748b;margin:0 0 14px}
-        textarea{width:100%;height:72vh;border:1px solid #cbd5e1;border-radius:12px;padding:14px;font-family:Consolas,monospace;font-size:13px;box-sizing:border-box;background:#fff}
+        textarea{width:100%;height:72vh;border:1px solid #cbd5e1;border-radius:12px;padding:14px;font-family:var(--ns-font-mono);font-size:var(--ns-text-sm, 0.8125rem);box-sizing:border-box;background:#fff}
         </style>
         </head>
         <body>
@@ -5842,7 +5842,7 @@ function renderContentCompBadges(l){
         showLmsImportSubLabel();
 
         return res;
-    }        
+    }
 
     async function publishFormationLms(it){
         const effectifId = getEffectifId();
@@ -5992,7 +5992,7 @@ async function copyFormationHtmlLms(it){
 <meta charset="utf-8">
 <title>${htmlEsc(title || "Document PDF")}</title>
 <style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
+html,body{height:100%;margin:0;background:#f3f4f6;font-family:var(--ns-font-ui);color:#111827}
 .pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
 .pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.12);border-top-color:#c2410c;animation:pdfSpin .8s linear infinite}
 @keyframes pdfSpin{to{transform:rotate(360deg)}}
@@ -6155,7 +6155,7 @@ iframe{width:100%;height:100%;border:0;display:block}
         renderPlans();
         setSuccess("Plan pédagogique archivé");
     }
-    
+
   async function openFormationPdf(it){
     const effectifId = getEffectifId();
     const formId = String(it?.id_form || "").trim();
