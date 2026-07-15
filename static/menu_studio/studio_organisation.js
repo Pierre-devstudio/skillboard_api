@@ -16,7 +16,7 @@
     let _posteSortKey = "code";
     let _posteSortDir = "asc";
     let _postePage = 1;
-    const _postePageSize = 25;
+    let _postePageSize = 25;
 
     let _catalogSearch = "";
     let _catalogTimer = null;
@@ -1987,6 +1987,7 @@ body {
                 _posteSortKey = key;
                 _posteSortDir = "asc";
             }
+            _postePage = 1;
             renderPostes(portal);
         });
 
@@ -2012,14 +2013,27 @@ body {
         const bar = document.createElement("div");
         bar.className = "org-poste-pagination-bar";
 
-        const summary = document.createElement("div");
-        summary.className = "org-poste-pagination-summary";
-        const start = totalItems ? ((_postePage - 1) * _postePageSize) + 1 : 0;
-        const end = Math.min(totalItems, _postePage * _postePageSize);
-        summary.textContent = totalItems
-            ? `Affichage ${start}-${end} sur ${totalItems} poste${totalItems > 1 ? "s" : ""}`
-            : "Aucun poste à afficher.";
-        bar.appendChild(summary);
+        const pageSizeWrap = document.createElement("div");
+        pageSizeWrap.className = "org-poste-page-size-wrap";
+
+        const pageSizeSelect = document.createElement("select");
+        pageSizeSelect.className = "sb-select org-poste-page-size-select";
+        pageSizeSelect.setAttribute("aria-label", "Nombre de postes par page");
+        [25, 50, 100].forEach(size => {
+            const option = document.createElement("option");
+            option.value = String(size);
+            option.textContent = `${size} par page`;
+            option.selected = size === _postePageSize;
+            pageSizeSelect.appendChild(option);
+        });
+        pageSizeSelect.addEventListener("change", () => {
+            const nextSize = Number(pageSizeSelect.value || 25);
+            _postePageSize = [25, 50, 100].includes(nextSize) ? nextSize : 25;
+            _postePage = 1;
+            renderPostes(portal);
+        });
+        pageSizeWrap.appendChild(pageSizeSelect);
+        bar.appendChild(pageSizeWrap);
 
         const pagination = document.createElement("div");
         pagination.className = "org-poste-pagination";
@@ -2094,6 +2108,15 @@ body {
         });
         pagination.appendChild(next);
         bar.appendChild(pagination);
+
+        const summary = document.createElement("div");
+        summary.className = "org-poste-pagination-summary";
+        const start = totalItems ? ((_postePage - 1) * _postePageSize) + 1 : 0;
+        const end = Math.min(totalItems, _postePage * _postePageSize);
+        summary.textContent = totalItems
+            ? `Affichage ${start}-${end} sur ${totalItems} poste${totalItems > 1 ? "s" : ""}`
+            : "Aucun poste à afficher.";
+        bar.appendChild(summary);
 
         host.appendChild(bar);
     }
