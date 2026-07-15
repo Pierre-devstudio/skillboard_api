@@ -12901,3 +12901,63 @@ body.studio-poste-page-open .content{
     right:auto;
   }
 }
+
+/* ======================================================
+   Studio > Fiche poste dédiée V08 : lisibilité et centrage KPI
+   ====================================================== */
+#modalPoste.is-poste-page .studio-poste-kpi > .studio-poste-kpi__icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  padding:0;
+  line-height:1;
+}
+
+#modalPoste.is-poste-page .studio-poste-kpi > .studio-poste-kpi__icon > svg{
+  display:block;
+  width:24px;
+  height:24px;
+  margin:0;
+  transform:none;
+}
+
+#modalPoste.is-poste-page .studio-poste-kpi__label{
+  font-size:13px;
+}
+
+#modalPoste.is-poste-page .studio-poste-kpi__content strong{
+  font-size:24px;
+}
+
+#modalPoste.is-poste-page .studio-poste-kpi__content small{
+  font-size:12px;
+}
+
+#modalPoste.is-poste-page .studio-poste-overview-card .studio-rh-panel-title{
+  font-size:15px;
+}
+
+#modalPoste.is-poste-page .studio-poste-overview-text,
+#modalPoste.is-poste-page .studio-poste-activities,
+#modalPoste.is-poste-page .studio-poste-overview-list > div,
+#modalPoste.is-poste-page .studio-poste-overview dl{
+  font-size:13.5px;
+}
+
+#modalPoste.is-poste-page .studio-poste-overview-list strong,
+#modalPoste.is-poste-page .studio-poste-collaborator-name{
+  font-size:13px;
+}
+
+#modalPoste.is-poste-page .studio-poste-overview-badge,
+#modalPoste.is-poste-page .studio-poste-status-badge,
+#modalPoste.is-poste-page .studio-poste-constraint-badge,
+#modalPoste.is-poste-page .studio-poste-collaborator-status{
+  font-size:11.5px !important;
+}
+
+#modalPoste.is-poste-page .studio-poste-overview-link,
+#modalPoste.is-poste-page .studio-poste-collaborators__empty{
+  font-size:13px;
+}
