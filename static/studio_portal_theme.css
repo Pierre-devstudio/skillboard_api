@@ -5188,7 +5188,7 @@
 
 #view-organisation .org-poste-table th:nth-child(1),
 #view-organisation .org-poste-table td:nth-child(1){
-  width:112px;
+  width:96px;
 }
 
 #view-organisation .org-poste-table th:nth-child(3),
@@ -5214,6 +5214,10 @@
 #view-organisation .org-poste-title{
   color:#111827;
   font-weight:var(--ns-weight-semibold, 600);
+}
+
+#view-organisation .org-poste-mobile-service{
+  display:none;
 }
 
 #view-organisation .org-poste-sort-head{
@@ -5396,6 +5400,67 @@
   #view-organisation .org-poste-search{
     max-width:none;
     min-width:100%;
+  }
+
+  #view-organisation .org-poste-list{
+    overflow-x:hidden;
+  }
+
+  #view-organisation .org-poste-table{
+    min-width:0;
+    table-layout:fixed;
+  }
+
+  #view-organisation .org-poste-table th:nth-child(3),
+  #view-organisation .org-poste-table td:nth-child(3),
+  #view-organisation .org-poste-table th:nth-child(4),
+  #view-organisation .org-poste-table td:nth-child(4),
+  #view-organisation .org-poste-table th:nth-child(5),
+  #view-organisation .org-poste-table td:nth-child(5){
+    display:none;
+  }
+
+  #view-organisation .org-poste-table th:nth-child(1),
+  #view-organisation .org-poste-table td:nth-child(1){
+    width:82px;
+  }
+
+  #view-organisation .org-poste-table th:nth-child(6),
+  #view-organisation .org-poste-table td:nth-child(6){
+    width:112px;
+  }
+
+  #view-organisation .org-poste-table thead th,
+  #view-organisation .org-poste-table tbody td{
+    padding:7px 8px;
+  }
+
+  #view-organisation .org-poste-title{
+    overflow-wrap:anywhere;
+  }
+
+  #view-organisation .org-poste-mobile-service{
+    display:block;
+    margin-top:3px;
+    color:#64748b;
+    font-size:var(--ns-text-xs, 0.75rem);
+    font-weight:var(--ns-weight-regular, 400);
+  }
+
+  #view-organisation .org-poste-pagination-bar{
+    grid-template-columns:1fr;
+    justify-items:center;
+  }
+
+  #view-organisation .org-poste-page-size-wrap,
+  #view-organisation .org-poste-pagination-summary{
+    justify-self:center;
+    text-align:center;
+  }
+
+  #view-organisation .org-poste-pagination{
+    max-width:100%;
+    flex-wrap:wrap;
   }
 }
 

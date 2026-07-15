@@ -2190,7 +2190,15 @@ body {
 
             const titleCell = document.createElement("td");
             titleCell.className = "org-poste-title";
-            titleCell.textContent = p.intitule || "—";
+
+            const titleText = document.createElement("span");
+            titleText.textContent = p.intitule || "—";
+            titleCell.appendChild(titleText);
+
+            const mobileService = document.createElement("span");
+            mobileService.className = "org-poste-mobile-service";
+            mobileService.textContent = getPosteServiceLabel(p);
+            titleCell.appendChild(mobileService);
 
             const serviceCell = document.createElement("td");
             serviceCell.textContent = getPosteServiceLabel(p);
