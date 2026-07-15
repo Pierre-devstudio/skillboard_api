@@ -1,0 +1,56 @@
+:root {
+  --ns-font-ui: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  --ns-font-system: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  --ns-font-mono: "Roboto Mono", Consolas, Monaco, monospace;
+  --ns-font-signature: "Segoe Script", "Brush Script MT", cursive;
+
+  --ns-text-xs: 0.75rem;
+  --ns-text-sm: 0.8125rem;
+  --ns-text-md: 0.875rem;
+  --ns-text-lg: 0.9375rem;
+  --ns-title-sm: 1.0625rem;
+  --ns-title-md: 1.25rem;
+  --ns-title-lg: 1.5rem;
+  --ns-kpi: 1.75rem;
+
+  --ns-weight-regular: 400;
+  --ns-weight-medium: 500;
+  --ns-weight-semibold: 600;
+  --ns-weight-bold: 700;
+
+  --ns-leading-tight: 1.15;
+  --ns-leading-title: 1.25;
+  --ns-leading-ui: 1.35;
+  --ns-leading-body: 1.5;
+  --ns-leading-long: 1.6;
+
+  --ns-text-primary: #172033;
+  --ns-text-secondary: #475569;
+  --ns-text-muted: #64748b;
+  --ns-text-disabled: #7b8494;
+  --ns-text-on-dark: #ffffff;
+  --ns-text-link: #2258a5;
+  --ns-focus-ring: #1d4ed8;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--ns-font-ui, "Segoe UI Variable", "Segoe UI", Arial, sans-serif);
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--ns-font-mono, Consolas, Monaco, monospace);
+}
+
+.ns-signature,
+[data-signature],
+.signature-handwritten {
+  font-family: var(--ns-font-signature, "Segoe Script", "Brush Script MT", cursive);
+}
