@@ -1,7 +1,7 @@
-﻿/* ======================================================
-   portal_common.js (version "dÃ©finitive" et robuste)
+/* ======================================================
+   portal_common.js (version "définitive" et robuste)
    - Gestion menu / vues (HTML par menu)
-   - Chargement automatique du JS du menu si prÃ©sent
+   - Chargement automatique du JS du menu si présent
    - API helper + alert + topbar + sidebar mobile
    - Compat PortalCommon (pour skills_portal.js existant)
    ====================================================== */
@@ -10,7 +10,7 @@
   const DEFAULT_API_BASE =
     window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
-  // On merge pour ne pas exploser si tu as dÃ©jÃ  un objet portal quelque part
+  // On merge pour ne pas exploser si tu as déjà un objet portal quelque part
   const portal = window.portal || {};
 
   // -----------------------------
@@ -26,8 +26,8 @@
   }
 
   function ensureViewsMount() {
-    // On veut un endroit dÃ©diÃ© pour injecter les sections de menus
-    // PrioritÃ©: #viewsMount, sinon on le crÃ©e dans .content
+    // On veut un endroit dédié pour injecter les sections de menus
+    // Priorité: #viewsMount, sinon on le crée dans .content
     let mount = byId("viewsMount");
     if (mount) return mount;
 
@@ -39,7 +39,7 @@
     mount = document.createElement("div");
     mount.id = "viewsMount";
 
-    // Si alertContainer existe, on insÃ¨re juste aprÃ¨s (sinon fin)
+    // Si alertContainer existe, on insère juste après (sinon fin)
     const alert = byId("alertContainer");
     if (alert && alert.parentElement === content) {
       content.insertBefore(mount, alert.nextSibling);
@@ -72,19 +72,19 @@
 
 
   // -----------------------------
-  // RÃ©fÃ©rentiel niveaux de maÃ®trise Novoskill
-  // A = DÃ©butant | B = IntermÃ©diaire | C = AvancÃ© | D = Expert
+  // Référentiel niveaux de maîtrise Novoskill
+  // A = Débutant | B = Intermédiaire | C = Avancé | D = Expert
   // -----------------------------
   const NOVOSKILL_LEVELS = {
-    A: { code: "A", rank: 1, label: "DÃ©butant", minPct: 0, maxPct: 25, cls: "sb-badge-niv-a" },
-    B: { code: "B", rank: 2, label: "IntermÃ©diaire", minPct: 25, maxPct: 50, cls: "sb-badge-niv-b" },
-    C: { code: "C", rank: 3, label: "AvancÃ©", minPct: 50, maxPct: 75, cls: "sb-badge-niv-c" },
+    A: { code: "A", rank: 1, label: "Débutant", minPct: 0, maxPct: 25, cls: "sb-badge-niv-a" },
+    B: { code: "B", rank: 2, label: "Intermédiaire", minPct: 25, maxPct: 50, cls: "sb-badge-niv-b" },
+    C: { code: "C", rank: 3, label: "Avancé", minPct: 50, maxPct: 75, cls: "sb-badge-niv-c" },
     D: { code: "D", rank: 4, label: "Expert", minPct: 75, maxPct: 100, cls: "sb-badge-niv-d" }
   };
 
   function normalizeSkillLevel(value) {
     const raw = String(value ?? "").trim();
-    if (!raw || raw === "â€”") return "";
+    if (!raw || raw === "—") return "";
 
     const plain = raw
       .normalize("NFD")
@@ -113,7 +113,7 @@
 
   function skillLevelLabel(value) {
     const k = normalizeSkillLevel(value);
-    return k && NOVOSKILL_LEVELS[k] ? NOVOSKILL_LEVELS[k].label : (String(value ?? "").trim() || "â€”");
+    return k && NOVOSKILL_LEVELS[k] ? NOVOSKILL_LEVELS[k].label : (String(value ?? "").trim() || "—");
   }
 
   function skillLevelRank(value) {
@@ -169,7 +169,7 @@
       }
     } catch (_) {
       jwtToken = "";
-      // Pas de session / supabase pas initialisÃ©: on laisse vivre le legacy
+      // Pas de session / supabase pas initialisé: on laisse vivre le legacy
     }
 
     opts.headers = headers;
@@ -208,7 +208,7 @@
         resolve();
       };
       s.onerror = () => {
-        reject(new Error(`Script introuvable ou non chargÃ©: ${src}`));
+        reject(new Error(`Script introuvable ou non chargé: ${src}`));
       };
 
       document.head.appendChild(s);
@@ -223,14 +223,14 @@
   portal.context = portal.context || null;
 
   portal.menus = portal.menus || new Map(); // view -> { view, htmlUrl, jsUrl?, onShow? }
-  const _loadedViews = new Set(); // viewName dÃ©jÃ  injectÃ©e
+  const _loadedViews = new Set(); // viewName déjà injectée
 
   portal.registerMenu = function registerMenu(menu) {
     if (!menu || !menu.view) return;
 
     const m = Object.assign({}, menu);
 
-    // Si jsUrl pas fourni, on tente un auto-guess (sans lâ€™imposer).
+    // Si jsUrl pas fourni, on tente un auto-guess (sans l’imposer).
     // Exemple: /menus/skills_organisation.html -> /menus/skills_organisation.js
     if (!m.jsUrl && m.htmlUrl && m.htmlUrl.endsWith(".html")) {
       m.jsUrl = m.htmlUrl.slice(0, -5) + ".js";
@@ -278,7 +278,7 @@
     const tmp = document.createElement("div");
     tmp.innerHTML = text;
 
-    // Si la section attendue nâ€™existe pas, on wrap (Ã§a Ã©vite le â€œrien ne sâ€™afficheâ€)
+    // Si la section attendue n’existe pas, on wrap (ça évite le “rien ne s’affiche”)
     const expectedId = `view-${viewName}`;
     const expected = tmp.querySelector(`#${CSS.escape(expectedId)}`);
 
@@ -365,8 +365,8 @@
     if (!portal.contactId) {
       const loginUrl = (window.PORTAL_LOGIN_URL || "").toString().trim();
       const msg = loginUrl
-        ? `Identifiant manquant dans lâ€™URL. <a href="${loginUrl}">Se connecter</a>`
-        : "Identifiant manquant dans lâ€™URL. Le lien utilisÃ© nâ€™est pas valide.";
+        ? `Identifiant manquant dans l’URL. <a href="${loginUrl}">Se connecter</a>`
+        : "Identifiant manquant dans l’URL. Le lien utilisé n’est pas valide.";
 
       showAlert("error", msg);
       return;
@@ -398,7 +398,7 @@
       });
     });
 
-    // Vue par dÃ©faut: item dÃ©jÃ  "active" sinon "dashboard" sinon premier menu
+    // Vue par défaut: item déjà "active" sinon "dashboard" sinon premier menu
     const active = document.querySelector(".menu-item.active");
     let defaultView = active ? active.getAttribute("data-view") : null;
 
@@ -415,10 +415,10 @@
   };
 
     // ======================================================
-  // SERVICES (filtre service) â€” point unique de gestion
+  // SERVICES (filtre service) — point unique de gestion
   // - Source: GET /skills/organisation/services/{id_contact}
-  // - Objectif: plus aucun menu ne 'rÃ©invente' le select service
-  // - Ordre: Tous les services -> services -> Non liÃ©
+  // - Objectif: plus aucun menu ne 'réinvente' le select service
+  // - Ordre: Tous les services -> services -> Non lié
   // ======================================================
 
   const SERVICE_ALL_ID = "__ALL__";
@@ -427,7 +427,7 @@
   function _normServiceId(raw) {
     const s = (raw ?? "").toString().trim();
     if (!s) return SERVICE_ALL_ID;
-    if (s === "__TOUS__") return SERVICE_ALL_ID; // legacy tolÃ©rÃ©
+    if (s === "__TOUS__") return SERVICE_ALL_ID; // legacy toléré
     if (s === SERVICE_ALL_ID) return SERVICE_ALL_ID;
     if (s === SERVICE_NON_LIE_ID) return SERVICE_NON_LIE_ID;
     return s;
@@ -477,7 +477,7 @@
     const allowIndent = options.allowIndent !== false;
 
     const labelAll = options.labelAll || "Tous les services";
-    const labelNonLie = options.labelNonLie || "Non liÃ©";
+    const labelNonLie = options.labelNonLie || "Non lié";
 
     const storageKey = options.storageKey || null;
     const preferId = _normServiceId(
@@ -486,7 +486,7 @@
       SERVICE_ALL_ID
     );
 
-    // DÃ©doublonnage + sÃ©paration ALL / NON_LIE / services
+    // Dédoublonnage + séparation ALL / NON_LIE / services
     let allItem = null;
     let nonItem = null;
     const services = [];
@@ -499,10 +499,10 @@
       const name = (x.nom_service ?? id).toString().trim();
       const depth = Number.isFinite(x.depth) ? x.depth : 0;
 
-      // garde-fou anti-â€œTous les servicesâ€ injectÃ© cÃ´tÃ© mÃ©tier
+      // garde-fou anti-“Tous les services” injecté côté métier
       if (id !== SERVICE_ALL_ID && name.toLowerCase() === "tous les services") return;
-      if (id !== SERVICE_NON_LIE_ID && name.toLowerCase() === "non liÃ©") {
-        // on laisse passer s'il est vraiment "non liÃ©" mÃ©tier, sinon on s'aligne sur l'id spÃ©cial
+      if (id !== SERVICE_NON_LIE_ID && name.toLowerCase() === "non lié") {
+        // on laisse passer s'il est vraiment "non lié" métier, sinon on s'aligne sur l'id spécial
       }
 
       if (id === SERVICE_ALL_ID) {
@@ -531,7 +531,7 @@
       opt.value = item.id_service;
       const depth = Math.min(6, item.depth || 0);
       const indent = allowIndent && depth > 0 ? "\u00A0\u00A0".repeat(depth) : ""; // NBSP
-      const marker = allowIndent && depth > 0 ? "â€º " : "";
+      const marker = allowIndent && depth > 0 ? "› " : "";
       const prefix = indent + marker;
 
       opt.textContent = prefix + item.nom_service;
@@ -606,9 +606,9 @@
   window.portal = portal;
   window.PortalCommon = portal;
 
-  // Auto-init (si DOM prÃªt)
+  // Auto-init (si DOM prêt)
   window.addEventListener("DOMContentLoaded", () => {
-    // Si tu veux dÃ©sactiver lâ€™auto-init: window.PORTAL_NO_AUTOINIT = true
+    // Si tu veux désactiver l’auto-init: window.PORTAL_NO_AUTOINIT = true
     if (window.PORTAL_NO_AUTOINIT) return;
     portal.init();
   });

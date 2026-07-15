@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let _bound = false;
   let _loaded = false;
   let _items = [];
@@ -63,7 +63,7 @@
   function setStatus(msg){
     const el = byId("clientsStatus");
     if (!el) return;
-    el.textContent = msg || "â€”";
+    el.textContent = msg || "—";
   }
 
     function setValueOrEmpty(id, value){
@@ -212,12 +212,12 @@
     const v = (idcc || "").trim();
     if (!hint) return;
     if (!v) {
-      hint.textContent = "â€”";
+      hint.textContent = "—";
       return;
     }
     try {
       const r = await portal.apiJson(`${portal.apiBase}/studio/referentiels/idcc/${encodeURIComponent(v)}`);
-      hint.textContent = r.libelle || "â€”";
+      hint.textContent = r.libelle || "—";
     } catch (_) {
       hint.textContent = "IDCC introuvable";
     }
@@ -228,12 +228,12 @@
     const v = (codeApe || "").trim();
     if (!hint) return;
     if (!v) {
-      hint.textContent = "â€”";
+      hint.textContent = "—";
       return;
     }
     try {
       const r = await portal.apiJson(`${portal.apiBase}/studio/referentiels/ape/${encodeURIComponent(v)}`);
-      hint.textContent = r.intitule_ape || "â€”";
+      hint.textContent = r.intitule_ape || "—";
     } catch (_) {
       hint.textContent = "Code APE invalide ou introuvable";
     }
@@ -305,9 +305,9 @@
     setInputValueIfPresent("frm_pays_ent", item.pays_ent);
 
     setInputValueIfPresent("frm_idcc", item.idcc);
-    byId("frm_idcc_hint").textContent = item.idcc_libelle || "â€”";
+    byId("frm_idcc_hint").textContent = item.idcc_libelle || "—";
     setInputValueIfPresent("frm_code_ape_ent", formatApeInput(item.code_ape_ent));
-    byId("frm_ape_hint").textContent = item.code_ape_intitule || "â€”";
+    byId("frm_ape_hint").textContent = item.code_ape_intitule || "—";
   }
 
   async function loadPublicCompanyIntoClientForm(portal){
@@ -315,12 +315,12 @@
 
     const query = buildPublicClientQuery();
     if (!query) {
-      setClientInlineMsg("clientModalSaveMsg", "Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les donnÃ©es officielles.", true);
+      setClientInlineMsg("clientModalSaveMsg", "Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.", true);
       return;
     }
 
     const btn = byId("btnClientLoadPublicData");
-    const initialText = btn?.textContent || "Charger les donnÃ©es officielles";
+    const initialText = btn?.textContent || "Charger les données officielles";
 
     try {
       _publicLookupLoading = true;
@@ -331,12 +331,12 @@
       }
 
       const item = await fetchPublicCompanyData(portal, query);
-      if (!item) throw new Error("Aucune donnÃ©e publique rÃ©cupÃ©rable.");
+      if (!item) throw new Error("Aucune donnée publique récupérable.");
 
       applyPublicCompanyToClientForm(item);
       setClientTab("identification");
     } catch (e) {
-      setClientInlineMsg("clientModalSaveMsg", e.message || "Impossible de charger les donnÃ©es officielles.", true);
+      setClientInlineMsg("clientModalSaveMsg", e.message || "Impossible de charger les données officielles.", true);
     } finally {
       _publicLookupLoading = false;
       if (btn) {
@@ -399,10 +399,10 @@
       img.style.display = "none";
     }
     if (empty) {
-      empty.textContent = _modalClientId ? "Aucun logo enregistrÃ©." : "Enregistrez dâ€™abord la structure pour importer un logo.";
+      empty.textContent = _modalClientId ? "Aucun logo enregistré." : "Enregistrez d’abord la structure pour importer un logo.";
       empty.style.display = "block";
     }
-    if (meta) meta.textContent = _modalClientId ? "Le logo sera rÃ©utilisÃ© dans les sorties PDF de cette structure." : "Logo disponible aprÃ¨s le premier enregistrement.";
+    if (meta) meta.textContent = _modalClientId ? "Le logo sera réutilisé dans les sorties PDF de cette structure." : "Logo disponible après le premier enregistrement.";
     const disabled = !_modalClientId;
     if (byId("btnClientUploadLogo")) byId("btnClientUploadLogo").disabled = disabled;
     if (byId("btnClientRemoveLogo")) byId("btnClientRemoveLogo").disabled = disabled || !_clientLogoMeta?.has_logo;
@@ -434,7 +434,7 @@
     if (!_modalClientId || !_clientLogoMeta?.has_logo) return;
 
     if (empty) {
-      empty.textContent = "Chargement du logoâ€¦";
+      empty.textContent = "Chargement du logo…";
       empty.style.display = "block";
     }
 
@@ -456,10 +456,10 @@
       if (_clientLogoMeta.filename) parts.push(_clientLogoMeta.filename);
       if (_clientLogoMeta.mime_type) parts.push(String(_clientLogoMeta.mime_type).replace("image/", "").toUpperCase());
       if (_clientLogoMeta.size_bytes) parts.push(formatLogoBytes(_clientLogoMeta.size_bytes));
-      if (meta) meta.textContent = parts.length ? parts.join(" Â· ") : "Logo enregistrÃ©.";
+      if (meta) meta.textContent = parts.length ? parts.join(" · ") : "Logo enregistré.";
     } catch (e) {
       if (empty) {
-        empty.textContent = e.message || "Impossible dâ€™afficher le logo.";
+        empty.textContent = e.message || "Impossible d’afficher le logo.";
         empty.style.display = "block";
       }
     }
@@ -475,7 +475,7 @@
     const name = (file.name || "").toLowerCase();
     const type = (file.type || "").toLowerCase();
     const okType = type === "image/png" || type === "image/jpeg" || name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg");
-    if (!okType) throw new Error("Format logo non supportÃ©. Utilise un fichier PNG ou JPG.");
+    if (!okType) throw new Error("Format logo non supporté. Utilise un fichier PNG ou JPG.");
     if (file.size > 2 * 1024 * 1024) throw new Error("Logo trop lourd. Limite : 2 Mo.");
 
     const fd = new FormData();
@@ -501,7 +501,7 @@
   }
 
   function fullContactName(c){
-    return [c.civ_ca, c.prenom_ca, c.nom_ca].filter(Boolean).join(" ").trim() || "â€”";
+    return [c.civ_ca, c.prenom_ca, c.nom_ca].filter(Boolean).join(" ").trim() || "—";
   }
 
   function renderClientContacts(){
@@ -515,7 +515,7 @@
     if (locked) locked.classList.toggle("is-hidden", hasId);
     if (wrap) wrap.classList.toggle("is-hidden", !hasId);
     if (btn) btn.disabled = !hasId;
-    if (sub) sub.textContent = hasId ? `${_clientContacts.length} contact(s) administratif(s).` : "Enregistrez dâ€™abord la structure pour ajouter des contacts.";
+    if (sub) sub.textContent = hasId ? `${_clientContacts.length} contact(s) administratif(s).` : "Enregistrez d’abord la structure pour ajouter des contacts.";
     if (!body) return;
 
     if (!hasId) {
@@ -524,18 +524,18 @@
     }
 
     if (!_clientContacts.length) {
-      body.innerHTML = `<tr><td colspan="5" class="muted">Aucun contact administratif enregistrÃ©.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="5" class="muted">Aucun contact administratif enregistré.</td></tr>`;
       return;
     }
 
     body.innerHTML = _clientContacts.map(c => {
       const telParts = [c.tel_ca, c.tel2_ca].filter(Boolean).map(esc);
-      const coord = [c.mail_ca ? esc(c.mail_ca) : "", telParts.join(" / ")].filter(Boolean).join("<br>") || "â€”";
-      const principal = c.est_principal ? `<span class="sb-badge sb-badge--accent-soft">Contact principal</span>` : `<span class="muted">â€”</span>`;
+      const coord = [c.mail_ca ? esc(c.mail_ca) : "", telParts.join(" / ")].filter(Boolean).join("<br>") || "—";
+      const principal = c.est_principal ? `<span class="sb-badge sb-badge--accent-soft">Contact principal</span>` : `<span class="muted">—</span>`;
       return `
         <tr data-contact-id="${esc(c.id_contact)}">
           <td><div class="sb-client-contact-name">${esc(fullContactName(c))}</div></td>
-          <td>${esc(c.role_ca || "â€”")}</td>
+          <td>${esc(c.role_ca || "—")}</td>
           <td>${coord}</td>
           <td>${principal}</td>
           <td class="sb-table-action-cell">
@@ -580,9 +580,9 @@
     body.innerHTML = rows.map(it => `
       <tr>
         <td><input type="checkbox" class="js-contact-effectif-check" value="${esc(it.id_effectif)}" /></td>
-        <td>${esc([it.prenom_effectif, it.nom_effectif].filter(Boolean).join(" ") || "â€”")}</td>
-        <td>${esc(it.role_effectif || "â€”")}</td>
-        <td>${esc(it.email_effectif || "â€”")}</td>
+        <td>${esc([it.prenom_effectif, it.nom_effectif].filter(Boolean).join(" ") || "—")}</td>
+        <td>${esc(it.role_effectif || "—")}</td>
+        <td>${esc(it.email_effectif || "—")}</td>
       </tr>
     `).join("");
   }
@@ -601,7 +601,7 @@
     byId("btnClientContactAddSelected")?.classList.toggle("is-hidden", _contactManualVisible);
     byId("btnClientContactManualSave")?.classList.toggle("is-hidden", !_contactManualVisible);
     const btn = byId("btnClientContactManualToggle");
-    if (btn) btn.textContent = _contactManualVisible ? "Revenir Ã  la sÃ©lection" : "CrÃ©er manuellement";
+    if (btn) btn.textContent = _contactManualVisible ? "Revenir à la sélection" : "Créer manuellement";
   }
 
   function clearManualContactForm(){
@@ -628,7 +628,7 @@
     const ids = Array.from(document.querySelectorAll(".js-contact-effectif-check:checked"))
       .map(x => (x.value || "").trim()).filter(Boolean);
     if (!ids.length) {
-      setClientInlineMsg("clientContactAddMsg", "SÃ©lectionne au moins un effectif.", true);
+      setClientInlineMsg("clientContactAddMsg", "Sélectionne au moins un effectif.", true);
       return;
     }
     await portal.apiJson(
@@ -656,7 +656,7 @@
   async function createManualContact(portal){
     const payload = collectManualContactPayload();
     if (!payload.nom_ca || !payload.prenom_ca) {
-      setClientInlineMsg("clientContactAddMsg", "Nom et prÃ©nom sont obligatoires.", true);
+      setClientInlineMsg("clientContactAddMsg", "Nom et prénom sont obligatoires.", true);
       return;
     }
     await portal.apiJson(
@@ -707,7 +707,7 @@
     if (!_editingContactId) return;
     const payload = collectEditContactPayload();
     if (!payload.nom_ca || !payload.prenom_ca) {
-      setClientInlineMsg("clientContactEditMsg", "Nom et prÃ©nom sont obligatoires.", true);
+      setClientInlineMsg("clientContactEditMsg", "Nom et prénom sont obligatoires.", true);
       return;
     }
     await portal.apiJson(
@@ -723,16 +723,16 @@
         if (!el) return;
 
         if (_ownerFeatures.gestion_acces_studio_autorisee) {
-            el.textContent = `Votre abonnement permet de dÃ©lÃ©guer des accÃ¨s Studio. Quota dÃ©clarÃ© : ${_ownerFeatures.nb_acces_studio_max || 0}.`;
+            el.textContent = `Votre abonnement permet de déléguer des accès Studio. Quota déclaré : ${_ownerFeatures.nb_acces_studio_max || 0}.`;
             return;
         }
 
         if (_ownerFeatures.studio_actif) {
-            el.textContent = "Lâ€™abonnement Studio est actif sur votre pÃ©rimÃ¨tre, mais la dÃ©lÃ©gation des accÃ¨s Studio nâ€™est pas autorisÃ©e.";
+            el.textContent = "L’abonnement Studio est actif sur votre périmètre, mais la délégation des accès Studio n’est pas autorisée.";
             return;
         }
 
-        el.textContent = "Lâ€™abonnement Studio nâ€™est pas actif sur votre pÃ©rimÃ¨tre. La gestion du portefeuille client reste disponible.";
+        el.textContent = "L’abonnement Studio n’est pas actif sur votre périmètre. La gestion du portefeuille client reste disponible.";
     }
 
     function renderKpis(summary){
@@ -771,7 +771,7 @@
     }
 
     btn.style.display = "";
-    btn.textContent = _showAllRows ? "RÃ©duire" : "Afficher tout";
+    btn.textContent = _showAllRows ? "Réduire" : "Afficher tout";
   }
 
   function getProfilStructInfo(value){
@@ -790,7 +790,7 @@
       return { label: "Holding multi-entreprise + multi-site", cls: "sb-client-profile-dot--holding-multi-site" };
     }
 
-    return { label: "Profil non renseignÃ©", cls: "sb-client-profile-dot--unknown" };
+    return { label: "Profil non renseigné", cls: "sb-client-profile-dot--unknown" };
   }
 
   function getStudioOwnerInfo(item){
@@ -805,7 +805,7 @@
 
     return {
       active: false,
-      title: "Pas dâ€™abonnement Novoskill Studio"
+      title: "Pas d’abonnement Novoskill Studio"
     };
   }
 
@@ -940,8 +940,8 @@
           <td>
             <div class="sb-client-table-name">${esc(it.nom_ent || "Entreprise sans nom")}</div>
           </td>
-          <td>${esc(it.cp_ent || "â€”")}</td>
-          <td>${esc(it.ville_ent || "â€”")}</td>
+          <td>${esc(it.cp_ent || "—")}</td>
+          <td>${esc(it.ville_ent || "—")}</td>
           <td style="text-align:center;">
             <span
               class="sb-client-profile-dot ${profile.cls}"
@@ -965,7 +965,7 @@
                   class="sb-client-studio-flag sb-client-studio-flag--off"
                   title="${esc(studio.title)}"
                   aria-label="${esc(studio.title)}"
-                >â€”</span>
+                >—</span>
               `
             }
           </td>
@@ -998,8 +998,8 @@
                 class="sb-icon-btn"
                 data-action="edit"
                 data-id="${esc(it.id_ent)}"
-                title="Ouvrir lâ€™espace de gestion"
-                aria-label="Ouvrir lâ€™espace de gestion"
+                title="Ouvrir l’espace de gestion"
+                aria-label="Ouvrir l’espace de gestion"
               >
                 ${getPencilIconSvg()}
               </button>
@@ -1070,7 +1070,7 @@
   }
 
   async function loadList(portal, preferredId){
-    setStatus("Chargementâ€¦");
+    setStatus("Chargement…");
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error("Owner manquant (?id=...).");
 
@@ -1139,12 +1139,12 @@
     let v = (value || "").toString().trim().toLowerCase();
     if (!v) return "";
     const replacements = {
-      "Ã©": "e", "Ã¨": "e", "Ãª": "e", "Ã«": "e",
-      "Ã ": "a", "Ã¢": "a", "Ã¤": "a",
-      "Ã¹": "u", "Ã»": "u", "Ã¼": "u",
-      "Ã®": "i", "Ã¯": "i",
-      "Ã´": "o", "Ã¶": "o",
-      "Ã§": "c",
+      "é": "e", "è": "e", "ê": "e", "ë": "e",
+      "à": "a", "â": "a", "ä": "a",
+      "ù": "u", "û": "u", "ü": "u",
+      "î": "i", "ï": "i",
+      "ô": "o", "ö": "o",
+      "ç": "c",
       "-": "_", " ": "_"
     };
     Object.keys(replacements).forEach(k => { v = v.split(k).join(replacements[k]); });
@@ -1188,7 +1188,7 @@
     const sel = byId("frmCommercialOfferCode");
     if (!sel) return;
 
-    sel.innerHTML = `<option value="">SÃ©lectionner un abonnement</option>`;
+    sel.innerHTML = `<option value="">Sélectionner un abonnement</option>`;
     (_commercialOffers || []).forEach(it => {
       const opt = document.createElement("option");
       opt.value = it.offer_code || "";
@@ -1246,35 +1246,35 @@
         label: "Studio",
         active: getCheckboxValue("frmCommercialStudioActif"),
         inputId: "frmCommercialNbStudio",
-        unit: "accÃ¨s",
+        unit: "accès",
       },
       {
         code: "insights",
         label: "Insights",
         active: getCheckboxValue("frmCommercialInsightsActif"),
         inputId: "frmCommercialNbInsights",
-        unit: "accÃ¨s",
+        unit: "accès",
       },
       {
         code: "people",
         label: "People",
         active: getCheckboxValue("frmCommercialPeopleActif"),
         inputId: "frmCommercialNbPeople",
-        unit: "accÃ¨s",
+        unit: "accès",
       },
       {
         code: "learn",
         label: "Learn",
         active: getCheckboxValue("frmCommercialLearnActif"),
         inputId: "frmCommercialNbLearn",
-        unit: "accÃ¨s",
+        unit: "accès",
       },
       {
         code: "partner",
         label: "Partner",
         active: getCheckboxValue("frmCommercialPartnerActif"),
         inputId: "frmCommercialNbPartner",
-        unit: "accÃ¨s",
+        unit: "accès",
       },
       {
         code: "studio_reseau",
@@ -1300,7 +1300,7 @@
     const html = getCommercialConsoleConfigs().map(cfg => {
       const value = cfg.active ? getNumberValue(cfg.inputId) : 0;
       const details = cfg.active
-        ? `${value} ${esc(cfg.unit)}${cfg.extraText ? ` Â· ${esc(cfg.extraText)}` : ""}`
+        ? `${value} ${esc(cfg.unit)}${cfg.extraText ? ` · ${esc(cfg.extraText)}` : ""}`
         : "Non inclus";
       return `
         <div class="sb-commercial-summary-card ${cfg.active ? "is-active" : ""}">
@@ -1310,7 +1310,7 @@
       `;
     }).join("");
 
-    wrap.innerHTML = html || `<div class="card-sub">Aucun abonnement sÃ©lectionnÃ©.</div>`;
+    wrap.innerHTML = html || `<div class="card-sub">Aucun abonnement sélectionné.</div>`;
   }
 
   function commercialExtensionTargetInput(ext){
@@ -1330,7 +1330,7 @@
     const scope = (ext?.extension_scope || "").toString().trim().toLowerCase();
     if (scope === "clients") return "clients actifs";
     if (scope === "sites") return "sites";
-    return "accÃ¨s";
+    return "accès";
   }
 
   function renderCommercialExtensions(){
@@ -1359,7 +1359,7 @@
           </div>
           <div class="sb-commercial-extension-total">Total : ${total} ${esc(unit)}</div>
           <div class="sb-commercial-extension-actions">
-            <button type="button" class="sb-stepper-btn" data-commercial-extension="${esc(ext.extension_code || "")}" data-commercial-extension-sign="-1">âˆ’</button>
+            <button type="button" class="sb-stepper-btn" data-commercial-extension="${esc(ext.extension_code || "")}" data-commercial-extension-sign="-1">−</button>
             <button type="button" class="sb-stepper-btn" data-commercial-extension="${esc(ext.extension_code || "")}" data-commercial-extension-sign="1">+</button>
           </div>
         </div>
@@ -1476,8 +1476,8 @@
     }
     if (byId("clientCommercialModalSub")) {
       byId("clientCommercialModalSub").textContent = item?.nom_ent
-        ? `ParamÃ©trage commercial de ${item.nom_ent}.`
-        : "ParamÃ©trage commercial du client sÃ©lectionnÃ©.";
+        ? `Paramétrage commercial de ${item.nom_ent}.`
+        : "Paramétrage commercial du client sélectionné.";
     }
 
     fillCommercialForm(detail || {});
@@ -1518,7 +1518,7 @@
 
     const payload = collectCommercialPayload();
     if (!payload.offer_code) {
-      portal.showAlert("error", "SÃ©lectionne un abonnement.");
+      portal.showAlert("error", "Sélectionne un abonnement.");
       return;
     }
 
@@ -1550,7 +1550,7 @@
 
     const item = (_items || []).find(x => x.id_ent === _commercialClientId) || {};
     const nom = item?.nom_ent || "ce client";
-    const ok = window.confirm(`Retirer les droits et lâ€™abonnement actifs de "${nom}" ?`);
+    const ok = window.confirm(`Retirer les droits et l’abonnement actifs de "${nom}" ?`);
     if (!ok) return;
 
     await portal.apiJson(
@@ -1712,7 +1712,7 @@
         if (seq !== _clientPostalAssistSeq) return;
         applyClientPostalRowsFromCity(cityValue, rows);
       } catch (_) {
-        // Lookup rÃ©fÃ©rentiel silencieux : pas de message d'erreur dans le modal pour une aide de saisie.
+        // Lookup référentiel silencieux : pas de message d'erreur dans le modal pour une aide de saisie.
       }
     }, 180);
   }
@@ -2012,8 +2012,8 @@
   function clearModalHints(){
     const idccHint = byId("frm_idcc_hint");
     const apeHint = byId("frm_ape_hint");
-    if (idccHint) idccHint.textContent = "â€”";
-    if (apeHint) apeHint.textContent = "â€”";
+    if (idccHint) idccHint.textContent = "—";
+    if (apeHint) apeHint.textContent = "—";
   }
 
   async function refreshClientModalLinkedData(portal){
@@ -2037,8 +2037,8 @@
     const label = isOwnerMultiSite() ? "site" : "client";
     byId("clientModalTitle").textContent = _modalMode === "create" ? `Ajouter un ${label}` : `Modifier le ${label}`;
     byId("clientModalSub").textContent = _modalMode === "create"
-      ? "CrÃ©ation dâ€™une fiche structure rattachÃ©e Ã  lâ€™owner courant. Logo et contacts seront disponibles aprÃ¨s le premier enregistrement."
-      : "Mise Ã  jour de la fiche structure.";
+      ? "Création d’une fiche structure rattachée à l’owner courant. Logo et contacts seront disponibles après le premier enregistrement."
+      : "Mise à jour de la fiche structure.";
 
     setValueOrEmpty("frm_nom_ent", detail?.nom_ent);
     setValueOrEmpty("frm_siret_ent", detail?.siret_ent);
@@ -2070,8 +2070,8 @@
 
     syncGroupFields();
     clearModalHints();
-    if (detail?.idcc) byId("frm_idcc_hint").textContent = detail.idcc_libelle || "â€”";
-    if (detail?.code_ape_ent) byId("frm_ape_hint").textContent = detail.code_ape_intitule || "â€”";
+    if (detail?.idcc) byId("frm_idcc_hint").textContent = detail.idcc_libelle || "—";
+    if (detail?.code_ape_ent) byId("frm_ape_hint").textContent = detail.code_ape_intitule || "—";
     updateOpcoSiteLink();
 
     renderClientLogoLocked();
@@ -2122,7 +2122,7 @@ if (_modalClientId) {
     const ownerId = getOwnerId();
     const payload = collectFormPayload();
     if (!payload.nom_ent) {
-      setClientInlineMsg("clientModalSaveMsg", "Le nom de lâ€™entreprise est obligatoire.", true);
+      setClientInlineMsg("clientModalSaveMsg", "Le nom de l’entreprise est obligatoire.", true);
       setClientTab("identification");
       return;
     }
@@ -2141,7 +2141,7 @@ if (_modalClientId) {
         _modalMode = "edit";
         _modalClientId = detail?.id_ent || null;
         byId("clientModalTitle").textContent = isOwnerMultiSite() ? "Modifier le site" : "Modifier le client";
-        byId("clientModalSub").textContent = "Structure enregistrÃ©e. Logo et contacts sont maintenant disponibles.";
+        byId("clientModalSub").textContent = "Structure enregistrée. Logo et contacts sont maintenant disponibles.";
       } else {
         detail = await portal.apiJson(`${portal.apiBase}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(_modalClientId)}`, {
           method: "POST",
@@ -2150,7 +2150,7 @@ if (_modalClientId) {
         });
       }
 
-      setClientInlineMsg("clientModalSaveMsg", "EnregistrÃ© avec succÃ¨s", false);
+      setClientInlineMsg("clientModalSaveMsg", "Enregistré avec succès", false);
       portal.showAlert("", "");
       await loadList(portal, detail?.id_ent || _modalClientId);
       await refreshClientModalLinkedData(portal);
@@ -2285,7 +2285,7 @@ if (_modalClientId) {
         setClientInlineMsg("clientModalSaveMsg", "", false);
         await uploadClientLogo(portal, file);
       } catch (e) {
-        setClientInlineMsg("clientModalSaveMsg", e.message || "Erreur lors de lâ€™import du logo.", true);
+        setClientInlineMsg("clientModalSaveMsg", e.message || "Erreur lors de l’import du logo.", true);
       } finally {
         ev.target.value = "";
       }

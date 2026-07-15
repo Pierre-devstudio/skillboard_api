@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const P = window.PeoplePortal;
   if (!P) return;
   let cache = null;
@@ -22,12 +22,12 @@
     const el = byId("ppBreakList");
     if (!el) return;
     if (!rows.length) {
-      el.innerHTML = P.itemEmpty("Aucune indisponibilitÃ© dÃ©clarÃ©e.");
+      el.innerHTML = P.itemEmpty("Aucune indisponibilité déclarée.");
       return;
     }
     el.innerHTML = rows.map(r => `<div class="pp-list-row">
-      <div><div class="pp-row-title">${P.fmtDate(r.date_debut)} â†’ ${P.fmtDate(r.date_fin)}</div><div class="pp-row-sub">IndisponibilitÃ© dÃ©clarÃ©e</div></div>
-      <button class="pp-icon-btn" data-break-archive="${P.escapeHtml(r.id_break)}" title="Archiver">ðŸ—‘</button>
+      <div><div class="pp-row-title">${P.fmtDate(r.date_debut)} → ${P.fmtDate(r.date_fin)}</div><div class="pp-row-sub">Indisponibilité déclarée</div></div>
+      <button class="pp-icon-btn" data-break-archive="${P.escapeHtml(r.id_break)}" title="Archiver">🗑</button>
     </div>`).join("");
     el.querySelectorAll("[data-break-archive]").forEach(btn => {
       btn.onclick = async () => {
@@ -42,12 +42,12 @@
     const el = byId("ppTrainingList");
     if (!el) return;
     if (!rows.length) {
-      el.innerHTML = P.itemEmpty("Aucune formation programmÃ©e.");
+      el.innerHTML = P.itemEmpty("Aucune formation programmée.");
       return;
     }
     el.innerHTML = rows.map(r => `<div class="pp-list-row">
-      <div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} â†’ ${P.fmtDate(r.date_fin_formation)} Â· ${P.escapeHtml(r.organisme || "Organisme non renseignÃ©")}</div></div>
-      ${P.badge(r.etat_action || r.etat_invitation || "programmÃ©", "soft")}
+      <div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} → ${P.fmtDate(r.date_fin_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>
+      ${P.badge(r.etat_action || r.etat_invitation || "programmé", "soft")}
     </div>`).join("");
   }
 
@@ -69,7 +69,7 @@
     const msg = byId("ppBreakMsg");
     const start = byId("ppBreakStart")?.value || "";
     const end = byId("ppBreakEnd")?.value || "";
-    if (msg) msg.textContent = "Enregistrementâ€¦";
+    if (msg) msg.textContent = "Enregistrement…";
     const res = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}/breaks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

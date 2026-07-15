@@ -1,13 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Novoskill Studio - Espace de gestion</title>
 
-
-  <link rel="stylesheet" href="novoskill_typography.css">
-<link rel="icon" href="/favicon-studio.ico" sizes="any">
+  <link rel="icon" href="/favicon-studio.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-studio-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-studio-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-studio.png">
@@ -28,14 +26,14 @@
         <div class="cs-subproduct-label">Espace de gestion</div>
       </div>
 
-      <div class="cs-client-mini" id="csClientMini">Chargementâ€¦</div>
+      <div class="cs-client-mini" id="csClientMini">Chargement…</div>
 
       <nav class="menu cs-client-menu">
         <div class="menu-item active" data-section="dashboard">Dashboard</div>
         <div class="menu-item" data-section="fiche" id="navCompanySheetLabel">Fiche entreprise</div>
         <div class="menu-item" data-section="organisation">Organisation</div>
         <div class="menu-item" data-section="collaborateurs">Collaborateurs</div>
-        <div class="menu-item" data-section="evaluations">Ã‰valuation des compÃ©tences</div>
+        <div class="menu-item" data-section="evaluations">Évaluation des compétences</div>
         <div class="menu-item" data-section="simulations-rh">Simulations RH</div>
         <div class="menu-item" data-section="besoins-formations">Besoins & formations</div>
         <div class="menu-item" data-section="accompagnement">Accompagnement Novoskill</div>
@@ -46,25 +44,25 @@
       <header class="cs-topbar">
         <div>
           <div class="cs-kicker">Espace de gestion</div>
-          <h1 class="cs-title" id="csClientTitle">Chargementâ€¦</h1>
-          <div class="cs-sub" id="csClientSub">Initialisation du contexte clientâ€¦</div>
+          <h1 class="cs-title" id="csClientTitle">Chargement…</h1>
+          <div class="cs-sub" id="csClientSub">Initialisation du contexte client…</div>
         </div>
         <div class="cs-topbar-actions">
           <button type="button" class="sb-btn sb-btn--secondary" id="btnOrgHistory">Historique</button>
-          <button type="button" class="sb-btn sb-btn--secondary" id="btnCloseTab">Fermer lâ€™onglet</button>
+          <button type="button" class="sb-btn sb-btn--secondary" id="btnCloseTab">Fermer l’onglet</button>
         </div>
       </header>
 
       <div class="cs-message" id="csMessage" style="display:none;"></div>
 
       <section class="cs-section is-active" data-section="dashboard">
-        <!-- Dashboard Insights embarquÃ© dans Studio.
-             Important : cette zone rÃ©utilise /menus/skills_dashboard.html + skills_dashboard.js.
-             Ne pas rÃ©introduire de cartes Studio locales ici, sinon on recrÃ©e deux vÃ©ritÃ©s d'indicateurs. -->
+        <!-- Dashboard Insights embarqué dans Studio.
+             Important : cette zone réutilise /menus/skills_dashboard.html + skills_dashboard.js.
+             Ne pas réintroduire de cartes Studio locales ici, sinon on recrée deux vérités d'indicateurs. -->
         <div class="cs-insights-dashboard-mount" id="csInsightsDashboardMount">
           <div class="cs-card">
-            <div class="cs-card-title">Chargement des indicateursâ€¦</div>
-            <div class="cs-card-sub">Initialisation du dashboard Insights sur le pÃ©rimÃ¨tre courant.</div>
+            <div class="cs-card-title">Chargement des indicateurs…</div>
+            <div class="cs-card-sub">Initialisation du dashboard Insights sur le périmètre courant.</div>
           </div>
         </div>
       </section>
@@ -72,7 +70,7 @@
       <section class="cs-section" data-section="fiche">
         <div class="cs-section-toolbar cs-section-toolbar--end">
         <button type="button" class="sb-btn sb-btn--accent" id="btnFicheEdit">Modifier</button>
-        <button type="button" class="sb-btn sb-btn--secondary is-hidden" id="btnFicheLoadPublicData">Charger les donnÃ©es officielles</button>
+        <button type="button" class="sb-btn sb-btn--secondary is-hidden" id="btnFicheLoadPublicData">Charger les données officielles</button>
         <button type="button" class="sb-btn sb-btn--secondary is-hidden" id="btnFicheCancel">Annuler</button>
         <button type="button" class="sb-btn sb-btn--accent is-hidden" id="btnFicheSave">Enregistrer</button>
         </div>
@@ -93,29 +91,29 @@
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheSiretEnt" disabled />
               </div>
               <div class="sb-field">
-                <label class="sb-label" for="ficheNumEntreprise">NÂ° entreprise</label>
+                <label class="sb-label" for="ficheNumEntreprise">N° entreprise</label>
                 <input type="text" class="sb-ctrl" id="ficheNumEntreprise" disabled />
               </div>
               <div class="sb-field">
-                <label class="sb-label" for="ficheDateCreation">Date de crÃ©ation</label>
+                <label class="sb-label" for="ficheDateCreation">Date de création</label>
                 <input type="date" class="sb-date cs-form-ctrl" id="ficheDateCreation" disabled />
               </div>
               <div class="sb-field">
-                <label class="sb-label" for="ficheEffectifEnt">Effectif dÃ©clarÃ©</label>
+                <label class="sb-label" for="ficheEffectifEnt">Effectif déclaré</label>
                 <select class="sb-select cs-form-ctrl" id="ficheEffectifEnt" disabled>
                   <option value="-">-</option>
-                  <option value="1 Ã  9">1 Ã  9</option>
-                  <option value="10 Ã  19">10 Ã  19</option>
-                  <option value="20 Ã  49">20 Ã  49</option>
-                  <option value="50 Ã  99">50 Ã  99</option>
-                  <option value="100 Ã  199">100 Ã  199</option>
-                  <option value="200 Ã  499">200 Ã  499</option>
-                  <option value="500 Ã  999">500 Ã  999</option>
+                  <option value="1 à 9">1 à 9</option>
+                  <option value="10 à 19">10 à 19</option>
+                  <option value="20 à 49">20 à 49</option>
+                  <option value="50 à 99">50 à 99</option>
+                  <option value="100 à 199">100 à 199</option>
+                  <option value="200 à 499">200 à 499</option>
+                  <option value="500 à 999">500 à 999</option>
                   <option value="1000 et +">1000 et +</option>
                 </select>
               </div>
               <div class="sb-field sb-span-2">
-                <label class="sb-label" for="ficheNumTvaEnt">NÂ° TVA</label>
+                <label class="sb-label" for="ficheNumTvaEnt">N° TVA</label>
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNumTvaEnt" disabled />
               </div>
 
@@ -125,12 +123,12 @@
                 <div class="sb-logo-card">
                   <div class="sb-logo-preview" id="ficheLogoPreview">
                     <img id="ficheLogoImg" alt="Logo structure" style="display:none;" />
-                    <div class="sb-help" id="ficheLogoEmpty">Aucun logo enregistrÃ©.</div>
+                    <div class="sb-help" id="ficheLogoEmpty">Aucun logo enregistré.</div>
                   </div>
 
                   <div class="sb-logo-meta">
                     <div class="card-sub" id="ficheLogoMeta" style="margin:0;">
-                      Le logo enregistrÃ© sera rÃ©utilisÃ© automatiquement dans les sorties PDF de cette structure.
+                      Le logo enregistré sera réutilisé automatiquement dans les sorties PDF de cette structure.
                     </div>
 
                     <div class="sb-actions">
@@ -144,7 +142,7 @@
           </div>
 
           <div class="cs-card">
-            <div class="cs-card-title">CoordonnÃ©es</div>
+            <div class="cs-card-title">Coordonnées</div>
 
             <div class="sb-form-grid cs-form-grid">
               <div class="sb-field sb-span-2">
@@ -152,7 +150,7 @@
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheAdresseEnt" disabled />
               </div>
               <div class="sb-field sb-span-2">
-                <label class="sb-label" for="ficheAdresseCpltEnt">ComplÃ©ment</label>
+                <label class="sb-label" for="ficheAdresseCpltEnt">Complément</label>
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheAdresseCpltEnt" disabled />
               </div>
               <div class="sb-field">
@@ -184,7 +182,7 @@
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="fichePaysEnt" disabled />
               </div>
               <div class="sb-field">
-                <label class="sb-label" for="ficheTelephoneEnt">TÃ©lÃ©phone</label>
+                <label class="sb-label" for="ficheTelephoneEnt">Téléphone</label>
                 <input
                   type="tel"
                   class="sb-ctrl cs-form-ctrl"
@@ -211,13 +209,13 @@
           </div>
 
           <div class="cs-card">
-            <div class="cs-card-title">RÃ©fÃ©rences administratives</div>
+            <div class="cs-card-title">Références administratives</div>
 
             <div class="sb-form-grid cs-form-grid">
               <div class="sb-field">
                 <label class="sb-label" for="ficheIdcc">IDCC</label>
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheIdcc" disabled />
-                <div class="sb-help" id="ficheIdccHelp">â€”</div>
+                <div class="sb-help" id="ficheIdccHelp">—</div>
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="ficheCodeApeEnt">Code APE</label>
@@ -231,7 +229,7 @@
                   autocomplete="off"
                   disabled
                 />
-                <div class="sb-help" id="ficheCodeApeHelp">â€”</div>
+                <div class="sb-help" id="ficheCodeApeHelp">—</div>
               </div>
 
               <div class="sb-field">
@@ -251,7 +249,7 @@
                     target="_blank"
                     rel="noopener noreferrer"
                   >Ouvrir le site</a>
-                  <span id="ficheOpcoSiteEmpty">â€”</span>
+                  <span id="ficheOpcoSiteEmpty">—</span>
                 </div>
               </div>
             </div>
@@ -274,11 +272,11 @@
 
               <div class="sb-field" id="wrapNbParents">
                 <label class="sb-label">Structure parent</label>
-                <div class="cs-read-value" id="idNbParents">â€”</div>
+                <div class="cs-read-value" id="idNbParents">—</div>
               </div>
               <div class="sb-field" id="wrapNbChildren">
                 <label class="sb-label">Structure enfant</label>
-                <div class="cs-read-value" id="idNbChildren">â€”</div>
+                <div class="cs-read-value" id="idNbChildren">—</div>
               </div>
 
               <label class="sb-check sb-span-2 js-struct-group-field">
@@ -288,7 +286,7 @@
 
               <label class="sb-check sb-span-2 js-struct-group-field">
                 <input type="checkbox" id="ficheTeteGroupe" disabled />
-                <span>TÃªte de groupe</span>
+                <span>Tête de groupe</span>
               </label>
 
               <div class="sb-field js-struct-group-field">
@@ -304,21 +302,21 @@
 
           <div class="cs-card" id="ficheConnexionCard">
             <div class="cs-card-title">Connexion</div>
-            <div class="cs-card-sub">Mode de connexion des utilisateurs rattachÃ©s Ã  cette structure.</div>
+            <div class="cs-card-sub">Mode de connexion des utilisateurs rattachés à cette structure.</div>
             <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
 <button type="button" class="sb-btn sb-btn--secondary" id="btnFicheTestConnexion">Tester la configuration</button>
             </div>
             <div class="sb-connexion-mini" id="ficheSsoSchemaHint" style="margin-top:10px;"></div>
             <div class="sb-form-grid cs-form-grid" style="margin-top:14px;">
-              <label class="sb-check sb-span-2"><input type="checkbox" id="ficheSsoEnabled" class="cs-connexion-ctrl" disabled /><span class="sb-label-help">Activer le SSO entreprise <button type="button" class="sb-help-dot" data-help="Active cette option uniquement si lâ€™entreprise souhaite utiliser son propre systÃ¨me dâ€™authentification. Le SSO devient actif aprÃ¨s paramÃ©trage complet et test validÃ©.">?</button></span></label>
-              <label class="sb-check"><input type="checkbox" id="ficheSsoPasswordAllowed" class="cs-connexion-ctrl" disabled /><span class="sb-label-help">Mot de passe autorisÃ© <button type="button" class="sb-help-dot" data-help="Conserve la connexion classique Novoskill en complÃ©ment du SSO. Ã€ garder pendant la mise en place ou la transition.">?</button></span></label>
-              <label class="sb-check"><input type="checkbox" id="ficheSsoMandatory" class="cs-connexion-ctrl" disabled /><span class="sb-label-help">SSO obligatoire <button type="button" class="sb-help-dot" data-help="Force les utilisateurs concernÃ©s Ã  passer par le SSO entreprise. Ã€ activer seulement aprÃ¨s validation avec le client ou le service informatique.">?</button></span></label>
-              <div class="sb-field"><label class="sb-label sb-label-help" for="ficheSsoDomain">Domaine autorisÃ© <button type="button" class="sb-help-dot" data-help="Domaine email de lâ€™entreprise, par exemple entreprise.fr. Il sert Ã  orienter lâ€™utilisateur vers le bon SSO.">?</button></label><input type="text" class="sb-ctrl cs-connexion-ctrl" id="ficheSsoDomain" placeholder="entreprise.fr" disabled /></div>
-              <div class="sb-field"><label class="sb-label sb-label-help" for="ficheSsoType">Type SSO <button type="button" class="sb-help-dot" data-help="Novoskill prÃ©pare le raccordement SSO entreprise avec le standard SAML 2.0.">?</button></label><input type="text" class="sb-ctrl" id="ficheSsoType" value="SAML 2.0" disabled /></div>
+              <label class="sb-check sb-span-2"><input type="checkbox" id="ficheSsoEnabled" class="cs-connexion-ctrl" disabled /><span class="sb-label-help">Activer le SSO entreprise <button type="button" class="sb-help-dot" data-help="Active cette option uniquement si l’entreprise souhaite utiliser son propre système d’authentification. Le SSO devient actif après paramétrage complet et test validé.">?</button></span></label>
+              <label class="sb-check"><input type="checkbox" id="ficheSsoPasswordAllowed" class="cs-connexion-ctrl" disabled /><span class="sb-label-help">Mot de passe autorisé <button type="button" class="sb-help-dot" data-help="Conserve la connexion classique Novoskill en complément du SSO. À garder pendant la mise en place ou la transition.">?</button></span></label>
+              <label class="sb-check"><input type="checkbox" id="ficheSsoMandatory" class="cs-connexion-ctrl" disabled /><span class="sb-label-help">SSO obligatoire <button type="button" class="sb-help-dot" data-help="Force les utilisateurs concernés à passer par le SSO entreprise. À activer seulement après validation avec le client ou le service informatique.">?</button></span></label>
+              <div class="sb-field"><label class="sb-label sb-label-help" for="ficheSsoDomain">Domaine autorisé <button type="button" class="sb-help-dot" data-help="Domaine email de l’entreprise, par exemple entreprise.fr. Il sert à orienter l’utilisateur vers le bon SSO.">?</button></label><input type="text" class="sb-ctrl cs-connexion-ctrl" id="ficheSsoDomain" placeholder="entreprise.fr" disabled /></div>
+              <div class="sb-field"><label class="sb-label sb-label-help" for="ficheSsoType">Type SSO <button type="button" class="sb-help-dot" data-help="Novoskill prépare le raccordement SSO entreprise avec le standard SAML 2.0.">?</button></label><input type="text" class="sb-ctrl" id="ficheSsoType" value="SAML 2.0" disabled /></div>
               <input type="hidden" id="ficheSsoProviderId" class="cs-connexion-ctrl"/>
-<div class="sb-field sb-span-2"><label class="sb-label sb-label-help" for="ficheSsoMetadataUrl">Metadata URL <button type="button" class="sb-help-dot" data-help="URL fournie par le service informatique. Elle contient la configuration SAML du fournisseur dâ€™identitÃ©. Ã€ privilÃ©gier si disponible.">?</button></label><input type="text" class="sb-ctrl cs-connexion-ctrl" id="ficheSsoMetadataUrl" placeholder="https://..." disabled /></div>
-              <div class="sb-field"><label class="sb-label sb-label-help" for="ficheSsoEmailAttr">Attribut email <button type="button" class="sb-help-dot" data-help="Nom du champ transmis par le SSO qui contient lâ€™email utilisateur. Valeurs frÃ©quentes : email, mail, emailaddress.">?</button></label><input type="text" class="sb-ctrl cs-connexion-ctrl" id="ficheSsoEmailAttr" placeholder="email" disabled /></div>
-              <div class="sb-field sb-span-2"><label class="sb-label sb-label-help" for="ficheSsoMetadataXml">Metadata XML <button type="button" class="sb-help-dot" data-help="Ã€ utiliser si le service informatique ne fournit pas de Metadata URL. Coller ici le XML de configuration SAML.">?</button></label><textarea class="sb-ctrl cs-connexion-ctrl sb-connexion-technical" id="ficheSsoMetadataXml" disabled></textarea></div>
+<div class="sb-field sb-span-2"><label class="sb-label sb-label-help" for="ficheSsoMetadataUrl">Metadata URL <button type="button" class="sb-help-dot" data-help="URL fournie par le service informatique. Elle contient la configuration SAML du fournisseur d’identité. À privilégier si disponible.">?</button></label><input type="text" class="sb-ctrl cs-connexion-ctrl" id="ficheSsoMetadataUrl" placeholder="https://..." disabled /></div>
+              <div class="sb-field"><label class="sb-label sb-label-help" for="ficheSsoEmailAttr">Attribut email <button type="button" class="sb-help-dot" data-help="Nom du champ transmis par le SSO qui contient l’email utilisateur. Valeurs fréquentes : email, mail, emailaddress.">?</button></label><input type="text" class="sb-ctrl cs-connexion-ctrl" id="ficheSsoEmailAttr" placeholder="email" disabled /></div>
+              <div class="sb-field sb-span-2"><label class="sb-label sb-label-help" for="ficheSsoMetadataXml">Metadata XML <button type="button" class="sb-help-dot" data-help="À utiliser si le service informatique ne fournit pas de Metadata URL. Coller ici le XML de configuration SAML.">?</button></label><textarea class="sb-ctrl cs-connexion-ctrl sb-connexion-technical" id="ficheSsoMetadataXml" disabled></textarea></div>
             </div>
           </div>
 
@@ -336,17 +334,17 @@
         <div class="cs-card is-hidden" id="orgStructuresCard">
           <div class="cs-org-head">
             <div>
-              <div class="cs-card-title">Structures rattachÃ©es</div>
+              <div class="cs-card-title">Structures rattachées</div>
             </div>
 
             <div class="cs-org-head-actions">
               <div class="cs-org-mini-kpis">
                 <div class="cs-org-mini-kpi">
-                  <div class="cs-org-mini-kpi-label">Entreprises liÃ©es</div>
+                  <div class="cs-org-mini-kpi-label">Entreprises liées</div>
                   <div class="cs-org-mini-kpi-value" id="orgKpiEntreprises">0</div>
                 </div>
                 <div class="cs-org-mini-kpi">
-                  <div class="cs-org-mini-kpi-label">Sites liÃ©s</div>
+                  <div class="cs-org-mini-kpi-label">Sites liés</div>
                   <div class="cs-org-mini-kpi-value" id="orgKpiSites">0</div>
                 </div>
               </div>
@@ -355,8 +353,8 @@
                 type="button"
                 class="sb-btn sb-btn--secondary cs-org-toggle"
                 id="btnOrgToggle"
-                aria-label="RÃ©duire ou afficher le bloc structures rattachÃ©es"
-                title="RÃ©duire / afficher"
+                aria-label="Réduire ou afficher le bloc structures rattachées"
+                title="Réduire / afficher"
               >
                 <span class="cs-org-toggle-icon" aria-hidden="true"></span>
               </button>
@@ -370,8 +368,8 @@
             </div>
 
             <div class="sb-empty-state is-hidden" id="orgStructuresEmpty">
-              <div class="sb-empty-state__title">Aucune structure rattachÃ©e</div>
-              <div class="sb-empty-state__text">Ajoute ici les entreprises ou sites rattachÃ©s Ã  ce pÃ©rimÃ¨tre pour leur donner leur propre espace de gestion.</div>
+              <div class="sb-empty-state__title">Aucune structure rattachée</div>
+              <div class="sb-empty-state__text">Ajoute ici les entreprises ou sites rattachés à ce périmètre pour leur donner leur propre espace de gestion.</div>
             </div>
 
             <div class="is-hidden" id="orgStructuresTreeWrap">
@@ -390,14 +388,14 @@
           <div class="modal-header">
             <div>
               <div class="cs-card-title" id="orgModalTitle">Attacher une structure</div>
-              <div class="cs-card-sub" id="orgModalSub">CrÃ©ation dâ€™une structure rattachÃ©e avec son propre espace de gestion.</div>
+              <div class="cs-card-sub" id="orgModalSub">Création d’une structure rattachée avec son propre espace de gestion.</div>
               <div
                 class="sb-help is-hidden"
                 id="orgModalInlineError"
                 style="margin-top:6px;color:#b42318;"
-              >â€”</div>
+              >—</div>
             </div>
-            <button type="button" class="modal-x" id="btnOrgModalClose" aria-label="Fermer">Ã—</button>
+            <button type="button" class="modal-x" id="btnOrgModalClose" aria-label="Fermer">×</button>
           </div>
 
           <div class="modal-body">
@@ -405,7 +403,7 @@
               <div class="cs-card">
                 <div class="cs-card-head">
                   <div class="cs-card-title">Fiche structure</div>
-                  <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnOrgLoadPublicData">Charger les donnÃ©es officielles</button>
+                  <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnOrgLoadPublicData">Charger les données officielles</button>
                 </div>
 
                 <div class="sb-form-grid cs-form-grid">
@@ -418,32 +416,32 @@
                     <input type="text" class="sb-ctrl" id="orgCreateSiretEnt" />
                   </div>
                   <div class="sb-field">
-                    <label class="sb-label" for="orgCreateDateCreation">Date de crÃ©ation</label>
+                    <label class="sb-label" for="orgCreateDateCreation">Date de création</label>
                     <input type="date" class="sb-date" id="orgCreateDateCreation" />
                   </div>
                   <div class="sb-field">
-                    <label class="sb-label" for="orgCreateEffectifEnt">Effectif dÃ©clarÃ©</label>
+                    <label class="sb-label" for="orgCreateEffectifEnt">Effectif déclaré</label>
                     <select class="sb-select" id="orgCreateEffectifEnt">
                       <option value="-">-</option>
-                      <option value="1 Ã  9">1 Ã  9</option>
-                      <option value="10 Ã  19">10 Ã  19</option>
-                      <option value="20 Ã  49">20 Ã  49</option>
-                      <option value="50 Ã  99">50 Ã  99</option>
-                      <option value="100 Ã  199">100 Ã  199</option>
-                      <option value="200 Ã  499">200 Ã  499</option>
-                      <option value="500 Ã  999">500 Ã  999</option>
+                      <option value="1 à 9">1 à 9</option>
+                      <option value="10 à 19">10 à 19</option>
+                      <option value="20 à 49">20 à 49</option>
+                      <option value="50 à 99">50 à 99</option>
+                      <option value="100 à 199">100 à 199</option>
+                      <option value="200 à 499">200 à 499</option>
+                      <option value="500 à 999">500 à 999</option>
                       <option value="1000 et +">1000 et +</option>
                     </select>
                   </div>
                   <div class="sb-field">
-                    <label class="sb-label" for="orgCreateNumTvaEnt">NÂ° TVA</label>
+                    <label class="sb-label" for="orgCreateNumTvaEnt">N° TVA</label>
                     <input type="text" class="sb-ctrl" id="orgCreateNumTvaEnt" />
                   </div>
                 </div>
               </div>
 
               <div class="cs-card">
-                <div class="cs-card-title">CoordonnÃ©es</div>
+                <div class="cs-card-title">Coordonnées</div>
 
                 <div class="sb-form-grid cs-form-grid">
                   <div class="sb-field sb-span-2">
@@ -451,7 +449,7 @@
                     <input type="text" class="sb-ctrl" id="orgCreateAdresseEnt" />
                   </div>
                   <div class="sb-field sb-span-2">
-                    <label class="sb-label" for="orgCreateAdresseCpltEnt">ComplÃ©ment</label>
+                    <label class="sb-label" for="orgCreateAdresseCpltEnt">Complément</label>
                     <input type="text" class="sb-ctrl" id="orgCreateAdresseCpltEnt" />
                   </div>
                   <div class="sb-field">
@@ -467,7 +465,7 @@
                     <input type="text" class="sb-ctrl" id="orgCreatePaysEnt" />
                   </div>
                   <div class="sb-field">
-                    <label class="sb-label" for="orgCreateTelephoneEnt">TÃ©lÃ©phone</label>
+                    <label class="sb-label" for="orgCreateTelephoneEnt">Téléphone</label>
                     <input type="tel" class="sb-ctrl" id="orgCreateTelephoneEnt" placeholder="00 00 00 00 00" />
                   </div>
                   <div class="sb-field">
@@ -482,18 +480,18 @@
               </div>
 
               <div class="cs-card">
-                <div class="cs-card-title">RÃ©fÃ©rences administratives</div>
+                <div class="cs-card-title">Références administratives</div>
 
                 <div class="sb-form-grid cs-form-grid">
                   <div class="sb-field">
                     <label class="sb-label" for="orgCreateIdcc">IDCC</label>
                     <input type="text" class="sb-ctrl" id="orgCreateIdcc" />
-                    <div class="sb-help" id="orgCreateIdccHelp">â€”</div>
+                    <div class="sb-help" id="orgCreateIdccHelp">—</div>
                   </div>
                   <div class="sb-field">
                     <label class="sb-label" for="orgCreateCodeApeEnt">Code APE</label>
                     <input type="text" class="sb-ctrl" id="orgCreateCodeApeEnt" placeholder="00.00" />
-                    <div class="sb-help" id="orgCreateCodeApeHelp">â€”</div>
+                    <div class="sb-help" id="orgCreateCodeApeHelp">—</div>
                   </div>
                   <div class="sb-field">
                     <label class="sb-label" for="orgCreateIdOpco">OPCO</label>
@@ -511,7 +509,7 @@
                         target="_blank"
                         rel="noopener noreferrer"
                       >Ouvrir le site</a>
-                      <span id="orgCreateOpcoSiteEmpty">â€”</span>
+                      <span id="orgCreateOpcoSiteEmpty">—</span>
                     </div>
                   </div>
                 </div>
@@ -533,7 +531,7 @@
 
                   <label class="sb-check sb-span-2 js-org-create-group-field">
                     <input type="checkbox" id="orgCreateTeteGroupe" />
-                    <span>TÃªte de groupe</span>
+                    <span>Tête de groupe</span>
                   </label>
 
                   <div class="sb-field js-org-create-group-field">
@@ -560,16 +558,16 @@
         <div class="modal-card cs-org-history-card">
           <div class="modal-header">
             <div>
-              <div class="cs-card-title">Historique des structures retirÃ©es</div>
-              <div class="cs-card-sub">RÃ©active une structure archivÃ©e dans le pÃ©rimÃ¨tre courant, ou transforme-la en client direct sans perdre les donnÃ©es existantes.</div>
+              <div class="cs-card-title">Historique des structures retirées</div>
+              <div class="cs-card-sub">Réactive une structure archivée dans le périmètre courant, ou transforme-la en client direct sans perdre les données existantes.</div>
             </div>
-            <button type="button" class="modal-x" id="btnOrgHistoryClose" aria-label="Fermer">Ã—</button>
+            <button type="button" class="modal-x" id="btnOrgHistoryClose" aria-label="Fermer">×</button>
           </div>
 
           <div class="modal-body">
             <div class="sb-empty-state is-hidden" id="orgHistoryEmpty">
-              <div class="sb-empty-state__title">Aucune structure archivÃ©e</div>
-              <div class="sb-empty-state__text">Aucune structure retirÃ©e nâ€™est disponible dans lâ€™historique pour ce pÃ©rimÃ¨tre.</div>
+              <div class="sb-empty-state__title">Aucune structure archivée</div>
+              <div class="sb-empty-state__text">Aucune structure retirée n’est disponible dans l’historique pour ce périmètre.</div>
             </div>
 
             <div class="cs-history-list" id="orgHistoryList"></div>
@@ -584,13 +582,13 @@
       <template id="tplOrgWorkspace"></template>
 
       <section class="cs-section" data-section="evaluations">
-        <!-- Entretiens & Ã©valuations Insights embarquÃ©s dans Studio.
-             Important : cette zone rÃ©utilise /menus/skills_entretien_performance.html + skills_entretien_performance.js.
-             Ne pas recrÃ©er une page Studio parallÃ¨le : les Ã©valuations, entretiens et historiques doivent rester portÃ©s par le moteur Insights. -->
+        <!-- Entretiens & évaluations Insights embarqués dans Studio.
+             Important : cette zone réutilise /menus/skills_entretien_performance.html + skills_entretien_performance.js.
+             Ne pas recréer une page Studio parallèle : les évaluations, entretiens et historiques doivent rester portés par le moteur Insights. -->
         <div class="cs-evaluations-insights-mount" id="csEvaluationsInsightsMount">
           <div class="cs-card">
-            <div class="cs-card-title">Chargement des Ã©valuationsâ€¦</div>
-            <div class="cs-card-sub">Initialisation des entretiens & Ã©valuations sur le pÃ©rimÃ¨tre courant.</div>
+            <div class="cs-card-title">Chargement des évaluations…</div>
+            <div class="cs-card-sub">Initialisation des entretiens & évaluations sur le périmètre courant.</div>
           </div>
         </div>
       </section>
@@ -599,7 +597,7 @@
         <div class="cs-card cs-placeholder">
           <div class="cs-card-title">Simulations RH</div>
           <div class="cs-placeholder-text">
-            Cette rubrique permettra de tester des hypothÃ¨ses RH sans modifier les donnÃ©es rÃ©elles : changement de poste, absence, dÃ©part, renfort ou transfert de charge.
+            Cette rubrique permettra de tester des hypothèses RH sans modifier les données réelles : changement de poste, absence, départ, renfort ou transfert de charge.
           </div>
         </div>
       </section>
@@ -608,7 +606,7 @@
         <div class="cs-card cs-placeholder">
           <div class="cs-card-title">Besoins & formations</div>
           <div class="cs-placeholder-text">
-            Cette rubrique permettra de qualifier les besoins de formation du pÃ©rimÃ¨tre, de suivre leur statut et de prÃ©parer leur transmission vers Learn ou vers un accompagnement Novoskill.
+            Cette rubrique permettra de qualifier les besoins de formation du périmètre, de suivre leur statut et de préparer leur transmission vers Learn ou vers un accompagnement Novoskill.
           </div>
         </div>
       </section>
@@ -617,7 +615,7 @@
         <div class="cs-card cs-placeholder">
           <div class="cs-card-title">Accompagnement Novoskill</div>
           <div class="cs-placeholder-text">
-            Cette rubrique permettra de demander une assistance, une intervention, une formation ou un accompagnement sur le pÃ©rimÃ¨tre client ou site ouvert.
+            Cette rubrique permettra de demander une assistance, une intervention, une formation ou un accompagnement sur le périmètre client ou site ouvert.
           </div>
         </div>
       </section>
@@ -625,10 +623,10 @@
   </div>
 
   <!-- IMPORTANT :
-       si le src rÃ©el de portal_auth_common.js diffÃ¨re dans ton projet,
-       remplace uniquement cette ligne par le mÃªme include que dans tes pages Studio existantes. -->
+       si le src réel de portal_auth_common.js diffère dans ton projet,
+       remplace uniquement cette ligne par le même include que dans tes pages Studio existantes. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/portal_auth_common.js"></script>
-  <script src="/studio_client_space.js"></script>
+  <script src="/studio_client_space.js"></script>  
 </body>
 </html>

@@ -1,4 +1,4 @@
-﻿<section id="view-votre-organisation" style="display:none;">
+<section id="view-votre-organisation" style="display:none;">
   <div class="card org-page-hero">
     <div class="org-page-hero__icon" aria-hidden="true">
       <svg viewBox="0 0 24 24">
@@ -13,7 +13,7 @@
     </div>
     <div class="org-page-hero__text">
       <div class="card-title">Votre organisation</div>
-      <div class="card-sub">Parcourez les services de votre organisation et consultez les fiches de poste associÃ©es.</div>
+      <div class="card-sub">Parcourez les services de votre organisation et consultez les fiches de poste associées.</div>
     </div>
   </div>
 
@@ -30,12 +30,12 @@
           </div>
           <div>
             <div class="card-title org-title-tight">Services</div>
-            <div class="card-sub org-sub-tight">SÃ©lectionnez un service pour afficher les postes et les fiches associÃ©es.</div>
+            <div class="card-sub org-sub-tight">Sélectionnez un service pour afficher les postes et les fiches associées.</div>
           </div>
         </div>
 
         <div class="sb-tree org-tree" id="orgTree">
-          <div class="card-sub org-placeholder">Chargementâ€¦</div>
+          <div class="card-sub org-placeholder">Chargement…</div>
         </div>
       </div>
     </div>
@@ -55,8 +55,8 @@
             </svg>
           </div>
           <div>
-            <div class="card-title" id="orgServiceTitle">Service non sÃ©lectionnÃ©</div>
-            <div class="card-sub org-service-meta" id="orgServiceMeta">â€”</div>
+            <div class="card-title" id="orgServiceTitle">Service non sélectionné</div>
+            <div class="card-sub org-service-meta" id="orgServiceMeta">—</div>
           </div>
         </div>
 
@@ -79,7 +79,7 @@
             <span class="org-stat-box__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 10h.01"/><path d="M9 14h.01"/><path d="M15 10h.01"/><path d="M15 14h.01"/></svg>
             </span>
-            <span class="org-stat-box__body"><span class="org-stat-value" id="orgStatServices">0</span><span class="org-stat-label">Services concernÃ©s</span></span>
+            <span class="org-stat-box__body"><span class="org-stat-value" id="orgStatServices">0</span><span class="org-stat-label">Services concernés</span></span>
           </div>
         </div>
       </div>
@@ -93,19 +93,19 @@
               </span>
               <div class="card-title org-title-tight">Postes</div>
             </div>
-            <div class="card-sub org-sub-tight">Fiches de poste rattachÃ©es au service sÃ©lectionnÃ©.</div>
+            <div class="card-sub org-sub-tight">Fiches de poste rattachées au service sélectionné.</div>
           </div>
 
           <div class="org-postes-search">
             <span class="org-search-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
             </span>
-            <input type="text" id="posteSearch" placeholder="Rechercher un poste (code ou intitulÃ©â€¦)" />
+            <input type="text" id="posteSearch" placeholder="Rechercher un poste (code ou intitulé…)" />
           </div>
         </div>
 
         <div id="postesContainer" class="org-postes-list">
-          <div class="card-sub org-placeholder">SÃ©lectionnez un service pour afficher les postes.</div>
+          <div class="card-sub org-placeholder">Sélectionnez un service pour afficher les postes.</div>
         </div>
 
         <div class="card-sub" id="postesEmpty">
@@ -116,7 +116,7 @@
   </div>
 
   <!-- ======================================================
-      Modal Poste (Votre organisation) â€” Squelette 3 onglets
+      Modal Poste (Votre organisation) — Squelette 3 onglets
       ====================================================== -->
   <div id="modalOrgPoste" class="modal" aria-hidden="true">
     <div class="modal-card modal-card--xl">
@@ -130,7 +130,7 @@
           <div class="org-poste-modal-nav" id="orgPosteTabbar" role="tablist" aria-label="Navigation fiche poste">
             <button type="button" class="org-poste-nav-btn is-active" data-tab="def" role="tab" aria-selected="true">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
-              <span>DÃ©finition</span>
+              <span>Définition</span>
             </button>
             <button type="button" class="org-poste-nav-btn" data-tab="exi" role="tab" aria-selected="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
@@ -138,16 +138,16 @@
             </button>
             <button type="button" class="org-poste-nav-btn" data-tab="rh" role="tab" aria-selected="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
-              <span>ParamÃ©trage RH</span>
+              <span>Paramétrage RH</span>
             </button>
           </div>
         </div>
 
-        <button type="button" class="modal-x" id="orgPosteModalX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="orgPosteModalX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
-        <!-- DÃ©finition -->
+        <!-- Définition -->
         <div class="sb-tab-panel is-active" data-panel="def">
           <div class="card org-poste-def-card sb-card-compact">
             <div class="org-poste-def-head">
@@ -155,7 +155,7 @@
                 <span class="org-section-titleline__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
                 </span>
-                <div class="card-title" style="margin:0;">DÃ©finition du poste</div>
+                <div class="card-title" style="margin:0;">Définition du poste</div>
               </div>
               <span id="orgPosteDefRespBadge" class="sb-badge sb-badge-resp" style="display:none;">Responsable</span>
             </div>
@@ -175,13 +175,13 @@
                 <span class="org-poste-def-section__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
                 </span>
-                <div class="label">ResponsabilitÃ©s</div>
+                <div class="label">Responsabilités</div>
               </div>
               <div id="orgPosteDefResp" class="value sb-richtext sb-richtext-readonly org-poste-def-resp"></div>
             </div>
 
             <div id="orgPosteDefEmpty" class="card-sub" style="margin-top:10px; display:none;">
-              Aucune description renseignÃ©e.
+              Aucune description renseignée.
             </div>
 
             <div id="orgPosteDefDate" class="org-poste-def-date" style="display:none;"></div>
@@ -226,12 +226,12 @@
             <div class="org-exi-constraints-grid">
               <div class="org-exi-col">
                 <div class="sb-field">
-                  <div class="label">Niveau dâ€™Ã©tude minimum requis</div>
+                  <div class="label">Niveau d’étude minimum requis</div>
                   <select id="orgCtrEduMin" disabled></select>
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">Correspondance du diplÃ´me impÃ©rative</div>
+                  <div class="label">Correspondance du diplôme impérative</div>
                   <input type="hidden" id="orgCtrNsfOblig" />
                   <select id="orgCtrNsfObligView" disabled>
                     <option value="non">Non</option>
@@ -252,22 +252,22 @@
 
               <div class="org-exi-col">
                 <div class="sb-field">
-                  <div class="label">Domaine du diplÃ´me (NSF)</div>
+                  <div class="label">Domaine du diplôme (NSF)</div>
                   <select id="orgCtrNsfGroupe" disabled></select>
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">MobilitÃ©</div>
+                  <div class="label">Mobilité</div>
                   <select id="orgCtrMobilite" disabled></select>
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">Perspectives dâ€™Ã©volution</div>
+                  <div class="label">Perspectives d’évolution</div>
                   <select id="orgCtrPerspEvol" disabled></select>
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">DÃ©tails des contraintes</div>
+                  <div class="label">Détails des contraintes</div>
                   <textarea id="orgCtrDetailContrainte" class="sb-ctrl" rows="3" disabled></textarea>
                 </div>
               </div>
@@ -280,7 +280,7 @@
               <span class="org-section-titleline__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
               </span>
-              <div class="card-title" style="margin:0;">CompÃ©tences requises</div>
+              <div class="card-title" style="margin:0;">Compétences requises</div>
             </div>
 
             <div class="table-wrap org-exi-table-wrap">
@@ -288,9 +288,9 @@
                 <thead>
                   <tr>
                     <th style="width:80px; text-align:center;">Code</th>
-                    <th>CompÃ©tence</th>
+                    <th>Compétence</th>
                     <th style="width:90px; text-align:center;">Niveau requis</th>
-                    <th style="width:80px; text-align:center;">CriticitÃ©</th>
+                    <th style="width:80px; text-align:center;">Criticité</th>
                     <th style="width:72px;"></th>
                   </tr>
                 </thead>
@@ -299,15 +299,15 @@
             </div>
 
             <button type="button" class="org-exi-more" id="orgPosteCompMore" style="display:none;">
-              <span id="orgPosteCompMoreText">Voir plus de compÃ©tences</span>
-              <span class="org-exi-more__chev" aria-hidden="true">âŒ„</span>
+              <span id="orgPosteCompMoreText">Voir plus de compétences</span>
+              <span class="org-exi-more__chev" aria-hidden="true">⌄</span>
             </button>
 
             <div class="org-exi-empty" id="orgPosteCompEmpty" style="display:none;">
               <span class="org-exi-empty__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
               </span>
-              <span>Aucune compÃ©tence requise pour ce poste.</span>
+              <span>Aucune compétence requise pour ce poste.</span>
             </div>
           </div>
 
@@ -325,8 +325,8 @@
                 <thead>
                   <tr>
                     <th>Certification</th>
-                    <th style="width:170px;">CatÃ©gorie</th>
-                    <th style="width:120px; text-align:center;">ValiditÃ©</th>
+                    <th style="width:170px;">Catégorie</th>
+                    <th style="width:120px; text-align:center;">Validité</th>
                     <th style="width:120px; text-align:center;">Exigence</th>
                     <th style="width:58px;"></th>
                   </tr>
@@ -345,7 +345,7 @@
 
         </div>
 
-        <!-- ParamÃ©trage RH -->
+        <!-- Paramétrage RH -->
         <div class="sb-tab-panel" data-panel="rh">
           <div class="card org-bloc" id="orgPosteBlocRh">
             <div class="org-poste-rh-head">
@@ -353,7 +353,7 @@
                 <span class="org-section-titleline__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg>
                 </span>
-                <div class="card-title" style="margin:0;">ParamÃ©trage RH</div>
+                <div class="card-title" style="margin:0;">Paramétrage RH</div>
               </div>
 
               <div class="sb-actions org-poste-rh-actions">
@@ -386,11 +386,11 @@
                 <div class="org-rh-sheet">
                   <table class="org-rh-view-table">
                     <tbody>
-                      <tr><th>Statut du poste</th><td id="orgRhViewStatut">â€”</td></tr>
-                      <tr><th>StratÃ©gie de pourvoi</th><td id="orgRhViewStrategie">â€”</td></tr>
-                      <tr><th>DÃ©but de validitÃ©</th><td id="orgRhViewDateDebut">â€”</td></tr>
-                      <tr id="orgRhViewDateFinRow" style="display:none;"><th>Fin de validitÃ©</th><td id="orgRhViewDateFin">â€”</td></tr>
-                      <tr><th>DerniÃ¨re mise Ã  jour</th><td id="orgRhViewDateMaj">â€”</td></tr>
+                      <tr><th>Statut du poste</th><td id="orgRhViewStatut">—</td></tr>
+                      <tr><th>Stratégie de pourvoi</th><td id="orgRhViewStrategie">—</td></tr>
+                      <tr><th>Début de validité</th><td id="orgRhViewDateDebut">—</td></tr>
+                      <tr id="orgRhViewDateFinRow" style="display:none;"><th>Fin de validité</th><td id="orgRhViewDateFin">—</td></tr>
+                      <tr><th>Dernière mise à jour</th><td id="orgRhViewDateMaj">—</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -398,10 +398,10 @@
                 <div class="org-rh-sheet">
                   <table class="org-rh-view-table">
                     <tbody>
-                      <tr><th>CriticitÃ© du poste</th><td id="orgRhViewCriticite">â€”</td></tr>
-                      <tr><th>Nb titulaires cible</th><td id="orgRhViewNbTitulaires">â€”</td></tr>
-                      <tr><th>Source</th><td id="orgRhViewSource">â€”</td></tr>
-                      <tr class="org-rh-view-table__comment-row"><th>Commentaire</th><td id="orgRhViewCommentaire" class="org-rh-view-comment">â€”</td></tr>
+                      <tr><th>Criticité du poste</th><td id="orgRhViewCriticite">—</td></tr>
+                      <tr><th>Nb titulaires cible</th><td id="orgRhViewNbTitulaires">—</td></tr>
+                      <tr><th>Source</th><td id="orgRhViewSource">—</td></tr>
+                      <tr class="org-rh-view-table__comment-row"><th>Commentaire</th><td id="orgRhViewCommentaire" class="org-rh-view-comment">—</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -416,12 +416,12 @@
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">CriticitÃ© du poste</div>
+                  <div class="label">Criticité du poste</div>
                   <select id="orgRhCriticite" disabled></select>
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">StratÃ©gie de pourvoi</div>
+                  <div class="label">Stratégie de pourvoi</div>
                   <select id="orgRhStrategie" disabled></select>
                 </div>
 
@@ -435,12 +435,12 @@
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">DÃ©but de validitÃ©</div>
+                  <div class="label">Début de validité</div>
                   <input id="orgRhDateDebut" type="date" class="sb-date" disabled />
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">Fin de validitÃ©</div>
+                  <div class="label">Fin de validité</div>
                   <input id="orgRhDateFin" type="date" class="sb-date" disabled />
                 </div>
 
@@ -450,7 +450,7 @@
                 </div>
 
                 <div class="sb-field">
-                  <div class="label">DerniÃ¨re mise Ã  jour</div>
+                  <div class="label">Dernière mise à jour</div>
                   <input id="orgRhDateMaj" type="text" disabled />
                 </div>
 
@@ -472,19 +472,19 @@
 
             <div class="org-rh-cotation-grid">
               <div class="org-rh-cotation-box">
-                <div class="org-rh-cotation-box__label">CatÃ©gorie retenue</div>
-                <div id="orgRhCotationCategorie" class="org-rh-cotation-box__value">â€”</div>
+                <div class="org-rh-cotation-box__label">Catégorie retenue</div>
+                <div id="orgRhCotationCategorie" class="org-rh-cotation-box__value">—</div>
               </div>
 
               <div class="org-rh-cotation-box">
                 <div class="org-rh-cotation-box__label">Coefficient / palier retenu</div>
-                <div id="orgRhCotationCoefficient" class="org-rh-cotation-box__value">â€”</div>
+                <div id="orgRhCotationCoefficient" class="org-rh-cotation-box__value">—</div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
+      </div> 
+      
       <div class="modal-footer">
         <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="orgPosteModalClose">Fermer</button>
       </div>
@@ -492,45 +492,45 @@
     </div>
   </div>
 
-  <!-- Modal : Ã©valuation criticitÃ© compÃ©tence poste -->
+  <!-- Modal : évaluation criticité compétence poste -->
   <div id="modalOrgPosteCompCrit" class="modal" aria-hidden="true">
     <div class="modal-card modal-card--md org-mini-modal-card">
       <div class="modal-header">
         <div class="sb-modal-titleline">
           <span id="orgCompCritBadge" class="sb-badge sb-badge-ref-comp-code" style="display:none;"></span>
-          <div id="orgCompCritTitle" class="sb-title-text">CompÃ©tence</div>
+          <div id="orgCompCritTitle" class="sb-title-text">Compétence</div>
         </div>
-        <button type="button" class="modal-x" id="orgCompCritX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="orgCompCritX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
         <div class="card org-comp-edit-card">
-          <div class="card-title" style="font-size: var(--ns-text-md); margin-bottom:4px;">Niveau requis</div>
-          <div class="card-sub" style="margin:0;">SÃ©lectionnez le niveau attendu sur ce poste.</div>
+          <div class="card-title" style="font-size:14px; margin-bottom:4px;">Niveau requis</div>
+          <div class="card-sub" style="margin:0;">Sélectionnez le niveau attendu sur ce poste.</div>
 
           <div class="org-comp-level-grid" id="orgCompCritNivGrid">
             <label class="org-comp-level-card" data-niv="A">
               <div class="org-comp-level-name">
                 <input type="radio" name="orgCompCritNiv" value="A" />
-                <span>DÃ©butant</span>
+                <span>Débutant</span>
               </div>
-              <div class="org-comp-level-text" id="orgCompCritRefA">â€”</div>
+              <div class="org-comp-level-text" id="orgCompCritRefA">—</div>
             </label>
 
             <label class="org-comp-level-card" data-niv="B">
               <div class="org-comp-level-name">
                 <input type="radio" name="orgCompCritNiv" value="B" />
-                <span>IntermÃ©diaire</span>
+                <span>Intermédiaire</span>
               </div>
-              <div class="org-comp-level-text" id="orgCompCritRefB">â€”</div>
+              <div class="org-comp-level-text" id="orgCompCritRefB">—</div>
             </label>
 
             <label class="org-comp-level-card" data-niv="C">
               <div class="org-comp-level-name">
                 <input type="radio" name="orgCompCritNiv" value="C" />
-                <span>AvancÃ©</span>
+                <span>Avancé</span>
               </div>
-              <div class="org-comp-level-text" id="orgCompCritRefC">â€”</div>
+              <div class="org-comp-level-text" id="orgCompCritRefC">—</div>
             </label>
 
             <label class="org-comp-level-card" data-niv="D">
@@ -538,37 +538,37 @@
                 <input type="radio" name="orgCompCritNiv" value="D" />
                 <span>Expert</span>
               </div>
-              <div class="org-comp-level-text" id="orgCompCritRefD">â€”</div>
+              <div class="org-comp-level-text" id="orgCompCritRefD">—</div>
             </label>
           </div>
         </div>
 
         <div class="card org-comp-edit-card">
-          <div class="card-title" style="font-size: var(--ns-text-md); margin-bottom:4px;">Ã‰valuation de la criticitÃ©</div>
-          <div class="card-sub" style="margin:0;">PondÃ©ration appliquÃ©e : FrÃ©quence (x2), Impact (x5), DÃ©pendance (x3).</div>
+          <div class="card-title" style="font-size:14px; margin-bottom:4px;">Évaluation de la criticité</div>
+          <div class="card-sub" style="margin:0;">Pondération appliquée : Fréquence (x2), Impact (x5), Dépendance (x3).</div>
 
           <div class="org-crit-edit-grid">
             <div class="org-crit-edit-fields">
               <div class="org-crit-row">
-                <div class="label">FrÃ©quence dâ€™usage</div>
+                <div class="label">Fréquence d’usage</div>
                 <input id="orgCompCritFreq" type="range" min="0" max="10" step="1" />
                 <div class="sb-help"><span id="orgCompCritFreqTxt">0/10</span></div>
               </div>
 
               <div class="org-crit-row">
-                <div class="label">Impact sur le rÃ©sultat</div>
+                <div class="label">Impact sur le résultat</div>
                 <input id="orgCompCritImpact" type="range" min="0" max="10" step="1" />
                 <div class="sb-help"><span id="orgCompCritImpactTxt">0/10</span></div>
               </div>
 
               <div class="org-crit-row">
-                <div class="label">DÃ©pendance au poste</div>
+                <div class="label">Dépendance au poste</div>
                 <input id="orgCompCritDep" type="range" min="0" max="10" step="1" />
                 <div class="sb-help"><span id="orgCompCritDepTxt">0/10</span></div>
               </div>
             </div>
 
-            <div class="org-crit-ring" aria-label="Score de criticitÃ©">
+            <div class="org-crit-ring" aria-label="Score de criticité">
               <svg viewBox="0 0 36 36" class="org-crit-ring__svg">
                 <path class="org-crit-ring__bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                 <path id="orgCompCritRingProg" class="org-crit-ring__prog" stroke-dasharray="0 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -595,43 +595,43 @@
     </div>
   </div>
 
-  <!-- Modal : paramÃ©trage certification poste -->
+  <!-- Modal : paramétrage certification poste -->
   <div id="modalOrgPosteCertValid" class="modal" aria-hidden="true">
     <div class="modal-card modal-card--md org-cert-modal-card">
       <div class="modal-header">
         <div>
           <div id="orgCertValidTitle" class="sb-title-text">Certification</div>
-          <div id="orgCertValidSub" class="card-sub" style="margin:4px 0 0 0;">â€”</div>
+          <div id="orgCertValidSub" class="card-sub" style="margin:4px 0 0 0;">—</div>
         </div>
-        <button type="button" class="modal-x" id="orgCertValidX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="orgCertValidX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
         <div class="card org-cert-edit-card">
-          <div class="card-title org-cert-edit-title">ParamÃ©trage pour le poste</div>
-          <div class="card-sub org-cert-edit-sub" id="orgCertValidBaseInfo">ValiditÃ© catalogue : â€”</div>
+          <div class="card-title org-cert-edit-title">Paramétrage pour le poste</div>
+          <div class="card-sub org-cert-edit-sub" id="orgCertValidBaseInfo">Validité catalogue : —</div>
 
           <div class="org-cert-edit-grid">
             <div class="sb-field">
-              <div class="label">ValiditÃ© spÃ©cifique (mois)</div>
+              <div class="label">Validité spécifique (mois)</div>
               <div class="sb-stepper">
-                <button type="button" class="sb-stepper-btn" id="orgCertValidMinus">âˆ’</button>
-                <input id="orgCertValidOverride" type="number" min="1" step="1" inputmode="numeric" placeholder="Laisser vide pour garder la validitÃ© catalogue" />
+                <button type="button" class="sb-stepper-btn" id="orgCertValidMinus">−</button>
+                <input id="orgCertValidOverride" type="number" min="1" step="1" inputmode="numeric" placeholder="Laisser vide pour garder la validité catalogue" />
                 <button type="button" class="sb-stepper-btn" id="orgCertValidPlus">+</button>
               </div>
             </div>
 
             <div class="sb-field">
-              <div class="label">Niveau dâ€™exigence</div>
+              <div class="label">Niveau d’exigence</div>
               <select id="orgCertValidLevel">
                 <option value="requis">Requis</option>
-                <option value="souhaitÃ©">SouhaitÃ©</option>
+                <option value="souhaité">Souhaité</option>
               </select>
             </div>
 
             <div class="sb-field sb-span-2">
               <div class="label">Commentaire</div>
-              <textarea id="orgCertValidComment" rows="4" placeholder="PrÃ©cision Ã©ventuelle pour ce poste"></textarea>
+              <textarea id="orgCertValidComment" rows="4" placeholder="Précision éventuelle pour ce poste"></textarea>
             </div>
           </div>
         </div>

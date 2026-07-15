@@ -1,4 +1,4 @@
-﻿/* NOVOSKILL_PREVISION_KPI_VALIDATOR_GLOBAL_START */
+/* NOVOSKILL_PREVISION_KPI_VALIDATOR_GLOBAL_START */
 (function () {
   const validPrevKpis = ["sorties-confirmees", "sorties-potentielles", "transmissions"];
   window.analysePrevisionValidKpi = function (key) {
@@ -10,10 +10,10 @@
 
 /* ======================================================
    static/menus/skills_analyse.js
-   - Menu "Analyse des compÃ©tences"
-   - 3 tuiles cliquables (Risques / Matching / PrÃ©visions)
+   - Menu "Analyse des compétences"
+   - 3 tuiles cliquables (Risques / Matching / Prévisions)
    - Filtres: Service (V1)
-   - KPI: alimentÃ©s si API summary dispo, sinon "â€”"
+   - KPI: alimentés si API summary dispo, sinon "—"
    ====================================================== */
 
 (function () {
@@ -56,7 +56,7 @@
   function nsLevelCode(value) {
     if (window.NovoskillLevels) return window.NovoskillLevels.normalize(value);
     const raw = (value ?? "").toString().trim();
-    if (!raw || raw === "â€”") return "";
+    if (!raw || raw === "—") return "";
     const m = raw.toUpperCase().match(/\b([ABCD])\b/);
     if (m && m[1]) return m[1];
     const plain = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -70,7 +70,7 @@
   function nsLevelLabel(value) {
     if (window.NovoskillLevels) return window.NovoskillLevels.label(value);
     const k = nsLevelCode(value);
-    return ({ A: "DÃ©butant", B: "IntermÃ©diaire", C: "AvancÃ©", D: "Expert" }[k]) || ((value ?? "").toString().trim() || "â€”");
+    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" }[k]) || ((value ?? "").toString().trim() || "—");
   }
 
   function nsLevelRank(value) {
@@ -79,20 +79,20 @@
   }
 
   function nsLevelBadgeHtml(value, title) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(value, title || "Niveau de maÃ®trise");
+    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(value, title || "Niveau de maîtrise");
     const k = nsLevelCode(value);
     const cls = ({ A: "sb-badge-niv-a", B: "sb-badge-niv-b", C: "sb-badge-niv-c", D: "sb-badge-niv-d" }[k]) || "";
-    return `<span class="sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau de maÃ®trise")}">${escapeHtml(nsLevelLabel(value))}</span>`;
+    return `<span class="sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(nsLevelLabel(value))}</span>`;
   }
 
 
   function analyseRequiredLevelBadgeHtml(value, title) {
     const raw = (value ?? "").toString().trim();
     const code = nsLevelCode(raw);
-    const labelByCode = { A: "DÃ©butant", B: "IntermÃ©diaire", C: "AvancÃ©", D: "Expert" };
+    const labelByCode = { A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" };
     let label = labelByCode[code] || nsLevelLabel(raw);
-    label = (label || "").toString().trim().replace(/^[A-D]\s*[-â€“â€”: ]\s*/i, "");
-    if (!label) label = "â€”";
+    label = (label || "").toString().trim().replace(/^[A-D]\s*[-–—: ]\s*/i, "");
+    if (!label) label = "—";
     const cls = ({ A: "sb-badge-niv-a", B: "sb-badge-niv-b", C: "sb-badge-niv-c", D: "sb-badge-niv-d" }[code]) || "";
     return `<span class="sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau attendu")}">${escapeHtml(label)}</span>`;
   }
@@ -102,7 +102,7 @@
   const s = (iso || "").toString().trim();
   // attend du "YYYY-MM-DD" (ce que ton API renvoie)
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (!m) return s || "â€”";
+  if (!m) return s || "—";
   return `${m[3]}-${m[2]}-${m[1]}`;
   }
 
@@ -124,7 +124,7 @@
     if (!s) return "";
     if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
 
-    // int ARGB signÃ© WinForms (ex: -256)
+    // int ARGB signé WinForms (ex: -256)
     if (/^-?\d+$/.test(s)) {
       const n = parseInt(s, 10);
       const u = (n >>> 0);
@@ -137,9 +137,9 @@
   }
 
     // ==============================
-  // Matching/Risques - Badges "Ã©carts"
+  // Matching/Risques - Badges "écarts"
   // - Rouge = non acquises (abs)
-  // - Orange = Ã  renforcer (sous)
+  // - Orange = à renforcer (sous)
   // ==============================
   function parseAbsSous(raw) {
     // Supporte:
@@ -163,7 +163,7 @@
         <span title="${escapeHtml(title)}"
               style="display:inline-flex; align-items:center; justify-content:center;
                      width:22px; height:22px; border-radius:6px;
-                     font-size: var(--ns-text-xs); font-weight: var(--ns-weight-bold); color:#fff;
+                     font-size:12px; font-weight:800; color:#fff;
                      background:${bg}; border:1px solid rgba(0,0,0,.12);">
           ${n}
         </span>
@@ -173,7 +173,7 @@
     return `
       <span style="display:inline-flex; gap:6px; align-items:center; justify-content:center;">
         ${badge(a, "#ef4444", "Non acquises")}
-        ${badge(b, "#f59e0b", "Ã€ renforcer")}
+        ${badge(b, "#f59e0b", "À renforcer")}
       </span>
     `;
   }
@@ -188,26 +188,26 @@
         </span>
         <span style="display:inline-flex; gap:6px; align-items:center;">
           <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b; display:inline-block;"></span>
-          Ã€ renforcer
+          À renforcer
         </span>
       </div>
     `;
   }
 
 
-  function setText(id, v, fallback = "â€”") {
+  function setText(id, v, fallback = "—") {
     const el = byId(id);
     if (!el) return;
     el.textContent = (v === null || v === undefined || v === "") ? fallback : String(v);
   }
 
   function setStatus(text) {
-    setText("analyseStatus", text || "â€”", "â€”");
+    setText("analyseStatus", text || "—", "—");
   }
 
 
   // ======================================================
-  // Aides utilisateur + hypothÃ¨ses de simulation prÃ©parÃ©es
+  // Aides utilisateur + hypothèses de simulation préparées
   // ======================================================
 
 
@@ -243,8 +243,8 @@
       <div class="modal" id="modalAnalyseHelp" aria-hidden="true">
         <div class="modal-card">
           <div class="modal-header">
-            <div class="modal-title" id="analyseHelpModalTitle">Comprendre lâ€™analyse</div>
-            <button type="button" class="modal-x" id="btnCloseAnalyseHelpModal" aria-label="Fermer">Ã—</button>
+            <div class="modal-title" id="analyseHelpModalTitle">Comprendre l’analyse</div>
+            <button type="button" class="modal-x" id="btnCloseAnalyseHelpModal" aria-label="Fermer">×</button>
           </div>
           <div class="modal-body">
             <div class="analyse-help-modal-body" id="analyseHelpModalBody"></div>
@@ -272,7 +272,7 @@
     const modal = ensureAnalyseHelpModal();
     const t = byId("analyseHelpModalTitle");
     const b = byId("analyseHelpModalBody");
-    if (t) t.textContent = title || "Comprendre lâ€™analyse";
+    if (t) t.textContent = title || "Comprendre l’analyse";
     if (b) b.innerHTML = html || "";
     if (modal) {
       modal.classList.add("show");
@@ -290,7 +290,7 @@
 
   function fmtAnalyseCount(v, singular, plural) {
     const n = Number(v);
-    if (!Number.isFinite(n)) return "â€”";
+    if (!Number.isFinite(n)) return "—";
     const nn = Math.max(0, Math.round(n));
     return `${nn} ${nn > 1 ? plural : singular}`;
   }
@@ -302,8 +302,8 @@
   function analyseRiskLevelLabel(value, count) {
     const v = Number(value || 0);
     if (v >= 80) return "Risque critique";
-    if (v >= 65) return "Risque Ã©levÃ©";
-    if (v >= 35) return "Risque modÃ©rÃ©";
+    if (v >= 65) return "Risque élevé";
+    if (v >= 35) return "Risque modéré";
     return "Risque faible";
   }
   function analyseRiskLevelClass(level) {
@@ -331,8 +331,8 @@
       level: e.level || "Risque faible",
       riskScore: Number.isFinite(score) ? score : 0,
       riskCount: Number.isFinite(count) ? count : 0,
-      metric: e.metric || "Point dÃ©tectÃ©",
-      causesTitle: e.causesTitle || e.causes_title || "Causes probables identifiÃ©es",
+      metric: e.metric || "Point détecté",
+      causesTitle: e.causesTitle || e.causes_title || "Causes probables identifiées",
       causes: Array.isArray(e.causes) ? e.causes : []
     };
   }
@@ -341,8 +341,8 @@
     const synth = data?.risk_synthesis || data?.synthese_risques || null;
     if (!synth) return [];
 
-    // La synthÃ¨se des risques est une lecture actuelle.
-    // Elle ne suit plus le slider N+X, rÃ©servÃ© Ã  la tuile PrÃ©visions.
+    // La synthèse des risques est une lecture actuelle.
+    // Elle ne suit plus le slider N+X, réservé à la tuile Prévisions.
     const effects = Array.isArray(synth.effects) ? synth.effects : [];
     return effects.map(normalizeAnalyseRiskEffectFromEngine).filter(e => e.key);
   }
@@ -371,17 +371,17 @@
       const riskCount = sansCouverture + sansRenfort + postesFort;
       effects.push({
         key: "rupture_activite",
-        title: "Risque de rupture ou ralentissement dâ€™activitÃ©",
+        title: "Risque de rupture ou ralentissement d’activité",
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: `${Math.round(posteFrag)}% de fragilitÃ© moyenne des postes`,
-        causesTitle: "Causes probables identifiÃ©es",
+        metric: `${Math.round(posteFrag)}% de fragilité moyenne des postes`,
+        causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          sansCouverture > 0 ? count(sansCouverture, "compÃ©tence critique avec couverture insuffisante", "compÃ©tences critiques avec couverture insuffisante") : "couverture critique Ã  vÃ©rifier",
-          sansRenfort > 0 ? count(sansRenfort, "poste sans renfort immÃ©diat", "postes sans renfort immÃ©diat") : "renfort immÃ©diat Ã  vÃ©rifier sur les postes sensibles",
-          posteFrag >= 65 ? "postes Ã  risque fort Ã  relire dans le dÃ©tail" : "postes Ã  surveiller selon le dÃ©tail",
-          "continuitÃ© opÃ©rationnelle Ã  vÃ©rifier sur les postes les plus exposÃ©s"
+          sansCouverture > 0 ? count(sansCouverture, "compétence critique avec couverture insuffisante", "compétences critiques avec couverture insuffisante") : "couverture critique à vérifier",
+          sansRenfort > 0 ? count(sansRenfort, "poste sans renfort immédiat", "postes sans renfort immédiat") : "renfort immédiat à vérifier sur les postes sensibles",
+          posteFrag >= 65 ? "postes à risque fort à relire dans le détail" : "postes à surveiller selon le détail",
+          "continuité opérationnelle à vérifier sur les postes les plus exposés"
         ])
       });
     }
@@ -391,17 +391,17 @@
       const riskCount = compFragiles + sansCouverture;
       effects.push({
         key: "qualite_execution",
-        title: "Risque de baisse de qualitÃ© dâ€™exÃ©cution",
+        title: "Risque de baisse de qualité d’exécution",
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: `${Math.round(compFrag)}% de fragilitÃ© moyenne des compÃ©tences`,
-        causesTitle: "Causes probables identifiÃ©es",
+        metric: `${Math.round(compFrag)}% de fragilité moyenne des compétences`,
+        causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          compFragiles > 0 ? count(compFragiles, "compÃ©tence critique avec maÃ®trise fragile", "compÃ©tences critiques avec maÃ®trise fragile") : "Ã©carts de maÃ®trise Ã  vÃ©rifier",
-          "niveaux attendus Ã  confirmer",
-          "Ã©valuations ou confirmations Ã  reprendre",
-          "qualitÃ© dâ€™exÃ©cution Ã  sÃ©curiser sur les compÃ©tences les plus critiques"
+          compFragiles > 0 ? count(compFragiles, "compétence critique avec maîtrise fragile", "compétences critiques avec maîtrise fragile") : "écarts de maîtrise à vérifier",
+          "niveaux attendus à confirmer",
+          "évaluations ou confirmations à reprendre",
+          "qualité d’exécution à sécuriser sur les compétences les plus critiques"
         ])
       });
     }
@@ -411,17 +411,17 @@
       const riskCount = couvertureConcentree + sansRenfort;
       effects.push({
         key: "dependance_individuelle",
-        title: "Risque de dÃ©pendance individuelle",
+        title: "Risque de dépendance individuelle",
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: count(couvertureConcentree, "compÃ©tence avec couverture concentrÃ©e", "compÃ©tences avec couverture concentrÃ©e"),
-        causesTitle: "Causes probables identifiÃ©es",
+        metric: count(couvertureConcentree, "compétence avec couverture concentrée", "compétences avec couverture concentrée"),
+        causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          couvertureConcentree > 0 ? count(couvertureConcentree, "compÃ©tence dÃ©pend dâ€™une seule personne", "compÃ©tences dÃ©pendent dâ€™une seule personne") : "dÃ©pendances individuelles Ã  vÃ©rifier",
-          "vivier interne Ã  surveiller",
-          sansRenfort > 0 ? count(sansRenfort, "poste sans renfort immÃ©diat", "postes sans renfort immÃ©diat") : "renfort immÃ©diat Ã  confirmer",
-          "transmission Ã  structurer sur les compÃ©tences clÃ©s"
+          couvertureConcentree > 0 ? count(couvertureConcentree, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") : "dépendances individuelles à vérifier",
+          "vivier interne à surveiller",
+          sansRenfort > 0 ? count(sansRenfort, "poste sans renfort immédiat", "postes sans renfort immédiat") : "renfort immédiat à confirmer",
+          "transmission à structurer sur les compétences clés"
         ])
       });
     }
@@ -435,13 +435,13 @@
         level: analyseRiskLevelLabel(riskScore, riskCount),
         riskScore,
         riskCount,
-        metric: count(couvertureConcentree, "compÃ©tence avec savoir-faire peu diffusÃ©", "compÃ©tences avec savoir-faire peu diffusÃ©"),
-        causesTitle: "Causes probables identifiÃ©es",
+        metric: count(couvertureConcentree, "compétence avec savoir-faire peu diffusé", "compétences avec savoir-faire peu diffusé"),
+        causesTitle: "Causes probables identifiées",
         causes: compactCauseList([
-          sansCouverture > 0 ? count(sansCouverture, "compÃ©tence sans expertise confirmÃ©e", "compÃ©tences sans expertise confirmÃ©e") : "expertise confirmÃ©e Ã  surveiller",
-          couvertureConcentree > 0 ? count(couvertureConcentree, "compÃ©tence avec relÃ¨ve interne limitÃ©e", "compÃ©tences avec relÃ¨ve interne limitÃ©e") : "relÃ¨ve interne Ã  confirmer",
-          "transmission Ã  organiser sur les savoir-faire sensibles",
-          "savoir-faire Ã  sÃ©curiser avant perte de maÃ®trise opÃ©rationnelle"
+          sansCouverture > 0 ? count(sansCouverture, "compétence sans expertise confirmée", "compétences sans expertise confirmée") : "expertise confirmée à surveiller",
+          couvertureConcentree > 0 ? count(couvertureConcentree, "compétence avec relève interne limitée", "compétences avec relève interne limitée") : "relève interne à confirmer",
+          "transmission à organiser sur les savoir-faire sensibles",
+          "savoir-faire à sécuriser avant perte de maîtrise opérationnelle"
         ])
       });
     }
@@ -465,13 +465,13 @@
     const compFrag = Number(r.comp_fragilite_moyenne ?? NaN);
     const values = [posteFrag, compFrag].filter(Number.isFinite);
     if (!values.length) {
-      setText("analyseSynthProjection", "â€”");
+      setText("analyseSynthProjection", "—");
       return;
     }
 
     const score = Math.max(...values);
     const level = analyseRiskLevelLabel(score, 0).replace(/^Risque\s+/i, "");
-    setText("analyseSynthProjection", `${level} Â· ${Math.round(score)}%`);
+    setText("analyseSynthProjection", `${level} · ${Math.round(score)}%`);
   }
 
 
@@ -483,8 +483,8 @@
     const effects = buildAnalyseRiskEffects(data || {});
     _analyseLastSummaryEffects = effects;
 
-    setText("analyseSynthPostesAnalyses", Number.isFinite(postesAnalyses) ? fmtAnalyseCount(postesAnalyses, "poste", "postes") : "â€”");
-    setText("analyseSynthCompetencesAnalysees", Number.isFinite(competencesAnalysees) ? fmtAnalyseCount(competencesAnalysees, "compÃ©tence", "compÃ©tences") : "â€”");
+    setText("analyseSynthPostesAnalyses", Number.isFinite(postesAnalyses) ? fmtAnalyseCount(postesAnalyses, "poste", "postes") : "—");
+    setText("analyseSynthCompetencesAnalysees", Number.isFinite(competencesAnalysees) ? fmtAnalyseCount(competencesAnalysees, "compétence", "compétences") : "—");
     setText("analyseSynthEffetsTerrain", fmtAnalyseCount(effects.length, "effet", "effets"));
     updateAnalyseProjectionSummary(data?.tiles?.previsions || _prevData || {});
   }
@@ -502,31 +502,31 @@
         <div class="analyse-risk-effect-head">
           <div>
             <div class="analyse-risk-effect-title">${escapeHtml(e.title)}</div>
-            <div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(e.metric || "Point dÃ©tectÃ©")}</div>
+            <div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(e.metric || "Point détecté")}</div>
           </div>
-          <span class="analyse-risk-effect-level ${analyseRiskLevelClass(e.level)}">${escapeHtml(e.level || "Risque Ã  qualifier")}</span>
+          <span class="analyse-risk-effect-level ${analyseRiskLevelClass(e.level)}">${escapeHtml(e.level || "Risque à qualifier")}</span>
         </div>
-        <div class="analyse-risk-effect-causes-title">${escapeHtml(e.causesTitle || "SynthÃ¨se des causes identifiÃ©es")}</div>
+        <div class="analyse-risk-effect-causes-title">${escapeHtml(e.causesTitle || "Synthèse des causes identifiées")}</div>
         <ul class="analyse-risk-effect-causes">
           ${(e.causes || []).slice(0, 5).map(c => `<li>${escapeHtml(c)}</li>`).join("")}
         </ul>
         <div class="analyse-risk-effect-actions">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-analyse-ishikawa="${escapeHtml(e.key)}">GÃ©nÃ©rer lâ€™Ishikawa</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-analyse-ishikawa="${escapeHtml(e.key)}">Générer l’Ishikawa</button>
         </div>
       </div>
     `).join("") : `
       <div class="analyse-risk-effect-card">
-        <div class="analyse-risk-effect-title">Aucun effet terrain significatif dÃ©tectÃ©</div>
-        <div class="analyse-risk-effect-body" style="margin-top:6px;">Les donnÃ©es du pÃ©rimÃ¨tre ne font pas ressortir de fragilitÃ© notable sur les indicateurs suivis.</div>
+        <div class="analyse-risk-effect-title">Aucun effet terrain significatif détecté</div>
+        <div class="analyse-risk-effect-body" style="margin-top:6px;">Les données du périmètre ne font pas ressortir de fragilité notable sur les indicateurs suivis.</div>
       </div>
     `;
 
     return `
       <div class="analyse-help-intro">
-        <p>La synthÃ¨se regroupe les effets terrain dÃ©tectÃ©s et leurs causes principales sur le pÃ©rimÃ¨tre <b>${escapeHtml(scope)}</b>.</p>
-        <p class="card-sub" style="margin:6px 0 12px 0;">PÃ©rimÃ¨tre lu : ${Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste", "postes") : "postes Ã  vÃ©rifier"} â€¢ ${Number.isFinite(comps) ? fmtAnalyseCount(comps, "compÃ©tence", "compÃ©tences") : "compÃ©tences Ã  vÃ©rifier"}</p>
+        <p>La synthèse regroupe les effets terrain détectés et leurs causes principales sur le périmètre <b>${escapeHtml(scope)}</b>.</p>
+        <p class="card-sub" style="margin:6px 0 12px 0;">Périmètre lu : ${Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste", "postes") : "postes à vérifier"} • ${Number.isFinite(comps) ? fmtAnalyseCount(comps, "compétence", "compétences") : "compétences à vérifier"}</p>
         <div class="analyse-risk-summary-actions">
-          <button type="button" class="sb-btn sb-btn--init sb-btn--sm" data-analyse-risk-report="1">GÃ©nÃ©rer le rapport</button>
+          <button type="button" class="sb-btn sb-btn--init sb-btn--sm" data-analyse-risk-report="1">Générer le rapport</button>
         </div>
       </div>
       <div class="analyse-risk-summary-list">${cards}</div>
@@ -544,7 +544,7 @@
         if (token) headers.set("Authorization", `Bearer ${token}`);
       }
     } catch (_) {
-      /* lâ€™API retournera lâ€™erreur utile */
+      /* l’API retournera l’erreur utile */
     }
 
     const res = await fetch(url, { method: "GET", headers });
@@ -567,18 +567,18 @@
   async function openAnalysePdfBlob(url, blockedTitle) {
     const win = window.open("about:blank", "_blank");
     if (!win) {
-      showAnalyseHelp(blockedTitle || "Ouverture bloquÃ©e", "<p>Le navigateur a bloquÃ© lâ€™ouverture du document. Autorise les fenÃªtres pour Novoskill ou rÃ©essaie.</p>");
+      showAnalyseHelp(blockedTitle || "Ouverture bloquée", "<p>Le navigateur a bloqué l’ouverture du document. Autorise les fenêtres pour Novoskill ou réessaie.</p>");
       return;
     }
     try {
-      win.document.write("<p style='font-family: var(--ns-font-ui);padding:20px;'>GÃ©nÃ©ration du documentâ€¦</p>");
+      win.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du document…</p>");
       const blob = await analyseApiBlob(url);
       const blobUrl = URL.createObjectURL(blob);
       win.location.href = blobUrl;
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (e) {
       try {
-        win.document.body.innerHTML = `<pre style="font-family: var(--ns-font-ui);white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur gÃ©nÃ©ration document : ${escapeHtml(errMsg(e))}</pre>`;
+        win.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur génération document : ${escapeHtml(errMsg(e))}</pre>`;
       } catch (_) {}
       showAnalyseHelp("Document indisponible", `<p>${escapeHtml(errMsg(e))}</p>`);
     }
@@ -602,19 +602,19 @@
   function openAnalyseIshikawaPdf(effectKey) {
     const url = buildAnalyseRiskDocumentUrl("ishikawa", effectKey || "rupture_activite");
     if (!url) {
-      showAnalyseHelp("Ishikawa indisponible", "<p>Impossible de retrouver le contexte utilisateur pour gÃ©nÃ©rer le document.</p>");
+      showAnalyseHelp("Ishikawa indisponible", "<p>Impossible de retrouver le contexte utilisateur pour générer le document.</p>");
       return;
     }
-    openAnalysePdfBlob(url, "Ishikawa bloquÃ©");
+    openAnalysePdfBlob(url, "Ishikawa bloqué");
   }
 
   function openAnalyseRiskReportPdf() {
     const url = buildAnalyseRiskDocumentUrl("rapport", "");
     if (!url) {
-      showAnalyseHelp("Rapport indisponible", "<p>Impossible de retrouver le contexte utilisateur pour gÃ©nÃ©rer le document.</p>");
+      showAnalyseHelp("Rapport indisponible", "<p>Impossible de retrouver le contexte utilisateur pour générer le document.</p>");
       return;
     }
-    openAnalysePdfBlob(url, "Rapport bloquÃ©");
+    openAnalysePdfBlob(url, "Rapport bloqué");
   }
 
   function analyseEyeIconSvg() {
@@ -647,7 +647,7 @@
   }
 
   function analyseDetailTitleHtml(text, iconKind) {
-    return `<span class="analyse-detail-titleline"><span class="analyse-detail-title-icon" aria-hidden="true">${analyseDetailIconSvg(iconKind)}</span><span>${escapeHtml(text || "â€”")}</span></span>`;
+    return `<span class="analyse-detail-titleline"><span class="analyse-detail-title-icon" aria-hidden="true">${analyseDetailIconSvg(iconKind)}</span><span>${escapeHtml(text || "—")}</span></span>`;
   }
 
   function setAnalyseDetailTitle(text, iconKind) {
@@ -675,10 +675,10 @@
   function openAnalysePosteAnalysisPdf(idPoste) {
     const url = buildAnalysePosteAnalysisPdfUrl(idPoste);
     if (!url) {
-      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver le poste Ã  exporter.</p>");
+      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver le poste à exporter.</p>");
       return;
     }
-    openAnalysePdfBlob(url, "PDF poste bloquÃ©");
+    openAnalysePdfBlob(url, "PDF poste bloqué");
   }
 
   function buildAnalyseCompetenceAnalysisPdfUrl(compKey) {
@@ -699,10 +699,10 @@
   function openAnalyseCompetenceAnalysisPdf(compKey) {
     const url = buildAnalyseCompetenceAnalysisPdfUrl(compKey);
     if (!url) {
-      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver la compÃ©tence Ã  exporter.</p>");
+      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver la compétence à exporter.</p>");
       return;
     }
-    openAnalysePdfBlob(url, "PDF compÃ©tence bloquÃ©");
+    openAnalysePdfBlob(url, "PDF compétence bloqué");
   }
 
 
@@ -719,10 +719,10 @@
   function openAnalyseCompetenceFichePdf(compKey) {
     const url = buildAnalyseCompetenceFichePdfUrl(compKey);
     if (!url) {
-      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver la fiche compÃ©tence Ã  exporter.</p>");
+      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver la fiche compétence à exporter.</p>");
       return;
     }
-    openAnalysePdfBlob(url, "PDF fiche compÃ©tence bloquÃ©");
+    openAnalysePdfBlob(url, "PDF fiche compétence bloqué");
   }
 
 
@@ -762,10 +762,10 @@
   function openAnalyseRiskDetailPdf(kpiKey) {
     const url = buildAnalyseRiskDetailPdfUrl(kpiKey);
     if (!url) {
-      showAnalyseHelp("Impression indisponible", "<p>Impossible de retrouver la table Ã  imprimer.</p>");
+      showAnalyseHelp("Impression indisponible", "<p>Impossible de retrouver la table à imprimer.</p>");
       return;
     }
-    openAnalysePdfBlob(url, "Impression bloquÃ©e");
+    openAnalysePdfBlob(url, "Impression bloquée");
   }
 
 
@@ -819,10 +819,10 @@
   function openAnalysePrevisionsDetailPdf(kpiKey) {
     const url = buildAnalysePrevisionsDetailPdfUrl(kpiKey);
     if (!url) {
-      showAnalyseHelp("Impression indisponible", "<p>Impossible de retrouver la table prÃ©visionnelle Ã  imprimer.</p>");
+      showAnalyseHelp("Impression indisponible", "<p>Impossible de retrouver la table prévisionnelle à imprimer.</p>");
       return;
     }
-    openAnalysePdfBlob(url, "Impression bloquÃ©e");
+    openAnalysePdfBlob(url, "Impression bloquée");
   }
 
   function renderPrevisionsHeaderActions(kpiKey, rowsCount = 0) {
@@ -882,44 +882,44 @@
 
   function buildRisquesHelpHtml() {
     return `
-      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte. Les pourcentages indiquent un niveau dâ€™exposition du pÃ©rimÃ¨tre, pas une dÃ©cision automatique.")}
+      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte. Les pourcentages indiquent un niveau d’exposition du périmètre, pas une décision automatique.")}
       <div class="analyse-help-kpi-list">
-        ${analyseHelpKpi("FragilitÃ© moyenne des postes", "Ce pourcentage mesure le niveau moyen dâ€™exposition des postes affichÃ©s dans le pÃ©rimÃ¨tre sÃ©lectionnÃ©. Il prend en compte la couverture des compÃ©tences attendues sur les postes, les niveaux rÃ©ellement disponibles, les Ã©carts avec les niveaux attendus, les compÃ©tences qui reposent sur trop peu de personnes et les Ã©valuations manquantes ou Ã  confirmer. Plus le pourcentage est Ã©levÃ©, plus la continuitÃ© des postes doit Ãªtre sÃ©curisÃ©e.")}
-        ${analyseHelpKpi("FragilitÃ© moyenne des compÃ©tences", "Ce pourcentage mesure le niveau moyen dâ€™exposition des compÃ©tences critiques du pÃ©rimÃ¨tre. Le calcul tient compte du nombre de collaborateurs capables de porter chaque compÃ©tence, de leur niveau de maÃ®trise, de la prÃ©sence de relais internes, de la confirmation des Ã©valuations et de la dÃ©pendance Ã©ventuelle Ã  une seule personne.")}
-        ${analyseHelpKpi("PrÃ©vision Ã  3 mois", "Cet indicateur affiche la plus forte dÃ©gradation de fragilitÃ© dÃ©tectÃ©e dans les trois prochains mois, et pas seulement la situation exacte au dernier jour. Le calcul tient compte des indisponibilitÃ©s temporaires, des fins de contrat, des dÃ©parts ou retraites prÃ©vus lorsquâ€™une date de sortie est renseignÃ©e. Si un risque apparaÃ®t pendant quelques semaines puis disparaÃ®t avant la fin des trois mois, il est quand mÃªme pris en compte.")}
+        ${analyseHelpKpi("Fragilité moyenne des postes", "Ce pourcentage mesure le niveau moyen d’exposition des postes affichés dans le périmètre sélectionné. Il prend en compte la couverture des compétences attendues sur les postes, les niveaux réellement disponibles, les écarts avec les niveaux attendus, les compétences qui reposent sur trop peu de personnes et les évaluations manquantes ou à confirmer. Plus le pourcentage est élevé, plus la continuité des postes doit être sécurisée.")}
+        ${analyseHelpKpi("Fragilité moyenne des compétences", "Ce pourcentage mesure le niveau moyen d’exposition des compétences critiques du périmètre. Le calcul tient compte du nombre de collaborateurs capables de porter chaque compétence, de leur niveau de maîtrise, de la présence de relais internes, de la confirmation des évaluations et de la dépendance éventuelle à une seule personne.")}
+        ${analyseHelpKpi("Prévision à 3 mois", "Cet indicateur affiche la plus forte dégradation de fragilité détectée dans les trois prochains mois, et pas seulement la situation exacte au dernier jour. Le calcul tient compte des indisponibilités temporaires, des fins de contrat, des départs ou retraites prévus lorsqu’une date de sortie est renseignée. Si un risque apparaît pendant quelques semaines puis disparaît avant la fin des trois mois, il est quand même pris en compte.")}
       </div>
-      ${analyseHelpNote("Ã€ lire comme une aide Ã  la priorisation : lâ€™indicateur signale oÃ¹ regarder en premier, puis lâ€™analyse dÃ©taillÃ©e permet de confirmer les actions Ã  mener.")}
+      ${analyseHelpNote("À lire comme une aide à la priorisation : l’indicateur signale où regarder en premier, puis l’analyse détaillée permet de confirmer les actions à mener.")}
     `;
   }
 
   function buildMatchingHelpHtml() {
     return `
-      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Correspondance profils / postes. Le calcul sert Ã  repÃ©rer des pistes internes, pas Ã  valider automatiquement une mobilitÃ© ou un remplacement.")}
+      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Correspondance profils / postes. Le calcul sert à repérer des pistes internes, pas à valider automatiquement une mobilité ou un remplacement.")}
       <div class="analyse-help-kpi-list">
-        ${analyseHelpKpi("AdÃ©quation au poste", "Cet indicateur mesure le niveau de correspondance entre les compÃ©tences connues dâ€™un collaborateur titulaire et les compÃ©tences attendues sur son poste. Le calcul compare les compÃ©tences dÃ©tenues, leur niveau de maÃ®trise, les Ã©carts avec le niveau attendu et les Ã©lÃ©ments qui restent Ã  confirmer. Une adÃ©quation Ã©levÃ©e indique que le poste est bien couvert ; une adÃ©quation faible signale des Ã©carts, une couverture insuffisante ou des donnÃ©es encore trop fragiles.")}
-        ${analyseHelpKpi("Top candidat", "Cet indicateur met en avant le profil interne le plus proche dâ€™un poste, en dehors du titulaire quand câ€™est nÃ©cessaire. Le systÃ¨me recherche la meilleure correspondance disponible Ã  partir des compÃ©tences et niveaux dÃ©jÃ  connus. Il sâ€™agit dâ€™une piste de renfort, de mobilitÃ©, de remplacement ou de montÃ©e en compÃ©tence ; la disponibilitÃ©, lâ€™envie et la validation managÃ©riale restent Ã  confirmer.")}
+        ${analyseHelpKpi("Adéquation au poste", "Cet indicateur mesure le niveau de correspondance entre les compétences connues d’un collaborateur titulaire et les compétences attendues sur son poste. Le calcul compare les compétences détenues, leur niveau de maîtrise, les écarts avec le niveau attendu et les éléments qui restent à confirmer. Une adéquation élevée indique que le poste est bien couvert ; une adéquation faible signale des écarts, une couverture insuffisante ou des données encore trop fragiles.")}
+        ${analyseHelpKpi("Top candidat", "Cet indicateur met en avant le profil interne le plus proche d’un poste, en dehors du titulaire quand c’est nécessaire. Le système recherche la meilleure correspondance disponible à partir des compétences et niveaux déjà connus. Il s’agit d’une piste de renfort, de mobilité, de remplacement ou de montée en compétence ; la disponibilité, l’envie et la validation managériale restent à confirmer.")}
       </div>
-      ${analyseHelpNote("Une bonne correspondance nâ€™est pas forcÃ©ment une personne immÃ©diatement opÃ©rationnelle Ã  100 %. Elle indique surtout le profil le plus proche Ã  Ã©tudier.")}
+      ${analyseHelpNote("Une bonne correspondance n’est pas forcément une personne immédiatement opérationnelle à 100 %. Elle indique surtout le profil le plus proche à étudier.")}
     `;
   }
 
   function buildPrevisionsHelpHtml() {
     const horizon = analyseHorizonLabel(getPrevHorizon());
     return `
-      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte PrÃ©visions. Ils servent Ã  anticiper les fragilitÃ©s qui peuvent apparaÃ®tre si le pÃ©rimÃ¨tre Ã©volue.")}
+      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Prévisions. Ils servent à anticiper les fragilités qui peuvent apparaître si le périmètre évolue.")}
       <div class="analyse-help-kpi-list">
-        ${analyseHelpKpi(`Sorties ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du pÃ©rimÃ¨tre sur la pÃ©riode N+X choisie. Le calcul sâ€™appuie sur les informations connues dans Novoskill : dÃ©part prÃ©vu, retraite, mobilitÃ©, fin de prÃ©sence, indisponibilitÃ© ou autre donnÃ©e prÃ©visionnelle renseignÃ©e.")}
-        ${analyseHelpKpi("Ã‰volution fragilitÃ© compÃ©tences", "Cet indicateur affiche lâ€™Ã©volution moyenne de fragilitÃ© ramenÃ©e Ã  toutes les compÃ©tences analysÃ©es du pÃ©rimÃ¨tre. Le calcul repart de la fragilitÃ© actuelle puis rejoue le mÃªme moteur en retirant les sortants identifiÃ©s sur la pÃ©riode N+X.")}
-        ${analyseHelpKpi("Ã‰volution fragilitÃ© postes", "Cet indicateur affiche lâ€™Ã©volution moyenne de fragilitÃ© ramenÃ©e Ã  tous les postes analysÃ©s du pÃ©rimÃ¨tre. Le calcul repart de la fragilitÃ© actuelle puis rejoue le mÃªme moteur en retirant les sortants identifiÃ©s sur la pÃ©riode N+X.")}
-        ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la pÃ©riode observÃ©e. Plus la pÃ©riode est longue, plus lâ€™analyse peut faire apparaÃ®tre des fragilitÃ©s futures. La lecture reste une anticipation : elle doit aider Ã  prÃ©parer les actions avant que le risque devienne opÃ©rationnel.")}
+        ${analyseHelpKpi(`Sorties ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du périmètre sur la période N+X choisie. Le calcul s’appuie sur les informations connues dans Novoskill : départ prévu, retraite, mobilité, fin de présence, indisponibilité ou autre donnée prévisionnelle renseignée.")}
+        ${analyseHelpKpi("Évolution fragilité compétences", "Cet indicateur affiche l’évolution moyenne de fragilité ramenée à toutes les compétences analysées du périmètre. Le calcul repart de la fragilité actuelle puis rejoue le même moteur en retirant les sortants identifiés sur la période N+X.")}
+        ${analyseHelpKpi("Évolution fragilité postes", "Cet indicateur affiche l’évolution moyenne de fragilité ramenée à tous les postes analysés du périmètre. Le calcul repart de la fragilité actuelle puis rejoue le même moteur en retirant les sortants identifiés sur la période N+X.")}
+        ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la période observée. Plus la période est longue, plus l’analyse peut faire apparaître des fragilités futures. La lecture reste une anticipation : elle doit aider à préparer les actions avant que le risque devienne opérationnel.")}
       </div>
-      ${analyseHelpNote("Cette carte sert Ã  prendre de lâ€™avance : transmission, relÃ¨ve interne, formation, recrutement ou rÃ©organisation ciblÃ©e.")}
+      ${analyseHelpNote("Cette carte sert à prendre de l’avance : transmission, relève interne, formation, recrutement ou réorganisation ciblée.")}
     `;
   }
 
   const ANALYSE_HELP = {
     summary: {
-      title: "SynthÃ¨se des risques",
+      title: "Synthèse des risques",
       html: ""
     },
     risques: {
@@ -927,32 +927,32 @@
       html: buildRisquesHelpHtml
     },
     risques_evol3m_table: {
-      title: "Ã‰volution des indices de fragilitÃ© Ã  3 mois",
+      title: "Évolution des indices de fragilité à 3 mois",
       html: `
         <div class="analyse-help-kpi-list">
           <div class="analyse-help-kpi-block">
             <h4>Mois de projection</h4>
-            <p>Chaque ligne prÃ©sente la situation actuelle ou un mois de projection dans les trois prochains mois. La ligne marquÃ©e <b>pic retenu</b> correspond au mois oÃ¹ lâ€™indice de fragilitÃ© atteint son niveau le plus haut sur la pÃ©riode.</p>
+            <p>Chaque ligne présente la situation actuelle ou un mois de projection dans les trois prochains mois. La ligne marquée <b>pic retenu</b> correspond au mois où l’indice de fragilité atteint son niveau le plus haut sur la période.</p>
           </div>
           <div class="analyse-help-kpi-block">
-            <h4>Indice de fragilitÃ©</h4>
-            <p>Câ€™est le niveau de fragilitÃ© moyen projetÃ© sur le pÃ©rimÃ¨tre affichÃ©. Il tient compte des postes, des compÃ©tences attendues, des titulaires disponibles et des Ã©vÃ©nements prÃ©vus sur la pÃ©riode.</p>
+            <h4>Indice de fragilité</h4>
+            <p>C’est le niveau de fragilité moyen projeté sur le périmètre affiché. Il tient compte des postes, des compétences attendues, des titulaires disponibles et des événements prévus sur la période.</p>
           </div>
           <div class="analyse-help-kpi-block">
-            <h4>Ã‰volution</h4>
-            <p>Cette valeur compare le mois affichÃ© avec la situation dâ€™aujourdâ€™hui. Une hausse signale une dÃ©gradation du risque. Une baisse indique une amÃ©lioration. Un tiret sur la ligne dâ€™aujourdâ€™hui signifie quâ€™il nâ€™y a pas encore dâ€™Ã©volution Ã  mesurer.</p>
+            <h4>Évolution</h4>
+            <p>Cette valeur compare le mois affiché avec la situation d’aujourd’hui. Une hausse signale une dégradation du risque. Une baisse indique une amélioration. Un tiret sur la ligne d’aujourd’hui signifie qu’il n’y a pas encore d’évolution à mesurer.</p>
           </div>
           <div class="analyse-help-kpi-block">
-            <h4>IndisponibilitÃ©s temporaires</h4>
-            <p>Nombre de collaborateurs ayant une indisponibilitÃ© qui chevauche le mois concernÃ©. MÃªme une absence courte peut faire monter la fragilitÃ© si elle touche une personne seule sur un poste ou une compÃ©tence sensible.</p>
+            <h4>Indisponibilités temporaires</h4>
+            <p>Nombre de collaborateurs ayant une indisponibilité qui chevauche le mois concerné. Même une absence courte peut faire monter la fragilité si elle touche une personne seule sur un poste ou une compétence sensible.</p>
           </div>
           <div class="analyse-help-kpi-block">
-            <h4>Fins de contrat / sorties prÃ©vues</h4>
-            <p>Nombre de collaborateurs avec une date de fin de contrat, de dÃ©part, de retraite ou de sortie prÃ©vue pendant le mois concernÃ©. Ces personnes ne sont plus considÃ©rÃ©es comme disponibles pour couvrir le pÃ©rimÃ¨tre projetÃ©.</p>
+            <h4>Fins de contrat / sorties prévues</h4>
+            <p>Nombre de collaborateurs avec une date de fin de contrat, de départ, de retraite ou de sortie prévue pendant le mois concerné. Ces personnes ne sont plus considérées comme disponibles pour couvrir le périmètre projeté.</p>
           </div>
           <div class="analyse-help-kpi-block">
-            <h4>DÃ©tail</h4>
-            <p>Le bouton Å“il ouvre la liste des collaborateurs concernÃ©s par les indisponibilitÃ©s ou sorties prÃ©vues sur le mois sÃ©lectionnÃ©.</p>
+            <h4>Détail</h4>
+            <p>Le bouton œil ouvre la liste des collaborateurs concernés par les indisponibilités ou sorties prévues sur le mois sélectionné.</p>
           </div>
         </div>`
     },
@@ -961,7 +961,7 @@
       html: buildMatchingHelpHtml
     },
     previsions: {
-      title: "Comprendre la carte PrÃ©visions",
+      title: "Comprendre la carte Prévisions",
       html: buildPrevisionsHelpHtml
     }
   };
@@ -969,60 +969,60 @@
   const CAUSE_EFFECTS = {
     structure: {
       title: "Effet possible du risque structurel",
-      text: "Le poste peut Ãªtre insuffisamment tenu ou trop peu couvert. Lâ€™activitÃ© repose alors sur une base trop fragile, mÃªme si certaines compÃ©tences existent dans lâ€™entreprise."
+      text: "Le poste peut être insuffisamment tenu ou trop peu couvert. L’activité repose alors sur une base trop fragile, même si certaines compétences existent dans l’entreprise."
     },
     dependance: {
-      title: "Effet possible de la dÃ©pendance",
-      text: "La continuitÃ© repose sur trop peu de collaborateurs confirmÃ©s. Une absence, un dÃ©part ou une surcharge peut rapidement mettre le poste ou la compÃ©tence sous tension."
+      title: "Effet possible de la dépendance",
+      text: "La continuité repose sur trop peu de collaborateurs confirmés. Une absence, un départ ou une surcharge peut rapidement mettre le poste ou la compétence sous tension."
     },
     transmission: {
-      title: "Effet possible dâ€™un renfort potentiel insuffisant",
-      text: "Le poste dispose de peu de profils internes capables dâ€™aider rapidement. Les seuils utilisÃ©s distinguent les renforts immÃ©diats et les renforts Ã  prÃ©parer."
+      title: "Effet possible d’un renfort potentiel insuffisant",
+      text: "Le poste dispose de peu de profils internes capables d’aider rapidement. Les seuils utilisés distinguent les renforts immédiats et les renforts à préparer."
     },
     sorties: {
-      title: "Effet possible dâ€™une sortie approchante",
-      text: "Un titulaire a une fin de contrat, une retraite ou une sortie prÃ©vue Ã  court terme. Cela nâ€™explique pas forcÃ©ment la fragilitÃ© actuelle, mais peut lâ€™aggraver rapidement."
+      title: "Effet possible d’une sortie approchante",
+      text: "Un titulaire a une fin de contrat, une retraite ou une sortie prévue à court terme. Cela n’explique pas forcément la fragilité actuelle, mais peut l’aggraver rapidement."
     },
     efficacite: {
-      title: "Effet possible dâ€™un niveau attendu non atteint",
-      text: "Le poste peut sembler couvert, mais la compÃ©tence nâ€™est pas maÃ®trisÃ©e au niveau requis. Cela peut produire des erreurs, des dÃ©lais ou une dÃ©pendance Ã  un profil plus expÃ©rimentÃ©."
+      title: "Effet possible d’un niveau attendu non atteint",
+      text: "Le poste peut sembler couvert, mais la compétence n’est pas maîtrisée au niveau requis. Cela peut produire des erreurs, des délais ou une dépendance à un profil plus expérimenté."
     },
     comp_maitrise: {
-      title: "MaÃ®trise insuffisante de la compÃ©tence",
-      text: "Cette cause apparaÃ®t quand la compÃ©tence existe dans lâ€™entreprise, mais pas suffisamment au niveau attendu sur les usages analysÃ©s. Elle aide Ã  repÃ©rer les Ã©carts entre le besoin rÃ©el et la maÃ®trise disponible."
+      title: "Maîtrise insuffisante de la compétence",
+      text: "Cette cause apparaît quand la compétence existe dans l’entreprise, mais pas suffisamment au niveau attendu sur les usages analysés. Elle aide à repérer les écarts entre le besoin réel et la maîtrise disponible."
     },
     comp_concentration: {
       title: "Concentration sur trop peu de personnes",
-      text: "Cette cause indique que la compÃ©tence est dÃ©tenue par un nombre trop limitÃ© de collaborateurs. Plus la compÃ©tence est concentrÃ©e, plus une absence ou un changement de poste peut fragiliser lâ€™organisation."
+      text: "Cette cause indique que la compétence est détenue par un nombre trop limité de collaborateurs. Plus la compétence est concentrée, plus une absence ou un changement de poste peut fragiliser l’organisation."
     },
     comp_transmission: {
-      title: "CapacitÃ© de transmission insuffisante",
-      text: "Cette cause vÃ©rifie si la compÃ©tence peut Ãªtre transmise. La lecture tient compte des collaborateurs au niveau Expert et des collaborateurs AvancÃ©s pouvant servir de base Ã  une transmission organisÃ©e."
+      title: "Capacité de transmission insuffisante",
+      text: "Cette cause vérifie si la compétence peut être transmise. La lecture tient compte des collaborateurs au niveau Expert et des collaborateurs Avancés pouvant servir de base à une transmission organisée."
     },
     comp_evenements: {
-      title: "Exposition Ã  des sorties ou indisponibilitÃ©s",
-      text: "Cette cause signale les Ã©vÃ©nements connus qui peuvent retirer temporairement ou durablement des collaborateurs associÃ©s Ã  cette compÃ©tence : indisponibilitÃ©, fin de contrat, retraite ou sortie prÃ©vue."
+      title: "Exposition à des sorties ou indisponibilités",
+      text: "Cette cause signale les événements connus qui peuvent retirer temporairement ou durablement des collaborateurs associés à cette compétence : indisponibilité, fin de contrat, retraite ou sortie prévue."
     },
     comp_donnees: {
-      title: "DonnÃ©es Ã  vÃ©rifier",
-      text: "Cette cause ne signale pas forcÃ©ment un risque mÃ©tier direct. Elle indique que certaines donnÃ©es doivent Ãªtre confirmÃ©es pour fiabiliser la lecture de la compÃ©tence."
+      title: "Données à vérifier",
+      text: "Cette cause ne signale pas forcément un risque métier direct. Elle indique que certaines données doivent être confirmées pour fiabiliser la lecture de la compétence."
     },
     non_confirmee: {
-      title: "Effet possible dâ€™une compÃ©tence non confirmÃ©e",
-      text: "La couverture repose sur une dÃ©claration ou une donnÃ©e incomplÃ¨te. Lâ€™analyse reste prudente tant que le niveau rÃ©el nâ€™est pas confirmÃ© par une Ã©valuation exploitable."
+      title: "Effet possible d’une compétence non confirmée",
+      text: "La couverture repose sur une déclaration ou une donnée incomplète. L’analyse reste prudente tant que le niveau réel n’est pas confirmé par une évaluation exploitable."
     },
     indisponibilite: {
-      title: "Effet possible dâ€™une indisponibilitÃ©",
-      text: "La couverture peut devenir insuffisante temporairement. Le risque porte surtout sur la continuitÃ© dâ€™activitÃ© Ã  court terme."
+      title: "Effet possible d’une indisponibilité",
+      text: "La couverture peut devenir insuffisante temporairement. Le risque porte surtout sur la continuité d’activité à court terme."
     },
     prevision: {
-      title: "Effet possible Ã  moyen terme",
-      text: "La compÃ©tence ou le poste peut devenir fragile si la relÃ¨ve nâ€™est pas prÃ©parÃ©e. Le risque est progressif, mais peut devenir bloquant si rien nâ€™est consolidÃ©."
+      title: "Effet possible à moyen terme",
+      text: "La compétence ou le poste peut devenir fragile si la relève n’est pas préparée. Le risque est progressif, mais peut devenir bloquant si rien n’est consolidé."
     }
   };
 
   function causeHelpButton(key) {
-    return `<span class="analyse-cause-help" data-cause-help="${escapeHtml(key || "structure")}" role="button" tabindex="0" aria-label="Comprendre lâ€™effet de cette cause">?</span>`;
+    return `<span class="analyse-cause-help" data-cause-help="${escapeHtml(key || "structure")}" role="button" tabindex="0" aria-label="Comprendre l’effet de cette cause">?</span>`;
   }
 
   function bindAnalyseHelpDelegation() {
@@ -1033,7 +1033,7 @@
         ev.stopPropagation();
         const key = (btnHelp.getAttribute("data-analyse-help") || "").trim();
         if (key === "summary") {
-          showAnalyseHelp("SynthÃ¨se des risques", analyseRiskSummaryHtml());
+          showAnalyseHelp("Synthèse des risques", analyseRiskSummaryHtml());
           return;
         }
         const item = ANALYSE_HELP[key] || ANALYSE_HELP.risques;
@@ -1070,7 +1070,7 @@
   }
 
   // Les modals Analyse restent volontairement au constat.
-  // La construction de scÃ©narios RH se fait dÃ©sormais dans Simulation RH.
+  // La construction de scénarios RH se fait désormais dans Simulation RH.
 
   function openSimulationsRhContext(payload = {}) {
     const filters = getFilters();
@@ -1078,7 +1078,7 @@
       id: `analyse_ctx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       created_at: new Date().toISOString(),
       source: "analyse_competences",
-      source_label: "Analyse des compÃ©tences",
+      source_label: "Analyse des compétences",
       scope_label: getScopeLabel(),
       id_service: filters.id_service || null,
       service_raw: getAnalyseServiceRawValue(),
@@ -1100,7 +1100,7 @@
       id: `analyse_bf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       created_at: new Date().toISOString(),
       source: "analyse_competences",
-      source_label: "Analyse des compÃ©tences",
+      source_label: "Analyse des compétences",
       scope_label: getScopeLabel(),
       criticite_min: getCriticiteMinSafe(CRITICITE_MIN_DEFAULT),
       ...focusPayload,
@@ -1172,9 +1172,9 @@
   }
 
   // ==============================
-  // PrÃ©visions - slider horizon (1..5 ans)
-  // - Les KPI restent dans la tuile PrÃ©visions, sans toucher au panneau dÃ©tail (V1)
-  // - Les donnÃ©es viennent de tiles.previsions.horizons (backend)
+  // Prévisions - slider horizon (1..5 ans)
+  // - Les KPI restent dans la tuile Prévisions, sans toucher au panneau détail (V1)
+  // - Les données viennent de tiles.previsions.horizons (backend)
   // ==============================
   function clampInt(v, min, max, defv) {
     const n = parseInt(v, 10);
@@ -1197,7 +1197,7 @@
     const el = byId("prevHorizonLabel");
     if (el) el.textContent = label;
     const title = byId("prevTileTitle");
-    if (title) title.textContent = `PrÃ©visions Ã  ${label}`;
+    if (title) title.textContent = `Prévisions à ${label}`;
   }
 
   function pickPrevHorizonItem(previsions, horizonYears) {
@@ -1243,7 +1243,7 @@
       selectId: "analyseServiceSelect",
       storageKey: STORE_SERVICE,
       labelAll: "Tous les services",
-      labelNonLie: "Non liÃ©",
+      labelNonLie: "Non lié",
       includeAll: true,
       includeNonLie: true,
       allowIndent: true
@@ -1283,9 +1283,9 @@
   }
 
   function clearKpis() {
-    setText("kpiRiskPostes", "â€”");
-    setText("kpiRiskCritFragiles", "â€”");
-    setText("kpiRiskEvol3m", "â€”");
+    setText("kpiRiskPostes", "—");
+    setText("kpiRiskCritFragiles", "—");
+    setText("kpiRiskEvol3m", "—");
 
     const a = byId("kpiRiskCritAlert");
     if (a) {
@@ -1293,17 +1293,17 @@
       a.style.display = "none";
     }
 
-    setText("kpiMatchNoCandidate", "â€”");
-    setText("kpiMatchReadyNow", "â€”");
-    setText("kpiMatchReady6", "â€”");
+    setText("kpiMatchNoCandidate", "—");
+    setText("kpiMatchReadyNow", "—");
+    setText("kpiMatchReady6", "—");
 
-    setText("kpiPrevSorties12", "â€”");
-    setText("kpiPrevCompImpact", "â€”");
-    setText("kpiPrevPostesRed", "â€”");
-    setText("analyseSynthPostesAnalyses", "â€”");
-    setText("analyseSynthCompetencesAnalysees", "â€”");
-    setText("analyseSynthEffetsTerrain", "â€”");
-    setText("analyseSynthProjection", "â€”");
+    setText("kpiPrevSorties12", "—");
+    setText("kpiPrevCompImpact", "—");
+    setText("kpiPrevPostesRed", "—");
+    setText("analyseSynthPostesAnalyses", "—");
+    setText("analyseSynthCompetencesAnalysees", "—");
+    setText("analyseSynthEffetsTerrain", "—");
+    setText("analyseSynthProjection", "—");
   }
 
 
@@ -1314,7 +1314,7 @@
       byId("tilePrevisions")
     ].filter(Boolean);
 
-    // reset Ã©tat active des tuiles
+    // reset état active des tuiles
     tiles.forEach(t => t.classList.remove("active"));
 
     // reset visuel de tous les mini-KPI
@@ -1335,7 +1335,7 @@
     const tile = map[finalMode] || map.risques;
     if (tile) tile.classList.add("active");
 
-    // RÃ©-appliquer les KPI actifs uniquement pour la tuile active
+    // Ré-appliquer les KPI actifs uniquement pour la tuile active
     if (finalMode === "risques") {
       setActiveRiskKpi(getRiskFilter());
       setActiveMatchKpi(""); // reset
@@ -1417,7 +1417,7 @@
     const tile = byId("tileMatching");
     if (!tile) return;
 
-    // si la tuile n'est pas active => aucun KPI ne doit paraÃ®tre actif
+    // si la tuile n'est pas active => aucun KPI ne doit paraître actif
     const tileIsActive = tile.classList.contains("active");
 
     const items = tile.querySelectorAll(".mini-kpi[data-match-view]");
@@ -1432,7 +1432,7 @@
     const tile = byId("tilePrevisions");
     if (!tile) return;
 
-    // si la tuile n'est pas active => aucun KPI ne doit paraÃ®tre actif
+    // si la tuile n'est pas active => aucun KPI ne doit paraître actif
     const tileIsActive = tile.classList.contains("active");
 
     const items = tile.querySelectorAll(".mini-kpi[data-prev-kpi]");
@@ -1449,9 +1449,9 @@
 
   function syncCriticiteMinFromResponse(data, opts = {}) {
     const {
-      commit = true,      // met Ã  jour _CRITICITE_MIN
-      persist = true,     // Ã©crit dans localStorage
-      refreshUi = true    // remet Ã  jour slider + valeur affichÃ©e
+      commit = true,      // met à jour _CRITICITE_MIN
+      persist = true,     // écrit dans localStorage
+      refreshUi = true    // remet à jour slider + valeur affichée
     } = opts || {};
 
     const v = Number(data?.criticite_min);
@@ -1483,17 +1483,17 @@
 
   function critMinLabel() {
     const n = getCriticiteMinSafe(null);
-    return Number.isFinite(n) ? String(n) : "â€”";
+    return Number.isFinite(n) ? String(n) : "—";
   }
 
   function priorityLabel(score100) {
     const sc = Math.max(0, Math.min(100, Number(score100 || 0)));
 
     if (sc >= 100) return "Rupture";
-    if (sc >= 80) return "TrÃ¨s critique";
+    if (sc >= 80) return "Très critique";
     if (sc >= 60) return "Critique";
-    if (sc >= 40) return "Ã‰levÃ©e";
-    if (sc >= 20) return "ModÃ©rÃ©e";
+    if (sc >= 40) return "Élevée";
+    if (sc >= 20) return "Modérée";
     return "Faible";
   }
 
@@ -1566,11 +1566,11 @@
 
   const _riskDetailCache = new Map();
   let _riskDetailReqSeq = 0;
-
+  
 
 
   function sbNormLevel(v) {
-    return (v ?? "").toString().trim().toLowerCase().normalize("NFD").replace(/[Ì€-Í¯]/g, "");
+    return (v ?? "").toString().trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   }
 
   function sbLevelKey(v) {
@@ -1595,7 +1595,7 @@
 
   function sbLevelLabel(v) {
     const k = sbLevelKey(v);
-    return k === "A" ? "DÃ©butant" : k === "B" ? "IntermÃ©diaire" : k === "C" ? "AvancÃ©" : k === "D" ? "Expert" : ((v ?? "â€”").toString().trim() || "â€”");
+    return k === "A" ? "Débutant" : k === "B" ? "Intermédiaire" : k === "C" ? "Avancé" : k === "D" ? "Expert" : ((v ?? "—").toString().trim() || "—");
   }
 
   function buildQueryString(params) {
@@ -1638,20 +1638,20 @@
   const _posteDetailCache = new Map();
   let _posteDetailReqSeq = 0;
 
-  // Diagnostic dÃ©cisionnel (poste fragile) - endpoint dÃ©diÃ©
+  // Diagnostic décisionnel (poste fragile) - endpoint dédié
   const _posteDiagCache = new Map();      // key: id_poste|id_service|critMin|limit
   let _posteDiagReqSeq = 0;
 
-  // Contexte du dernier poste ouvert (pour lazy-load dÃ©tail/couverture)
+  // Contexte du dernier poste ouvert (pour lazy-load détail/couverture)
   let _analysePosteLastParams = { id_poste: "", id_service: "" };
-  let _analysePosteDetailLoaded = false;  // dÃ©tail (endpoint /poste) chargÃ© ou non
+  let _analysePosteDetailLoaded = false;  // détail (endpoint /poste) chargé ou non
   let _analysePosteDetailLoading = false; // anti double-call
 
 
-  // Modal dÃ©tail poste (risques) â€” mode dÃ©cisionnel
-  // _analysePosteShowAllCompetences est rÃ©utilisÃ© comme switch UI :
-  // false = nâ€™afficher que les compÃ©tences Ã€ RISQUE (0/1 porteur au niveau requis)
-  // true  = afficher toutes les compÃ©tences CRITIQUES (criticitÃ© >= criticite_min)
+  // Modal détail poste (risques) — mode décisionnel
+  // _analysePosteShowAllCompetences est réutilisé comme switch UI :
+  // false = n’afficher que les compétences À RISQUE (0/1 porteur au niveau requis)
+  // true  = afficher toutes les compétences CRITIQUES (criticité >= criticite_min)
   let _analysePosteShowAllCompetences = false;
   let _analysePosteLastData = null;
   let _analysePosteFocusKey = "";
@@ -1704,7 +1704,7 @@
     return data;
   }
 
-    // Dernier diagnostic chargÃ© (pour re-render quand on rebascule en "risques uniquement")
+    // Dernier diagnostic chargé (pour re-render quand on rebascule en "risques uniquement")
   let _analysePosteLastDiag = null;
 
 function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
@@ -1721,15 +1721,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const s = clamp(Math.round(score || 0), 0, 100);
 
   const nbF = Number(comp.nb_total_fragiles || 0);
-  const fragLine = (nbF > 0) ? `${nbF} fragilitÃ©s dÃ©tectÃ©es` : `Aucune fragilitÃ© dÃ©tectÃ©e`;
+  const fragLine = (nbF > 0) ? `${nbF} fragilités détectées` : `Aucune fragilité détectée`;
   const nb0 = Number(comp.nb0 || 0);
   const nbTit = Number(diag?.poste?.nb_titulaires ?? comp.nb_titulaires ?? 0);
 
   function priorityLabel(score100) {
     const sc = clamp(Number(score100 || 0), 0, 100);
     if (sc >= 75) return "Critique";
-    if (sc >= 50) return "Ã‰levÃ©";
-    if (sc >= 25) return "ModÃ©rÃ©";
+    if (sc >= 50) return "Élevé";
+    if (sc >= 25) return "Modéré";
     return "Faible";
   }
 
@@ -1737,10 +1737,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   function posteDiagLecture(score100) {
     const sc = clamp(Number(score100 || 0), 0, 100);
-    if (sc >= 75) return "Ce poste est fortement exposÃ© sur le pÃ©rimÃ¨tre analysÃ©.";
-    if (sc >= 50) return "Ce poste prÃ©sente plusieurs fragilitÃ©s Ã  surveiller ou sÃ©curiser.";
-    if (sc >= 25) return "Ce poste prÃ©sente une fragilitÃ© modÃ©rÃ©e.";
-    return "Ce poste apparaÃ®t globalement sÃ©curisÃ© sur le pÃ©rimÃ¨tre analysÃ©.";
+    if (sc >= 75) return "Ce poste est fortement exposé sur le périmètre analysé.";
+    if (sc >= 50) return "Ce poste présente plusieurs fragilités à surveiller ou sécuriser.";
+    if (sc >= 25) return "Ce poste présente une fragilité modérée.";
+    return "Ce poste apparaît globalement sécurisé sur le périmètre analysé.";
   }
 
   function scoreHue(score100) {
@@ -1768,16 +1768,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                     transform="rotate(-90 ${size / 2} ${size / 2})" />
           </svg>
           <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-            <div style="font-weight: var(--ns-weight-bold); font-size: var(--ns-kpi); line-height: var(--ns-leading-tight);">
-              ${s}<span style="font-size: var(--ns-text-xs); font-weight: var(--ns-weight-bold);">%</span>
+            <div style="font-weight:900; font-size:28px; line-height:1;">
+              ${s}<span style="font-size:12px; font-weight:800;">%</span>
             </div>
           </div>
         </div>
-        <div class="card-sub" style="margin:0;">FragilitÃ©</div>
+        <div class="card-sub" style="margin:0;">Fragilité</div>
       </div>
     `;
   }
-
+ 
   function priorityPill(label, score100) {
     const hue = scoreHue(score100);
     const border = `hsl(${hue} 70% 45% / 0.55)`;
@@ -1788,8 +1788,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid ${border};
-        background:${bg}; color:${fg}; font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;">
-        ${escapeHtml(label || "â€”")}
+        background:${bg}; color:${fg}; font-weight:900; font-size:12px; white-space:nowrap;">
+        ${escapeHtml(label || "—")}
       </span>
     `;
   }
@@ -1797,7 +1797,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   function badge(txt, accent) {
     const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
-    return `<span class="${cls}">${escapeHtml(txt || "â€”")}</span>`;
+    return `<span class="${cls}">${escapeHtml(txt || "—")}</span>`;
   }
 
   function pill(txt) {
@@ -1805,16 +1805,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
-        background:#fff; color:#374151; font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;">
-        ${escapeHtml(txt || "â€”")}
+        background:#fff; color:#374151; font-weight:900; font-size:12px; white-space:nowrap;">
+        ${escapeHtml(txt || "—")}
       </span>
     `;
   }
 
-  // (recoLabel / recoPill / typeLabel supprimÃ©s : plus de recommandations dans le bloc "Causes racines")
+  // (recoLabel / recoPill / typeLabel supprimés : plus de recommandations dans le bloc "Causes racines")
 
 
-  // Conditions (robuste: si lâ€™API ne renvoie pas encore, on affiche â€œâ€”â€)
+  // Conditions (robuste: si l’API ne renvoie pas encore, on affiche “—”)
   const p = diag?.poste || {};
   const eduMinRaw = (p.niveau_education_minimum ?? p.education_minimum ?? p.edu_min ?? "");
   const eduMin = String(eduMinRaw ?? "").trim();
@@ -1822,12 +1822,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const domLabel = String(p.nsf_domaine_titre ?? p.nsf_domaine ?? p.nsf_domaine_code ?? "").trim();
   const domObl = (p.nsf_domaine_obligatoire === true);
-  const domTxt = domLabel ? `${domLabel} ${domObl ? "(bloquant)" : "(indicatif)"}` : "â€”";
+  const domTxt = domLabel ? `${domLabel} ${domObl ? "(bloquant)" : "(indicatif)"}` : "—";
 
   const nbNecessaires = Number(p.nb_titulaires_necessaires ?? p.nb_titulaires_cible ?? comp.nb_titulaires_cible ?? 1);
-  const releveTxt = "Renfort potentiel : immÃ©diat Ã  partir de 75% de matching, Ã  prÃ©parer entre 60% et 74%.";
+  const releveTxt = "Renfort potentiel : immédiat à partir de 75% de matching, à préparer entre 60% et 74%.";
 
-  // Causes racines (accordÃ©ons) : analyse factuelle (pas de recommandations ici)
+  // Causes racines (accordéons) : analyse factuelle (pas de recommandations ici)
   const causes = diag?.causes || {};
   const cStruct = causes?.structure || null;
   const cDep = Array.isArray(causes?.dependance) ? causes.dependance : [];
@@ -1856,14 +1856,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const critBadgeHtml = (v) => {
     const n = Number(v);
-    if (!Number.isFinite(n) || n <= 0) return "â€”";
+    if (!Number.isFinite(n) || n <= 0) return "—";
     return `<span class="sb-crit-badge ${critLevelClass(n)}">${escapeHtml(String(Math.round(n)))}</span>`;
   };
 
   const compCodeBadge = (code) =>
-    `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "â€”")}</span>`;
+    `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
 
-  const nivBadgeHtml = (niv) => nsLevelBadgeHtml(niv, "Niveau de maÃ®trise");
+  const nivBadgeHtml = (niv) => nsLevelBadgeHtml(niv, "Niveau de maîtrise");
 
   const critScoreBand = (v) => {
     const n = Number(v || 0);
@@ -1919,25 +1919,25 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <thead>
             <tr>
               <th style="width:110px;">Code</th>
-              <th>CompÃ©tence</th>
-              <th class="col-center" style="width:90px;">CriticitÃ©</th>
+              <th>Compétence</th>
+              <th class="col-center" style="width:90px;">Criticité</th>
               <th class="col-center" style="width:150px;">Niveau attendu</th>
               <th class="col-center" style="width:64px;"></th>
             </tr>
           </thead>
           <tbody>
             ${list.map(r => {
-              const code = String(r?.code_comp || r?.code || "â€”");
+              const code = String(r?.code_comp || r?.code || "—");
               const compId = String(r?.id_comp || r?.id_competence || "").trim();
-              const intit = escapeHtml(r?.intitule || "â€”");
+              const intit = escapeHtml(r?.intitule || "—");
               const crit = critBadgeHtml(r?.poids_criticite);
               const niveau = analyseRequiredLevelBadgeHtml(r?.niveau_requis || r?.niveau_attendu || r?.niveau || "", "Niveau attendu");
               const btnCompetencePdf = compId ? `
                 <button type="button"
                         class="sb-icon-btn sb-icon-btn--doc"
                         data-poste-dep-comp-pdf="${escapeHtml(compId)}"
-                        title="Voir la fiche compÃ©tence PDF"
-                        aria-label="Voir la fiche compÃ©tence PDF">
+                        title="Voir la fiche compétence PDF"
+                        aria-label="Voir la fiche compétence PDF">
                   ${analysePdfIconSvg()}
                 </button>
               ` : ``;
@@ -1946,7 +1946,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 <tr>
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
                   <td style="min-width:280px;">
-                    <div style="font-size: var(--ns-text-md); font-weight: var(--ns-weight-bold); color:#111827;">${intit}</div>
+                    <div style="font-size:14px; font-weight:700; color:#111827;">${intit}</div>
                   </td>
                   <td class="col-center" style="white-space:nowrap;">${crit}</td>
                   <td class="col-center" style="white-space:nowrap;">${niveau}</td>
@@ -1966,15 +1966,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (String(first.kind || "") === "salarie" || first.id_effectif) {
       return `
         <div class="sb-help" style="margin-top:0;">
-          Cette lecture part des titulaires du poste. La maÃ®trise actuelle indique la part des compÃ©tences pour lesquelles le niveau A/B/C/D requis est atteint, sans moyenne de notes.
+          Cette lecture part des titulaires du poste. La maîtrise actuelle indique la part des compétences pour lesquelles le niveau A/B/C/D requis est atteint, sans moyenne de notes.
         </div>
         <div class="table-wrap" style="margin-top:10px;">
           <table class="sb-table">
             <thead>
               <tr>
                 <th>Collaborateur</th>
-                <th class="col-center" style="width:160px;">MaÃ®trise actuelle</th>
-                <th class="col-center" style="width:110px;">Ã‰cart</th>
+                <th class="col-center" style="width:160px;">Maîtrise actuelle</th>
+                <th class="col-center" style="width:110px;">Écart</th>
                 <th class="col-center" style="width:74px;">Voir</th>
               </tr>
             </thead>
@@ -1982,8 +1982,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               ${list.map(r => `
                 <tr>
                   <td>
-                    <div style="font-size: var(--ns-text-md); font-weight: var(--ns-weight-bold);">${escapeHtml(r?.full || "Collaborateur")}</div>
-                    <div class="card-sub" style="margin:2px 0 0; font-size: var(--ns-text-xs);">${escapeHtml(String(r?.competences_ok ?? 0))}/${escapeHtml(String(r?.competences_total ?? 0))} compÃ©tences au niveau requis</div>
+                    <div style="font-size:14px; font-weight:800;">${escapeHtml(r?.full || "Collaborateur")}</div>
+                    <div class="card-sub" style="margin:2px 0 0; font-size:12px;">${escapeHtml(String(r?.competences_ok ?? 0))}/${escapeHtml(String(r?.competences_total ?? 0))} compétences au niveau requis</div>
                   </td>
                   <td class="col-center"><span class="sb-badge">${escapeHtml(String(r?.maitrise_actuelle_pct ?? 0))}%</span></td>
                   <td class="col-center"><span class="sb-badge sb-badge--dep-none">-${escapeHtml(String(r?.ecart_pct ?? 0))}%</span></td>
@@ -1991,7 +1991,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                     <button type="button"
                             class="sb-icon-btn poste-cause-match-person"
                             title="Voir"
-                            aria-label="Voir lâ€™adÃ©quation au poste"
+                            aria-label="Voir l’adéquation au poste"
                             data-poste-cause-match-effectif="${escapeHtml(String(r?.id_effectif || ""))}"
                             data-poste-cause-match-poste="${escapeHtml(String(diag?.poste?.id_poste || ""))}"
                             data-poste-cause-match-service="${escapeHtml(String(diag?.poste?.id_service || ""))}">
@@ -2011,24 +2011,24 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <thead>
             <tr>
               <th style="width:110px;">Code</th>
-              <th>CompÃ©tence</th>
+              <th>Compétence</th>
               <th class="col-center" style="width:110px;">Requis</th>
-              <th class="col-center" style="width:160px;">Ã‰cart au requis</th>
+              <th class="col-center" style="width:160px;">Écart au requis</th>
             </tr>
           </thead>
           <tbody>
             ${list.map(r => {
-              const code = String(r?.code_comp || r?.code || "â€”");
-              const intit = escapeHtml(r?.intitule || "â€”");
+              const code = String(r?.code_comp || r?.code || "—");
+              const intit = escapeHtml(r?.intitule || "—");
               const req = nivBadgeHtml(r?.niveau_requis);
               const nDef = Number(r?.nb_en_defaut || 0);
               const nTit = Number(r?.nb_titulaires || 0);
               return `
                 <tr>
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
-                  <td style="min-width:280px;"><div style="font-size: var(--ns-text-md); font-weight: var(--ns-weight-bold);">${intit}</div></td>
+                  <td style="min-width:280px;"><div style="font-size:14px; font-weight:700;">${intit}</div></td>
                   <td class="col-center" style="white-space:nowrap;">${req}</td>
-                  <td class="col-center" style="white-space:nowrap;"><span class="sb-badge">${escapeHtml(String(nDef))}</span><span style="color:#6b7280; font-size: var(--ns-text-xs); margin-left:6px;">/ ${escapeHtml(String(nTit))}</span></td>
+                  <td class="col-center" style="white-space:nowrap;"><span class="sb-badge">${escapeHtml(String(nDef))}</span><span style="color:#6b7280; font-size:12px; margin-left:6px;">/ ${escapeHtml(String(nTit))}</span></td>
                 </tr>
               `;
             }).join("")}
@@ -2110,10 +2110,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const gapT = Number(cStruct?.gap_titulaires || 0);
     return `
       <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:0;">
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires nÃ©cessaires</div><div class="value">${escapeHtml(String(nbC))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires rattachÃ©s</div><div class="value">${escapeHtml(String(nbR))}</div></div>
+        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires nécessaires</div><div class="value">${escapeHtml(String(nbC))}</div></div>
+        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires rattachés</div><div class="value">${escapeHtml(String(nbR))}</div></div>
         <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires disponibles</div><div class="value">${escapeHtml(String(nbD))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">IndisponibilitÃ©s</div><div class="value">${escapeHtml(String(nbI))}</div></div>
+        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Indisponibilités</div><div class="value">${escapeHtml(String(nbI))}</div></div>
       </div>
       ${gapT > 0 ? `<div class="sb-help" style="margin-top:10px;"><b>Couverture insuffisante</b> : il manque ${escapeHtml(String(gapT))} titulaire(s) disponible(s) par rapport au besoin du poste.</div>` : ``}
     `;
@@ -2123,7 +2123,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (!hasDep) return "";
     return `
       <div class="sb-help" style="margin-top:0;">
-        Ce risque mesure les compÃ©tences pour lesquelles trop peu de personnes peuvent remplacer immÃ©diatement le titulaire au niveau requis.
+        Ce risque mesure les compétences pour lesquelles trop peu de personnes peuvent remplacer immédiatement le titulaire au niveau requis.
       </div>
       ${renderDepTable(cDep)}
     `;
@@ -2139,8 +2139,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         Cette cause regarde les profils internes qui ne sont pas titulaires du poste, mais qui pourraient aider si le poste se fragilise.
       </div>
       <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
-        <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Renforts immÃ©diats â‰¥ 75%</div><div class="value">${escapeHtml(String(imm))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Renforts Ã  prÃ©parer 60-74%</div><div class="value">${escapeHtml(String(prep))}</div></div>
+        <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Renforts immédiats ≥ 75%</div><div class="value">${escapeHtml(String(imm))}</div></div>
+        <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Renforts à préparer 60-74%</div><div class="value">${escapeHtml(String(prep))}</div></div>
         <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Meilleur matching disponible</div><div class="value">${escapeHtml(String(best))}%</div></div>
       </div>
     `;
@@ -2156,13 +2156,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const items = Array.isArray(cSorties?.items) ? cSorties.items : [];
     return `
       <div class="sb-help" style="margin-top:0;">
-        Ces sorties ne sont pas la cause principale actuelle, mais elles peuvent aggraver la fragilitÃ© dans les 3 prochains mois.
+        Ces sorties ne sont pas la cause principale actuelle, mais elles peuvent aggraver la fragilité dans les 3 prochains mois.
       </div>
       <div class="table-wrap" style="margin-top:10px;">
         <table class="sb-table">
-          <thead><tr><th>Collaborateur</th><th class="col-center" style="width:140px;">Date prÃ©vue</th><th style="width:220px;">Motif</th></tr></thead>
+          <thead><tr><th>Collaborateur</th><th class="col-center" style="width:140px;">Date prévue</th><th style="width:220px;">Motif</th></tr></thead>
           <tbody>
-            ${items.map(r => `<tr><td><b>${escapeHtml(r?.full || "Collaborateur")}</b></td><td class="col-center">${escapeHtml(r?.date_sortie || "â€”")}</td><td>${escapeHtml(r?.motif || "Sortie prÃ©vue")}</td></tr>`).join("") || `<tr><td colspan="3" class="col-center">${escapeHtml(String(cSorties?.count || 0))} sortie(s) approchante(s).</td></tr>`}
+            ${items.map(r => `<tr><td><b>${escapeHtml(r?.full || "Collaborateur")}</b></td><td class="col-center">${escapeHtml(r?.date_sortie || "—")}</td><td>${escapeHtml(r?.motif || "Sortie prévue")}</td></tr>`).join("") || `<tr><td colspan="3" class="col-center">${escapeHtml(String(cSorties?.count || 0))} sortie(s) approchante(s).</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -2178,10 +2178,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const causesCard = `
     <div class="card" style="padding:12px; margin-top:12px;">
       <div class="card-title" style="margin:0 0 6px 0;">Pourquoi ce poste est fragile ?</div>
-      <div class="card-sub" style="margin:0;">Ouvrez une cause pour voir ce qui est observÃ© et pourquoi cela pÃ¨se sur lâ€™indice.</div>
+      <div class="card-sub" style="margin:0;">Ouvrez une cause pour voir ce qui est observé et pourquoi cela pèse sur l’indice.</div>
 
       ${(!hasStruct && !hasDep && !hasTrans && !hasEff && !hasSorties) ? `
-        <div class="card-sub" style="margin-top:10px;">Aucune cause Ã  afficher.</div>
+        <div class="card-sub" style="margin-top:10px;">Aucune cause à afficher.</div>
       ` : `
         ${hasStruct ? `
           <div class="sb-accordion">
@@ -2192,7 +2192,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(structureSharePct))}%</span>
                 ${causeHelpButton("structure")}
-                <span class="sb-acc-chevron">â–¾</span>
+                <span class="sb-acc-chevron">▾</span>
               </span>
             </button>
             <div class="sb-acc-body">${structureBody}</div>
@@ -2208,7 +2208,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
                 ${causeHelpButton("efficacite")}
-                <span class="sb-acc-chevron">â–¾</span>
+                <span class="sb-acc-chevron">▾</span>
               </span>
             </button>
             <div class="sb-acc-body">${efficaciteBody}</div>
@@ -2219,12 +2219,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-                ${causeDot("main")}<span>CompÃ©tence trop dÃ©pendante d'une personne</span>
+                ${causeDot("main")}<span>Compétence trop dépendante d'une personne</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
                 ${causeHelpButton("dependance")}
-                <span class="sb-acc-chevron">â–¾</span>
+                <span class="sb-acc-chevron">▾</span>
               </span>
             </button>
             <div class="sb-acc-body">${dependanceBody}</div>
@@ -2235,12 +2235,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-                ${causeDot("aggravant")}<span>Sortie approchante dâ€™un titulaire</span>
+                ${causeDot("aggravant")}<span>Sortie approchante d’un titulaire</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(sortiesSharePct))}%</span>` : ``}
                 ${causeHelpButton("sorties")}
-                <span class="sb-acc-chevron">â–¾</span>
+                <span class="sb-acc-chevron">▾</span>
               </span>
             </button>
             <div class="sb-acc-body">${sortiesBody}</div>
@@ -2256,7 +2256,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>` : ``}
                 ${causeHelpButton("transmission")}
-                <span class="sb-acc-chevron">â–¾</span>
+                <span class="sb-acc-chevron">▾</span>
               </span>
             </button>
             <div class="sb-acc-body">${transmissionBody}</div>
@@ -2268,20 +2268,20 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
 
   function diagLine(label, value) {
-    const v = (value === null || value === undefined || value === "") ? "â€”" : String(value);
+    const v = (value === null || value === undefined || value === "") ? "—" : String(value);
     return `
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:7px 0; border-bottom:1px solid #eef2f7;">
-        <span style="font-size: var(--ns-text-sm); color:#64748b; line-height: var(--ns-leading-ui);">${escapeHtml(label)}</span>
-        <span style="font-size: var(--ns-text-sm); color:#0f172a; font-weight: var(--ns-weight-bold); text-align:right; line-height: var(--ns-leading-ui);">${escapeHtml(v)}</span>
+        <span style="font-size:13px; color:#64748b; line-height:1.35;">${escapeHtml(label)}</span>
+        <span style="font-size:13px; color:#0f172a; font-weight:800; text-align:right; line-height:1.35;">${escapeHtml(v)}</span>
       </div>
     `;
   }
 
-  // Le modal poste sâ€™arrÃªte au constat.
-  // L'utilisateur peut ensuite utiliser ce poste comme point de dÃ©part d'une simulation RH.
+  // Le modal poste s’arrête au constat.
+  // L'utilisateur peut ensuite utiliser ce poste comme point de départ d'une simulation RH.
   const idPosteContext = String(p?.id_poste || p?.id || diag?.id_poste || "").trim();
   const codePosteContext = String(p?.codif_client || p?.codif_poste || "").trim();
-  const posteLabelContext = [codePosteContext, p?.intitule_poste || "Poste"].filter(Boolean).join(" Â· ");
+  const posteLabelContext = [codePosteContext, p?.intitule_poste || "Poste"].filter(Boolean).join(" · ");
 
   // Rendu
   host.innerHTML = `
@@ -2290,17 +2290,17 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div style="flex:1; min-width:320px;">
           <div class="card-title" style="margin:0;">Diagnostic</div>
 
-          <div class="card-sub" style="margin:8px 0 8px 0;font-size: var(--ns-text-md);line-height: var(--ns-leading-body);">
+          <div class="card-sub" style="margin:8px 0 8px 0;font-size:14px;line-height:1.55;">
             ${posteDiagLecture(s)}
           </div>
-          <div class="card-sub" style="margin:0 0 8px 0;font-size: var(--ns-text-sm);line-height: var(--ns-leading-body);font-weight: var(--ns-weight-bold);color:#475569;">
-            Ã‰lÃ©ments pris en compte :
+          <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
+            Éléments pris en compte :
           </div>
           <div style="max-width:660px;">
-            ${diagLine("DiplÃ´me minimum", eduTxt)}
+            ${diagLine("Diplôme minimum", eduTxt)}
             ${diagLine("Domaine de formation", domTxt)}
-            ${diagLine("Nombre de titulaires nÃ©cessaires", String(nbNecessaires || 1))}
-            ${diagLine("CriticitÃ© des compÃ©tences", `â‰¥ ${critMin}%`)}
+            ${diagLine("Nombre de titulaires nécessaires", String(nbNecessaires || 1))}
+            ${diagLine("Criticité des compétences", `≥ ${critMin}%`)}
           </div>
         </div>
 
@@ -2314,7 +2314,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     ${causesCard}
   `;
 
-    // AccordÃ©ons (Causes racines)
+    // Accordéons (Causes racines)
   host.querySelectorAll(".sb-acc-head").forEach(btnAcc => {
     const body = btnAcc.nextElementSibling;
     if (body) body.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
@@ -2331,10 +2331,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   configureActionButton("btnAnalysePosteOpenSimulationContext", idPosteContext ? {
     type: "poste",
-    title: `Poste Ã  travailler Â· ${posteLabelContext}`,
+    title: `Poste à travailler · ${posteLabelContext}`,
     poste_id: idPosteContext,
     poste_label: posteLabelContext,
-    reason: "Analyse poste : construire un scÃ©nario d'organisation, remplacement, transfert de personne, transfert de charge ou recrutement.",
+    reason: "Analyse poste : construire un scénario d'organisation, remplacement, transfert de personne, transfert de charge ou recrutement.",
   } : null, (payload) => {
     openSimulationsRhContext(payload);
     closeAnalysePosteModal();
@@ -2344,7 +2344,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     // ==============================
   // MATCHING (MVP)
-  // - basÃ© sur /risques/poste (compÃ©tences requises + porteurs)
+  // - basé sur /risques/poste (compétences requises + porteurs)
   // - liste postes = "postes fragiles" (source risques)
   // ==============================
   const _matchPostesCache = new Map(); // key: id_service -> items[]
@@ -2368,7 +2368,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   function nivActToNum(raw) {
     const s = (raw ?? "").toString().trim().toLowerCase();
     if (s === "initial") return 1;
-    if (s === "avancÃ©" || s === "avance" || s === "avancee" || s === "avancÃ©e") return 2;
+    if (s === "avancé" || s === "avance" || s === "avancee" || s === "avancée") return 2;
     if (s === "expert") return 3;
     return 0;
   }
@@ -2392,7 +2392,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return items;
   }
 
-  // DÃ©tail effectif (drilldown)
+  // Détail effectif (drilldown)
   const _matchEffDetailCache = new Map(); // key: id_poste|id_effectif|id_service|crit
 
   async function fetchMatchingEffectifDetail(portal, id_poste, id_effectif, id_service) {
@@ -2541,12 +2541,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const ctx = getPortalContext(portal);
     const posteId = String(id_poste || "").trim();
 
-    if (!ctx.id_contact) throw new Error("id_contact introuvable cÃ´tÃ© UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable cÃ´tÃ© UI.");
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
     if (!posteId) throw new Error("id_poste manquant.");
 
     if (String(docKey || "") !== "fiche_poste_simple") {
-      throw new Error("Document PDF non gÃ©rÃ©.");
+      throw new Error("Document PDF non géré.");
     }
 
     const qs = new URLSearchParams();
@@ -2561,7 +2561,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const win = window.open(url, "_blank", "noopener");
 
     if (!win) {
-      throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du PDF.");
+      throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
     }
 
     return url;
@@ -2571,9 +2571,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const ctx = getPortalContext(portal);
     const posteId = String(id_poste || "").trim();
 
-    if (!ctx.id_contact) throw new Error("id_contact introuvable cÃ´tÃ© UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable cÃ´tÃ© UI.");
-    if (!posteId) throw new Error("SÃ©lectionne un poste avant dâ€™imprimer.");
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+    if (!posteId) throw new Error("Sélectionne un poste avant d’imprimer.");
 
     const qs = new URLSearchParams();
     qs.set("id_poste", posteId);
@@ -2589,10 +2589,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const posteId = String(id_poste || "").trim();
     const effectifId = String(id_effectif || "").trim();
 
-    if (!ctx.id_contact) throw new Error("id_contact introuvable cÃ´tÃ© UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable cÃ´tÃ© UI.");
-    if (!posteId) throw new Error("SÃ©lectionne un poste avant dâ€™imprimer.");
-    if (!effectifId) throw new Error("Collaborateur introuvable pour lâ€™impression.");
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+    if (!posteId) throw new Error("Sélectionne un poste avant d’imprimer.");
+    if (!effectifId) throw new Error("Collaborateur introuvable pour l’impression.");
 
     const qs = new URLSearchParams();
     qs.set("id_poste", posteId);
@@ -2606,13 +2606,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   async function openAnalyseMatchingPdfInBrowser(portal, id_poste, id_service) {
     const url = buildAnalyseMatchingPdfUrl(portal, id_poste, id_service);
-    await openAnalysePdfBlob(url, "Impression bloquÃ©e");
+    await openAnalysePdfBlob(url, "Impression bloquée");
     return url;
   }
 
   async function openAnalyseMatchingEffectifPdfInBrowser(portal, id_poste, id_effectif, id_service) {
     const url = buildAnalyseMatchingEffectifPdfUrl(portal, id_poste, id_effectif, id_service);
-    await openAnalysePdfBlob(url, "Impression bloquÃ©e");
+    await openAnalysePdfBlob(url, "Impression bloquée");
     return url;
   }
 
@@ -2622,10 +2622,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const compId = String(id_comp || "").trim();
     const posteId = String(id_poste || "").trim();
 
-    if (!ctx.id_contact) throw new Error("id_contact introuvable cÃ´tÃ© UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable cÃ´tÃ© UI.");
-    if (!effectifId) throw new Error("Collaborateur introuvable pour lâ€™impression.");
-    if (!compId) throw new Error("CompÃ©tence introuvable pour lâ€™impression.");
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+    if (!effectifId) throw new Error("Collaborateur introuvable pour l’impression.");
+    if (!compId) throw new Error("Compétence introuvable pour l’impression.");
 
     const qs = new URLSearchParams();
     if (posteId) qs.set("id_poste", posteId);
@@ -2636,7 +2636,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   async function openAnalyseCollaborateurCompetencePdfInBrowser(portal, id_effectif, id_comp, id_poste) {
     const url = buildAnalyseCollaborateurCompetencePdfUrl(portal, id_effectif, id_comp, id_poste);
-    await openAnalysePdfBlob(url, "PDF compÃ©tence bloquÃ©");
+    await openAnalysePdfBlob(url, "PDF compétence bloqué");
     return url;
   }
 
@@ -2657,7 +2657,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const hasPoste = !!String(_matchSelectedPoste || "").trim();
     btn.disabled = !hasPoste;
     btn.setAttribute("aria-disabled", hasPoste ? "false" : "true");
-    btn.title = hasPoste ? "Imprimer les correspondances du poste sÃ©lectionnÃ©" : "SÃ©lectionne un poste avant dâ€™imprimer";
+    btn.title = hasPoste ? "Imprimer les correspondances du poste sélectionné" : "Sélectionne un poste avant d’imprimer";
   }
 
   function rerenderCurrentMatchingCandidates() {
@@ -2691,8 +2691,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         btn.disabled = true;
         await openAnalyseMatchingPdfInBrowser(_portalref || window.portal || null, _matchSelectedPoste, id_service || "");
       } catch (e) {
-        if (typeof showToast === "function") showToast(e.message || "Impossible dâ€™ouvrir le PDF.", "error");
-        else alert(e.message || "Impossible dâ€™ouvrir le PDF.");
+        if (typeof showToast === "function") showToast(e.message || "Impossible d’ouvrir le PDF.", "error");
+        else alert(e.message || "Impossible d’ouvrir le PDF.");
       } finally {
         refreshMatchingPrintButtonState();
       }
@@ -2742,7 +2742,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="modal-header">
             <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
               <div class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
-                <span id="matchPersonModalTitle" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">DÃ©tail</span>
+                <span id="matchPersonModalTitle" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Détail</span>
                 <span id="matchPersonModalTitleBadge" class="sb-badge" style="display:none;"></span>
               </div>
               <div style="display:flex; gap:8px; align-items:center; min-width:0;">
@@ -2750,19 +2750,19 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 <span id="matchPersonModalTitlePosteText" class="card-sub" style="margin:0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
               </div>
             </div>
-            <button type="button" class="modal-x" id="btnCloseMatchPersonModal" aria-label="Fermer">Ã—</button>
+            <button type="button" class="modal-x" id="btnCloseMatchPersonModal" aria-label="Fermer">×</button>
           </div>
 
 
           <div class="modal-body" id="matchPersonModalBody">
             <div class="card" style="padding:12px; margin:0;">
-              <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
+              <div class="card-sub" style="margin:0;">Chargement…</div>
             </div>
           </div>
 
           <div class="modal-footer">
             <button type="button" class="sb-btn sb-btn--soft" id="btnMatchPersonOpenBesoins" style="display:none;">Voir les besoins de formation</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnMatchPersonUseInSimulation" style="display:none;">Tester cette mobilitÃ© en Simulation RH</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnMatchPersonUseInSimulation" style="display:none;">Tester cette mobilité en Simulation RH</button>
             <button type="button" class="btn-secondary" id="btnMatchPersonModalClose">Fermer</button>
           </div>
         </div>
@@ -2804,9 +2804,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const posteTextEl = byId("matchPersonModalTitlePosteText");
     const b = byId("matchPersonModalBody");
 
-    if (t) t.textContent = title || "DÃ©tail";
+    if (t) t.textContent = title || "Détail";
 
-    // Reset header (sera rempli aprÃ¨s fetch)
+    // Reset header (sera rempli après fetch)
     if (badgeEl) {
       badgeEl.textContent = "";
       badgeEl.className = "sb-badge";
@@ -2818,7 +2818,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     }
     if (posteTextEl) posteTextEl.textContent = "";
 
-    if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargementâ€¦</div></div>`;
+    if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
 
     configureActionButton("btnMatchPersonUseInSimulation", null);
     configureActionButton("btnMatchPersonOpenBesoins", null);
@@ -2834,7 +2834,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const modal = byId("modalMatchPerson");
     if (!modal) return;
 
-    // Nettoyage Ã©ventuel radar (ResizeObserver)
+    // Nettoyage éventuel radar (ResizeObserver)
     if (modal.__matchRadarObs) {
       try { modal.__matchRadarObs.disconnect(); } catch (e) { }
       modal.__matchRadarObs = null;
@@ -2858,10 +2858,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
 
     const posteIntitule = (poste.intitule_poste || "").trim();
-    const posteLabel = `${codeAffiche ? codeAffiche + " â€” " : ""}${(posteIntitule || "Poste")}`;
+    const posteLabel = `${codeAffiche ? codeAffiche + " — " : ""}${(posteIntitule || "Poste")}`;
 
-    const personLabel = person.full || "â€”";
-    const svc = person.nom_service || "â€”";
+    const personLabel = person.full || "—";
+    const svc = person.nom_service || "—";
     const lastCompetenceEval = person.derniere_evaluation_competences || person.last_competence_eval_date || "";
     const lastEntretienIndividuel = person.dernier_entretien_individuel || person.last_entretien_individuel_date || "";
     const isTit = !!person.is_titulaire;
@@ -2876,11 +2876,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const paId = (person.id_poste_actuel || "").toString().trim();
     if (paId) {
       if (person.poste_actuel_hors_scope) {
-        posteActuelLabel = "Hors pÃ©rimÃ¨tre";
+        posteActuelLabel = "Hors périmètre";
       } else if (paCodeAffiche || paIntitule) {
-        posteActuelLabel = `${paCodeAffiche ? paCodeAffiche + " â€” " : ""}${paIntitule || "Poste"}`;
+        posteActuelLabel = `${paCodeAffiche ? paCodeAffiche + " — " : ""}${paIntitule || "Poste"}`;
       } else {
-        posteActuelLabel = "RenseignÃ©";
+        posteActuelLabel = "Renseigné";
       }
     }
 
@@ -2907,8 +2907,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                       transform="rotate(-90 ${size / 2} ${size / 2})" />
             </svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-              <div style="font-weight: var(--ns-weight-bold); font-size: var(--ns-kpi); line-height: var(--ns-leading-tight);">
-                ${s}<span style="font-size: var(--ns-text-xs); font-weight: var(--ns-weight-bold);">%</span>
+              <div style="font-weight:900; font-size:28px; line-height:1;">
+                ${s}<span style="font-size:12px; font-weight:800;">%</span>
               </div>
             </div>
           </div>
@@ -2920,15 +2920,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function statusBadge(etat) {
       const s = String(etat || "").toLowerCase();
       if (s === "ok") return `<span class="sb-badge sb-badge--success">OK</span>`;
-      if (s === "improvable" || s === "ameliorable" || s === "amÃ©liorable") return `<span class="sb-badge sb-badge--success">AmÃ©liorable</span>`;
-      if (s === "under") return `<span class="sb-badge sb-badge--warning">Ã€ renforcer</span>`;
+      if (s === "improvable" || s === "ameliorable" || s === "améliorable") return `<span class="sb-badge sb-badge--success">Améliorable</span>`;
+      if (s === "under") return `<span class="sb-badge sb-badge--warning">À renforcer</span>`;
       return `<span class="sb-badge sb-badge--danger">Manquante</span>`;
     }
 
     function fmtScore(v) {
-      if (v === null || v === undefined || v === "") return "â€”";
+      if (v === null || v === undefined || v === "") return "—";
       const n = Number(v);
-      if (Number.isNaN(n)) return "â€”";
+      if (Number.isNaN(n)) return "—";
       return (Math.round(n * 10) / 10).toString();
     }
 
@@ -2944,13 +2944,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function critBadgeHtml(p) {
       const n = Number(p);
-      const txt = Number.isFinite(n) ? String(Math.round(n)) : "â€”";
+      const txt = Number.isFinite(n) ? String(Math.round(n)) : "—";
       const lvl = critLevel(n);
-      return `<span class="sb-crit-badge sb-crit-l${lvl}" title="CriticitÃ© (poids)">${escapeHtml(txt)}</span>`;
+      return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité (poids)">${escapeHtml(txt)}</span>`;
     }
 
     function nivBadgeHtml(v) {
-      return nsLevelBadgeHtml(v, "Niveau de maÃ®trise");
+      return nsLevelBadgeHtml(v, "Niveau de maîtrise");
     }
 
     function domainPill(it) {
@@ -2969,18 +2969,18 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const rows = a.map((x, i) => {
         const nom = (x?.nom || "").toString().trim();
         const code = (x?.code_critere || "").toString().trim();
-        const title = (nom || code || "CritÃ¨re").trim();
+        const title = (nom || code || "Critère").trim();
 
         const n = (x?.niveau === null || x?.niveau === undefined) ? null : Number(x.niveau);
-        const pts = (n !== null && Number.isFinite(n)) ? `${Math.round(n)}/4` : "â€”";
+        const pts = (n !== null && Number.isFinite(n)) ? `${Math.round(n)}/4` : "—";
 
-        const lib = (x?.libelle || "").toString().trim() || "â€”";
+        const lib = (x?.libelle || "").toString().trim() || "—";
         const border = (i < a.length - 1) ? "border-bottom:1px solid #eef2f7;" : "";
 
         return `
           <tr>
-            <td style="padding:7px 8px; ${border} font-weight: var(--ns-weight-medium); color:#111827; vertical-align:top;">${escapeHtml(title)}</td>
-            <td style="padding:7px 8px; ${border} width:70px; text-align:center; font-weight: var(--ns-weight-bold); color:#111827; vertical-align:top;">${escapeHtml(pts)}</td>
+            <td style="padding:7px 8px; ${border} font-weight:500; color:#111827; vertical-align:top;">${escapeHtml(title)}</td>
+            <td style="padding:7px 8px; ${border} width:70px; text-align:center; font-weight:700; color:#111827; vertical-align:top;">${escapeHtml(pts)}</td>
             <td style="padding:7px 8px; ${border} color:#6b7280; vertical-align:top;">${escapeHtml(lib)}</td>
           </tr>
         `;
@@ -2990,7 +2990,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <tr data-crit-row="${escapeHtml(uid)}" style="display:none;">
           <td colspan="8" style="padding:0;">
             <div style="padding:10px 12px; border-top:1px dashed #e5e7eb; background:#fbfbfb;">
-              <table style="width:100%; border-collapse:collapse; font-size: var(--ns-text-xs); line-height: var(--ns-leading-ui);">
+              <table style="width:100%; border-collapse:collapse; font-size:12px; line-height:1.35;">
                 <tbody>${rows}</tbody>
               </table>
             </div>
@@ -3001,7 +3001,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const rowsHtml = items.map((it, idx) => {
       const uid = `crit_${idx}`;
-      const code = it?.code || it?.id_comp || "â€”";
+      const code = it?.code || it?.id_comp || "—";
       const compId = String(it?.id_comp || "").trim();
       const intitule = it?.intitule || "";
       const poids = Number(it?.poids_criticite || 0);
@@ -3020,7 +3020,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const hasCrit = Array.isArray(it?.criteres) && it.criteres.length > 0;
       const btnCrit = hasCrit ? `
         <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-crit-toggle="${escapeHtml(uid)}" aria-expanded="false" style="margin-top:6px;">
-          <span data-crit-caret style="margin-right:6px;">â–¸</span>Voir les Ã©valuations
+          <span data-crit-caret style="margin-right:6px;">▸</span>Voir les évaluations
         </button>
       ` : ``;
 
@@ -3028,8 +3028,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <button type="button"
                 class="sb-icon-btn sb-icon-btn--doc"
                 data-match-competence-pdf="${escapeHtml(compId)}"
-                title="Voir la fiche compÃ©tence PDF"
-                aria-label="Voir la fiche compÃ©tence PDF">
+                title="Voir la fiche compétence PDF"
+                aria-label="Voir la fiche compétence PDF">
           ${analysePdfIconSvg()}
         </button>
       ` : ``;
@@ -3038,7 +3038,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <tr>
           <td style="vertical-align:top;">
             ${badgesTop}
-            <div style="font-weight: var(--ns-weight-medium); font-size: var(--ns-text-sm); line-height: var(--ns-leading-title); color:#111827; margin-top:4px;">${escapeHtml(intitule)}</div>
+            <div style="font-weight:500; font-size:13px; line-height:1.28; color:#111827; margin-top:4px;">${escapeHtml(intitule)}</div>
             ${btnCrit}
           </td>
           <td class="col-center">${critBadgeHtml(poids)}</td>
@@ -3096,15 +3096,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function shortRadarLabel(s, maxLen) {
       const v = (s ?? "").toString().trim();
-      if (!v) return "â€”";
+      if (!v) return "—";
       if (v.length <= maxLen) return v;
-      return v.slice(0, Math.max(4, maxLen - 1)) + "â€¦";
+      return v.slice(0, Math.max(4, maxLen - 1)) + "…";
     }
 
     const domMap = new Map();
     items.forEach((it) => {
       const raw = ((it?.domaine_titre_court || it?.domaine || "") ?? "").toString().trim();
-      const label = raw || "Non classÃ©";
+      const label = raw || "Non classé";
       const key = normDomainKey(label);
 
       const poidsN = Number(it?.poids_criticite || 1);
@@ -3150,7 +3150,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const radarDomainEmpty = domainAxesRadar.length < 3;
 
     const radarHtmlComp = radarCompEmpty
-      ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compÃ©tences).</div>`
+      ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
       : `
         <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
           <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
@@ -3173,7 +3173,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="card" style="padding:12px; margin:0;">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
             <div style="min-width:0;">
-              <div style="font-weight: var(--ns-weight-bold); font-size: var(--ns-text-lg); line-height: var(--ns-leading-tight); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              <div style="font-weight:700; font-size:16px; line-height:1.2; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                 ${escapeHtml(personLabel)}
               </div>
 
@@ -3187,10 +3187,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 Service : ${escapeHtml(svc)}
               </div>
               <div class="card-sub" style="margin:4px 0 0 0;">
-                DerniÃ¨re Ã©valuation de compÃ©tences : ${escapeHtml(lastCompetenceEval ? formatDateFr(lastCompetenceEval) : "â€”")}
+                Dernière évaluation de compétences : ${escapeHtml(lastCompetenceEval ? formatDateFr(lastCompetenceEval) : "—")}
               </div>
               <div class="card-sub" style="margin:4px 0 0 0;">
-                Dernier entretien individuel : ${escapeHtml(lastEntretienIndividuel ? formatDateFr(lastEntretienIndividuel) : "â€”")}
+                Dernier entretien individuel : ${escapeHtml(lastEntretienIndividuel ? formatDateFr(lastEntretienIndividuel) : "—")}
               </div>
             </div>
 
@@ -3204,12 +3204,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <button type="button" data-match-accordion-toggle="radar" aria-expanded="true"
                   style="width:100%; border:0; background:transparent; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; text-align:left;">
             <span class="card-title" style="margin:0;">Radar</span>
-            <span data-match-accordion-caret="radar" style="font-weight: var(--ns-weight-bold); color:#6b7280;">â–¾</span>
+            <span data-match-accordion-caret="radar" style="font-weight:900; color:#6b7280;">▾</span>
           </button>
           <div id="matchPersonRadarPanel" data-match-accordion-panel="radar" style="padding:0 12px 12px 12px;">
             <div class="sb-actions" style="justify-content:flex-start; margin:0 0 10px 0; gap:6px;">
-              <button type="button" id="btnMatchRadarViewComp" class="sb-btn sb-btn--accent sb-btn--xs">Vue compÃ©tence</button>
-              <button type="button" id="btnMatchRadarViewDomain" class="sb-btn sb-btn--soft sb-btn--xs">Vue domaine compÃ©tence</button>
+              <button type="button" id="btnMatchRadarViewComp" class="sb-btn sb-btn--accent sb-btn--xs">Vue compétence</button>
+              <button type="button" id="btnMatchRadarViewDomain" class="sb-btn sb-btn--soft sb-btn--xs">Vue domaine compétence</button>
             </div>
             <div id="matchRadarPanelComp">${radarHtmlComp}</div>
             <div id="matchRadarPanelDomain" style="display:none;">${radarHtmlDomain}</div>
@@ -3219,21 +3219,21 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="card" style="padding:0; margin:0; overflow:hidden;">
           <button type="button" data-match-accordion-toggle="table" aria-expanded="false"
                   style="width:100%; border:0; background:transparent; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; text-align:left;">
-            <span class="card-title" style="margin:0;">DÃ©tail des compÃ©tences</span>
-            <span data-match-accordion-caret="table" style="font-weight: var(--ns-weight-bold); color:#6b7280;">â–¸</span>
+            <span class="card-title" style="margin:0;">Détail des compétences</span>
+            <span data-match-accordion-caret="table" style="font-weight:900; color:#6b7280;">▸</span>
           </button>
           <div id="matchPersonTablePanel" data-match-accordion-panel="table" style="display:none; padding:0 12px 12px 12px;">
             <div class="table-wrap" style="margin-top:0;">
               <table class="sb-table">
                 <thead>
                   <tr>
-                    <th rowspan="2" style="min-width:320px;">CompÃ©tence</th>
+                    <th rowspan="2" style="min-width:320px;">Compétence</th>
                     <th colspan="3" class="col-center" style="background:#f9fafb;">BESOIN DU POSTE</th>
-                    <th colspan="3" class="col-center" style="background:#f9fafb; border-left:1px solid #d1d5db;">PROFIL Ã‰VALUÃ‰</th>
+                    <th colspan="3" class="col-center" style="background:#f9fafb; border-left:1px solid #d1d5db;">PROFIL ÉVALUÉ</th>
                     <th rowspan="2" class="col-center" style="width:54px;"></th>
                   </tr>
                   <tr>
-                    <th class="col-center" style="width:90px;">CriticitÃ©</th>
+                    <th class="col-center" style="width:90px;">Criticité</th>
                     <th class="col-center" style="width:130px;">Niveau<br>requis</th>
                     <th class="col-center" style="width:90px;">Note max.</th>
                     <th class="col-center" style="width:90px; border-left:1px solid #d1d5db;">Atteint</th>
@@ -3242,7 +3242,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${rowsHtml || `<tr><td colspan="8" class="col-center" style="color:#6b7280;">Aucune compÃ©tence requise.</td></tr>`}
+                  ${rowsHtml || `<tr><td colspan="8" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
                 </tbody>
               </table>
             </div>
@@ -3256,17 +3256,17 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const needsCount = items.filter((it) => {
       const etat = String(it?.etat || "").trim().toLowerCase();
       if (!etat) return false;
-      return !["ok", "valid", "valide", "validÃ©"].includes(etat);
+      return !["ok", "valid", "valide", "validé"].includes(etat);
     }).length;
 
     const matchSimulationPayload = !isTit ? {
       type: "matching_candidat",
-      title: `MobilitÃ© Ã  tester Â· ${String(personLabel || "Profil")} vers ${String(posteLabel || "Poste")}`,
+      title: `Mobilité à tester · ${String(personLabel || "Profil")} vers ${String(posteLabel || "Poste")}`,
       poste_id: posteIdForAction,
       poste_label: posteLabel,
       effectif_id: effectifIdForAction,
       effectif_label: personLabel,
-      reason: "Matching candidat : tester une mobilitÃ© interne, l'effet sur le poste cible et l'effet domino sur le poste d'origine.",
+      reason: "Matching candidat : tester une mobilité interne, l'effet sur le poste cible et l'effet domino sur le poste d'origine.",
       suggested_brick: "mobilite_effectif",
     } : null;
 
@@ -3279,7 +3279,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       id_poste: posteIdForAction,
       poste_id: posteIdForAction,
       poste_label: posteLabel,
-      message: `${needsCount} compÃ©tence${needsCount > 1 ? "s" : ""} Ã  renforcer sur le poste actuel.`,
+      message: `${needsCount} compétence${needsCount > 1 ? "s" : ""} à renforcer sur le poste actuel.`,
     } : null;
 
     configureActionButton("btnMatchPersonUseInSimulation", matchSimulationPayload, (payload) => {
@@ -3304,7 +3304,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         btn.setAttribute("aria-expanded", open ? "true" : "false");
 
         const caret = btn.querySelector("[data-crit-caret]");
-        if (caret) caret.textContent = open ? "â–¾" : "â–¸";
+        if (caret) caret.textContent = open ? "▾" : "▸";
       });
     });
 
@@ -3322,7 +3322,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           btn.disabled = true;
           await openAnalyseCollaborateurCompetencePdfInBrowser(_portalref || window.portal || null, effectifId, compId, posteId);
         } catch (e) {
-          showAnalyseHelp("PDF compÃ©tence indisponible", `<p>${escapeHtml(errMsg(e))}</p>`);
+          showAnalyseHelp("PDF compétence indisponible", `<p>${escapeHtml(errMsg(e))}</p>`);
         } finally {
           btn.disabled = false;
         }
@@ -3542,7 +3542,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         const open = panel.style.display === "none";
         panel.style.display = open ? "" : "none";
         btn.setAttribute("aria-expanded", open ? "true" : "false");
-        if (caret) caret.textContent = open ? "â–¾" : "â–¸";
+        if (caret) caret.textContent = open ? "▾" : "▸";
         if (open && key === "radar") setTimeout(renderRadarNow, 0);
       });
     });
@@ -3566,7 +3566,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
 
   async function showMatchPersonDetailModal(portal, id_poste, id_effectif, id_service) {
-    openMatchPersonModal("DÃ©tail matching");
+    openMatchPersonModal("Détail matching");
 
     try {
       const data = await fetchMatchingEffectifDetail(portal, id_poste, id_effectif, id_service);
@@ -3574,7 +3574,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const poste = data?.poste || {};
       const person = data?.person || {};
 
-      // Header: Nom + badge Titulaire/Candidat + code poste + intitulÃ©
+      // Header: Nom + badge Titulaire/Candidat + code poste + intitulé
       const personFull = (person.full || "Personne").toString().trim() || "Personne";
       const isTit = !!person.is_titulaire;
 
@@ -3623,7 +3623,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="card" style="padding:12px; margin:0; flex:1;">
             <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("Candidats", "candidats")}</div>
             <div id="matchResult" style="margin-top:10px;">
-              <div class="card-sub" style="margin:0; color:#6b7280;">SÃ©lectionne un poste.</div>
+              <div class="card-sub" style="margin:0; color:#6b7280;">Sélectionne un poste.</div>
             </div>
           </div>
         </div>
@@ -3637,24 +3637,24 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste trouvÃ©.</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste trouvé.</div>`;
       return;
     }
 
     host.innerHTML = list.map(r => {
       const idp = (r.id_poste || "").toString().trim();
-      const intitule = (r.intitule_poste || "").trim() || "â€”";
+      const intitule = (r.intitule_poste || "").trim() || "—";
       const codifClient = (r.codif_client || "").trim();
       const codifPoste = (r.codif_poste || "").trim();
       const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
 
-      const svc = (r.nom_service || "").trim() || "â€”";
-      const bottom = `${(codeAffiche || "â€”")}${svc ? " â€¢ " : ""}${svc}`.trim();
+      const svc = (r.nom_service || "").trim() || "—";
+      const bottom = `${(codeAffiche || "—")}${svc ? " • " : ""}${svc}`.trim();
 
       const nbRattaches = Number(r.nb_titulaires_rattaches);
       const sansTitulaire = Number.isFinite(nbRattaches) && nbRattaches <= 0;
       const liseretStyle = sansTitulaire ? `box-shadow:inset 4px 0 0 #ef4444;` : ``;
-      const titleAttr = sansTitulaire ? ` title="Aucun titulaire affectÃ© sur ce poste"` : ``;
+      const titleAttr = sansTitulaire ? ` title="Aucun titulaire affecté sur ce poste"` : ``;
 
       const isActive = selectedId && idp === selectedId;
       const style = isActive
@@ -3667,10 +3667,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 data-match-id_poste="${escapeHtml(idp)}"
                 ${titleAttr}
                 style="text-align:left; margin:0; ${style}">
-          <div style="font-weight: var(--ns-weight-bold); font-size: var(--ns-text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${escapeHtml(intitule)}
           </div>
-          <div style="font-size: var(--ns-text-xs); color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          <div style="font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${escapeHtml(bottom)}
           </div>
         </button>
@@ -3682,11 +3682,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const comps = Array.isArray(data?.competences) ? data.competences : [];
     if (!comps.length) return [];
 
-    // Liste des compÃ©tences requises + poids
+    // Liste des compétences requises + poids
     const critMin = Number(data?.criticite_min);
     const critMinVal = Number.isFinite(critMin) ? critMin : (getCriticiteMin() ?? 0);
     const compReq = comps.map(c => {
-      const code = (c.code || c.id_competence || "").toString().trim(); // on privilÃ©gie code
+      const code = (c.code || c.id_competence || "").toString().trim(); // on privilégie code
       const lvlReq = nivReqToNum(c.niveau_requis);
       const w = Number(c.poids_criticite || 1);
       const isCrit = w >= critMinVal;
@@ -3712,8 +3712,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             id_effectif: idEff,
             prenom,
             nom,
-            full: `${prenom} ${nom}`.trim() || "â€”",
-            nom_service: (p.nom_service || "").trim() || "â€”",
+            full: `${prenom} ${nom}`.trim() || "—",
+            nom_service: (p.nom_service || "").trim() || "—",
             id_poste_actuel: (p.id_poste_actuel || "").toString().trim()
           });
         }
@@ -3788,11 +3788,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       _matchCurrentRowsCount = 0;
       _matchRowsExpanded = false;
       renderMatchingHeaderActions(getMatchingCurrentServiceId());
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat dÃ©tectÃ© (aucun candidat ne possÃ¨de les compÃ©tences du poste).</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat détecté (aucun candidat ne possède les compétences du poste).</div>`;
       return;
     }
 
-    // --- Titulaires vs Candidats : on sâ€™appuie sur un flag si lâ€™API le donne, sinon sur id_poste_actuel
+    // --- Titulaires vs Candidats : on s’appuie sur un flag si l’API le donne, sinon sur id_poste_actuel
     function isTitulaire(c) {
       if (!c) return false;
 
@@ -3821,18 +3821,18 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const color = `hsl(${hue} 58% 28%)`;
 
       return `
-        <span title="Score dâ€™adÃ©quation au poste"
+        <span title="Score d’adéquation au poste"
               style="display:inline-flex; align-items:center; justify-content:center;
                      min-width:56px; padding:5px 10px; border-radius:999px;
                      border:1px solid ${border}; background:${bg}; color:${color};
-                     font-size: var(--ns-text-xs); font-weight: var(--ns-weight-bold); line-height: var(--ns-leading-tight); white-space:nowrap;">
-          ${s}<span style="font-size: var(--ns-text-xs); font-weight: var(--ns-weight-bold); margin-left:1px;">%</span>
+                     font-size:12px; font-weight:900; line-height:1; white-space:nowrap;">
+          ${s}<span style="font-size:11px; font-weight:800; margin-left:1px;">%</span>
         </span>
       `;
     }
 
-    const headerTitle = (v === "titulaire") ? "AdÃ©quation au poste (titulaire" + (titulairesAll.length > 1 ? "s" : "") + ")" : "Top candidats (hors titulaires)";
-    const emptyText = (v === "titulaire") ? "Aucun titulaire dÃ©tectÃ© sur ce poste" : "Aucun candidat (hors titulaires)";
+    const headerTitle = (v === "titulaire") ? "Adéquation au poste (titulaire" + (titulairesAll.length > 1 ? "s" : "") + ")" : "Top candidats (hors titulaires)";
+    const emptyText = (v === "titulaire") ? "Aucun titulaire détecté sur ce poste" : "Aucun candidat (hors titulaires)";
 
     function renderRow(c) {
       const score = Number(c.score_pct || 0);
@@ -3840,8 +3840,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       return `
         <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}">
-          <td style="font-weight: var(--ns-weight-bold);">${escapeHtml(c.full || "â€”")}</td>
-          <td>${escapeHtml(c.nom_service || "â€”")}</td>
+          <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
+          <td>${escapeHtml(c.nom_service || "—")}</td>
           <td class="col-center">${scoreBadge(score)}</td>
           <td class="col-center">
             <div class="sb-icon-actions" style="justify-content:center;">
@@ -3849,14 +3849,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                       class="sb-icon-btn match-person-open"
                       data-match-person-open="${escapeHtml(ide)}"
                       title="Voir"
-                      aria-label="Voir le dÃ©tail de la correspondance">
+                      aria-label="Voir le détail de la correspondance">
                 ${analyseEyeIconSvg()}
               </button>
               <button type="button"
                       class="sb-icon-btn sb-icon-btn--doc"
                       data-match-person-pdf="${escapeHtml(ide)}"
                       title="PDF"
-                      aria-label="Exporter le dÃ©tail de la correspondance en PDF">
+                      aria-label="Exporter le détail de la correspondance en PDF">
                 ${analysePdfIconSvg()}
               </button>
             </div>
@@ -3879,10 +3879,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="card-sub" style="margin:0 0 8px 0;">
         <span>Poste :</span>
         <span class="sb-badge sb-badge-ref-poste-code">
-          ${escapeHtml(((poste?.codif_client || "").trim() || (poste?.codif_poste || "").trim() || "â€”"))}
+          ${escapeHtml(((poste?.codif_client || "").trim() || (poste?.codif_poste || "").trim() || "—"))}
         </span>
         <b style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-          ${escapeHtml(((poste?.intitule_poste || "").trim() || "â€”"))}
+          ${escapeHtml(((poste?.intitule_poste || "").trim() || "—"))}
         </b>
       </div>
 
@@ -3893,7 +3893,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th>Effectif</th>
               <th style="width:180px;">Service</th>
               <th class="col-center" style="width:110px;"
-                  title="AdÃ©quation globale au poste (synthÃ¨se des compÃ©tences requises).">Score</th>
+                  title="Adéquation globale au poste (synthèse des compétences requises).">Score</th>
               <th class="col-center" style="width:92px;">Actions</th>
             </tr>
           </thead>
@@ -3924,7 +3924,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   async function showMatchingForPoste(portal, id_poste, id_service, seqGuard) {
     const host = byId("matchResult");
-    if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargementâ€¦</div>`;
+    if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
 
     const data = await fetchAnalyseMatchingPoste(portal, id_poste, id_service);
     if (seqGuard && seqGuard !== _matchReqSeq) return;
@@ -3937,7 +3937,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
 
     // ==============================
-  // DÃ©tail COMPETENCE (Risques)
+  // Détail COMPETENCE (Risques)
   // ==============================
   const _compDetailCache = new Map();
   let _compDetailReqSeq = 0;
@@ -3949,14 +3949,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const raw = (codeOrId || "").trim();
 
-    // Heuristique simple: un code ressemble Ã  CO00020 / ABC123 etc.
+    // Heuristique simple: un code ressemble à CO00020 / ABC123 etc.
     const isCode = /^[A-Z]{1,6}\d{2,}$/i.test(raw);
 
     const qs = buildQueryString({
       code: isCode ? raw : null,
-      id_comp: !isCode ? raw : null,          // nom courant cÃ´tÃ© backend
-      id_competence: !isCode ? raw : null,    // alias au cas oÃ¹
-      id_service: svc || null,
+      id_comp: !isCode ? raw : null,          // nom courant côté backend
+      id_competence: !isCode ? raw : null,    // alias au cas où
+      id_service: svc || null,      
       limit_postes: 500,
       limit_porteurs: 500
     });
@@ -3969,7 +3969,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     _compDetailCache.set(key, data);
     return data;
   }
-
+  
   function openAnalysePosteModal(title, subHtml) {
     const modal = byId("modalAnalysePoste");
     if (!modal) return;
@@ -3979,14 +3979,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const tText = byId("analysePosteModalTitleText");
     const s = byId("analysePosteModalSub");
 
-    const titleText = title || "DÃ©tail poste";
+    const titleText = title || "Détail poste";
 
-    // Si la structure "Code + Texte" existe (HTML modifiÃ©), on lâ€™utilise.
-    // Sinon, fallback sur lâ€™ancien fonctionnement.
+    // Si la structure "Code + Texte" existe (HTML modifié), on l’utilise.
+    // Sinon, fallback sur l’ancien fonctionnement.
     if (tText) tText.textContent = titleText;
     else if (tWrap) tWrap.textContent = titleText;
 
-    // Ã€ chaque ouverture, on reset le badge code (il sera rempli aprÃ¨s chargement data)
+    // À chaque ouverture, on reset le badge code (il sera rempli après chargement data)
     if (tCode) {
       tCode.textContent = "";
       tCode.style.display = "none";
@@ -4028,9 +4028,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="modal-header">
             <div id="analyseCompModalTitle" class="sb-modal-titleline">
               <span class="sb-badge sb-badge-ref-comp-code" id="analyseCompModalTitleCode" style="display:none;"></span>
-              <span id="analyseCompModalTitleText" class="sb-title-text">DÃ©tail compÃ©tence</span>
+              <span id="analyseCompModalTitleText" class="sb-title-text">Détail compétence</span>
             </div>
-            <button type="button" class="modal-x" id="analyseCompModalCloseBtn" aria-label="Fermer">Ã—</button>
+            <button type="button" class="modal-x" id="analyseCompModalCloseBtn" aria-label="Fermer">×</button>
           </div>
 
           <div class="modal-body">
@@ -4087,7 +4087,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const b = byId("analyseCompModalBody");
 
     let compCode = "";
-    let compText = "DÃ©tail compÃ©tence";
+    let compText = "Détail compétence";
 
     if (title && typeof title === "object") {
       compCode = String(title.code || "").trim();
@@ -4096,7 +4096,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       compText = String(title || "").trim() || compText;
     }
 
-    // Texte (fallback si jamais tText nâ€™existe pas)
+    // Texte (fallback si jamais tText n’existe pas)
     if (tText) tText.textContent = compText;
     else if (tWrap) tWrap.textContent = compText;
 
@@ -4115,7 +4115,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     if (b) {
       b.innerHTML = `<div class="card" style="padding:12px; margin:0;">
-        <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
+        <div class="card-sub" style="margin:0;">Chargement…</div>
       </div>`;
     }
 
@@ -4195,8 +4195,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function stateLabel(score) {
       const s = clamp(Number(score || 0), 0, 100);
       if (s >= 75) return "Critique";
-      if (s >= 50) return "Ã‰levÃ©";
-      if (s >= 25) return "ModÃ©rÃ©";
+      if (s >= 50) return "Élevé";
+      if (s >= 25) return "Modéré";
       return "Faible";
     }
 
@@ -4212,7 +4212,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           display:inline-flex; align-items:center; justify-content:center;
           padding:4px 10px; border-radius:999px;
           border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;
+          font-weight:800; font-size:12px; white-space:nowrap;
         ">
           ${esc(label)}
         </span>
@@ -4237,10 +4237,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                       transform="rotate(-90 ${size / 2} ${size / 2})" />
             </svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-              <div style="font-weight: var(--ns-weight-bold); font-size: var(--ns-kpi); line-height: var(--ns-leading-tight);">${s}<span style="font-size: var(--ns-text-xs); font-weight: var(--ns-weight-bold);">%</span></div>
+              <div style="font-weight:900; font-size:28px; line-height:1;">${s}<span style="font-size:12px; font-weight:800;">%</span></div>
             </div>
           </div>
-          <div class="card-sub" style="margin:0;">FragilitÃ©</div>
+          <div class="card-sub" style="margin:0;">Fragilité</div>
         </div>
       `;
     }
@@ -4289,15 +4289,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     }
 
     function valueOrDash(v) {
-      if (v === null || v === undefined || v === "") return "â€”";
+      if (v === null || v === undefined || v === "") return "—";
       return String(v);
     }
 
     function diagLine(label, value) {
       return `
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:7px 0; border-bottom:1px solid #eef2f7;">
-          <span style="font-size: var(--ns-text-sm); color:#64748b; line-height: var(--ns-leading-ui);">${esc(label)}</span>
-          <span style="font-size: var(--ns-text-sm); color:#0f172a; font-weight: var(--ns-weight-bold); text-align:right; line-height: var(--ns-leading-ui);">${esc(valueOrDash(value))}</span>
+          <span style="font-size:13px; color:#64748b; line-height:1.35;">${esc(label)}</span>
+          <span style="font-size:13px; color:#0f172a; font-weight:800; text-align:right; line-height:1.35;">${esc(valueOrDash(value))}</span>
         </div>
       `;
     }
@@ -4305,9 +4305,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function smallMetric(label, value, help) {
       return `
         <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;">
-          <div class="label" style="font-size: var(--ns-text-xs); line-height: var(--ns-leading-title);">${esc(label)}</div>
-          <div class="value" style="font-size: var(--ns-title-md); line-height: var(--ns-leading-tight);">${esc(valueOrDash(value))}</div>
-          ${help ? `<div class="card-sub" style="margin:3px 0 0 0; font-size: var(--ns-text-xs); line-height: var(--ns-leading-ui);">${esc(help)}</div>` : ``}
+          <div class="label" style="font-size:12px; line-height:1.25;">${esc(label)}</div>
+          <div class="value" style="font-size:20px; line-height:1.15;">${esc(valueOrDash(value))}</div>
+          ${help ? `<div class="card-sub" style="margin:3px 0 0 0; font-size:12px; line-height:1.35;">${esc(help)}</div>` : ``}
         </div>
       `;
     }
@@ -4324,7 +4324,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function critBadgeHtml(v) {
       const n = Number(v);
-      if (!Number.isFinite(n) || n <= 0) return "â€”";
+      if (!Number.isFinite(n) || n <= 0) return "—";
       return `<span class="sb-crit-badge ${critLevelClass(n)}">${esc(String(Math.round(n)))}</span>`;
     }
 
@@ -4334,7 +4334,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       if (code === "MAITRISE_INSUFFISANTE") {
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Ã‰carts observÃ©s sur les postes oÃ¹ cette compÃ©tence est attendue.</div>
+          <div class="card-sub" style="margin:0 0 8px 0;">Écarts observés sur les postes où cette compétence est attendue.</div>
           <div class="table-wrap" style="margin-top:8px;">
             <table class="sb-table">
               <thead><tr>
@@ -4342,23 +4342,23 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 <th class="col-center" style="width:96px;">Niveau requis</th>
                 <th class="col-center" style="width:62px;">Besoin</th>
                 <th class="col-center" style="width:108px;">Collaborateurs<br>au niveau</th>
-                <th class="col-center" style="width:64px;">Ã‰cart</th>
-                <th class="col-center" style="width:82px;">CriticitÃ©</th>
+                <th class="col-center" style="width:64px;">Écart</th>
+                <th class="col-center" style="width:82px;">Criticité</th>
               </tr></thead>
               <tbody>${items.length ? items.map(it => `
                 <tr>
                   <td>
                     <div style="display:flex;align-items:center;gap:8px;min-width:320px;">
-                      <span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "â€”")}</span>
-                      <span style="font-size: var(--ns-text-md);font-weight: var(--ns-weight-bold);color:#0f172a;white-space:normal;line-height: var(--ns-leading-title);">${esc(it.intitule_poste || "â€”")}</span>
+                      <span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span>
+                      <span style="font-size:14px;font-weight:750;color:#0f172a;white-space:normal;line-height:1.25;">${esc(it.intitule_poste || "—")}</span>
                     </div>
                   </td>
-                  <td class="col-center">${nsLevelBadgeHtml(it.niveau_requis || "â€”", "Niveau requis")}</td>
+                  <td class="col-center">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
                   <td class="col-center">${esc(String(it.besoin ?? 0))}</td>
                   <td class="col-center">${esc(String(it.porteurs_niveau_requis ?? it.collaborateurs_niveau_requis ?? 0))}</td>
                   <td class="col-center"><span class="sb-badge sb-badge--warning">${esc(String(it.ecart ?? 0))}</span></td>
                   <td class="col-center">${critBadgeHtml(it.criticite)}</td>
-                </tr>`).join("") : `<tr><td colspan="6" class="col-center sb-muted">Aucun Ã©cart de maÃ®trise dÃ©taillÃ©.</td></tr>`}</tbody>
+                </tr>`).join("") : `<tr><td colspan="6" class="col-center sb-muted">Aucun écart de maîtrise détaillé.</td></tr>`}</tbody>
             </table>
           </div>`;
       }
@@ -4368,11 +4368,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         const declares = Number(stats?.nb_porteurs_declares || 0);
         const besoin = Number(stats?.besoin_total || 0);
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Nombre de collaborateurs identifiÃ©s sur cette compÃ©tence.</div>
+          <div class="card-sub" style="margin:0 0 8px 0;">Nombre de collaborateurs identifiés sur cette compétence.</div>
           <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:8px;">
-            ${smallMetric("Collaborateurs confirmÃ©s", confirmes, "Niveau connu et exploitable.")}
-            ${smallMetric("Collaborateurs dÃ©clarÃ©s", declares, "Collaborateurs associÃ©s Ã  cette compÃ©tence.")}
-            ${smallMetric("Besoin total", besoin, "Volume attendu sur les postes concernÃ©s.")}
+            ${smallMetric("Collaborateurs confirmés", confirmes, "Niveau connu et exploitable.")}
+            ${smallMetric("Collaborateurs déclarés", declares, "Collaborateurs associés à cette compétence.")}
+            ${smallMetric("Besoin total", besoin, "Volume attendu sur les postes concernés.")}
           </div>`;
       }
 
@@ -4381,83 +4381,83 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="card-sub" style="margin:0 0 8px 0;">Niveaux disponibles pour organiser une transmission.</div>
           <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:8px;">
             ${smallMetric("Experts disponibles", expertsDisponibles, "Niveau Expert disponible.")}
-            ${smallMetric("AvancÃ©s ou experts", avancesOuExperts, "Niveau AvancÃ© ou Expert.")}
-            ${smallMetric("Collaborateurs Ã©valuÃ©s", evaluatedCount, "Niveau connu dans Novoskill.")}
+            ${smallMetric("Avancés ou experts", avancesOuExperts, "Niveau Avancé ou Expert.")}
+            ${smallMetric("Collaborateurs évalués", evaluatedCount, "Niveau connu dans Novoskill.")}
           </div>`;
       }
 
       if (code === "EXPOSITION_SORTIES_INDISPOS") {
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Ã‰vÃ©nements connus pouvant modifier la disponibilitÃ©.</div>
+          <div class="card-sub" style="margin:0 0 8px 0;">Événements connus pouvant modifier la disponibilité.</div>
           <div class="table-wrap" style="margin-top:8px;">
             <table class="sb-table">
-              <thead><tr><th>Collaborateur</th><th>Poste</th><th>Ã‰vÃ©nement</th><th class="col-center" style="width:120px;">DÃ©but</th><th class="col-center" style="width:120px;">Fin / date</th></tr></thead>
+              <thead><tr><th>Collaborateur</th><th>Poste</th><th>Événement</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin / date</th></tr></thead>
               <tbody>${items.length ? items.map(it => `
                 <tr>
-                  <td><b>${esc(it.collaborateur || "â€”")}</b></td>
-                  <td>${esc(it.poste || "â€”")}</td>
-                  <td><span class="sb-badge sb-badge--warning">${esc(it.evenement || "Ã‰vÃ©nement")}</span></td>
-                  <td class="col-center">${esc(it.debut || "â€”")}</td>
-                  <td class="col-center">${esc(it.fin || "â€”")}</td>
-                </tr>`).join("") : `<tr><td colspan="5" class="col-center sb-muted">Aucun Ã©vÃ©nement dÃ©taillÃ©.</td></tr>`}</tbody>
+                  <td><b>${esc(it.collaborateur || "—")}</b></td>
+                  <td>${esc(it.poste || "—")}</td>
+                  <td><span class="sb-badge sb-badge--warning">${esc(it.evenement || "Événement")}</span></td>
+                  <td class="col-center">${esc(it.debut || "—")}</td>
+                  <td class="col-center">${esc(it.fin || "—")}</td>
+                </tr>`).join("") : `<tr><td colspan="5" class="col-center sb-muted">Aucun événement détaillé.</td></tr>`}</tbody>
             </table>
           </div>`;
       }
 
       if (code === "DONNEES_A_VERIFIER") {
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Informations Ã  confirmer pour fiabiliser lâ€™analyse.</div>
+          <div class="card-sub" style="margin:0 0 8px 0;">Informations à confirmer pour fiabiliser l’analyse.</div>
           <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
             ${items.length ? items.map(it => `
               <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;">
-                <span style="font-size: var(--ns-text-sm); color:#334155; font-weight: var(--ns-weight-bold);">${esc(it.label || "Point Ã  vÃ©rifier")}</span>
-                <span class="sb-badge">${esc(String(it.value ?? "â€”"))}</span>
-              </div>`).join("") : `<div class="card-sub" style="margin:0;">Aucune donnÃ©e Ã  vÃ©rifier.</div>`}
+                <span style="font-size:13px; color:#334155; font-weight:750;">${esc(it.label || "Point à vérifier")}</span>
+                <span class="sb-badge">${esc(String(it.value ?? "—"))}</span>
+              </div>`).join("") : `<div class="card-sub" style="margin:0;">Aucune donnée à vérifier.</div>`}
           </div>`;
       }
 
-      return `<div class="card-sub" style="margin:0;">Ã‰lÃ©ments observÃ©s sur cette cause.</div>`;
+      return `<div class="card-sub" style="margin:0;">Éléments observés sur cette cause.</div>`;
     }
 
     const causesHtml = causes.map((c, idx) => `
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
           <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-            ${causeDot(c?.severity)}<span style="font-weight: var(--ns-weight-semibold);color:#1f2937;">${esc(c?.titre || "Cause")}</span>
+            ${causeDot(c?.severity)}<span style="font-weight:650;color:#1f2937;">${esc(c?.titre || "Cause")}</span>
           </span>
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
             ${shareBadge(c)}
             ${causeHelpButton(causeHelpKey(c?.code))}
-            <span class="sb-acc-chevron">â–¾</span>
+            <span class="sb-acc-chevron">▾</span>
           </span>
         </button>
         <div class="sb-acc-body">
           ${causeItemsHtml(c)}
         </div>
       </div>
-    `).join("") || `<div class="card-sub" style="margin:0;">Aucune cause de fragilitÃ© dÃ©tectÃ©e sur le pÃ©rimÃ¨tre analysÃ©.</div>`;
+    `).join("") || `<div class="card-sub" style="margin:0;">Aucune cause de fragilité détectée sur le périmètre analysé.</div>`;
 
     const collaborateursRows = collaborateurs.slice(0, 12).map((r) => {
-      const full = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "â€”";
+      const full = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "—";
       const evalDate = (r?.date_derniere_eval || r?.date_audit || "").toString().slice(0, 10);
       const isIndispo = isUnavailable(r);
       const cls = isIndispo ? "sb-badge--warning" : r?.is_evaluee ? "sb-badge--success" : "sb-badge--info";
-      const label = isIndispo ? "Indisponible" : r?.is_evaluee ? "Ã‰valuÃ©" : "Ã€ confirmer";
+      const label = isIndispo ? "Indisponible" : r?.is_evaluee ? "Évalué" : "À confirmer";
       return `
         <tr>
           <td class="sb-fs-13 sb-fw-700">${esc(full)}</td>
-          <td class="sb-fs-13">${esc(r?.intitule_poste || "â€”")}</td>
-          <td class="col-center">${nsLevelBadgeHtml(r?.niveau_actuel || "â€”", "Niveau actuel")}</td>
-          <td class="col-center">${esc(evalDate ? formatDateFr(evalDate) : "â€”")}</td>
+          <td class="sb-fs-13">${esc(r?.intitule_poste || "—")}</td>
+          <td class="col-center">${nsLevelBadgeHtml(r?.niveau_actuel || "—", "Niveau actuel")}</td>
+          <td class="col-center">${esc(evalDate ? formatDateFr(evalDate) : "—")}</td>
           <td><span class="sb-badge ${cls}">${esc(label)}</span></td>
         </tr>`;
     }).join("");
 
     const lecture = (() => {
-      if (scoreSafe >= 75) return "Cette compÃ©tence est fortement exposÃ©e sur le pÃ©rimÃ¨tre analysÃ©.";
-      if (scoreSafe >= 50) return "Cette compÃ©tence prÃ©sente plusieurs fragilitÃ©s Ã  surveiller ou sÃ©curiser.";
-      if (scoreSafe >= 25) return "Cette compÃ©tence prÃ©sente une fragilitÃ© modÃ©rÃ©e.";
-      return "Cette compÃ©tence apparaÃ®t globalement sÃ©curisÃ©e sur le pÃ©rimÃ¨tre analysÃ©.";
+      if (scoreSafe >= 75) return "Cette compétence est fortement exposée sur le périmètre analysé.";
+      if (scoreSafe >= 50) return "Cette compétence présente plusieurs fragilités à surveiller ou sécuriser.";
+      if (scoreSafe >= 25) return "Cette compétence présente une fragilité modérée.";
+      return "Cette compétence apparaît globalement sécurisée sur le périmètre analysé.";
     })();
 
     host.innerHTML = `
@@ -4465,14 +4465,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:320px;">
             <div class="card-title" style="margin-bottom:8px;">Diagnostic</div>
-            <div class="card-sub" style="margin:0 0 8px 0;font-size: var(--ns-text-md);line-height: var(--ns-leading-body);">${esc(lecture)}</div>
-            <div class="card-sub" style="margin:0 0 8px 0;font-size: var(--ns-text-sm);line-height: var(--ns-leading-body);font-weight: var(--ns-weight-bold);color:#475569;">
-              Ã‰lÃ©ments pris en compte :
+            <div class="card-sub" style="margin:0 0 8px 0;font-size:14px;line-height:1.55;">${esc(lecture)}</div>
+            <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
+              Éléments pris en compte :
             </div>
             <div style="max-width:660px;">
-              ${diagLine("PÃ©rimÃ¨tre analysÃ©", scopeLabel)}
-              ${diagLine("CriticitÃ© des compÃ©tences", `â‰¥ ${data?.criticite_min ?? "â€”"}%`)}
-              ${diagLine("Besoin total de couverture", stats?.besoin_total ?? "â€”")}
+              ${diagLine("Périmètre analysé", scopeLabel)}
+              ${diagLine("Criticité des compétences", `≥ ${data?.criticite_min ?? "—"}%`)}
+              ${diagLine("Besoin total de couverture", stats?.besoin_total ?? "—")}
             </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
@@ -4483,17 +4483,17 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
 
       <div class="card" style="padding:14px;margin-top:12px;">
-        <div class="card-title" style="margin-bottom:6px;">Pourquoi cette compÃ©tence est fragile ?</div>
-        <div class="card-sub" style="margin:0 0 10px 0;">Ouvrez une cause pour voir les Ã©lÃ©ments observÃ©s sur cette compÃ©tence.</div>
+        <div class="card-title" style="margin-bottom:6px;">Pourquoi cette compétence est fragile ?</div>
+        <div class="card-sub" style="margin:0 0 10px 0;">Ouvrez une cause pour voir les éléments observés sur cette compétence.</div>
         ${causesHtml}
       </div>
 
       <div class="card" style="padding:14px;margin-top:12px;">
-        <div class="card-title" style="margin-bottom:8px;">Collaborateurs identifiÃ©s</div>
+        <div class="card-title" style="margin-bottom:8px;">Collaborateurs identifiés</div>
         <div style="overflow:auto;">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0;min-width:760px;">
-            <thead><tr><th>Collaborateur</th><th>Poste actuel</th><th class="col-center">Niveau</th><th class="col-center">DerniÃ¨re Ã©valuation</th><th>Statut</th></tr></thead>
-            <tbody>${collaborateursRows || `<tr><td colspan="5" class="sb-muted">Aucun collaborateur identifiÃ©.</td></tr>`}</tbody>
+            <thead><tr><th>Collaborateur</th><th>Poste actuel</th><th class="col-center">Niveau</th><th class="col-center">Dernière évaluation</th><th>Statut</th></tr></thead>
+            <tbody>${collaborateursRows || `<tr><td colspan="5" class="sb-muted">Aucun collaborateur identifié.</td></tr>`}</tbody>
           </table>
         </div>
       </div>
@@ -4501,10 +4501,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       <div class="card analyse-competence-reading-card" style="padding:14px;margin-top:12px;">
         <div class="card-title" style="margin-bottom:6px;">Lecture transversale</div>
-        <div class="card-sub" style="margin:0;line-height: var(--ns-leading-body);">
-          Cette vue sert Ã  comprendre oÃ¹ la compÃ©tence est fragile : postes concernÃ©s, porteurs identifiÃ©s,
-          couverture disponible et donnÃ©es Ã  confirmer. Les besoins individuels de montÃ©e en compÃ©tences
-          se traitent depuis lâ€™adÃ©quation titulaire ou le menu Besoins & formations, quand une personne et son poste actuel sont clairement identifiÃ©s.
+        <div class="card-sub" style="margin:0;line-height:1.45;">
+          Cette vue sert à comprendre où la compétence est fragile : postes concernés, porteurs identifiés,
+          couverture disponible et données à confirmer. Les besoins individuels de montée en compétences
+          se traitent depuis l’adéquation titulaire ou le menu Besoins & formations, quand une personne et son poste actuel sont clairement identifiés.
         </div>
       </div>
     `;
@@ -4513,7 +4513,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
     const mySeq = ++_compDetailReqSeq;
 
-    openAnalyseCompetenceModal("DÃ©tail compÃ©tence");
+    openAnalyseCompetenceModal("Détail compétence");
 
     try {
       const data = await fetchAnalyseCompetenceDetail(portal, id_comp_or_code, id_service);
@@ -4521,7 +4521,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       const comp = data?.competence || {};
       const titleCode = String(comp.code || "").trim();
-      const titleText = String(comp.intitule || "CompÃ©tence").trim();
+      const titleText = String(comp.intitule || "Compétence").trim();
 
       const scopeObj = data?.scope;
       const scopeName = (scopeObj && typeof scopeObj === "object")
@@ -4540,14 +4540,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     } catch (e) {
       if (mySeq !== _compDetailReqSeq) return;
 
-      openAnalyseCompetenceModal("DÃ©tail compÃ©tence");
+      openAnalyseCompetenceModal("Détail compétence");
 
       const host = byId("analyseCompModalBody");
       if (host) {
         host.innerHTML = `
           <div class="card" style="padding:12px; margin:0;">
             <div class="card-sub" style="margin:0 0 8px 0;">Erreur : ${escapeHtml(errMsg(e))}</div>
-            <div class="card-sub" style="margin:0;">Impossible de charger le dÃ©tail.</div>
+            <div class="card-sub" style="margin:0;">Impossible de charger le détail.</div>
           </div>
         `;
       }
@@ -4570,20 +4570,20 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const rows = shown.map(p => {
       const prenom = (p.prenom_effectif || "").trim();
       const nom = (p.nom_effectif || "").trim();
-      const full = `${prenom} ${nom}`.trim() || "â€”";
+      const full = `${prenom} ${nom}`.trim() || "—";
 
       const niv = mapNiveauActuel(p.niveau_actuel);
 
       // On n'affiche plus le poste, uniquement le service (si tu veux rien du tout, mets right = "")
       const svc = (p.nom_service || "").trim();
-      const right = svc || "â€”";
+      const right = svc || "—";
 
       const posteActuel = (p.id_poste_actuel || "").trim();
       const posteRef = (idPosteAnalyse || "").trim();
 
       const isSamePoste = !!posteRef && !!posteActuel && posteActuel === posteRef;
       const sqColor = isSamePoste ? "#16a34a" : "#f59e0b"; // vert / orange
-      const sqTitle = isSamePoste ? "Poste identique" : "Poste diffÃ©rent / non renseignÃ©";
+      const sqTitle = isSamePoste ? "Poste identique" : "Poste différent / non renseigné";
 
       return `
         <div style="display:flex; justify-content:space-between; gap:10px;">
@@ -4592,16 +4592,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   style="width:10px; height:10px; border-radius:2px; background:${sqColor}; border:1px solid rgba(0,0,0,.12); flex:0 0 auto;">
             </span>
 
-            <span style="font-weight: var(--ns-weight-semibold); color:#111827; font-size: var(--ns-text-xs); overflow:hidden; text-overflow:ellipsis;">
+            <span style="font-weight:600; color:#111827; font-size:12px; overflow:hidden; text-overflow:ellipsis;">
               ${escapeHtml(full)}
             </span>
 
-            <span style="font-weight: var(--ns-weight-semibold); color:#6b7280; font-size: var(--ns-text-xs); flex:0 0 auto;">
+            <span style="font-weight:600; color:#6b7280; font-size:11px; flex:0 0 auto;">
               (${escapeHtml(niv)})
             </span>
           </span>
 
-          <span style="color:#6b7280; font-size: var(--ns-text-xs); white-space:nowrap;">
+          <span style="color:#6b7280; font-size:11px; white-space:nowrap;">
             ${escapeHtml(right)}
           </span>
         </div>
@@ -4621,12 +4621,12 @@ function renderAnalysePosteCompetencesTab(data) {
   _analysePosteLastData = data || null;
 
   // IMPORTANT : si le slot existe, on remplit le slot.
-  // On ne doit JAMAIS rÃ©Ã©crire tout le tab, sinon tu Ã©crases le diagnostic (et tu retombes Ã  0%).
+  // On ne doit JAMAIS réécrire tout le tab, sinon tu écrases le diagnostic (et tu retombes à 0%).
   const slot = byId("analysePosteDiagCartoSlot");
 
-  // Le bloc "Cartographie dÃ©taillÃ©e" est supprimÃ© : on ne rend rien.
-  // IMPORTANT : on ne doit JAMAIS Ã©crire dans #analysePosteTabCompetences ici,
-  // sinon on Ã©crase le diagnostic (anneau %).
+  // Le bloc "Cartographie détaillée" est supprimé : on ne rend rien.
+  // IMPORTANT : on ne doit JAMAIS écrire dans #analysePosteTabCompetences ici,
+  // sinon on écrase le diagnostic (anneau %).
   if (!slot) return;
 
   const host = slot;
@@ -4670,7 +4670,7 @@ function renderAnalysePosteCompetencesTab(data) {
     const porteurs = Array.isArray(c?.porteurs) ? c.porteurs : [];
     const nbTotal = getNbTotal(c);
 
-    // Si lâ€™API ne renvoie pas les porteurs => on ne sait pas qualifier, on approx sur total
+    // Si l’API ne renvoie pas les porteurs => on ne sait pas qualifier, on approx sur total
     if (!porteurs.length) return nbTotal;
 
     let ok = 0;
@@ -4696,15 +4696,15 @@ function renderAnalysePosteCompetencesTab(data) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
-        background:#fff; color:#374151; font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;">
-        ${escapeHtml(txt || "â€”")}
+        background:#fff; color:#374151; font-weight:900; font-size:12px; white-space:nowrap;">
+        ${escapeHtml(txt || "—")}
       </span>
     `;
   }
 
   function pillReco(rec) {
     const r = (rec || "").toString().toLowerCase();
-    let label = "â€”";
+    let label = "—";
     if (r === "former") label = "Former";
     else if (r === "mutualiser") label = "Mutualiser";
     else if (r === "recruter") label = "Recruter";
@@ -4713,13 +4713,13 @@ function renderAnalysePosteCompetencesTab(data) {
       <span style="
         display:inline-flex; align-items:center; justify-content:center;
         padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
-        background:var(--chip-bg, #f3f4f6); color:#111827; font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;">
+        background:var(--chip-bg, #f3f4f6); color:#111827; font-weight:900; font-size:12px; white-space:nowrap;">
         ${escapeHtml(label)}
       </span>
     `;
   }
 
-  // 1) Liste compÃ©tences critiques enrichie
+  // 1) Liste compétences critiques enrichie
   const critEnriched = listAll
     .filter(c => Number(c?.poids_criticite) >= critMinVal)
     .map(c => {
@@ -4733,7 +4733,7 @@ function renderAnalysePosteCompetencesTab(data) {
       };
     });
 
-  // 2) Par dÃ©faut: on affiche les RISQUES (bus factor <= 1) sauf si toggle â€œtoutesâ€
+  // 2) Par défaut: on affiche les RISQUES (bus factor <= 1) sauf si toggle “toutes”
   const showAllCrit = !!_analysePosteShowAllCompetences;
   const focus = (_analysePosteFocusKey || "").trim();
 
@@ -4757,39 +4757,39 @@ function renderAnalysePosteCompetencesTab(data) {
   );
 
   if (!detailList.length) {
-    host.innerHTML = `<div class="card-sub" style="margin-top:10px;">Aucune compÃ©tence Ã  afficher.</div>`;
+    host.innerHTML = `<div class="card-sub" style="margin-top:10px;">Aucune compétence à afficher.</div>`;
     return;
   }
 
-  // 3) Rendu: uniquement la cartographie (dans le slot si prÃ©sent)
+  // 3) Rendu: uniquement la cartographie (dans le slot si présent)
   host.innerHTML = `
     <div class="table-wrap" style="margin-top:10px;">
       <table class="sb-table">
         <thead>
           <tr>
             <th style="width:90px;">Code</th>
-            <th>CompÃ©tence</th>
+            <th>Compétence</th>
             <th class="col-center" style="width:110px;">Niv. requis</th>
-            <th class="col-center" style="width:90px;">CriticitÃ©</th>
+            <th class="col-center" style="width:90px;">Criticité</th>
             <th class="col-center" style="width:120px;">Porteurs</th>
             <th class="col-center" style="width:140px;">Au niv. requis</th>
-            <th class="col-center" style="width:140px;">Point Ã  sÃ©curiser</th>
+            <th class="col-center" style="width:140px;">Point à sécuriser</th>
           </tr>
         </thead>
         <tbody>
           ${detailList.map(c => {
-            const code = escapeHtml(c.code || "â€”");
-            const intit = escapeHtml(c.intitule || "â€”");
-            const nr = nsLevelBadgeHtml(c.niveau_requis || "â€”", "Niveau requis");
-            const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "â€”" : escapeHtml(String(c.poids_criticite));
+            const code = escapeHtml(c.code || "—");
+            const intit = escapeHtml(c.intitule || "—");
+            const nr = nsLevelBadgeHtml(c.niveau_requis || "—", "Niveau requis");
+            const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
             const tot = Number(c._nb_total || 0);
             const ok = Number(c._nb_ok || 0);
 
             return `
               <tr>
-                <td style="font-weight: var(--ns-weight-bold); white-space:nowrap;">${code}</td>
+                <td style="font-weight:800; white-space:nowrap;">${code}</td>
                 <td style="min-width:280px;">
-                  <div style="font-size: var(--ns-text-md); font-weight: var(--ns-weight-bold);">${intit}</div>
+                  <div style="font-size:14px; font-weight:700;">${intit}</div>
                 </td>
                 <td class="col-center">${pill(nr)}</td>
                 <td class="col-center" style="white-space:nowrap;">${crit}</td>
@@ -4812,30 +4812,30 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
   if (modal) modal.setAttribute("data-focus", focus);
 
   function focusLabel(k) {
-    if (k === "critiques-sans-porteur") return "CompÃ©tences critiques non couvertes";
-    if (k === "porteur-unique") return "CompÃ©tences critiques Ã  couverture unique";
-    if (k === "total-fragiles") return "FragilitÃ©s (bus factor â‰¤ 1)";
+    if (k === "critiques-sans-porteur") return "Compétences critiques non couvertes";
+    if (k === "porteur-unique") return "Compétences critiques à couverture unique";
+    if (k === "total-fragiles") return "Fragilités (bus factor ≤ 1)";
     return "";
   }
 
-  // Reset Ã©tat modal
+  // Reset état modal
   _analysePosteFocusKey = focus;
   _analysePosteShowAllCompetences = false;
   _analysePosteLastData = null;
 
-  // Lazy-load dÃ©tail (endpoint lourd) : pas chargÃ© Ã  lâ€™ouverture
+  // Lazy-load détail (endpoint lourd) : pas chargé à l’ouverture
   _analysePosteLastParams = { id_poste: id_poste, id_service: id_service || "" };
   _analysePosteDetailLoaded = false;
   _analysePosteDetailLoading = false;
 
   openAnalysePosteModal(
-    "DÃ©tail poste",
-    `<div class="card-sub" style="margin:0;">Chargement du diagnosticâ€¦</div>`
+    "Détail poste",
+    `<div class="card-sub" style="margin:0;">Chargement du diagnostic…</div>`
   );
 
-  // Init contenu (CompÃ©tences)
+  // Init contenu (Compétences)
   const tabA = byId("analysePosteTabCompetences");
-  if (tabA) tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargementâ€¦</div></div>`;
+  if (tabA) tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
 
   const mySeq = ++_posteDiagReqSeq;
 
@@ -4875,31 +4875,31 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       }
     }
 
-    // Rendu diagnostic immÃ©diat (affichage rapide)
+    // Rendu diagnostic immédiat (affichage rapide)
     renderAnalysePosteDiagnosticOnly(diag, focus);
 
-    // Chargement AUTO du dÃ©tail (endpoint lourd) pour afficher la cartographie + causes racines dÃ¨s lâ€™ouverture
+    // Chargement AUTO du détail (endpoint lourd) pour afficher la cartographie + causes racines dès l’ouverture
     if (!_analysePosteDetailLoaded && !_analysePosteDetailLoading) {
       _analysePosteDetailLoading = true;
 
       try {
         const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
 
-        // Si une autre requÃªte a pris la main entre temps, on nâ€™Ã©crase rien
+        // Si une autre requête a pris la main entre temps, on n’écrase rien
         if (mySeq !== _posteDiagReqSeq) return;
 
         _analysePosteLastData = data;
         _analysePosteDetailLoaded = true;
         _analysePosteDetailLoading = false;
 
-        // Affiche la vue â€œCompÃ©tencesâ€ (inclut Causes racines)
+        // Affiche la vue “Compétences” (inclut Causes racines)
         renderAnalysePosteCompetencesTab(data);
 
       } catch (err) {
         _analysePosteDetailLoading = false;
         if (typeof showToast === "function") showToast("Erreur chargement cartographie poste.", "error");
         else console.error(err);
-        // On reste sur le diagnostic-only dÃ©jÃ  affichÃ©
+        // On reste sur le diagnostic-only déjà affiché
       }
     }
 
@@ -4908,7 +4908,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     if (mySeq !== _posteDiagReqSeq) return;
 
     openAnalysePosteModal(
-      "DÃ©tail poste",
+      "Détail poste",
       `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`
     );
 
@@ -4923,7 +4923,7 @@ let _riskEvol3mSeq = 0;
 
 function fmtPctSigned(x) {
   const v = Number(x);
-  if (!Number.isFinite(v)) return "â€”";
+  if (!Number.isFinite(v)) return "—";
   const s = Math.round(v);
   return (s > 0 ? `+${s}%` : `${s}%`);
 }
@@ -4948,7 +4948,7 @@ async function computeRiskEvolution3m(portal, id_service) {
   if (_riskEvol3mCache.has(key)) return _riskEvol3mCache.get(key);
 
   if (!portal?.apiBase || !portal?.contactId) {
-    throw new Error("Contexte portail indisponible pour la projection Ã  3 mois.");
+    throw new Error("Contexte portail indisponible pour la projection à 3 mois.");
   }
 
   let url = "";
@@ -5098,7 +5098,7 @@ function renderDetail(mode) {
   if (mode === "previsions") {
     const horizon = getPrevHorizon();
     const horizonLabel = analyseHorizonLabel(horizon);
-    setAnalyseDetailTitle(`PrÃ©visions Ã  ${horizonLabel}`, "previsions");
+    setAnalyseDetailTitle(`Prévisions à ${horizonLabel}`, "previsions");
     if (sub) {
       sub.textContent = "";
       sub.style.display = "none";
@@ -5117,15 +5117,15 @@ function renderDetail(mode) {
     const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
     const detailTitle = selectedKpi === "sorties-potentielles"
       ? "Sorties potentielles"
-      : (selectedKpi === "transmissions" ? "Transmissions Ã  prÃ©parer" : "Sorties confirmÃ©es");
+      : (selectedKpi === "transmissions" ? "Transmissions à préparer" : "Sorties confirmées");
     const detailIcon = selectedKpi === "sorties-potentielles"
       ? "sortiesPotentielles"
       : (selectedKpi === "transmissions" ? "transmissions" : "sortiesConfirmees");
 
     body.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:10px;">${analyseDetailTitleHtml(`${detailTitle} Ã  ${horizonLabel}`, detailIcon)}</div>
-        <div id="prevTransitionDetailBox" style="margin-top:0;">Chargementâ€¦</div>
+        <div class="card-title" style="margin-bottom:10px;">${analyseDetailTitleHtml(`${detailTitle} à ${horizonLabel}`, detailIcon)}</div>
+        <div id="prevTransitionDetailBox" style="margin-top:0;">Chargement…</div>
       </div>
     `;
 
@@ -5153,8 +5153,8 @@ function renderDetail(mode) {
         renderPrevisionsHeaderActions(selectedKpi, items.length);
         if (!items.length) {
           box.textContent = selectedKpi === "transmissions"
-            ? "Aucune transmission critique Ã  prÃ©parer dans lâ€™horizon sÃ©lectionnÃ©."
-            : "Aucune sortie dÃ©tectÃ©e dans lâ€™horizon sÃ©lectionnÃ©.";
+            ? "Aucune transmission critique à préparer dans l’horizon sélectionné."
+            : "Aucune sortie détectée dans l’horizon sélectionné.";
           return;
         }
 
@@ -5188,7 +5188,7 @@ function renderDetail(mode) {
         }
       } catch (e) {
         if ((window.__sbPrevTransitionReqId || 0) !== reqId) return;
-        box.textContent = `Erreur chargement prÃ©visions: ${e?.message || e}`;
+        box.textContent = `Erreur chargement prévisions: ${e?.message || e}`;
       }
     }, 0);
 
@@ -5212,11 +5212,11 @@ function renderDetail(mode) {
   let filterSub = "";
 
   if (rf === "postes-scope") {
-    filterLabel = "FragilitÃ© des postes";
+    filterLabel = "Fragilité des postes";
   } else if (rf === "critiques-fragiles") {
-    filterLabel = "FragilitÃ©s par compÃ©tence";
+    filterLabel = "Fragilités par compétence";
   } else if (rf === "evol-3m") {
-    filterLabel = "Ã‰volution des indices de fragilitÃ©s Ã  3 mois";
+    filterLabel = "Évolution des indices de fragilités à 3 mois";
   }
 
 
@@ -5226,11 +5226,11 @@ function renderDetail(mode) {
 
   function badge(txt, accent) {
     const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
-    return `<span class="${cls}">${escapeHtml(txt || "â€”")}</span>`;
+    return `<span class="${cls}">${escapeHtml(txt || "—")}</span>`;
   }
 
   function renderDomainPill(item) {
-    const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "â€”").toString();
+    const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "—").toString();
     const col = normalizeColor(item?.domaine_couleur) || "#9ca3af";
     return `
       <span class="sb-badge-domaine sb-badge-domaine--soft"
@@ -5244,7 +5244,7 @@ function renderDetail(mode) {
 
   function renderTablePostes(rows) {
     const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun rÃ©sultat.</div>`;
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
@@ -5263,8 +5263,8 @@ function renderDetail(mode) {
           <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
             <div style="height:100%; width:${s}%; background:${fill};"></div>
           </div>
-          <div style="min-width:44px; text-align:right; font-weight: var(--ns-weight-bold);">
-            ${s}<span style="font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs);">%</span>
+          <div style="min-width:44px; text-align:right; font-weight:800;">
+            ${s}<span style="font-weight:700; font-size:12px;">%</span>
           </div>
         </div>
       `;
@@ -5273,8 +5273,8 @@ function renderDetail(mode) {
     function stateLabel(score) {
       const s = clamp(Number(score || 0), 0, 100);
       if (s >= 75) return "Critique";
-      if (s >= 50) return "Ã‰levÃ©";
-      if (s >= 25) return "ModÃ©rÃ©";
+      if (s >= 50) return "Élevé";
+      if (s >= 25) return "Modéré";
       return "Faible";
     }
 
@@ -5290,7 +5290,7 @@ function renderDetail(mode) {
           display:inline-flex; align-items:center; justify-content:center;
           padding:4px 10px; border-radius:999px;
           border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;
+          font-weight:800; font-size:12px; white-space:nowrap;
         ">
           ${escapeHtml(label)}
         </span>
@@ -5307,17 +5307,17 @@ function renderDetail(mode) {
 
               <th class="col-center" style="width:220px;">
                 <span class="sb-th-with-tip">
-                  <span>Indice<br>de fragilitÃ©</span>
+                  <span>Indice<br>de fragilité</span>
                   <span class="sb-iinfo"
                         data-sbtip="fragility-index"
                         tabindex="0"
                         role="button"
-                        aria-label="Informations sur l'indice de fragilitÃ©">i</span>
+                        aria-label="Informations sur l'indice de fragilité">i</span>
                 </span>
               </th>
 
-              <th class="col-center" style="width:110px; white-space:normal; line-height: var(--ns-leading-tight);">
-                Ã‰tat
+              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
+                État
               </th>
 
               <th class="col-center" style="width:92px;">Actions</th>
@@ -5325,27 +5325,27 @@ function renderDetail(mode) {
           </thead>
           <tbody>
             ${list.map(r => {
-              const intitule = (r.intitule_poste || "").trim() || "â€”";
+              const intitule = (r.intitule_poste || "").trim() || "—";
               const codifClient = (r.codif_client || "").trim();
               const codifPoste  = (r.codif_poste || "").trim();
               const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
-              const svc = (r.nom_service || "").trim() || "â€”";
+              const svc = (r.nom_service || "").trim() || "—";
 
               const isNonAnalyse = !!r.is_non_analyse;
               const isSansTitulaire = !isNonAnalyse && Number(r.nb_titulaires || 0) <= 0 && Number(r.nb_titulaires_cible || 1) >= 1;
               const scoreTitle = isNonAnalyse
-                ? "Aucune compÃ©tence attendue exploitable nâ€™est rattachÃ©e au poste"
-                : (isSansTitulaire ? "Poste actif sans titulaire : fragilitÃ© 100%" : "Indice de fragilitÃ© du poste");
+                ? "Aucune compétence attendue exploitable n’est rattachée au poste"
+                : (isSansTitulaire ? "Poste actif sans titulaire : fragilité 100%" : "Indice de fragilité du poste");
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
-              const etat = isNonAnalyse ? "Non analysÃ©" : stateLabel(score);
+              const etat = isNonAnalyse ? "Non analysé" : stateLabel(score);
               const idPoste = (r.id_poste || "").toString().trim();
 
               return `
                 <tr class="risk-poste-row" data-id_poste="${escapeHtml(idPoste)}">
                   <td class="risk-poste-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                      <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "â€”")}</span>
-                      <span style="font-weight: var(--ns-weight-bold); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                      <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
+                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(intitule)}
                       </span>
                     </div>
@@ -5353,24 +5353,24 @@ function renderDetail(mode) {
                   <td>${escapeHtml(svc)}</td>
 
                   <td class="col-center" title="${escapeHtml(scoreTitle)}">
-                    ${isNonAnalyse ? '<span class="sb-badge">Non analysÃ©</span>' : scoreChip(score)}
+                    ${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : scoreChip(score)}
                   </td>
 
-                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Non analysÃ©</span>' : statePill(etat, score)}</td>
+                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : statePill(etat, score)}</td>
 
                   <td class="col-center">
                     <div class="sb-icon-actions" style="justify-content:center;">
                       <button type="button"
                               class="sb-icon-btn risk-poste-open"
                               title="Voir"
-                              aria-label="Voir lâ€™analyse du poste">
+                              aria-label="Voir l’analyse du poste">
                         ${analyseEyeIconSvg()}
                       </button>
                       <button type="button"
                               class="sb-icon-btn sb-icon-btn--doc"
                               data-risk-poste-pdf="${escapeHtml(idPoste)}"
                               title="PDF"
-                              aria-label="Exporter lâ€™analyse du poste en PDF">
+                              aria-label="Exporter l’analyse du poste en PDF">
                         ${analysePdfIconSvg()}
                       </button>
                     </div>
@@ -5385,7 +5385,7 @@ function renderDetail(mode) {
   }
   function renderTableCompetences(rows) {
     const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun rÃ©sultat.</div>`;
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
@@ -5404,8 +5404,8 @@ function renderDetail(mode) {
           <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
             <div style="height:100%; width:${s}%; background:${fill};"></div>
           </div>
-          <div style="min-width:44px; text-align:right; font-weight: var(--ns-weight-bold);">
-            ${s}<span style="font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs);">%</span>
+          <div style="min-width:44px; text-align:right; font-weight:800;">
+            ${s}<span style="font-weight:700; font-size:12px;">%</span>
           </div>
         </div>
       `;
@@ -5414,8 +5414,8 @@ function renderDetail(mode) {
     function stateLabel(score) {
       const s = clamp(Number(score || 0), 0, 100);
       if (s >= 75) return "Critique";
-      if (s >= 50) return "Ã‰levÃ©";
-      if (s >= 25) return "ModÃ©rÃ©";
+      if (s >= 50) return "Élevé";
+      if (s >= 25) return "Modéré";
       return "Faible";
     }
 
@@ -5431,7 +5431,7 @@ function renderDetail(mode) {
           display:inline-flex; align-items:center; justify-content:center;
           padding:4px 10px; border-radius:999px;
           border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;
+          font-weight:800; font-size:12px; white-space:nowrap;
         ">
           ${escapeHtml(label)}
         </span>
@@ -5443,22 +5443,22 @@ function renderDetail(mode) {
         <table class="sb-table" id="tblRiskCompetences">
           <thead>
             <tr>
-              <th>Code â€“ CompÃ©tence</th>
+              <th>Code – Compétence</th>
               <th class="col-center" style="width:220px;">Domaine</th>
 
               <th class="col-center" style="width:220px;">
                 <span class="sb-th-with-tip">
-                  <span>Indice<br>de fragilitÃ©</span>
+                  <span>Indice<br>de fragilité</span>
                   <span class="sb-iinfo"
                         data-sbtip="fragility-index-competence"
                         tabindex="0"
                         role="button"
-                        aria-label="Informations sur l'indice de fragilitÃ© compÃ©tence">i</span>
+                        aria-label="Informations sur l'indice de fragilité compétence">i</span>
                 </span>
               </th>
 
-              <th class="col-center" style="width:110px; white-space:normal; line-height: var(--ns-leading-tight);">
-                Ã‰tat
+              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
+                État
               </th>
 
               <th class="col-center" style="width:92px;">Actions</th>
@@ -5466,8 +5466,8 @@ function renderDetail(mode) {
           </thead>
           <tbody>
             ${list.map(r => {
-              const code = (r.code || "â€”").toString().trim();
-              const intit = (r.intitule || "â€”").toString();
+              const code = (r.code || "—").toString().trim();
+              const intit = (r.intitule || "—").toString();
               const idComp = (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
               const compKey = (idComp || code || "").trim();
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
@@ -5481,8 +5481,8 @@ function renderDetail(mode) {
 
                   <td class="risk-comp-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                      <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "â€”")}</span>
-                      <span style="font-weight: var(--ns-weight-bold); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                      <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
+                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(intit)}
                       </span>
                     </div>
@@ -5490,7 +5490,7 @@ function renderDetail(mode) {
 
                   <td style="text-align:left;">${renderDomainPill(r)}</td>
 
-                  <td class="col-center" title="Indice de fragilitÃ© de la compÃ©tence">${scoreChip(score)}</td>
+                  <td class="col-center" title="Indice de fragilité de la compétence">${scoreChip(score)}</td>
 
                   <td class="col-center">${statePill(etat, score)}</td>
 
@@ -5499,14 +5499,14 @@ function renderDetail(mode) {
                       <button type="button"
                               class="sb-icon-btn risk-comp-open"
                               title="Voir"
-                              aria-label="Voir lâ€™analyse de la compÃ©tence">
+                              aria-label="Voir l’analyse de la compétence">
                         ${analyseEyeIconSvg()}
                       </button>
                       <button type="button"
                               class="sb-icon-btn sb-icon-btn--doc"
                               data-risk-comp-pdf="${escapeHtml(compKey)}"
                               title="PDF"
-                              aria-label="Exporter lâ€™analyse de la compÃ©tence en PDF">
+                              aria-label="Exporter l’analyse de la compétence en PDF">
                         ${analysePdfIconSvg()}
                       </button>
                     </div>
@@ -5527,17 +5527,17 @@ function renderDetail(mode) {
   function previsionDeltaBadge(delta) {
     const d = Math.round(Number(delta || 0));
     if (d === 0) {
-      return `<span class="sb-badge" title="Aucune Ã©volution dÃ©tectÃ©e">0%</span>`;
+      return `<span class="sb-badge" title="Aucune évolution détectée">0%</span>`;
     }
     const mod = d > 0 ? "sb-badge--danger" : "sb-badge--success";
     const txt = `${d > 0 ? "+" : ""}${d}%`;
-    return `<span class="sb-badge ${mod}" title="Ã‰volution depuis la situation actuelle">${escapeHtml(txt)}</span>`;
+    return `<span class="sb-badge ${mod}" title="Évolution depuis la situation actuelle">${escapeHtml(txt)}</span>`;
   }
 
 
 
   // ======================================================
-  // PrÃ©visions RH - transition console helpers
+  // Prévisions RH - transition console helpers
   // ======================================================
   function analysePrevisionValidKpi(key) {
     const k = (key || "").toString().trim().toLowerCase();
@@ -5545,17 +5545,17 @@ function renderDetail(mode) {
   }
 
   function analysePriorityBadge(label) {
-    const txt = (label || "â€”").toString();
+    const txt = (label || "—").toString();
     const k = txt.toLowerCase();
-    const tone = k.includes("crit") ? "#991b1b" : (k.includes("Ã©lev") || k.includes("elev") ? "#9a3412" : (k.includes("mod") ? "#854d0e" : "#166534"));
-    const bg = k.includes("crit") ? "#fee2e2" : (k.includes("Ã©lev") || k.includes("elev") ? "#ffedd5" : (k.includes("mod") ? "#fef3c7" : "#dcfce7"));
-    const br = k.includes("crit") ? "#fecaca" : (k.includes("Ã©lev") || k.includes("elev") ? "#fed7aa" : (k.includes("mod") ? "#fde68a" : "#bbf7d0"));
-    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid ${br}; background:${bg}; color:${tone}; font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;">${escapeHtml(txt)}</span>`;
+    const tone = k.includes("crit") ? "#991b1b" : (k.includes("élev") || k.includes("elev") ? "#9a3412" : (k.includes("mod") ? "#854d0e" : "#166534"));
+    const bg = k.includes("crit") ? "#fee2e2" : (k.includes("élev") || k.includes("elev") ? "#ffedd5" : (k.includes("mod") ? "#fef3c7" : "#dcfce7"));
+    const br = k.includes("crit") ? "#fecaca" : (k.includes("élev") || k.includes("elev") ? "#fed7aa" : (k.includes("mod") ? "#fde68a" : "#bbf7d0"));
+    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid ${br}; background:${bg}; color:${tone}; font-weight:800; font-size:12px; white-space:nowrap;">${escapeHtml(txt)}</span>`;
   }
 
   function analysePrevisionDate(v) {
     const s = (v || "").toString().trim();
-    if (!s) return "â€”";
+    if (!s) return "—";
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (!m) return escapeHtml(s);
     return `${m[3]}/${m[2]}/${m[1]}`;
@@ -5563,8 +5563,8 @@ function renderDetail(mode) {
 
   async function fetchPrevisionsTransitionDetail(portal, kind, horizonYears, id_service, limit = 2000) {
     const ctx = getPortalContext(portal);
-    if (!ctx.id_contact) throw new Error("id_contact introuvable cÃ´tÃ© UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable cÃ´tÃ© UI.");
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
 
     const k = kind === "potential" ? "sorties-potentielles" : "sorties-confirmees";
     const qs = new URLSearchParams();
@@ -5582,8 +5582,8 @@ function renderDetail(mode) {
 
   async function fetchPrevisionsTransitionModalDetail(portal, row, kind, horizonYears, id_service) {
     const ctx = getPortalContext(portal);
-    if (!ctx.id_contact) throw new Error("id_contact introuvable cÃ´tÃ© UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable cÃ´tÃ© UI.");
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
 
     const idEffectif = String(row?.id_effectif || "").trim();
     if (!idEffectif) throw new Error("Collaborateur introuvable pour cette sortie.");
@@ -5604,8 +5604,8 @@ function renderDetail(mode) {
 
   async function fetchPrevisionsTransmissionsDetail(portal, horizonYears, id_service, limit = 2000) {
     const ctx = getPortalContext(portal);
-    if (!ctx.id_contact) throw new Error("id_contact introuvable cÃ´tÃ© UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable cÃ´tÃ© UI.");
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
 
     const qs = new URLSearchParams();
     qs.set("horizon_years", String(horizonYears || 1));
@@ -5622,7 +5622,7 @@ function renderDetail(mode) {
 
   function analysePrevisionYear(value) {
     const raw = (value || "").toString().trim();
-    if (!raw) return "â€”";
+    if (!raw) return "—";
     const m = raw.match(/(19|20)\d{2}/);
     return m ? m[0] : raw;
   }
@@ -5644,14 +5644,14 @@ function renderDetail(mode) {
     const fill = `hsl(${hue} 70% 42%)`;
     const detailKey = (opts.detailKey || "").toString().trim();
     const detailBtn = detailKey ? `
-      <button type="button" class="sb-prev-ring-detail-btn" data-prev-capacity-detail="${escapeHtml(detailKey)}" title="Voir le dÃ©tail" aria-label="Voir le dÃ©tail ${escapeHtml(title || "")}">
+      <button type="button" class="sb-prev-ring-detail-btn" data-prev-capacity-detail="${escapeHtml(detailKey)}" title="Voir le détail" aria-label="Voir le détail ${escapeHtml(title || "")}">
         ${analyseEyeIconSvg()}
       </button>
     ` : "";
     return `
       <div class="card sb-prev-ring-card">
         ${detailBtn}
-        <div class="sb-prev-ring-title">${escapeHtml(title || "â€”")}</div>
+        <div class="sb-prev-ring-title">${escapeHtml(title || "—")}</div>
         <div class="sb-prev-ring-visual" style="width:${size}px; height:${size}px; flex-basis:${size}px;">
           <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" class="sb-prev-ring-svg">
             <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
@@ -5663,7 +5663,7 @@ function renderDetail(mode) {
             <div>${s}<span>%</span></div>
           </div>
         </div>
-        <div class="sb-prev-ring-value">${escapeHtml(valueText || "â€”")}</div>
+        <div class="sb-prev-ring-value">${escapeHtml(valueText || "—")}</div>
         <div class="sb-prev-ring-text">${escapeHtml(bodyText || "")}</div>
       </div>
     `;
@@ -5678,19 +5678,19 @@ function renderDetail(mode) {
   function analysePrevisionUniqueSentence(firstName, uniqueCount) {
     const who = (firstName || "ce collaborateur").toString().trim() || "ce collaborateur";
     const n = Math.max(0, Math.round(Number(uniqueCount || 0)));
-    if (n <= 0) return `Dans les compÃ©tences que ${who} peut transmettre, aucune ne repose uniquement sur ${who}.`;
-    if (n === 1) return `Dans les compÃ©tences que ${who} peut transmettre, 1 compÃ©tence nâ€™a aucune autre personne capable dâ€™assurer la transmission.`;
-    return `Dans les compÃ©tences que ${who} peut transmettre, ${n} compÃ©tences nâ€™ont aucune autre personne capable dâ€™assurer la transmission.`;
+    if (n <= 0) return `Dans les compétences que ${who} peut transmettre, aucune ne repose uniquement sur ${who}.`;
+    if (n === 1) return `Dans les compétences que ${who} peut transmettre, 1 compétence n’a aucune autre personne capable d’assurer la transmission.`;
+    return `Dans les compétences que ${who} peut transmettre, ${n} compétences n’ont aucune autre personne capable d’assurer la transmission.`;
   }
 
   function analysePrevisionOtherTransmitterSentence(firstName, otherCount, nonTransmissibleCount) {
     const who = (firstName || "ce collaborateur").toString().trim() || "ce collaborateur";
     const n = Math.max(0, Math.round(Number(otherCount || 0)));
     const total = Math.max(0, Math.round(Number(nonTransmissibleCount || 0)));
-    if (total <= 0) return `${who} peut transmettre toutes les compÃ©tences connues de son poste.`;
-    if (n <= 0) return `Sur les compÃ©tences que ${who} ne peut pas transmettre, aucun autre transmetteur disponible nâ€™est identifiÃ©.`;
-    if (n === 1) return `Sur les compÃ©tences que ${who} ne peut pas transmettre, 1 compÃ©tence dispose dâ€™un autre transmetteur disponible.`;
-    return `Sur les compÃ©tences que ${who} ne peut pas transmettre, ${n} compÃ©tences disposent dâ€™un autre transmetteur disponible.`;
+    if (total <= 0) return `${who} peut transmettre toutes les compétences connues de son poste.`;
+    if (n <= 0) return `Sur les compétences que ${who} ne peut pas transmettre, aucun autre transmetteur disponible n’est identifié.`;
+    if (n === 1) return `Sur les compétences que ${who} ne peut pas transmettre, 1 compétence dispose d’un autre transmetteur disponible.`;
+    return `Sur les compétences que ${who} ne peut pas transmettre, ${n} compétences disposent d’un autre transmetteur disponible.`;
   }
 
   function analysePrevisionCapacityStatusBadge(ok) {
@@ -5702,31 +5702,31 @@ function renderDetail(mode) {
   function analysePrevisionCriticityBadge(value) {
     const n = Math.max(0, Math.min(100, Math.round(Number(value || 0))));
     const lvl = n >= 90 ? 5 : (n >= 80 ? 4 : (n >= 70 ? 3 : (n >= 50 ? 2 : 1)));
-    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="CriticitÃ©">${escapeHtml(String(n))}</span>`;
+    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité">${escapeHtml(String(n))}</span>`;
   }
 
   function analysePrevisionCapacityCompLabel(c) {
     const code = (c?.code || "").toString().trim();
-    const intitule = (c?.intitule || "â€”").toString().trim();
+    const intitule = (c?.intitule || "—").toString().trim();
     return `${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}<span class="sb-prev-capacity-comp-title">${escapeHtml(intitule)}</span>`;
   }
 
   function analysePrevisionCapacityRowsEmpty(colspan, text) {
-    return `<tr><td colspan="${Number(colspan || 1)}" class="sb-muted" style="text-align:center; padding:18px;">${escapeHtml(text || "Aucune donnÃ©e Ã  afficher.")}</td></tr>`;
+    return `<tr><td colspan="${Number(colspan || 1)}" class="sb-muted" style="text-align:center; padding:18px;">${escapeHtml(text || "Aucune donnée à afficher.")}</td></tr>`;
   }
 
   function analysePrevisionCompetencePdfButton(c) {
     const key = (c?.id_comp || c?.code || "").toString().trim();
     if (!key) return "";
     return `
-      <button type="button" class="sb-icon-btn sb-icon-btn--doc sb-prev-capacity-pdf-btn" data-poste-dep-comp-pdf="${escapeHtml(key)}" title="Voir la fiche compÃ©tence" aria-label="Voir la fiche compÃ©tence">
+      <button type="button" class="sb-icon-btn sb-icon-btn--doc sb-prev-capacity-pdf-btn" data-poste-dep-comp-pdf="${escapeHtml(key)}" title="Voir la fiche compétence" aria-label="Voir la fiche compétence">
         ${analysePdfIconSvg()}
       </button>
     `;
   }
 
   function analysePrevisionTransmitterNameHtml(p) {
-    const full = (p?.full || `${p?.prenom_effectif || ""} ${p?.nom_effectif || ""}`.trim() || "â€”").toString().trim() || "â€”";
+    const full = (p?.full || `${p?.prenom_effectif || ""} ${p?.nom_effectif || ""}`.trim() || "—").toString().trim() || "—";
     return `<span class="sb-prev-transmitter-label">${escapeHtml(full)}</span>`;
   }
 
@@ -5742,7 +5742,7 @@ function renderDetail(mode) {
 
   function analysePrevisionOtherAccordionRows(list) {
     const rows = Array.isArray(list) ? list : [];
-    if (!rows.length) return analysePrevisionCapacityRowsEmpty(4, "Aucune compÃ©tence non transmissible par le sortant nâ€™est rattachÃ©e Ã  son poste.");
+    if (!rows.length) return analysePrevisionCapacityRowsEmpty(4, "Aucune compétence non transmissible par le sortant n’est rattachée à son poste.");
     return rows.map((c, idx) => {
       const rowId = `prev_other_${idx}`;
       const nb = Math.max(0, Math.round(Number(c.autres_transmissibles || 0)));
@@ -5750,7 +5750,7 @@ function renderDetail(mode) {
         <tr class="sb-prev-capacity-acc-row" data-prev-other-row="${escapeHtml(rowId)}">
           <td>
             <button type="button" class="sb-prev-capacity-acc-btn" data-prev-other-toggle="${escapeHtml(rowId)}" aria-expanded="false" title="Afficher les personnes">
-              <span class="sb-acc-chevron">âŒ„</span>
+              <span class="sb-acc-chevron">⌄</span>
               <span class="sb-prev-capacity-acc-label">${analysePrevisionCapacityCompLabel(c)}</span>
             </button>
           </td>
@@ -5772,8 +5772,8 @@ function renderDetail(mode) {
       <div class="modal sb-prev-capacity-detail-modal" id="modalAnalysePrevisionCapacityDetail" aria-hidden="true">
         <div class="modal-card modal-card--wide">
           <div class="modal-header">
-            <div class="modal-title" id="analysePrevisionCapacityDetailTitle">DÃ©tail</div>
-            <button type="button" class="modal-x" id="btnCloseAnalysePrevisionCapacityDetail" aria-label="Fermer">Ã—</button>
+            <div class="modal-title" id="analysePrevisionCapacityDetailTitle">Détail</div>
+            <button type="button" class="modal-x" id="btnCloseAnalysePrevisionCapacityDetail" aria-label="Fermer">×</button>
           </div>
           <div class="modal-body" id="analysePrevisionCapacityDetailBody"></div>
           <div class="modal-footer">
@@ -5819,17 +5819,17 @@ function renderDetail(mode) {
     const all = Array.isArray(cap.competences) ? cap.competences : [];
     const unique = Array.isArray(cap.unique_competences) ? cap.unique_competences : [];
     const other = Array.isArray(cap.other_transmitter_competences) ? cap.other_transmitter_competences : [];
-    const requiredLabel = cap.threshold_label || "AvancÃ© haut ou Expert";
+    const requiredLabel = cap.threshold_label || "Avancé haut ou Expert";
 
     if (key === "unique") {
       const firstName = analysePrevisionFirstName(item.full || `${item.prenom_effectif || ""} ${item.nom_effectif || ""}`.trim());
-      if (title) title.textContent = `CompÃ©tences possÃ©dÃ©es uniquement par ${firstName}`;
+      if (title) title.textContent = `Compétences possédées uniquement par ${firstName}`;
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-            <thead><tr><th>CompÃ©tence</th><th class="col-center">CriticitÃ©</th><th class="col-center"></th></tr></thead>
+            <thead><tr><th>Compétence</th><th class="col-center">Criticité</th><th class="col-center"></th></tr></thead>
             <tbody>
-              ${unique.length ? unique.map(c => `<tr><td>${analysePrevisionCapacityCompLabel(c)}</td><td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td><td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td></tr>`).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compÃ©tence transmissible nâ€™est dÃ©tenue uniquement par le sortant.")}
+              ${unique.length ? unique.map(c => `<tr><td>${analysePrevisionCapacityCompLabel(c)}</td><td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td><td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td></tr>`).join("") : analysePrevisionCapacityRowsEmpty(3, "Aucune compétence transmissible n’est détenue uniquement par le sortant.")}
             </tbody>
           </table>
         </div>
@@ -5839,7 +5839,7 @@ function renderDetail(mode) {
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-prev-capacity-acc-table">
-            <thead><tr><th>CompÃ©tence</th><th class="col-center">Potentiel de transmission</th><th class="col-center">CriticitÃ©</th><th class="col-center"></th></tr></thead>
+            <thead><tr><th>Compétence</th><th class="col-center">Potentiel de transmission</th><th class="col-center">Criticité</th><th class="col-center"></th></tr></thead>
             <tbody>
               ${analysePrevisionOtherAccordionRows(other)}
             </tbody>
@@ -5847,11 +5847,11 @@ function renderDetail(mode) {
         </div>
       `;
     } else {
-      if (title) title.textContent = "CompÃ©tences transmissibles";
+      if (title) title.textContent = "Compétences transmissibles";
       if (body) body.innerHTML = `
         <div class="table-wrap sb-prev-capacity-detail-table">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-            <thead><tr><th>CompÃ©tence</th><th class="col-center">Niveau requis de transmission</th><th class="col-center">CriticitÃ©</th><th class="col-center"></th></tr></thead>
+            <thead><tr><th>Compétence</th><th class="col-center">Niveau requis de transmission</th><th class="col-center">Criticité</th><th class="col-center"></th></tr></thead>
             <tbody>
               ${all.length ? all.map(c => `
                 <tr>
@@ -5860,7 +5860,7 @@ function renderDetail(mode) {
                   <td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td>
                   <td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td>
                 </tr>
-              `).join("") : analysePrevisionCapacityRowsEmpty(4, "Aucune compÃ©tence active nâ€™est rattachÃ©e au poste du sortant.")}
+              `).join("") : analysePrevisionCapacityRowsEmpty(4, "Aucune compétence active n’est rattachée au poste du sortant.")}
             </tbody>
           </table>
         </div>
@@ -5874,7 +5874,7 @@ function renderDetail(mode) {
   function analysePrevisionFragilityBadge(value) {
     const s = analysePrevisionPct(value);
     const hue = Math.round(120 * (1 - s / 100));
-    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid hsl(${hue} 70% 80%); background:hsl(${hue} 70% 95%); color:hsl(${hue} 70% 28%); font-weight: var(--ns-weight-bold); font-size: var(--ns-text-xs); white-space:nowrap;">${escapeHtml(String(s))}%</span>`;
+    return `<span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; border:1px solid hsl(${hue} 70% 80%); background:hsl(${hue} 70% 95%); color:hsl(${hue} 70% 28%); font-weight:800; font-size:12px; white-space:nowrap;">${escapeHtml(String(s))}%</span>`;
   }
 
   function ensureAnalysePrevisionActionModal() {
@@ -5885,14 +5885,14 @@ function renderDetail(mode) {
         <div class="modal-card modal-card--wide">
           <div class="modal-header">
             <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
-              <div class="modal-title" id="analysePrevisionActionTitle">DÃ©tail prÃ©visionnel</div>
+              <div class="modal-title" id="analysePrevisionActionTitle">Détail prévisionnel</div>
               <div class="card-sub" id="analysePrevisionActionSub" style="margin:0; display:none;"></div>
             </div>
-            <button type="button" class="modal-x" id="btnCloseAnalysePrevisionActionModal" aria-label="Fermer">Ã—</button>
+            <button type="button" class="modal-x" id="btnCloseAnalysePrevisionActionModal" aria-label="Fermer">×</button>
           </div>
           <div class="modal-body" id="analysePrevisionActionBody"></div>
           <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionOpenSimulation">PrÃ©parer le scÃ©nario RH</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevisionOpenSimulation">Préparer le scénario RH</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnAnalysePrevisionActionClose">Fermer</button>
           </div>
         </div>
@@ -5911,26 +5911,26 @@ function renderDetail(mode) {
       const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Collaborateur";
       if (state.mode === "transmission") {
         const code = String(r.code || "").trim();
-        const comp = String(r.intitule || "CompÃ©tence").trim() || "CompÃ©tence";
+        const comp = String(r.intitule || "Compétence").trim() || "Compétence";
         openSimulationsRhContext({
           type: "prevision_transmission",
-          title: `Transmission Ã  prÃ©parer Â· ${code ? code + " Â· " : ""}${comp}`,
+          title: `Transmission à préparer · ${code ? code + " · " : ""}${comp}`,
           competence_id: String(r.id_comp || "").trim(),
           competence_code: code,
           competence_label: comp,
           poste_id: String(r.id_poste_actuel || "").trim(),
-          poste_label: r.intitule_poste || "Poste non renseignÃ©",
-          reason: "PrÃ©vision : intÃ©grer l'Ã©chÃ©ance dans un scÃ©nario RH de remplacement, transfert de charge, recrutement ou compensation organisationnelle.",
+          poste_label: r.intitule_poste || "Poste non renseigné",
+          reason: "Prévision : intégrer l'échéance dans un scénario RH de remplacement, transfert de charge, recrutement ou compensation organisationnelle.",
         });
       } else {
         openSimulationsRhContext({
           type: "prevision_sortie",
-          title: `Sortie Ã  intÃ©grer Â· ${full}`,
+          title: `Sortie à intégrer · ${full}`,
           effectif_id: String(r.id_effectif || "").trim(),
           effectif_label: full,
           poste_id: String(r.id_poste_actuel || "").trim(),
-          poste_label: r.intitule_poste || "Poste non renseignÃ©",
-          reason: "PrÃ©vision : construire un scÃ©nario avec dÃ©part, remplacement, transfert de personne, transfert de charge ou recrutement.",
+          poste_label: r.intitule_poste || "Poste non renseigné",
+          reason: "Prévision : construire un scénario avec départ, remplacement, transfert de personne, transfert de charge ou recrutement.",
         });
       }
       close();
@@ -5954,11 +5954,11 @@ function renderDetail(mode) {
     const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "Collaborateur";
     const firstName = analysePrevisionFirstName(full);
     const code = (r.codif_client || r.codif_poste || "").toString().trim();
-    const poste = (r.intitule_poste || "Poste non renseignÃ©").toString();
-    const reason = (r.raison_sortie || r.event_kind_label || (isPotential ? "Retraite estimÃ©e" : "Sortie prÃ©vue")).toString();
+    const poste = (r.intitule_poste || "Poste non renseigné").toString();
+    const reason = (r.raison_sortie || r.event_kind_label || (isPotential ? "Retraite estimée" : "Sortie prévue")).toString();
     const dateLabel = isPotential
-      ? `Horizon de dÃ©part : ${analysePrevisionYear(r.exit_date || r.retraite_annee || r.horizon_year)}`
-      : `Date de dÃ©part : ${analysePrevisionDate(r.exit_date)}`;
+      ? `Horizon de départ : ${analysePrevisionYear(r.exit_date || r.retraite_annee || r.horizon_year)}`
+      : `Date de départ : ${analysePrevisionDate(r.exit_date)}`;
 
     const cap = r.transmission_capacity || {};
     const total = Number(cap.total_competences_poste || 0) || 0;
@@ -5972,7 +5972,7 @@ function renderDetail(mode) {
     const impacts = r.other_poste_impacts || {};
     const impactItems = Array.isArray(impacts.items) ? impacts.items : [];
 
-    const transmissionText = `Le niveau de maÃ®trise requis pour la transmission est prÃ©sent sur ${transmissibles}/${total} compÃ©tence${total > 1 ? "s" : ""}.`;
+    const transmissionText = `Le niveau de maîtrise requis pour la transmission est présent sur ${transmissibles}/${total} compétence${total > 1 ? "s" : ""}.`;
     const uniqueText = analysePrevisionUniqueSentence(firstName, uniques);
     const otherText = analysePrevisionOtherTransmitterSentence(firstName, otherTransmitters, nonTransmissibles);
 
@@ -5981,22 +5981,22 @@ function renderDetail(mode) {
         <table class="sb-table">
           <thead>
             <tr>
-              <th>Poste impactÃ©</th>
+              <th>Poste impacté</th>
               <th>Service</th>
-              <th class="col-center">FragilitÃ© actuelle</th>
+              <th class="col-center">Fragilité actuelle</th>
               <th class="col-center">Avec sortie</th>
-              <th class="col-center">Ã‰volution</th>
+              <th class="col-center">Évolution</th>
             </tr>
           </thead>
           <tbody>${impactItems.map(p => {
             const pCode = (p.codif_client || p.codif_poste || "").toString().trim();
-            const pLabel = (p.intitule_poste || "â€”").toString();
+            const pLabel = (p.intitule_poste || "—").toString();
             const now = analysePrevisionPct(p.indice_fragilite_now);
             const after = analysePrevisionPct(p.indice_fragilite_after);
             const delta = Math.max(0, Math.round(Number(p.delta_fragilite || 0)));
             return `<tr>
               <td>${pCode ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(pCode)}</span> ` : ""}<strong>${escapeHtml(pLabel)}</strong></td>
-              <td>${escapeHtml(p.nom_service || "â€”")}</td>
+              <td>${escapeHtml(p.nom_service || "—")}</td>
               <td class="col-center">${analysePrevisionFragilityBadge(now)}</td>
               <td class="col-center">${analysePrevisionFragilityBadge(after)}</td>
               <td class="col-center"><span class="sb-badge sb-badge--warning">+${escapeHtml(String(delta))}%</span></td>
@@ -6004,7 +6004,7 @@ function renderDetail(mode) {
           }).join("")}</tbody>
         </table>
       </div>
-    ` : `<div class="card-sub" style="margin:8px 0 0 0;">Aucun autre poste ne voit sa fragilitÃ© augmenter avec cette personne en moins sur le pÃ©rimÃ¨tre filtrÃ©.</div>`;
+    ` : `<div class="card-sub" style="margin:8px 0 0 0;">Aucun autre poste ne voit sa fragilité augmenter avec cette personne en moins sur le périmètre filtré.</div>`;
 
 
     return `
@@ -6012,23 +6012,23 @@ function renderDetail(mode) {
         <div class="sb-prev-actions-card card" style="padding:14px; margin:0;">
           <div class="sb-prev-modal-title" style="margin-bottom:10px;">Identification du sortant</div>
           <div style="display:flex; flex-direction:column; gap:7px; min-width:0;">
-            <div style="font-weight: var(--ns-weight-bold); font-size: var(--ns-title-sm); line-height: var(--ns-leading-tight); color:#111827;">${escapeHtml(full)}</div>
+            <div style="font-weight:700; font-size:17px; line-height:1.2; color:#111827;">${escapeHtml(full)}</div>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
               ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}
-              <span style="font-size: var(--ns-text-sm); font-weight: var(--ns-weight-bold); color:#111827; min-width:0;">${escapeHtml(poste)}</span>
+              <span style="font-size:13px; font-weight:700; color:#111827; min-width:0;">${escapeHtml(poste)}</span>
             </div>
             <div class="card-sub" style="margin:0; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
               <span>${escapeHtml(dateLabel)}</span>
-              ${reason ? `<span>Â·</span><span>${escapeHtml(reason)}</span>` : ""}
+              ${reason ? `<span>·</span><span>${escapeHtml(reason)}</span>` : ""}
             </div>
           </div>
         </div>
 
         <div class="sb-prev-actions-card card" style="padding:14px; margin:0;">
-          <div class="sb-prev-modal-title">CapacitÃ© de transmission Ã  son poste</div>
+          <div class="sb-prev-modal-title">Capacité de transmission à son poste</div>
           <div class="sb-prev-ring-grid">
-            ${analysePrevisionRingHtml(capPct, "CompÃ©tences transmissibles", `${transmissibles} / ${total}`, transmissionText, { mode: "good", detailKey: "transmissible" })}
-            ${analysePrevisionRingHtml(uniquePct, "Sans relais identifiÃ©", `${uniques} / ${transmissibles}`, uniqueText, { mode: "risk", detailKey: "unique" })}
+            ${analysePrevisionRingHtml(capPct, "Compétences transmissibles", `${transmissibles} / ${total}`, transmissionText, { mode: "good", detailKey: "transmissible" })}
+            ${analysePrevisionRingHtml(uniquePct, "Sans relais identifié", `${uniques} / ${transmissibles}`, uniqueText, { mode: "risk", detailKey: "unique" })}
             ${analysePrevisionRingHtml(otherPct, "Autre transmetteur", `${otherTransmitters} / ${nonTransmissibles}`, otherText, { mode: "good", detailKey: "other" })}
           </div>
         </div>
@@ -6047,7 +6047,7 @@ function renderDetail(mode) {
     const title = byId("analysePrevisionActionTitle");
     const sub = byId("analysePrevisionActionSub");
     const body = byId("analysePrevisionActionBody");
-    const titleText = mode === "potential" ? "Sortie potentielle" : "Sortie confirmÃ©e";
+    const titleText = mode === "potential" ? "Sortie potentielle" : "Sortie confirmée";
     const horizon = getPrevHorizon();
     const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
 
@@ -6057,7 +6057,7 @@ function renderDetail(mode) {
       sub.textContent = "";
       sub.style.display = "none";
     }
-    if (body) body.innerHTML = `<div class="card-sub" style="margin:0;">Chargementâ€¦</div>`;
+    if (body) body.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
@@ -6068,7 +6068,7 @@ function renderDetail(mode) {
       window.__sbPrevisionTransitionModalState = { mode: "transition", kind: mode, row: row || {}, item };
       if (body) body.innerHTML = renderAnalysePrevisionTransitionModal(item, mode);
     } catch (e) {
-      if (body) body.innerHTML = `<div class="sb-prev-empty">Impossible de charger le dÃ©tail de la sortie : ${escapeHtml(e?.message || e)}</div>`;
+      if (body) body.innerHTML = `<div class="sb-prev-empty">Impossible de charger le détail de la sortie : ${escapeHtml(e?.message || e)}</div>`;
     }
   }
 
@@ -6080,8 +6080,8 @@ function renderDetail(mode) {
     const body = byId("analysePrevisionActionBody");
 
     const code = String(r.code || "").trim();
-    const comp = String(r.intitule || "CompÃ©tence").trim() || "CompÃ©tence";
-    const full = r.sortants_label || r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "collaborateur concernÃ©";
+    const comp = String(r.intitule || "Compétence").trim() || "Compétence";
+    const full = r.sortants_label || r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "collaborateur concerné";
     const dateTxt = analysePrevisionDate(r.exit_date || r.first_exit_date);
     const impactCount = Math.max(0, Math.round(Number(r.nb_postes_impactes || 0)));
 
@@ -6105,7 +6105,7 @@ function renderDetail(mode) {
           poste_label: item.intitule_poste || "",
           date_derniere_eval: item.date_derniere_eval || item.date_eval || item.last_eval_date || "",
           transmission_status: item.transmission_status || "review",
-          transmission_status_label: item.transmission_status_label || "Entretien recommandÃ©"
+          transmission_status_label: item.transmission_status_label || "Entretien recommandé"
         });
       };
 
@@ -6116,16 +6116,16 @@ function renderDetail(mode) {
           .split(",")
           .map(x => x.trim())
           .filter(Boolean)
-          .forEach((name) => pushItem({ full: name, transmission_status: "review", transmission_status_label: "Entretien recommandÃ©" }));
+          .forEach((name) => pushItem({ full: name, transmission_status: "review", transmission_status_label: "Entretien recommandé" }));
       }
       return out;
     }
 
     function transmissionStatusBadgeHtml(status, label) {
       const s = String(status || "review").toLowerCase();
-      if (s === "validated") return `<span class="sb-badge sb-badge--success">ValidÃ©</span>`;
-      if (s === "confirm") return `<span class="sb-badge sb-badge--info">Ã€ confirmer</span>`;
-      return `<span class="sb-badge sb-badge--formateur">${escapeHtml(label || "Entretien recommandÃ©")}</span>`;
+      if (s === "validated") return `<span class="sb-badge sb-badge--success">Validé</span>`;
+      if (s === "confirm") return `<span class="sb-badge sb-badge--info">À confirmer</span>`;
+      return `<span class="sb-badge sb-badge--formateur">${escapeHtml(label || "Entretien recommandé")}</span>`;
     }
 
     const transmitters = parseTransmitters(
@@ -6141,16 +6141,16 @@ function renderDetail(mode) {
               <th>Personne</th>
               <th>Poste</th>
               <th class="col-center">Niveau</th>
-              <th class="col-center">DerniÃ¨re Ã©val.</th>
+              <th class="col-center">Dernière éval.</th>
               <th class="col-center">Transmission</th>
             </tr>
           </thead>
           <tbody>
             ${transmitters.map((p) => `
               <tr>
-                <td><strong>${escapeHtml(p.full || "â€”")}</strong></td>
-                <td>${p.poste_code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.poste_code)}</span> ` : ""}${escapeHtml(p.poste_label || "â€”")}</td>
-                <td class="col-center">${p.niveau ? nsLevelBadgeHtml(p.niveau, "Niveau de maÃ®trise") : `<span class="sb-muted">â€”</span>`}</td>
+                <td><strong>${escapeHtml(p.full || "—")}</strong></td>
+                <td>${p.poste_code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.poste_code)}</span> ` : ""}${escapeHtml(p.poste_label || "—")}</td>
+                <td class="col-center">${p.niveau ? nsLevelBadgeHtml(p.niveau, "Niveau de maîtrise") : `<span class="sb-muted">—</span>`}</td>
                 <td class="col-center">${analysePrevisionDate(p.date_derniere_eval)}</td>
                 <td class="col-center">${transmissionStatusBadgeHtml(p.transmission_status, p.transmission_status_label)}</td>
               </tr>
@@ -6159,12 +6159,12 @@ function renderDetail(mode) {
         </table>
       </div>
     ` : `
-      <div class="sb-prev-empty" style="margin:0;">Aucune personne en capacitÃ© de transmettre nâ€™est identifiÃ©e sur le pÃ©rimÃ¨tre.</div>
+      <div class="sb-prev-empty" style="margin:0;">Aucune personne en capacité de transmettre n’est identifiée sur le périmètre.</div>
     `;
 
 
     window.__sbPrevisionTransitionModalState = { mode: "transmission", row: r };
-    if (title) title.textContent = "Transmission Ã  prÃ©parer";
+    if (title) title.textContent = "Transmission à préparer";
     if (sub) {
       sub.textContent = "";
       sub.style.display = "none";
@@ -6173,7 +6173,7 @@ function renderDetail(mode) {
       body.innerHTML = `
         <div class="sb-prev-modal-grid sb-prev-transmission-modal sb-prev-transmission-modal--simple">
           <div class="sb-prev-actions-card card sb-prev-transmission-hero">
-            <div class="sb-prev-modal-title">CompÃ©tence concernÃ©e</div>
+            <div class="sb-prev-modal-title">Compétence concernée</div>
             <div class="sb-prev-transmission-hero-line">
               <div class="sb-prev-transmission-comp">
                 ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
@@ -6182,14 +6182,14 @@ function renderDetail(mode) {
               <div class="sb-icon-actions">${analysePrevisionCompetencePdfButton(r)}</div>
             </div>
             <div class="sb-prev-transmission-meta">
-              <span>CriticitÃ© ${analysePrevisionCriticityBadge(r.max_criticite)}</span>
-              <span>${impactCount} poste${impactCount > 1 ? "s" : ""} concernÃ©${impactCount > 1 ? "s" : ""}</span>
-              <span>Ã€ transmettre avant ${dateTxt && dateTxt !== "â€”" ? escapeHtml(dateTxt) : "lâ€™Ã©chÃ©ance identifiÃ©e"}</span>
+              <span>Criticité ${analysePrevisionCriticityBadge(r.max_criticite)}</span>
+              <span>${impactCount} poste${impactCount > 1 ? "s" : ""} concerné${impactCount > 1 ? "s" : ""}</span>
+              <span>À transmettre avant ${dateTxt && dateTxt !== "—" ? escapeHtml(dateTxt) : "l’échéance identifiée"}</span>
             </div>
           </div>
 
           <div class="sb-prev-actions-card card">
-            <div class="sb-prev-modal-title">Personnes en capacitÃ© de transmettre</div>
+            <div class="sb-prev-modal-title">Personnes en capacité de transmettre</div>
             ${transmittersHtml}
           </div>
         </div>
@@ -6201,12 +6201,12 @@ function renderDetail(mode) {
 
   function renderPrevisionTableTransitionEvents(rows, kind) {
     const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun rÃ©sultat.</div>`;
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
     const isPotential = kind === "potential";
 
     const yearOnly = (value) => {
       const raw = (value || "").toString().trim();
-      if (!raw) return "â€”";
+      if (!raw) return "—";
       for (let i = 0; i <= raw.length - 4; i += 1) {
         const part = raw.slice(i, i + 4);
         if (/^(19|20)\d{2}$/.test(part)) return part;
@@ -6229,21 +6229,21 @@ function renderDetail(mode) {
               <th style="width:120px;">${isPotential ? "Horizon" : "Date"}</th>
               ${isPotential
                 ? `<th style="width:190px;">Motif</th>`
-                : `<th style="width:190px;">Motif de dÃ©part</th>`}
+                : `<th style="width:190px;">Motif de départ</th>`}
               <th class="col-center" style="width:82px;">Actions</th>
             </tr>
           </thead>
           <tbody>${list.map((r, idx) => {
-            const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "â€”";
+            const full = r.full || `${r.prenom_effectif || ""} ${r.nom_effectif || ""}`.trim() || "—";
             const code = (r.codif_client || r.codif_poste || "").toString().trim();
-            const poste = (r.intitule_poste || "â€”").toString();
-            const motif = isPotential ? "Retraite estimÃ©e" : (r.raison_sortie || r.event_kind_label || "Sortie prÃ©vue").toString();
+            const poste = (r.intitule_poste || "—").toString();
+            const motif = isPotential ? "Retraite estimée" : (r.raison_sortie || r.event_kind_label || "Sortie prévue").toString();
             return `<tr class="prev-transition-row" data-index="${idx}">
               <td><strong>${escapeHtml(full)}</strong></td>
               <td>${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(poste)}</td>
               <td>${isPotential ? escapeHtml(potentialYear(r)) : analysePrevisionDate(r.exit_date)}</td>
               <td>${escapeHtml(motif)}</td>
-              <td class="col-center"><button type="button" class="sb-icon-btn prev-transition-open" title="Voir" aria-label="Voir le dÃ©tail">${analyseEyeIconSvg()}</button></td>
+              <td class="col-center"><button type="button" class="sb-icon-btn prev-transition-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
             </tr>`;
           }).join("")}</tbody>
         </table>
@@ -6268,18 +6268,18 @@ function renderDetail(mode) {
       if (bp !== 0) return bp;
       return String(a.exit_date || "").localeCompare(String(b.exit_date || ""));
     });
-    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun rÃ©sultat.</div>`;
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
     window.__sbPrevTransmissionRows = list;
 
     const expertiseDot = (r) => {
       const status = String(r.expertise_status || r.expertise_color || "red").toLowerCase();
       const cfg = status === "green"
-        ? { color: "#16a34a", label: "Transmission validÃ©e", title: "Au moins une personne au niveau Expert dispose dâ€™une Ã©valuation rÃ©cente." }
+        ? { color: "#16a34a", label: "Transmission validée", title: "Au moins une personne au niveau Expert dispose d’une évaluation récente." }
         : status === "blue"
-          ? { color: "#2563eb", label: "Ã€ confirmer", title: "Au moins une personne en AvancÃ© haut dispose dâ€™une Ã©valuation rÃ©cente." }
+          ? { color: "#2563eb", label: "À confirmer", title: "Au moins une personne en Avancé haut dispose d’une évaluation récente." }
           : status === "pink"
-            ? { color: "#db2777", label: "Entretien recommandÃ©", title: "Une personne semble en capacitÃ© de transmettre, mais lâ€™Ã©valuation doit Ãªtre reprise." }
-            : { color: "#dc2626", label: "Aucune personne identifiÃ©e", title: "Aucune personne en capacitÃ© de transmettre nâ€™est identifiÃ©e sur cette compÃ©tence." };
+            ? { color: "#db2777", label: "Entretien recommandé", title: "Une personne semble en capacité de transmettre, mais l’évaluation doit être reprise." }
+            : { color: "#dc2626", label: "Aucune personne identifiée", title: "Aucune personne en capacité de transmettre n’est identifiée sur cette compétence." };
       const count = Number(r.transmetteurs_potentiels_count ?? r.receveurs_potentiels_count ?? 0);
       const title = r.expertise_tooltip || cfg.title;
       return `<span title="${escapeHtml(title)}" aria-label="${escapeHtml(cfg.label)}" class="sb-prev-transmission-status-dot-wrap">
@@ -6293,8 +6293,8 @@ function renderDetail(mode) {
         <table class="sb-table" id="tblPrevTransmissions">
           <thead>
             <tr>
-              <th>CompÃ©tence</th>
-              <th style="width:120px;">Ã‰chÃ©ance</th>
+              <th>Compétence</th>
+              <th style="width:120px;">Échéance</th>
               <th style="width:140px;">Impact</th>
               <th class="col-center" style="width:120px;">
                 <span class="sb-th-with-tip">
@@ -6311,13 +6311,13 @@ function renderDetail(mode) {
           </thead>
           <tbody>${list.map((r, idx) => {
             const code = (r.code || "").toString().trim();
-            const comp = (r.intitule || "â€”").toString();
+            const comp = (r.intitule || "—").toString();
             return `<tr class="prev-transmission-row" data-index="${idx}">
               <td>${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span> ` : ""}<strong>${escapeHtml(comp)}</strong></td>
               <td>${analysePrevisionDate(r.exit_date || r.first_exit_date)}</td>
-              <td>${escapeHtml(r.impact_label || "â€”")}</td>
+              <td>${escapeHtml(r.impact_label || "—")}</td>
               <td class="col-center">${expertiseDot(r)}</td>
-              <td class="col-center"><button type="button" class="sb-icon-btn prev-transmission-open" title="Voir" aria-label="Voir le dÃ©tail">${analyseEyeIconSvg()}</button></td>
+              <td class="col-center"><button type="button" class="sb-icon-btn prev-transmission-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
             </tr>`;
           }).join("")}</tbody>
         </table>
@@ -6363,7 +6363,7 @@ function renderDetail(mode) {
   body.innerHTML = `
     ${buildResetHtml()}
     <div class="card" style="padding:12px; margin:0;">
-      <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
+      <div class="card-sub" style="margin:0;">Chargement…</div>
     </div>
   `;
   bindRiskResetBtn();
@@ -6395,7 +6395,7 @@ function renderDetail(mode) {
         const timeline = Array.isArray(evolData?.timeline) ? evolData.timeline.slice(0, 4) : [];
         const months = Array.isArray(eventsData?.months) ? eventsData.months : [];
         const monthMap = new Map(months.map(m => [Number(m.index || 0), m]));
-        const nowPoint = timeline[0] || { label: "Aujourdâ€™hui", indice_fragilite: 0 };
+        const nowPoint = timeline[0] || { label: "Aujourd’hui", indice_fragilite: 0 };
         const nowScore = Math.round(Number(nowPoint?.indice_fragilite || 0));
 
         const fmtIndex = (v) => `${Math.round(Number(v) || 0)}%`;
@@ -6406,7 +6406,7 @@ function renderDetail(mode) {
           </svg>
         `;
         const evolBadge = (delta, isToday) => {
-          if (isToday) return `<span style="font-weight: var(--ns-weight-bold); color:var(--sb-gray-500);">â€”</span>`;
+          if (isToday) return `<span style="font-weight:700; color:var(--sb-gray-500);">—</span>`;
           const d = Math.round(Number(delta) || 0);
           const cls = d > 0 ? "sb-badge--danger" : (d < 0 ? "sb-badge--success" : "");
           const txt = d === 0 ? "Stable" : `${d > 0 ? "+" : ""}${d}%`;
@@ -6415,8 +6415,8 @@ function renderDetail(mode) {
 
         const rows = [0, 1, 2, 3].map((idx) => {
           const p = timeline[idx] || null;
-          const m = monthMap.get(idx) || { index: idx, label: idx === 0 ? "Aujourdâ€™hui" : `${idx} mois`, indisponibilites_count: 0, sorties_count: 0, indisponibilites: [], sorties: [] };
-          const label = idx === 0 ? "Aujourdâ€™hui" : (p?.label || m.label || `${idx} mois`);
+          const m = monthMap.get(idx) || { index: idx, label: idx === 0 ? "Aujourd’hui" : `${idx} mois`, indisponibilites_count: 0, sorties_count: 0, indisponibilites: [], sorties: [] };
+          const label = idx === 0 ? "Aujourd’hui" : (p?.label || m.label || `${idx} mois`);
           const score = Math.round(Number(p?.indice_fragilite ?? nowScore));
           const delta = score - nowScore;
           return { ...m, index: idx, label, score, delta };
@@ -6462,18 +6462,18 @@ function renderDetail(mode) {
               <button type="button"
                       class="analyse-help-dot"
                       data-analyse-help="risques_evol3m_table"
-                      aria-label="Comprendre lâ€™Ã©volution des indices de fragilitÃ©">?</button>
+                      aria-label="Comprendre l’évolution des indices de fragilité">?</button>
             </div>
             <div class="table-wrap" style="margin-top:0;">
               <table class="sb-table" id="tblRiskEvol3m">
                 <thead>
                   <tr>
                     <th>Mois de projection</th>
-                    <th class="col-center">Indice de fragilitÃ©</th>
-                    <th class="col-center">Ã‰volution</th>
-                    <th class="col-center">IndisponibilitÃ©s temporaires</th>
-                    <th class="col-center">Fins de contrat / sorties prÃ©vues</th>
-                    <th class="col-center">DÃ©tail</th>
+                    <th class="col-center">Indice de fragilité</th>
+                    <th class="col-center">Évolution</th>
+                    <th class="col-center">Indisponibilités temporaires</th>
+                    <th class="col-center">Fins de contrat / sorties prévues</th>
+                    <th class="col-center">Détail</th>
                   </tr>
                 </thead>
                 <tbody>${bodyRows}</tbody>
@@ -6532,12 +6532,12 @@ function renderDetail(mode) {
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("FragilitÃ© des postes", "postes")}</div>
+          <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("Fragilité des postes", "postes")}</div>
           ${renderTablePostes(itemsA)}
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("FragilitÃ©s par compÃ©tence", "competences")}</div>
+          <div class="card-title" style="margin-bottom:6px;">${analyseDetailTitleHtml("Fragilités par compétence", "competences")}</div>
           ${renderTableCompetences(itemsB)}
         </div>
       `;
@@ -6582,20 +6582,20 @@ function renderDetail(mode) {
       const r = t.risques || {};
       const globalFrag = Number(r.postes_fragilite_globale);
       const compFrag = Number(r.comp_fragilite_moyenne);
-      const compFragTxt = Number.isFinite(compFrag) ? `${Math.round(compFrag)}%` : (Number.isFinite(Number(r.comp_critiques_fragiles)) ? `${Number(r.comp_critiques_fragiles)} point(s)` : "â€”");
-      const globalFragTxt = Number.isFinite(globalFrag) ? `${Math.round(globalFrag)}%` : "â€”";
+      const compFragTxt = Number.isFinite(compFrag) ? `${Math.round(compFrag)}%` : (Number.isFinite(Number(r.comp_critiques_fragiles)) ? `${Number(r.comp_critiques_fragiles)} point(s)` : "—");
+      const globalFragTxt = Number.isFinite(globalFrag) ? `${Math.round(globalFrag)}%` : "—";
       setText("kpiRiskPostes", globalFragTxt);
       setText("kpiRiskCritFragiles", compFragTxt);
       updateAnalyseHeaderSynthesis(data);
 
-      setText("kpiRiskEvol3m", "â€¦");
+      setText("kpiRiskEvol3m", "…");
       (async () => {
         try {
           const evo = await computeRiskEvolution3m(portal, f.id_service);
           const evoTxt = fmtPctSigned(evo?.total?.pct);
           setText("kpiRiskEvol3m", evoTxt);
         } catch (e) {
-          setText("kpiRiskEvol3m", "â€”");
+          setText("kpiRiskEvol3m", "—");
         }
       })();
 
@@ -6604,7 +6604,7 @@ function renderDetail(mode) {
 
       setStatus("");
     } catch (e) {
-      setStatus("RÃ©sumÃ© non disponible.");
+      setStatus("Résumé non disponible.");
     }
   }
 
@@ -6615,7 +6615,7 @@ function renderDetail(mode) {
     localStorage.setItem(STORE_MODE, finalMode);
 
     setActiveTile(finalMode);
-    setText("analyseModeLabel", finalMode === "matching" ? "Correspondance profils / postes" : (finalMode === "previsions" ? "PrÃ©visions" : "Risques actuels"));
+    setText("analyseModeLabel", finalMode === "matching" ? "Correspondance profils / postes" : (finalMode === "previsions" ? "Prévisions" : "Risques actuels"));
     renderDetail(finalMode);
   }
 
@@ -6623,7 +6623,7 @@ function bindOnce(portal) {
   if (_bound) return;
   _bound = true;
 
-  // garde une ref globale (ton code sâ€™appuie dessus partout)
+  // garde une ref globale (ton code s’appuie dessus partout)
   _portalref = portal || _portalref;
   bindAnalyseHelpDelegation();
 
@@ -6647,8 +6647,8 @@ function bindOnce(portal) {
     if (body) body.style.display = isOpen ? "" : "none";
     if (btnFiltersToggle) {
       btnFiltersToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-      btnFiltersToggle.title = isOpen ? "Replier les filtres" : "DÃ©plier les filtres";
-      btnFiltersToggle.setAttribute("aria-label", isOpen ? "Replier les filtres" : "DÃ©plier les filtres");
+      btnFiltersToggle.title = isOpen ? "Replier les filtres" : "Déplier les filtres";
+      btnFiltersToggle.setAttribute("aria-label", isOpen ? "Replier les filtres" : "Déplier les filtres");
     }
     try { localStorage.setItem(STORE_FILTERS_OPEN, isOpen ? "1" : "0"); } catch (_) {}
   }
@@ -6665,7 +6665,7 @@ function bindOnce(portal) {
     });
   }
 
-  // Slider PrÃ©visions (1..5 ans) - met Ã  jour les KPI de la tuile en direct
+  // Slider Prévisions (1..5 ans) - met à jour les KPI de la tuile en direct
   const prevSlider = byId("prevHorizonSlider");
   function updatePrevSliderProgress() {
     if (!prevSlider) return;
@@ -6682,7 +6682,7 @@ function bindOnce(portal) {
     setPrevHorizonLabel(initH);
     updatePrevSliderProgress();
 
-    // EmpÃªche de dÃ©clencher le click sur la tuile quand on manipule le slider
+    // Empêche de déclencher le click sur la tuile quand on manipule le slider
     const stop = (ev) => { ev.stopPropagation(); };
     ["pointerdown", "mousedown", "click", "keydown"].forEach(evt => prevSlider.addEventListener(evt, stop));
 
@@ -6722,7 +6722,7 @@ function bindOnce(portal) {
     });
   });
 
-  // KPI Risques cliquables => filtre du panneau dÃ©tail (sans changer de page)
+  // KPI Risques cliquables => filtre du panneau détail (sans changer de page)
   const tileRisques = byId("tileRisques");
   if (tileRisques) {
     const riskKpis = tileRisques.querySelectorAll(".mini-kpi[data-risk-kpi]");
@@ -6757,7 +6757,7 @@ function bindOnce(portal) {
       const v = (el?.getAttribute("data-match-view") || "").trim();
       if (v !== "titulaire" && v !== "candidats") return;
 
-      // empÃªche click sur tuile
+      // empêche click sur tuile
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 
       setMatchView(v);
@@ -6779,8 +6779,8 @@ function bindOnce(portal) {
     });
   }
 
-  // KPI PrÃ©visions cliquables => sÃ©lection + bascule mode PrÃ©visions
-  // DÃ©lÃ©gation en capture : le clic sur un mini-KPI ne retombe jamais sur le clic gÃ©nÃ©rique de la tuile.
+  // KPI Prévisions cliquables => sélection + bascule mode Prévisions
+  // Délégation en capture : le clic sur un mini-KPI ne retombe jamais sur le clic générique de la tuile.
   const tilePrevisions = byId("tilePrevisions");
   if (tilePrevisions) {
     function openPrevKpiFromEvent(ev) {
@@ -6814,7 +6814,7 @@ function bindOnce(portal) {
     }, true);
   }
 
-  // Filtres service / criticitÃ© / reset
+  // Filtres service / criticité / reset
   const critSlider = byId("analyseCriticiteMinRange");
   const critValue = byId("analyseCriticiteMinValue");
 
@@ -6910,65 +6910,65 @@ function bindOnce(portal) {
   function sbTipHtml(key) {
     if (key === "fragility-index") {
       return `
-        <div class="sb-tip-title">Indice de fragilitÃ©</div>
+        <div class="sb-tip-title">Indice de fragilité</div>
         <div class="sb-tip-text">
-          Cet indice mesure le niveau dâ€™exposition dâ€™un poste. Plus il se rapproche de 100 %, plus le poste nÃ©cessite une attention rapide.
+          Cet indice mesure le niveau d’exposition d’un poste. Plus il se rapproche de 100 %, plus le poste nécessite une attention rapide.
         </div>
 
         <div class="sb-tip-block">
           <div class="sb-tip-block-title">Ce qui est pris en compte</div>
           <ul class="sb-tip-list">
-            <li>le nombre de personnes rattachÃ©es au poste par rapport au besoin attendu ;</li>
-            <li>la couverture des compÃ©tences nÃ©cessaires au poste ;</li>
-            <li>le niveau rÃ©ellement maÃ®trisÃ© par les personnes disponibles ;</li>
-            <li>la dÃ©pendance Ã  une seule personne ou lâ€™absence de relais interne ;</li>
-            <li>les compÃ©tences attendues mais non confirmÃ©es ou insuffisamment couvertes.</li>
+            <li>le nombre de personnes rattachées au poste par rapport au besoin attendu ;</li>
+            <li>la couverture des compétences nécessaires au poste ;</li>
+            <li>le niveau réellement maîtrisé par les personnes disponibles ;</li>
+            <li>la dépendance à une seule personne ou l’absence de relais interne ;</li>
+            <li>les compétences attendues mais non confirmées ou insuffisamment couvertes.</li>
           </ul>
         </div>
 
         <div class="sb-tip-block">
-          <div class="sb-tip-block-title">Lecture de lâ€™Ã©tat</div>
-          <div class="sb-tip-scale"><b>0 Ã  24 %</b> : faible</div>
-          <div class="sb-tip-scale"><b>25 Ã  49 %</b> : modÃ©rÃ©</div>
-          <div class="sb-tip-scale"><b>50 Ã  74 %</b> : Ã©levÃ©</div>
-          <div class="sb-tip-scale"><b>75 Ã  100 %</b> : critique</div>
+          <div class="sb-tip-block-title">Lecture de l’état</div>
+          <div class="sb-tip-scale"><b>0 à 24 %</b> : faible</div>
+          <div class="sb-tip-scale"><b>25 à 49 %</b> : modéré</div>
+          <div class="sb-tip-scale"><b>50 à 74 %</b> : élevé</div>
+          <div class="sb-tip-scale"><b>75 à 100 %</b> : critique</div>
         </div>
 
         <div class="sb-tip-note">
-          Un poste actif sans titulaire est considÃ©rÃ© comme fragile Ã  100 %, car aucune personne ne le couvre dans lâ€™organisation actuelle.
+          Un poste actif sans titulaire est considéré comme fragile à 100 %, car aucune personne ne le couvre dans l’organisation actuelle.
         </div>
       `;
     }
 
     if (key === "fragility-index-competence") {
       return `
-        <div class="sb-tip-title">Indice de fragilitÃ©</div>
+        <div class="sb-tip-title">Indice de fragilité</div>
         <div class="sb-tip-text">
-          Cet indice indique dans quelle mesure une compÃ©tence est sÃ©curisÃ©e dans lâ€™entreprise. Il ne mesure pas seulement si la compÃ©tence existe quelque part : il regarde si elle est assez maÃ®trisÃ©e, assez diffusÃ©e et transmissible.
+          Cet indice indique dans quelle mesure une compétence est sécurisée dans l’entreprise. Il ne mesure pas seulement si la compétence existe quelque part : il regarde si elle est assez maîtrisée, assez diffusée et transmissible.
         </div>
 
         <div class="sb-tip-block">
           <div class="sb-tip-block-title">Ce qui est pris en compte</div>
           <ul class="sb-tip-list">
-            <li>la maÃ®trise rÃ©elle de la compÃ©tence par les collaborateurs disponibles ;</li>
-            <li>le nombre de personnes capables de porter cette compÃ©tence au niveau attendu ;</li>
-            <li>la concentration de la compÃ©tence sur une ou quelques personnes ;</li>
-            <li>la prÃ©sence ou non de collaborateurs experts capables de transmettre le savoir-faire ;</li>
-            <li>les indisponibilitÃ©s, fins de contrat ou sorties prÃ©vues qui peuvent retirer des porteurs ;</li>
-            <li>la fiabilitÃ© des donnÃ©es disponibles : niveaux confirmÃ©s, Ã©valuations, informations manquantes.</li>
+            <li>la maîtrise réelle de la compétence par les collaborateurs disponibles ;</li>
+            <li>le nombre de personnes capables de porter cette compétence au niveau attendu ;</li>
+            <li>la concentration de la compétence sur une ou quelques personnes ;</li>
+            <li>la présence ou non de collaborateurs experts capables de transmettre le savoir-faire ;</li>
+            <li>les indisponibilités, fins de contrat ou sorties prévues qui peuvent retirer des porteurs ;</li>
+            <li>la fiabilité des données disponibles : niveaux confirmés, évaluations, informations manquantes.</li>
           </ul>
         </div>
 
         <div class="sb-tip-block">
-          <div class="sb-tip-block-title">Lecture de lâ€™Ã©tat</div>
-          <div class="sb-tip-scale"><b>0 Ã  24 %</b> : faible</div>
-          <div class="sb-tip-scale"><b>25 Ã  49 %</b> : modÃ©rÃ©</div>
-          <div class="sb-tip-scale"><b>50 Ã  74 %</b> : Ã©levÃ©</div>
-          <div class="sb-tip-scale"><b>75 Ã  100 %</b> : critique</div>
+          <div class="sb-tip-block-title">Lecture de l’état</div>
+          <div class="sb-tip-scale"><b>0 à 24 %</b> : faible</div>
+          <div class="sb-tip-scale"><b>25 à 49 %</b> : modéré</div>
+          <div class="sb-tip-scale"><b>50 à 74 %</b> : élevé</div>
+          <div class="sb-tip-scale"><b>75 à 100 %</b> : critique</div>
         </div>
 
         <div class="sb-tip-note">
-          Une compÃ©tence peut Ãªtre fragile mÃªme si elle est prÃ©sente dans lâ€™entreprise, par exemple si elle repose sur une seule personne ou si personne nâ€™est capable de la transmettre.
+          Une compétence peut être fragile même si elle est présente dans l’entreprise, par exemple si elle repose sur une seule personne ou si personne n’est capable de la transmettre.
         </div>
       `;
     }
@@ -6976,18 +6976,18 @@ function bindOnce(portal) {
       return `
         <div class="sb-tip-title">Transmission</div>
         <div class="sb-tip-text">
-          Cet indicateur signale si une personne est en capacitÃ© de transmettre la compÃ©tence : niveau Expert ou AvancÃ© haut, avec prise en compte de la fraÃ®cheur de la derniÃ¨re Ã©valuation.
+          Cet indicateur signale si une personne est en capacité de transmettre la compétence : niveau Expert ou Avancé haut, avec prise en compte de la fraîcheur de la dernière évaluation.
         </div>
         <div class="sb-tip-block">
-          <div class="sb-tip-scale"><b style="color:#16a34a;">Point vert</b> : niveau Expert avec Ã©valuation rÃ©cente.</div>
-          <div class="sb-tip-scale"><b style="color:#2563eb;">Point bleu</b> : niveau AvancÃ© haut avec Ã©valuation rÃ©cente.</div>
-          <div class="sb-tip-scale"><b style="color:#db2777;">Point rose</b> : entretien recommandÃ©, Ã©valuation absente ou trop ancienne.</div>
-          <div class="sb-tip-scale"><b style="color:#dc2626;">Point rouge</b> : aucune personne identifiÃ©e.</div>
+          <div class="sb-tip-scale"><b style="color:#16a34a;">Point vert</b> : niveau Expert avec évaluation récente.</div>
+          <div class="sb-tip-scale"><b style="color:#2563eb;">Point bleu</b> : niveau Avancé haut avec évaluation récente.</div>
+          <div class="sb-tip-scale"><b style="color:#db2777;">Point rose</b> : entretien recommandé, évaluation absente ou trop ancienne.</div>
+          <div class="sb-tip-scale"><b style="color:#dc2626;">Point rouge</b> : aucune personne identifiée.</div>
         </div>
       `;
     }
 
-    return `<div class="sb-tip-title">Info</div><div class="sb-tip-text">Aucune aide dÃ©finie.</div>`;
+    return `<div class="sb-tip-title">Info</div><div class="sb-tip-text">Aucune aide définie.</div>`;
   }
 
 
@@ -7014,14 +7014,14 @@ function bindOnce(portal) {
     const w = el.offsetWidth || 320;
     const h = el.offsetHeight || 160;
 
-    // position par dÃ©faut: sous le bouton
+    // position par défaut: sous le bouton
     let left = r.left;
     let top = r.bottom + gap;
 
     // clamp horizontal
     left = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
 
-    // si Ã§a dÃ©borde en bas, on ouvre au-dessus
+    // si ça déborde en bas, on ouvre au-dessus
     if (top + h > window.innerHeight - pad) {
       top = r.top - h - gap;
     }
@@ -7035,7 +7035,7 @@ function bindOnce(portal) {
   function toggleSbTip(anchorEl) {
     const el = ensureSbTipPortal();
 
-    // toggle si on reclique le mÃªme "i"
+    // toggle si on reclique le même "i"
     if (_sbTipAnchor === anchorEl && el.style.display === "block") {
       hideSbTipPortal();
       return;
@@ -7068,25 +7068,25 @@ function bindOnce(portal) {
   });
 
   // ==============================
-  // Click dÃ©lÃ©guÃ© global (survit aux rerender)
+  // Click délégué global (survit aux rerender)
   // ==============================
   const analyseBody = byId("analyseDetailBody");
   if (!analyseBody) {
-    // si la vue nâ€™est pas encore montÃ©e, on ne fige pas le bind
+    // si la vue n’est pas encore montée, on ne fige pas le bind
     _bound = false;
     return;
   }
 
   analyseBody.addEventListener("click", async (ev) => {
     // ------------------------------
-    // Tooltip "i" (Indice de fragilitÃ©) : portail hors table
+    // Tooltip "i" (Indice de fragilité) : portail hors table
     // ------------------------------
     const infoBtn = ev.target.closest(".sb-iinfo");
     if (infoBtn) {
       ev.preventDefault();
       ev.stopPropagation();
 
-      // sÃ©curitÃ©: si l'attribut n'existe pas encore, on le force
+      // sécurité: si l'attribut n'existe pas encore, on le force
       if (!infoBtn.getAttribute("data-sbtip")) {
         infoBtn.setAttribute("data-sbtip", "fragility-index");
       }
@@ -7116,11 +7116,11 @@ function bindOnce(portal) {
 
     // ------------------------------
     // 1) Click sur POSTE FRAGILE (table risques)
-    // -> ouverture uniquement si clic sur libellÃ© poste OU bouton Voir
+    // -> ouverture uniquement si clic sur libellé poste OU bouton Voir
     // ------------------------------
     const trPoste = ev.target.closest("tr.risk-poste-row[data-id_poste]");
     if (trPoste) {
-      // On Ã©vite dâ€™ouvrir le modal sur nâ€™importe quel clic dans la ligne
+      // On évite d’ouvrir le modal sur n’importe quel clic dans la ligne
       const hit = ev.target.closest(".risk-poste-open");
       if (!hit) return;
 
@@ -7130,14 +7130,14 @@ function bindOnce(portal) {
       try {
         await showAnalysePosteDetailModal(p, id_poste, id_service, "");
       } catch (e) {
-        // on laisse tes modals gÃ©rer leurs erreurs
+        // on laisse tes modals gérer leurs erreurs
       }
       return;
     }
 
 
     // ------------------------------
-    // PDF fiche compÃ©tence depuis le dÃ©tail poste
+    // PDF fiche compétence depuis le détail poste
     // ------------------------------
     const btnPosteDepCompPdf = ev.target.closest("[data-poste-dep-comp-pdf]");
     if (btnPosteDepCompPdf) {
@@ -7149,7 +7149,7 @@ function bindOnce(portal) {
     }
 
     // ------------------------------
-    // PDF analyse compÃ©tence fragile
+    // PDF analyse compétence fragile
     // ------------------------------
     const btnCompPdf = ev.target.closest("[data-risk-comp-pdf]");
     if (btnCompPdf) {
@@ -7165,7 +7165,7 @@ function bindOnce(portal) {
     // ------------------------------
     const trComp = ev.target.closest("tr.risk-comp-row[data-comp-key]");
     if (trComp) {
-      // Comme postes fragiles: on nâ€™ouvre pas sur nâ€™importe quel clic dans la ligne
+      // Comme postes fragiles: on n’ouvre pas sur n’importe quel clic dans la ligne
       const hit = ev.target.closest(".risk-comp-open");
       if (!hit) return;
 
@@ -7175,7 +7175,7 @@ function bindOnce(portal) {
       try {
         await showAnalyseCompetenceDetailModal(p, compKey, id_service);
       } catch (e) {
-        if (typeof showToast === "function") showToast("Erreur ouverture dÃ©tail compÃ©tence.", "error");
+        if (typeof showToast === "function") showToast("Erreur ouverture détail compétence.", "error");
         else console.error(e);
       }
       return;
@@ -7190,13 +7190,13 @@ function bindOnce(portal) {
       const mode = (btnMatchMode.getAttribute("data-match-poste-mode") || "").trim().toLowerCase();
       if (!mode) return;
 
-      // Si lâ€™utilisateur reclique sur lâ€™actif, on ne refait pas du bruit.
+      // Si l’utilisateur reclique sur l’actif, on ne refait pas du bruit.
       if (mode === getMatchPosteMode()) return;
 
       setMatchPosteMode(mode);
       _matchRowsExpanded = false;
 
-      // on reset la sÃ©lection poste pour repartir propre
+      // on reset la sélection poste pour repartir propre
       _matchSelectedPoste = "";
       _matchCurrentPosteId = "";
       _matchCurrentPoste = null;
@@ -7221,7 +7221,7 @@ function bindOnce(portal) {
       _matchRowsExpanded = false;
       refreshMatchingPrintButtonState();
 
-      // met Ã  jour le style actif sans rerender complet
+      // met à jour le style actif sans rerender complet
       document.querySelectorAll("#matchPosteList button[data-match-id_poste]").forEach(b => {
         const bid = (b.getAttribute("data-match-id_poste") || "").trim();
         const isActive = bid === _matchSelectedPoste;
@@ -7253,8 +7253,8 @@ function bindOnce(portal) {
       try {
         await openAnalyseMatchingEffectifPdfInBrowser(p, _matchSelectedPoste, id_effectif, id_service);
       } catch (e) {
-        if (typeof showToast === "function") showToast(e.message || "Impossible dâ€™ouvrir le PDF.", "error");
-        else alert(e.message || "Impossible dâ€™ouvrir le PDF.");
+        if (typeof showToast === "function") showToast(e.message || "Impossible d’ouvrir le PDF.", "error");
+        else alert(e.message || "Impossible d’ouvrir le PDF.");
       }
       return;
     }
@@ -7284,13 +7284,13 @@ function bindOnce(portal) {
       <div class="modal" id="modalRiskEvol3m" aria-hidden="true">
         <div class="modal-card modal-card--wide">
           <div class="modal-header">
-            <div style="font-weight: var(--ns-weight-semibold);" id="riskEvol3mModalTitle">Ã‰volution</div>
-            <button type="button" class="modal-x" id="btnCloseRiskEvol3mModal" aria-label="Fermer">Ã—</button>
+            <div style="font-weight:600;" id="riskEvol3mModalTitle">Évolution</div>
+            <button type="button" class="modal-x" id="btnCloseRiskEvol3mModal" aria-label="Fermer">×</button>
           </div>
 
           <div class="modal-body" id="riskEvol3mModalBody">
             <div class="card" style="padding:12px; margin:0;">
-              <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
+              <div class="card-sub" style="margin:0;">Chargement…</div>
             </div>
           </div>
 
@@ -7352,8 +7352,8 @@ function bindOnce(portal) {
 
     const isPostes = (kind === "postes");
     const titleTxt = isPostes
-      ? `Postes en Ã©volution (3 mois)${scopeHtml}`
-      : `CompÃ©tences en Ã©volution (3 mois)${scopeHtml}`;
+      ? `Postes en évolution (3 mois)${scopeHtml}`
+      : `Compétences en évolution (3 mois)${scopeHtml}`;
 
     if (titleEl) titleEl.innerHTML = titleTxt;
 
@@ -7361,7 +7361,7 @@ function bindOnce(portal) {
     if (!list.length) {
       bodyEl.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-sub" style="margin:0;">Aucune Ã©volution dÃ©tectÃ©e.</div>
+          <div class="card-sub" style="margin:0;">Aucune évolution détectée.</div>
         </div>
       `;
     } else {
@@ -7378,14 +7378,14 @@ function bindOnce(portal) {
         if (isPostes) {
           const causeTxt = (delta) => {
             const d = Number(delta) || 0;
-            if (d > 0) return "Cause: indisponibilitÃ© prÃ©vue dâ€™ici 3 mois";
-            if (d < 0) return "Cause: fin dâ€™indisponibilitÃ© dâ€™ici 3 mois";
-            return "Cause: stabilitÃ©";
+            if (d > 0) return "Cause: indisponibilité prévue d’ici 3 mois";
+            if (d < 0) return "Cause: fin d’indisponibilité d’ici 3 mois";
+            return "Cause: stabilité";
           };
 
           bodyEl.innerHTML = `
             <div class="card" style="padding:12px; margin:0;">
-              <div class="card-title" style="margin-bottom:6px;">DÃ©tail</div>
+              <div class="card-title" style="margin-bottom:6px;">Détail</div>
 
               <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
                 ${list.map(r => `
@@ -7396,21 +7396,21 @@ function bindOnce(portal) {
                               cursor:pointer;">
                     <div style="min-width:0;">
                       <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                        <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "â€”")}</span>
-                        <span style="font-weight: var(--ns-weight-semibold); font-size: var(--ns-text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                          ${escapeHtml(r.label || "â€”")}
+                        <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "—")}</span>
+                        <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                          ${escapeHtml(r.label || "—")}
                         </span>
                       </div>
 
                       <div class="sb-fs-13"
                           style="opacity:.85; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${escapeHtml(r.service || "â€”")} â€¢ ${escapeHtml(causeTxt(r.delta))}
+                        ${escapeHtml(r.service || "—")} • ${escapeHtml(causeTxt(r.delta))}
                       </div>
                     </div>
 
                     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                       <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s0 || 0))))}%</span>
-                      <span style="opacity:.6;">â†’</span>
+                      <span style="opacity:.6;">→</span>
                       <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s3 || 0))))}%</span>
                       ${deltaBadge(r.delta)}
                     </div>
@@ -7420,7 +7420,7 @@ function bindOnce(portal) {
             </div>
           `;
 
-          // Clic => ouvrir le modal "poste fragile" (Ã©tat actuel)
+          // Clic => ouvrir le modal "poste fragile" (état actuel)
           bodyEl.querySelectorAll(".sb-evol-card[data-evol-id]").forEach((el) => {
             el.addEventListener("click", () => {
               const id = (el.getAttribute("data-evol-id") || "").trim();
@@ -7435,14 +7435,14 @@ function bindOnce(portal) {
         } else {
           const causeTxt = (delta) => {
             const d = Number(delta) || 0;
-            if (d > 0) return "Cause: indisponibilitÃ© prÃ©vue dâ€™ici 3 mois";
-            if (d < 0) return "Cause: fin dâ€™indisponibilitÃ© dâ€™ici 3 mois";
-            return "Cause: stabilitÃ©";
+            if (d > 0) return "Cause: indisponibilité prévue d’ici 3 mois";
+            if (d < 0) return "Cause: fin d’indisponibilité d’ici 3 mois";
+            return "Cause: stabilité";
           };
 
           bodyEl.innerHTML = `
             <div class="card" style="padding:12px; margin:0;">
-              <div class="card-title" style="margin-bottom:6px;">DÃ©tail</div>
+              <div class="card-title" style="margin-bottom:6px;">Détail</div>
 
               <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
                 ${list.map(r => `
@@ -7455,9 +7455,9 @@ function bindOnce(portal) {
                               cursor:pointer;">
                     <div style="min-width:0;">
                       <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                        <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(r.code || "â€”")}</span>
-                        <span style="font-weight: var(--ns-weight-semibold); font-size: var(--ns-text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                          ${escapeHtml(r.label || "â€”")}
+                        <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(r.code || "—")}</span>
+                        <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                          ${escapeHtml(r.label || "—")}
                         </span>
                       </div>
 
@@ -7469,7 +7469,7 @@ function bindOnce(portal) {
 
                     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                       <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s0 || 0))))}%</span>
-                      <span style="opacity:.6;">â†’</span>
+                      <span style="opacity:.6;">→</span>
                       <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s3 || 0))))}%</span>
                       ${deltaBadge(r.delta)}
                     </div>
@@ -7479,7 +7479,7 @@ function bindOnce(portal) {
             </div>
           `;
 
-          // Clic => ouvrir le modal "compÃ©tence critique" (Ã©tat actuel)
+          // Clic => ouvrir le modal "compétence critique" (état actuel)
           bodyEl.querySelectorAll(".sb-evol-comp-card[data-evol-id]").forEach((el) => {
             el.addEventListener("click", () => {
               const id = (el.getAttribute("data-evol-id") || "").trim();
@@ -7490,7 +7490,7 @@ function bindOnce(portal) {
               const id_service = getFilters()?.id_service || "";
               closeRiskEvol3mModal();
 
-              // ouvre le dÃ©tail compÃ©tence (actuel)
+              // ouvre le détail compétence (actuel)
               showAnalyseCompetenceDetailModal(_portalref, id, id_service, { code, text });
             });
           });
@@ -7511,27 +7511,27 @@ function bindOnce(portal) {
     if (!modal || !bodyEl) return;
 
     const label = (month?.label || "Projection").toString();
-    if (titleEl) titleEl.innerHTML = `DÃ©tail projection <span class="sb-badge">${escapeHtml(label)}</span>`;
+    if (titleEl) titleEl.innerHTML = `Détail projection <span class="sb-badge">${escapeHtml(label)}</span>`;
 
     const indispos = Array.isArray(month?.indisponibilites) ? month.indisponibilites : [];
     const sorties = Array.isArray(month?.sorties) ? month.sorties : [];
 
     const fmtList = (items, type) => {
-      if (!items.length) return `<div class="card-sub" style="margin:0;">Aucun Ã©vÃ©nement identifiÃ©.</div>`;
+      if (!items.length) return `<div class="card-sub" style="margin:0;">Aucun événement identifié.</div>`;
       return `
         <div style="display:flex; flex-direction:column; gap:8px;">
           ${items.map(r => {
             const person = r.personne || "Collaborateur";
-            const poste = r.poste || "Poste non renseignÃ©";
+            const poste = r.poste || "Poste non renseigné";
             const dates = type === "indispo"
-              ? `${r.date_debut || "â€”"} â†’ ${r.date_fin || "â€”"}`
-              : `${r.date_sortie || "â€”"}`;
-            const motif = type === "sortie" ? `<div class="card-sub" style="margin-top:2px;">${escapeHtml(r.motif || "Sortie prÃ©vue")}</div>` : "";
+              ? `${r.date_debut || "—"} → ${r.date_fin || "—"}`
+              : `${r.date_sortie || "—"}`;
+            const motif = type === "sortie" ? `<div class="card-sub" style="margin-top:2px;">${escapeHtml(r.motif || "Sortie prévue")}</div>` : "";
             return `
               <div style="border:1px solid var(--sb-gray-200); border-radius:12px; padding:10px 12px; background:#fff;">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
                   <div style="min-width:0;">
-                    <div style="font-weight: var(--ns-weight-bold); font-size: var(--ns-text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(person)}</div>
+                    <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(person)}</div>
                     <div class="card-sub" style="margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(poste)}</div>
                     ${motif}
                   </div>
@@ -7547,11 +7547,11 @@ function bindOnce(portal) {
     bodyEl.innerHTML = `
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start;">
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:8px;">IndisponibilitÃ©s temporaires</div>
+          <div class="card-title" style="margin-bottom:8px;">Indisponibilités temporaires</div>
           ${fmtList(indispos, "indispo")}
         </div>
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:8px;">Fins de contrat / sorties prÃ©vues</div>
+          <div class="card-title" style="margin-bottom:8px;">Fins de contrat / sorties prévues</div>
           ${fmtList(sorties, "sortie")}
         </div>
       </div>

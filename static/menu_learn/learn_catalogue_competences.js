@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let _bound = false;
   let _q = "";
   let _show = "active";
@@ -151,7 +151,7 @@
 
     const opt0 = document.createElement("option");
     opt0.value = "";
-    opt0.textContent = "â€”";
+    opt0.textContent = "—";
     sel.appendChild(opt0);
 
     (_domainItems || []).forEach(d => {
@@ -181,7 +181,7 @@
 
     const opt0 = document.createElement("option");
     opt0.value = "";
-    opt0.textContent = "â€”";
+    opt0.textContent = "—";
     sel.appendChild(opt0);
 
     (_domainItems || []).forEach(d => {
@@ -294,7 +294,7 @@
     if (!_items.length){
       const empty = document.createElement("div");
       empty.className = "card-sub";
-      empty.textContent = "Aucune compÃ©tence Ã  afficher.";
+      empty.textContent = "Aucune compétence à afficher.";
       host.appendChild(empty);
       return;
     }
@@ -309,7 +309,7 @@
 
       const code = document.createElement("span");
       code.className = "sb-badge sb-badge--comp";
-      code.textContent = it.code || "â€”";
+      code.textContent = it.code || "—";
 
       const title = document.createElement("div");
       title.className = "sb-row-title";
@@ -511,7 +511,7 @@
     if (!ed) return;
 
     const title = byId("compCritEditorTitle");
-    if (title) title.textContent = `CritÃ¨re ${idx + 1}`;
+    if (title) title.textContent = `Critère ${idx + 1}`;
 
     const c = _crit[idx] || emptyCrit();
 
@@ -544,7 +544,7 @@
     if (btnAdd){
       btnAdd.disabled = used >= 4 || !isSupervisor();
       btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
-      btnAdd.title = btnAdd.disabled ? "Maximum 4 critÃ¨res." : "";
+      btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
     }
 
     for (let i = 0; i < 4; i++){
@@ -563,7 +563,7 @@
 
       const t = document.createElement("div");
       t.className = "sb-acc-title";
-      t.textContent = `CritÃ¨re ${i + 1} â€“ ${nom}`;
+      t.textContent = `Critère ${i + 1} – ${nom}`;
 
       head.appendChild(t);
 
@@ -620,7 +620,7 @@
     if (!host.children.length){
       const empty = document.createElement("div");
       empty.className = "card-sub";
-      empty.textContent = "Aucun critÃ¨re. Ajoute au moins 1 critÃ¨re.";
+      empty.textContent = "Aucun critère. Ajoute au moins 1 critère.";
       host.appendChild(empty);
     }
   }
@@ -635,12 +635,12 @@
     const e4 = (byId("compCritEval4").value || "").trim();
 
     if (!nom){
-      portal.showAlert("error", "Nom du critÃ¨re obligatoire.");
+      portal.showAlert("error", "Nom du critère obligatoire.");
       return;
     }
 
     if (!e1 || !e2 || !e3 || !e4){
-      portal.showAlert("error", "Les 4 niveaux dâ€™Ã©valuation sont obligatoires.");
+      portal.showAlert("error", "Les 4 niveaux d’évaluation sont obligatoires.");
       return;
     }
 
@@ -654,7 +654,7 @@
     if (!_crit) _crit = [emptyCrit(), emptyCrit(), emptyCrit(), emptyCrit()];
 
     if (usedCritCount() < 1){
-      portal.showAlert("error", "Ajoute au moins 1 critÃ¨re dâ€™Ã©valuation.");
+      portal.showAlert("error", "Ajoute au moins 1 critère d’évaluation.");
       return false;
     }
 
@@ -667,13 +667,13 @@
       if (!nom && !anyEval) continue;
 
       if (!nom){
-        portal.showAlert("error", `CritÃ¨re ${i + 1} : nom obligatoire.`);
+        portal.showAlert("error", `Critère ${i + 1} : nom obligatoire.`);
         return false;
       }
 
       for (let k = 0; k < 4; k++){
         if (!(ev[k] || "").trim()){
-          portal.showAlert("error", `CritÃ¨re ${i + 1} : niveau ${k + 1} obligatoire.`);
+          portal.showAlert("error", `Critère ${i + 1} : niveau ${k + 1} obligatoire.`);
           return false;
         }
       }
@@ -689,7 +689,7 @@ async function openCreate(portal){
     _editingId = null;
 
     const aiBtn = byId("btnCompAi");
-    if (aiBtn) aiBtn.textContent = "Concevoir avec lâ€™IA";
+    if (aiBtn) aiBtn.textContent = "Concevoir avec l’IA";
 
     const b = byId("compModalBadge");
     if (b){
@@ -697,7 +697,7 @@ async function openCreate(portal){
       b.textContent = "";
     }
 
-    byId("compModalTitle").textContent = "CrÃ©er une compÃ©tence";
+    byId("compModalTitle").textContent = "Créer une compétence";
 
     const sub = byId("compModalSub");
     if (sub){
@@ -706,7 +706,7 @@ async function openCreate(portal){
     }
 
     byId("compIntitule").value = "";
-    byId("compEtat").value = "Ã  valider";
+    byId("compEtat").value = "à valider";
     byId("compDesc").value = "";
     byId("compNivA").value = "";
     byId("compNivB").value = "";
@@ -734,14 +734,14 @@ async function openEdit(portal, it){
 
     const compId = String(it?.id_comp || "").trim();
     if (!compId) {
-      throw new Error("Identifiant compÃ©tence introuvable.");
+      throw new Error("Identifiant compétence introuvable.");
     }
 
     _modalMode = "edit";
     _editingId = compId;
 
     const aiBtn = byId("btnCompAi");
-    if (aiBtn) aiBtn.textContent = "RÃ©viser avec lâ€™IA";
+    if (aiBtn) aiBtn.textContent = "Réviser avec l’IA";
 
     const b = byId("compModalBadge");
     if (b){
@@ -750,7 +750,7 @@ async function openEdit(portal, it){
       b.style.display = c ? "" : "none";
     }
 
-    byId("compModalTitle").textContent = (it?.intitule || "CompÃ©tence").toString();
+    byId("compModalTitle").textContent = (it?.intitule || "Compétence").toString();
 
     const sub = byId("compModalSub");
     if (sub){
@@ -775,11 +775,11 @@ async function openEdit(portal, it){
       b.style.display = c2 ? "" : "none";
     }
 
-    byId("compModalTitle").textContent = (d?.intitule || "CompÃ©tence").toString();
+    byId("compModalTitle").textContent = (d?.intitule || "Compétence").toString();
 
     byId("compIntitule").value = d?.intitule || "";
     fillDomainSelect(d?.domaine || "");
-    byId("compEtat").value = d?.etat || "Ã  valider";
+    byId("compEtat").value = d?.etat || "à valider";
     byId("compDesc").value = d?.description || "";
     byId("compNivA").value = d?.niveaua || "";
     byId("compNivB").value = d?.niveaub || "";
@@ -798,7 +798,7 @@ async function openEdit(portal, it){
 
     const title = (byId("compIntitule").value || "").trim();
     const dom = (byId("compDomaine").value || "").trim();
-    const etat = (byId("compEtat").value || "Ã  valider").trim();
+    const etat = (byId("compEtat").value || "à valider").trim();
     const desc = (byId("compDesc").value || "").trim();
     const a = (byId("compNivA").value || "").trim();
     const b = (byId("compNivB").value || "").trim();
@@ -807,7 +807,7 @@ async function openEdit(portal, it){
     const d = (byId("compNivD")?.value || "").trim();
 
     if (!title){
-      portal.showAlert("error", "IntitulÃ© obligatoire.");
+      portal.showAlert("error", "Intitulé obligatoire.");
       return;
     }
 
@@ -860,7 +860,7 @@ async function openEdit(portal, it){
     }));
 
     window.portal.showAlert("", "");
-    setSuccess("EnregistrÃ© avec succÃ¨s");
+    setSuccess("Enregistré avec succès");
 
     await loadList(portal);
   }
@@ -869,7 +869,7 @@ async function openEdit(portal, it){
     if (!isSupervisor()) return;
 
     _archiveId = it.id_comp;
-    byId("compArchiveMsg").textContent = `Archiver "${it.code || "â€”"} â€“ ${it.intitule || ""}" ?`;
+    byId("compArchiveMsg").textContent = `Archiver "${it.code || "—"} – ${it.intitule || ""}" ?`;
 
     openModal("modalCompArchive");
   }
@@ -888,7 +888,7 @@ async function openEdit(portal, it){
     closeModal("modalCompArchive");
 
     window.portal.showAlert("", "");
-    setSuccess("CompÃ©tence archivÃ©e");
+    setSuccess("Compétence archivée");
 
     await loadList(portal);
   }
@@ -921,7 +921,7 @@ async function openEdit(portal, it){
     if (btn){
       btn.disabled = true;
       btn.style.opacity = ".6";
-      btn.textContent = "GÃ©nÃ©rationâ€¦";
+      btn.textContent = "Génération…";
     }
 
     try{
@@ -980,7 +980,7 @@ async function openEdit(portal, it){
       if (btn){
         btn.disabled = false;
         btn.style.opacity = "";
-        btn.textContent = "GÃ©nÃ©rer";
+        btn.textContent = "Générer";
       }
     }
   }
@@ -1021,7 +1021,7 @@ async function openEdit(portal, it){
     const win = window.open("", "_blank");
 
     if (!win){
-      throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du PDF.");
+      throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
     }
 
     win.document.open();
@@ -1031,7 +1031,7 @@ async function openEdit(portal, it){
 <meta charset="utf-8">
 <title>${htmlEsc(title || "Document PDF")}</title>
 <style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family: var(--ns-font-ui);color:#111827}
+html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
 .pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
 .pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite}
 @keyframes pdfSpin{to{transform:rotate(360deg)}}
@@ -1040,7 +1040,7 @@ html,body{height:100%;margin:0;background:#f3f4f6;font-family: var(--ns-font-ui)
 <body>
 <div class="pdf-loading">
   <div class="pdf-loading__spinner"></div>
-  <div>Chargement du PDFâ€¦</div>
+  <div>Chargement du PDF…</div>
 </div>
 </body>
 </html>`);
@@ -1086,14 +1086,14 @@ iframe{width:100%;height:100%;border:0;display:block}
     const compId = String(it?.id_comp || "").trim();
 
     if (!effectifId) throw new Error("Profil Learn manquant.");
-    if (!compId) throw new Error("CompÃ©tence introuvable.");
+    if (!compId) throw new Error("Compétence introuvable.");
 
     const title =
-      `Fiche compÃ©tence - ${
+      `Fiche compétence - ${
         String(it?.code || "").trim()
           ? `${String(it.code).trim()} - `
           : ""
-      }${String(it?.intitule || "").trim() || "CompÃ©tence"}`;
+      }${String(it?.intitule || "").trim() || "Compétence"}`;
 
     let popupWin = null;
 
@@ -1292,7 +1292,7 @@ byId("btnCompAi")?.addEventListener("click", async () => {
 
   onShow(window.portal).catch(e => {
     if (window.portal && window.portal.showAlert) {
-      window.portal.showAlert("error", "Erreur catalogue compÃ©tences : " + (e?.message || e));
+      window.portal.showAlert("error", "Erreur catalogue compétences : " + (e?.message || e));
     }
   });
 })();

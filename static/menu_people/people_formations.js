@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const P = window.PeoplePortal;
   if (!P) return;
   function byId(id){ return document.getElementById(id); }
@@ -14,7 +14,7 @@
       if (cal.error) up.innerHTML = P.itemEmpty(cal.error);
       else {
         const rows = cal.formations || [];
-        up.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} â†’ ${P.fmtDate(r.date_fin_formation)} Â· ${P.escapeHtml(r.organisme || "Organisme non renseignÃ©")}</div></div>${P.badge(r.etat_action || "programmÃ©", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation programmÃ©e.");
+        up.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} → ${P.fmtDate(r.date_fin_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.etat_action || "programmé", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation programmée.");
       }
     }
 
@@ -23,7 +23,7 @@
       if (par.error) hist.innerHTML = P.itemEmpty(par.error);
       else {
         const rows = par.formations || [];
-        hist.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} Â· ${P.escapeHtml(r.organisme || "Organisme non renseignÃ©")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation rÃ©alisÃ©e dans lâ€™historique.");
+        hist.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation réalisée dans l’historique.");
       }
     }
   }

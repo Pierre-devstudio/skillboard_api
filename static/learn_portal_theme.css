@@ -1,5 +1,5 @@
-﻿/* learn_portal_theme.css
-   - ThÃ¨me Learn
+/* learn_portal_theme.css
+   - Thème Learn
    - Accent Learn : #E724F3
    - Sidebar : #333333
 */
@@ -19,8 +19,8 @@
   align-items:center;
   padding:4px 10px;
   border-radius:999px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:700;
   background: rgba(var(--lp-accent-rgb), .22);
   border:1px solid rgba(var(--lp-accent-rgb), .55);
   color:#ffffff;
@@ -34,10 +34,10 @@
 
 .menu-section-title{
   margin: 2px 10px 4px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: var(--ns-letter-label);
+  letter-spacing: .06em;
   color: rgba(255,255,255,.58);
   cursor: default;
   user-select: none;
@@ -45,7 +45,7 @@
 
 .lp-card-note{
   margin-top:8px;
-  font-size: var(--ns-text-sm);
+  font-size:13px;
   color: var(--muted);
 }
 
@@ -70,27 +70,27 @@
 }
 
 .lp-kpi-title{
-  font-size: var(--ns-text-xs);
+  font-size:12px;
   color:#6b7280;
   margin-bottom:4px;
 }
 
 .lp-kpi-value{
-  font-size: var(--ns-text-lg);
-  font-weight: var(--ns-weight-bold);
+  font-size:15px;
+  font-weight:700;
   color:#111827;
 }
 
 /* ======================================================
-   Learn - RÃ©fÃ©rentiels / Catalogue compÃ©tences
+   Learn - Référentiels / Catalogue compétences
    ====================================================== */
 
 .menu-section-title{
   margin: 2px 10px 4px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: var(--ns-letter-label);
+  letter-spacing: .06em;
   color: rgba(255,255,255,.58);
   cursor: default;
   user-select: none;
@@ -113,9 +113,9 @@
 .sb-save-success{
   display:none;
   align-items:center;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
-  line-height: var(--ns-leading-tight);
+  font-size:11px;
+  font-weight:600;
+  line-height:1.2;
   color:#15803d;
   white-space:nowrap;
 }
@@ -129,9 +129,9 @@
   display:none;
   align-items:center;
   max-width:520px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
-  line-height: var(--ns-leading-title);
+  font-size:11px;
+  font-weight:650;
+  line-height:1.25;
   padding:0;
   margin:0;
   background:transparent;
@@ -237,8 +237,8 @@
 }
 
 .sb-row-title{
-  font-weight: var(--ns-weight-semibold);
-  font-size: var(--ns-text-sm);
+  font-weight:600;
+  font-size:13px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -321,8 +321,8 @@
   color:#111827;
   border-radius:10px 10px 0 0;
   padding:0 10px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:700;
   cursor:pointer;
   white-space:nowrap;
   box-sizing:border-box;
@@ -353,8 +353,8 @@
   border-radius:10px;
   background:#fff7ed;
   color:#7c2d12;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-ui);
+  font-size:12px;
+  line-height:1.35;
   margin-bottom:12px;
 }
 
@@ -384,8 +384,8 @@
   display:flex;
   align-items:flex-start;
   gap:8px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-title);
+  font-size:12px;
+  line-height:1.25;
   cursor:pointer;
 }
 
@@ -427,8 +427,8 @@
   align-items:center;
   gap:8px;
   min-width:0;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
+  font-size:12px;
+  font-weight:600;
 }
 
 .lf-ref-text span:last-child{
@@ -460,13 +460,13 @@
 }
 
 .lf-label-muted{
-  font-weight: var(--ns-weight-medium);
+  font-weight:500;
   color:#64748b;
 }
 
 .lf-prereq-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:700;
   color:#111827;
 }
 
@@ -503,8 +503,8 @@
 }
 
 .lf-comp-zone-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:700;
   color:#334155;
 }
 
@@ -559,7 +559,7 @@
   white-space:normal;
   overflow:visible;
   text-overflow:clip;
-  line-height: var(--ns-leading-ui);
+  line-height:1.35;
 }
 
 .lf-comp-proposal-row .sb-row-right{
@@ -603,8 +603,8 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-semibold);
+  font-size:13px;
+  font-weight:600;
   color:#111827;
 }
 
@@ -740,8 +740,8 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
+  font-size:12px;
+  font-weight:600;
   color:#111827;
 }
 
@@ -794,8 +794,8 @@
 
 .lf-plan-duration-value{
   margin-top:4px;
-  font-size: var(--ns-text-lg);
-  font-weight: var(--ns-weight-bold);
+  font-size:15px;
+  font-weight:800;
   color:#111827;
 }
 
@@ -844,10 +844,10 @@
 }
 
 .lf-plan-content-brick-title{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:800;
   color:#111827;
-  line-height: var(--ns-leading-title);
+  line-height:1.25;
   margin-bottom:4px;
 }
 
@@ -881,7 +881,7 @@
   cursor:grab;
   background:#f8fafc;
   color:#475569;
-  font-weight: var(--ns-weight-bold);
+  font-weight:800;
 }
 
 .lf-plan-drag-handle:active{
@@ -894,8 +894,8 @@
 }
 
 .lf-plan-block-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:800;
   color:#111827;
 }
 
@@ -905,7 +905,7 @@
   gap:8px;
   min-width:0;
   margin-top:2px;
-  font-size: var(--ns-text-xs);
+  font-size:11.5px;
   color:#64748b;
 }
 
@@ -917,7 +917,7 @@
 }
 
 .lf-plan-block-summary span:not(:last-child)::after{
-  content:"â€¢";
+  content:"•";
   margin-left:8px;
   color:#94a3b8;
 }
@@ -991,8 +991,8 @@
 }
 
 .lf-plan-seq-content-title{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:700;
   color:#111827;
   white-space:nowrap;
   overflow:hidden;
@@ -1053,9 +1053,9 @@
   border-radius:12px;
   background:#f8fafc;
   color:#111827;
-  font-family: inherit;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-body);
+  font-family:inherit;
+  font-size:12px;
+  line-height:1.45;
   white-space:pre-wrap;
 }
 
@@ -1159,21 +1159,21 @@
   background:#fff;
   border:1px solid rgba(245,124,0,.22);
   color:var(--accent);
-  font-size: var(--ns-title-md);
-  font-weight: var(--ns-weight-bold);
-  line-height: var(--ns-leading-tight);
+  font-size:22px;
+  font-weight:800;
+  line-height:1;
 }
 
 .lf-ai-doc-main{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:750;
   color:#111827;
 }
 
 .lf-ai-doc-sub{
   max-width:540px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-ui);
+  font-size:12px;
+  line-height:1.35;
   color:#64748b;
 }
 
@@ -1203,8 +1203,8 @@
 }
 
 .lf-ai-doc-row-main strong{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:750;
   color:#111827;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -1212,7 +1212,7 @@
 }
 
 .lf-ai-doc-row-main span{
-  font-size: var(--ns-text-xs);
+  font-size:11px;
   color:#64748b;
 }
 
@@ -1253,13 +1253,13 @@
   margin:0 auto;
   background:rgba(231,36,243,.10);
   color:#7e22ce;
-  font-size: var(--ns-title-lg);
-  font-weight: var(--ns-weight-bold);
+  font-size:24px;
+  font-weight:900;
 }
 
 .lf-import-title{
-  font-size: var(--ns-text-md);
-  font-weight: var(--ns-weight-semibold);
+  font-size:14px;
+  font-weight:650;
   color:#111827;
 }
 
@@ -1273,7 +1273,7 @@
 }
 
 .lf-import-file{
-  font-size: var(--ns-text-xs);
+  font-size:12px;
   color:#475569;
   background:#f8fafc;
   border:1px solid rgba(17,24,39,.08);
@@ -1284,24 +1284,24 @@
 
 .lf-import-status{
   min-height:18px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-ui);
+  font-size:12px;
+  line-height:1.35;
   color:#64748b;
 }
 
 .lf-import-status.is-ok{
   color:#15803d;
-  font-weight: var(--ns-weight-bold);
+  font-weight:700;
 }
 
 .lf-import-status.is-error{
   color:#b42318;
-  font-weight: var(--ns-weight-bold);
+  font-weight:700;
 }
 
 .lf-import-status.is-loading{
   color:#28407a;
-  font-weight: var(--ns-weight-bold);
+  font-weight:700;
 }
 
 .lf-import-preview{
@@ -1335,16 +1335,16 @@
 
 .lf-result-title-card span{
   display:block;
-  font-size: var(--ns-text-xs);
+  font-size:11px;
   color:#64748b;
   margin-bottom:3px;
 }
 
 .lf-result-title-card strong{
   display:block;
-  font-size: var(--ns-text-sm);
-  line-height: var(--ns-leading-ui);
-  font-weight: var(--ns-weight-semibold);
+  font-size:13px;
+  line-height:1.35;
+  font-weight:650;
   color:#111827;
   white-space:normal;
   overflow:visible;
@@ -1367,14 +1367,14 @@
 
 .lf-import-summary-item span{
   display:block;
-  font-size: var(--ns-text-xs);
+  font-size:11px;
   color:#64748b;
   margin-bottom:3px;
 }
 
 .lf-import-summary-item strong{
   display:block;
-  font-size: var(--ns-text-xs);
+  font-size:12px;
   color:#111827;
   white-space:nowrap;
   overflow:hidden;
@@ -1388,8 +1388,8 @@
 }
 
 .lf-import-section-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-semibold);
+  font-size:13px;
+  font-weight:650;
   color:#111827;
   margin-bottom:8px;
 }
@@ -1412,17 +1412,17 @@
   justify-content:space-between;
   align-items:flex-start;
   gap:10px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
+  font-size:12.5px;
+  font-weight:650;
   color:#111827;
   margin-bottom:8px;
 }
 
 .lf-import-status-pill{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
+  font-size:10px;
+  font-weight:650;
   text-transform:uppercase;
-  letter-spacing: var(--ns-letter-label);
+  letter-spacing:.03em;
   border-radius:999px;
   padding:3px 7px;
   white-space:nowrap;
@@ -1473,21 +1473,21 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-medium);
+  font-size:12px;
+  font-weight:550;
   color:#111827;
 }
 
 .lf-import-score{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:11px;
+  font-weight:800;
   color:#475569;
 }
 
 .lf-import-content-row strong{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
-  line-height: var(--ns-leading-title);
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.3;
   color:#111827;
 }
 
@@ -1534,8 +1534,8 @@
 
 .lf-plan-sync-line{
   margin-top:4px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-semibold);
+  font-size:11px;
+  font-weight:650;
   color:#15803d;
 }
 
@@ -1558,8 +1558,8 @@
   align-items:center;
   gap:8px;
   min-width:0;
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:700;
   color:#111827;
 }
 
@@ -1581,25 +1581,25 @@
   display:flex;
   align-items:center;
   gap:8px;
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:700;
   color:#111827;
   margin-bottom:4px;
 }
 
 .lf-mini-subtitle{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:11px;
+  font-weight:700;
   color:#64748b;
   margin-top:8px;
   text-transform:uppercase;
-  letter-spacing: var(--ns-letter-label);
+  letter-spacing:.02em;
 }
 
 .lf-mini-body{
-  font-size: var(--ns-text-xs);
+  font-size:12px;
   color:#374151;
-  line-height: var(--ns-leading-ui);
+  line-height:1.35;
   margin-top:6px;
 }
 
@@ -1615,7 +1615,7 @@
   gap:8px;
   border-top:1px solid rgba(17,24,39,.08);
   padding:7px 0;
-  font-size: var(--ns-text-xs);
+  font-size:12px;
 }
 
 .lf-plan-bloc:first-child{
@@ -1800,7 +1800,7 @@
 }
 
 .sb-acc-title{
-  font-weight: var(--ns-weight-semibold);
+  font-weight:600;
   text-align:left;
   min-width:0;
   overflow:hidden;
@@ -1873,8 +1873,8 @@
 }
 
 .sb-modal textarea{
-  font-family: inherit;
-  font-size: inherit;
+  font-family:inherit;
+  font-size:inherit;
 }
 
 .sb-modal .info-item select,
@@ -1886,9 +1886,9 @@
   padding:7px 10px;
   background:#fff;
   color:#111827;
-  font-family: inherit;
-  font-size: var(--ns-text-sm);
-  line-height: var(--ns-leading-title);
+  font-family:inherit;
+  font-size:13px;
+  line-height:1.3;
   box-sizing:border-box;
 }
 
@@ -1900,9 +1900,9 @@
   padding:7px 10px;
   background:#fff;
   color:#111827;
-  font-family: inherit;
-  font-size: var(--ns-text-sm);
-  line-height: var(--ns-leading-title);
+  font-family:inherit;
+  font-size:13px;
+  line-height:1.3;
   box-sizing:border-box;
 }
 
@@ -1921,8 +1921,8 @@
   background:transparent;
   color:#111827;
   cursor:pointer;
-  font-size: var(--ns-title-md);
-  line-height: var(--ns-leading-tight);
+  font-size:22px;
+  line-height:1;
   padding:4px 8px;
   border-radius:10px;
   opacity:.7;
@@ -1979,8 +1979,8 @@
 }
 
 .lf-lms-preview-card-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:750;
   color:#111827;
   margin-bottom:10px;
 }
@@ -2001,13 +2001,13 @@
   border:1px solid rgba(17,24,39,.08);
   border-radius:10px;
   background:#f8fafc;
-  font-size: var(--ns-text-xs);
+  font-size:12px;
 }
 
 .lf-lms-preview-kv-row span,
 .lf-lms-preview-field span{
   color:#64748b;
-  font-weight: var(--ns-weight-semibold);
+  font-weight:600;
 }
 
 .lf-lms-preview-kv-row strong,
@@ -2017,12 +2017,12 @@
   text-overflow:ellipsis;
   white-space:nowrap;
   color:#111827;
-  font-weight: var(--ns-weight-semibold);
+  font-weight:650;
 }
 
 .lf-lms-preview-section-title{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:750;
   color:#334155;
   margin:12px 0 6px;
 }
@@ -2035,8 +2035,8 @@
   border-radius:10px;
   background:#f8fafc;
   padding:9px 10px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-body);
+  font-size:12px;
+  line-height:1.45;
   color:#334155;
   white-space:pre-wrap;
 }
@@ -2056,8 +2056,8 @@
   border-radius:10px;
   background:#fff;
   padding:8px 10px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-ui);
+  font-size:12px;
+  line-height:1.4;
   color:#111827;
   min-height:18px;
 }
@@ -2074,8 +2074,8 @@
   background:#fff7ed;
   color:#9a3412;
   padding:8px 10px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-ui);
+  font-size:12px;
+  line-height:1.35;
 }
 
 @media (max-width: 950px){
@@ -2141,7 +2141,7 @@
   border-radius:10px;
   padding:0 10px;
   background:#fff;
-  font-size: var(--ns-text-sm);
+  font-size:13px;
   box-sizing:border-box;
 }
 
@@ -2153,9 +2153,9 @@
 
 .lf-lms-secret-hint{
   margin-top:6px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-title);
-  font-weight: var(--ns-weight-semibold);
+  font-size:11.5px;
+  line-height:1.3;
+  font-weight:600;
 }
 
 .lf-lms-secret-hint.is-ok{
@@ -2197,7 +2197,7 @@
   padding:7px 8px;
   border-radius:9px;
   cursor:pointer;
-  font-size: var(--ns-text-xs);
+  font-size:12px;
 }
 
 .lf-lms-type-check:hover{
@@ -2209,13 +2209,13 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-weight: var(--ns-weight-semibold);
+  font-weight:600;
   color:#111827;
 }
 
 .lf-lms-type-check small{
   color:#64748b;
-  font-size: var(--ns-text-xs);
+  font-size:11px;
 }
 
 .lf-lms-actions{
@@ -2229,8 +2229,8 @@
   border:1px solid rgba(17,24,39,.10);
   border-radius:12px;
   padding:10px 12px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-body);
+  font-size:12px;
+  line-height:1.45;
   background:#f8fafc;
   color:#334155;
 }
@@ -2270,9 +2270,9 @@
 }
 
 /* ======================================================
-   Novoskill - badges niveaux de maÃ®trise
-   RÃ¨gle transverse : libellÃ© seul, fond transparent, orange progressif.
-   A DÃ©butant | B IntermÃ©diaire | C AvancÃ© | D Expert
+   Novoskill - badges niveaux de maîtrise
+   Règle transverse : libellé seul, fond transparent, orange progressif.
+   A Débutant | B Intermédiaire | C Avancé | D Expert
    ====================================================== */
 .sb-badge.sb-badge-niv,
 .sb-badge.sb-badge--niv,
@@ -2288,9 +2288,9 @@
   border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
-  line-height: var(--ns-leading-tight);
+  font-size:12px;
+  font-weight:700;
+  line-height:1;
   white-space:nowrap;
   box-sizing:border-box;
 }
@@ -2323,13 +2323,13 @@
   background:transparent !important;
 }
 
-/* Patch 4 niveaux maÃ®trise : badge libellÃ© seul, fond transparent, orange progressif */
+/* Patch 4 niveaux maîtrise : badge libellé seul, fond transparent, orange progressif */
 .sb-badge.sb-badge-niv,
 .sb-badge.sb-badge--niv,
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold);
+  font-weight: 600;
   white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
@@ -2351,7 +2351,7 @@
 
 
 /* ======================================================
-   Learn - CrÃ©ation compÃ©tence depuis formation
+   Learn - Création compétence depuis formation
    ====================================================== */
 
 .lf-comp-section-card{
@@ -2363,10 +2363,10 @@
 }
 
 .lf-comp-section-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-semibold);
+  font-size:13px;
+  font-weight:650;
   color:#111827;
-  line-height: var(--ns-leading-title);
+  line-height:1.25;
 }
 
 .lf-comp-levels-editor{
@@ -2391,7 +2391,7 @@
   width:112px;
   min-width:112px;
   height:22px;
-  font-size: var(--ns-text-xs);
+  font-size:11.5px;
 }
 
 .lf-comp-level-row textarea{
@@ -2399,8 +2399,8 @@
   min-height:34px;
   max-height:34px;
   resize:none;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-title);
+  font-size:12.5px;
+  line-height:1.25;
   padding:7px 9px;
   overflow-y:auto;
 }
@@ -2427,8 +2427,8 @@
 }
 
 .lf-comp-crit-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-semibold);
+  font-size:13.5px;
+  font-weight:650;
   color:#111827;
   white-space:normal;
   overflow:visible;
@@ -2445,8 +2445,8 @@
   padding-left:18px;
   display:grid;
   gap:7px;
-  font-size: var(--ns-text-xs);
-  line-height: var(--ns-leading-ui);
+  font-size:12.5px;
+  line-height:1.35;
   color:#111827;
 }
 

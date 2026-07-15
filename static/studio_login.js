@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id) { return document.getElementById(id); }
@@ -35,7 +35,7 @@
     const cfg = await loadConfig();
 
     if (!window.PortalAuthCommon) {
-      throw new Error("portal_auth_common.js non chargÃ©.");
+      throw new Error("portal_auth_common.js non chargé.");
     }
 
     window.PortalAuthCommon.init({
@@ -66,7 +66,7 @@
 
     try {
       if (btn) btn.disabled = true;
-      setMsg("Connexion en coursâ€¦", "");
+      setMsg("Connexion en cours…", "");
 
       const res = await window.PortalAuthCommon.signInWithPassword(email, pass);
 
@@ -75,7 +75,7 @@
 
       if (!ownerId) {
         setMsg(
-          "Connexion OK, mais ce compte nâ€™est pas rattachÃ© Ã  un owner Studio (id_owner manquant).",
+          "Connexion OK, mais ce compte n’est pas rattaché à un owner Studio (id_owner manquant).",
           "error"
         );
         return;
@@ -100,12 +100,12 @@
 
     try {
       if (btn) btn.disabled = true;
-      setMsg("Envoi du lienâ€¦", "");
+      setMsg("Envoi du lien…", "");
 
       const redirectTo = getRedirectUrlForReset();
       await window.PortalAuthCommon.sendPasswordResetEmail(email, redirectTo);
 
-      setMsg("Lien envoyÃ© si lâ€™email existe dans le systÃ¨me.", "success");
+      setMsg("Lien envoyé si l’email existe dans le système.", "success");
     } catch (e) {
       setMsg(e.message || "Envoi impossible.", "error");
     } finally {

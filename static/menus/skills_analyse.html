@@ -1,4 +1,4 @@
-﻿<section id="view-analyse-competences" style="display:none;">
+<section id="view-analyse-competences" style="display:none;">
 
 <div class="card analyse-hero-card">
   <div class="analyse-hero-top">
@@ -11,7 +11,7 @@
           <path d="M17 16v-4"/>
         </svg>
       </div>
-      <div class="card-title">Analyse des compÃ©tences</div>
+      <div class="card-title">Analyse des compétences</div>
     </div>
     <button type="button" class="analyse-summary-btn" id="btnAnalyseUnderstandSummary" data-analyse-help="summary">
       <span class="analyse-summary-btn__icon" aria-hidden="true">
@@ -22,18 +22,18 @@
           <path d="M8 17h6"/>
         </svg>
       </span>
-      <span>SynthÃ¨se des risques</span>
-      <span class="analyse-summary-btn__chev" aria-hidden="true">â€º</span>
+      <span>Synthèse des risques</span>
+      <span class="analyse-summary-btn__chev" aria-hidden="true">›</span>
     </button>
   </div>
-  <div class="analyse-summary-grid" aria-label="SynthÃ¨se de lâ€™analyse des compÃ©tences">
+  <div class="analyse-summary-grid" aria-label="Synthèse de l’analyse des compétences">
     <div class="analyse-summary-chip analyse-summary-chip--postes">
       <div class="analyse-summary-chip__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>
       </div>
       <div class="analyse-summary-chip__body">
-        <div class="label">Postes analysÃ©s</div>
-        <div class="value" id="analyseSynthPostesAnalyses">â€”</div>
+        <div class="label">Postes analysés</div>
+        <div class="value" id="analyseSynthPostesAnalyses">—</div>
       </div>
     </div>
     <div class="analyse-summary-chip analyse-summary-chip--competences">
@@ -41,8 +41,8 @@
         <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h6v6h-6z"/></svg>
       </div>
       <div class="analyse-summary-chip__body">
-        <div class="label">CompÃ©tences analysÃ©es</div>
-        <div class="value" id="analyseSynthCompetencesAnalysees">â€”</div>
+        <div class="label">Compétences analysées</div>
+        <div class="value" id="analyseSynthCompetencesAnalysees">—</div>
       </div>
     </div>
     <div class="analyse-summary-chip analyse-summary-chip--effets">
@@ -50,8 +50,8 @@
         <svg viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
       </div>
       <div class="analyse-summary-chip__body">
-        <div class="label">Effets terrain dÃ©tectÃ©s</div>
-        <div class="value" id="analyseSynthEffetsTerrain">â€”</div>
+        <div class="label">Effets terrain détectés</div>
+        <div class="value" id="analyseSynthEffetsTerrain">—</div>
       </div>
     </div>
     <div class="analyse-summary-chip analyse-summary-chip--risque">
@@ -60,7 +60,7 @@
       </div>
       <div class="analyse-summary-chip__body">
         <div class="label" id="analyseSynthProjectionLabel">Niveau de risque actuel</div>
-        <div class="value" id="analyseSynthProjection">â€”</div>
+        <div class="value" id="analyseSynthProjection">—</div>
       </div>
     </div>
   </div>
@@ -73,7 +73,7 @@
       <div class="analyse-filter-head">
         <div>
           <div class="card-title" style="margin-bottom:4px;">Filtres</div>
-          <div class="card-sub" style="margin:0;">Le filtre sâ€™applique aux indicateurs et aux listes.</div>
+          <div class="card-sub" style="margin:0;">Le filtre s’applique aux indicateurs et aux listes.</div>
         </div>
         <button type="button"
                 class="analyse-filter-head__icon analyse-filter-toggle"
@@ -95,11 +95,11 @@
         </div>
 
         <div class="info-item">
-          <div class="label">CriticitÃ© minimale</div>
+          <div class="label">Criticité minimale</div>
           <div class="sb-filter-slider analyse-criticite-slider">
-            <input type="range" id="analyseCriticiteMinRange" min="0" max="100" step="5" value="70" aria-label="CriticitÃ© minimale">
+            <input type="range" id="analyseCriticiteMinRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
             <div class="sb-filter-slider__meta">
-              <span>CompÃ©tences analysÃ©es si criticitÃ© â‰¥</span>
+              <span>Compétences analysées si criticité ≥</span>
               <strong id="analyseCriticiteMinValue">70</strong>
             </div>
           </div>
@@ -107,7 +107,7 @@
 
         <div class="analyse-filter-actions">
           <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseReset">
-            RÃ©initialiser
+            Réinitialiser
           </button>
           <button type="button" class="sb-btn sb-btn--accent" id="btnAnalyseApply">
             Appliquer
@@ -139,43 +139,43 @@
           </div>
           <button type="button" class="analyse-help-dot" data-analyse-help="risques" aria-label="Comprendre la carte Risques actuels">?</button>
         </div>
-        <div class="tile-sub sb-tile-sub">RepÃ©rer les postes et compÃ©tences fragiles sur le pÃ©rimÃ¨tre analysÃ©.</div>
+        <div class="tile-sub sb-tile-sub">Repérer les postes et compétences fragiles sur le périmètre analysé.</div>
 
         <div class="mini-kpis sb-mini-kpis">
-          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="postes-scope" role="button" tabindex="0" aria-label="Afficher tous les postes triÃ©s par fragilitÃ©">
+          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="postes-scope" role="button" tabindex="0" aria-label="Afficher tous les postes triés par fragilité">
             <span class="analyse-mini-kpi-icon analyse-mini-kpi-icon--risques" aria-hidden="true">
               <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>
             </span>
             <div class="analyse-mini-kpi-body">
-              <div class="label">FragilitÃ© moyenne des postes</div>
-              <div class="value" id="kpiRiskPostes">â€”</div>
+              <div class="label">Fragilité moyenne des postes</div>
+              <div class="value" id="kpiRiskPostes">—</div>
             </div>
           </div>
 
-          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="critiques-fragiles" role="button" tabindex="0" aria-label="Afficher les compÃ©tences critiques structurelles (fragiles)">
+          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="critiques-fragiles" role="button" tabindex="0" aria-label="Afficher les compétences critiques structurelles (fragiles)">
             <span class="analyse-mini-kpi-icon analyse-mini-kpi-icon--risques" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>
             </span>
             <div class="analyse-mini-kpi-body">
-              <div class="label">FragilitÃ© moyenne des compÃ©tences</div>
-              <div class="value" id="kpiRiskCritFragiles">â€”</div>
+              <div class="label">Fragilité moyenne des compétences</div>
+              <div class="value" id="kpiRiskCritFragiles">—</div>
             </div>
           </div>
 
-          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="evol-3m" role="button" tabindex="0" aria-label="Afficher lâ€™Ã©volution du risque Ã  3 mois">
+          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="evol-3m" role="button" tabindex="0" aria-label="Afficher l’évolution du risque à 3 mois">
             <span class="analyse-mini-kpi-icon analyse-mini-kpi-icon--risques" aria-hidden="true">
               <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
             </span>
             <div class="analyse-mini-kpi-body">
-              <div class="label">PrÃ©vision Ã  3 mois</div>
-              <div class="value" id="kpiRiskEvol3m">â€”</div>
+              <div class="label">Prévision à 3 mois</div>
+              <div class="value" id="kpiRiskEvol3m">—</div>
             </div>
           </div>
 
 
         </div>
 
-        <div class="tile-hint sb-tile-hint"><span class="analyse-tile-hint-icon" aria-hidden="true">i</span>Diagnostic : points Ã  sÃ©curiser, sans dÃ©cision automatique.</div>
+        <div class="tile-hint sb-tile-hint"><span class="analyse-tile-hint-icon" aria-hidden="true">i</span>Diagnostic : points à sécuriser, sans décision automatique.</div>
       </div>
 
       <!-- Tuile Matching -->
@@ -189,16 +189,16 @@
           </div>
           <button type="button" class="analyse-help-dot" data-analyse-help="matching" aria-label="Comprendre la carte Correspondance profils / postes">?</button>
         </div>
-        <div class="tile-sub sb-tile-sub">Voir les proximitÃ©s entre profils et postes, avec les Ã©carts Ã  confirmer.</div>
+        <div class="tile-sub sb-tile-sub">Voir les proximités entre profils et postes, avec les écarts à confirmer.</div>
 
         <div class="mini-kpis sb-mini-kpis">
-          <div class="mini-kpi sb-mini-kpi" data-match-view="titulaire" role="button" tabindex="0" aria-label="Afficher lâ€™adÃ©quation au poste (titulaires)">
+          <div class="mini-kpi sb-mini-kpi" data-match-view="titulaire" role="button" tabindex="0" aria-label="Afficher l’adéquation au poste (titulaires)">
             <span class="analyse-mini-kpi-icon analyse-mini-kpi-icon--matching" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M19 13.5V19H5v-5.5"/><path d="M9 10.5V5h6v5.5"/><path d="M8 13h8"/><path d="M12 9v8"/><path d="M4 13h4v4H4z"/><path d="M16 13h4v4h-4z"/></svg>
             </span>
             <div class="analyse-mini-kpi-body">
-              <div class="label">AdÃ©quation au poste</div>
-              <div class="value">â€”</div>
+              <div class="label">Adéquation au poste</div>
+              <div class="value">—</div>
             </div>
           </div>
 
@@ -208,44 +208,44 @@
             </span>
             <div class="analyse-mini-kpi-body">
               <div class="label">Top candidat</div>
-              <div class="value">â€”</div>
+              <div class="value">—</div>
             </div>
           </div>
         </div>
 
-        <div class="tile-hint sb-tile-hint"><span class="analyse-tile-hint-icon" aria-hidden="true">i</span>Lecture : hypothÃ¨ses possibles, sans valider une mobilitÃ©.</div>
+        <div class="tile-hint sb-tile-hint"><span class="analyse-tile-hint-icon" aria-hidden="true">i</span>Lecture : hypothèses possibles, sans valider une mobilité.</div>
       </div>
 
-      <!-- Tuile PrÃ©visions -->
-      <div class="card analyse-tile analyse-tile--previsions sb-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir PrÃ©visions">
+      <!-- Tuile Prévisions -->
+      <div class="card analyse-tile analyse-tile--previsions sb-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir Prévisions">
         <div class="analyse-card-head">
           <div class="analyse-card-titleline">
             <span class="analyse-card-icon analyse-card-icon--previsions" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V8"/><path d="M17 16V5"/></svg>
             </span>
-            <div class="card-title" id="prevTileTitle" style="margin-bottom:2px;">PrÃ©visions Ã  N+1</div>
+            <div class="card-title" id="prevTileTitle" style="margin-bottom:2px;">Prévisions à N+1</div>
           </div>
-          <button type="button" class="analyse-help-dot" data-analyse-help="previsions" aria-label="Comprendre la carte PrÃ©visions">?</button>
+          <button type="button" class="analyse-help-dot" data-analyse-help="previsions" aria-label="Comprendre la carte Prévisions">?</button>
         </div>
-        <div class="tile-sub sb-tile-sub">Anticiper les dÃ©parts, mesurer leurs impacts et prÃ©parer les transmissions.</div>
+        <div class="tile-sub sb-tile-sub">Anticiper les départs, mesurer leurs impacts et préparer les transmissions.</div>
 
         <div class="sb-prev-horizon-control" style="margin:10px 0 12px 0;" data-prev-slider-host>
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; font-size: var(--ns-text-xs); color:#6b7280;">
-            <span>Horizon de prÃ©vision</span>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:#6b7280;">
+            <span>Horizon de prévision</span>
             <strong id="prevHorizonLabel">N+1</strong>
           </div>
           <input type="range" id="prevHorizonSlider" min="1" max="5" step="1" value="1"
-                 aria-label="PÃ©riode de prÃ©vision N plus X" style="width:100%; margin-top:6px;">
+                 aria-label="Période de prévision N plus X" style="width:100%; margin-top:6px;">
         </div>
 
         <div class="mini-kpis sb-mini-kpis">
-          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="sorties-confirmees" role="button" tabindex="0" aria-label="Afficher les sorties confirmÃ©es">
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="sorties-confirmees" role="button" tabindex="0" aria-label="Afficher les sorties confirmées">
             <span class="analyse-mini-kpi-icon analyse-mini-kpi-icon--previsions" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
             </span>
             <div class="analyse-mini-kpi-body">
-              <div class="label">Sorties confirmÃ©es</div>
-              <div class="value" id="kpiPrevSortiesConfirmees">â€”</div>
+              <div class="label">Sorties confirmées</div>
+              <div class="value" id="kpiPrevSortiesConfirmees">—</div>
             </div>
           </div>
 
@@ -255,29 +255,29 @@
             </span>
             <div class="analyse-mini-kpi-body">
               <div class="label">Sorties potentielles</div>
-              <div class="value" id="kpiPrevSortiesPotentielles">â€”</div>
+              <div class="value" id="kpiPrevSortiesPotentielles">—</div>
             </div>
           </div>
 
-          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="transmissions" role="button" tabindex="0" aria-label="Afficher les transmissions Ã  prÃ©parer">
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="transmissions" role="button" tabindex="0" aria-label="Afficher les transmissions à préparer">
             <span class="analyse-mini-kpi-icon analyse-mini-kpi-icon--previsions" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             </span>
             <div class="analyse-mini-kpi-body">
-              <div class="label">Transmissions Ã  prÃ©parer</div>
-              <div class="value" id="kpiPrevTransmissions">â€”</div>
+              <div class="label">Transmissions à préparer</div>
+              <div class="value" id="kpiPrevTransmissions">—</div>
             </div>
           </div>
         </div>
 
-        <div class="tile-hint sb-tile-hint"><span class="analyse-tile-hint-icon" aria-hidden="true">i</span>PrÃ©visions : identifier les transitions Ã  prÃ©parer, puis tester les scÃ©narios RH.</div>
+        <div class="tile-hint sb-tile-hint"><span class="analyse-tile-hint-icon" aria-hidden="true">i</span>Prévisions : identifier les transitions à préparer, puis tester les scénarios RH.</div>
       </div>
 
     </div>
   </div>
 </div>
 
-<!-- DÃ©tail (pleine largeur) -->
+<!-- Détail (pleine largeur) -->
 <div class="card" style="margin-top:12px;">
   <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
     <div style="min-width:240px;">
@@ -298,14 +298,14 @@
   <div id="analyseDetailBody" style="margin-top:12px;">
     <div class="card" style="padding:12px; margin:0;">
       <div class="card-sub" style="margin:0;">
-        SÃ©lectionnez une tuile pour afficher le contenu. Les listes dÃ©taillÃ©es arriveront avec lâ€™API dÃ©diÃ©e.
+        Sélectionnez une tuile pour afficher le contenu. Les listes détaillées arriveront avec l’API dédiée.
       </div>
     </div>
   </div>
 </div>
 
 
-    <!-- Modal dÃ©tail Poste (Risques) -->
+    <!-- Modal détail Poste (Risques) -->
   <div class="modal" id="modalAnalysePoste" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
@@ -313,11 +313,11 @@
           <span id="analysePosteModalTitleCode" class="sb-badge sb-badge-ref-poste-code" style="display:none;"></span>
           <span id="analysePosteModalTitleText" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
         </div>
-        <button type="button" class="modal-x" id="btnCloseAnalysePosteModal" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="btnCloseAnalysePosteModal" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
-        <div class="card-sub" id="analysePosteModalSub" style="margin-top:0;"></div>
+        <div class="card-sub" id="analysePosteModalSub" style="margin-top:0;"></div>        
         <div id="analysePosteTabCompetences" style="margin-top:12px;"></div>
       </div>
 

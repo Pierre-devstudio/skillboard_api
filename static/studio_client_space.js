@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   let _detail = null;
@@ -108,7 +108,7 @@
 
     const root = host.querySelector('#view-organisation[data-view="organisation"]');
     if (!root){
-      throw new Error("Bloc Organisation partagÃ© introuvable.");
+      throw new Error("Bloc Organisation partagé introuvable.");
     }
 
     mount.innerHTML = "";
@@ -131,7 +131,7 @@
 
     const subEl = root.querySelector('#collabPageSub');
     if (subEl){
-      subEl.textContent = "GÃ©rez les collaborateurs, les accÃ¨s, les compÃ©tences et les certifications du pÃ©rimÃ¨tre courant.";
+      subEl.textContent = "Gérez les collaborateurs, les accès, les compétences et les certifications du périmètre courant.";
     }
   }
 
@@ -158,7 +158,7 @@
 
     const root = host.querySelector('#view-collaborateurs[data-view="collaborateurs"]');
     if (!root){
-      throw new Error("Bloc Collaborateurs partagÃ© introuvable.");
+      throw new Error("Bloc Collaborateurs partagé introuvable.");
     }
 
     mount.innerHTML = "";
@@ -198,7 +198,7 @@
     const s = (status || "desactive").toString().trim().toLowerCase();
     if (s === "actif") return "SSO actif";
     if (s === "configuration") return "SSO en configuration";
-    if (s === "a_tester") return "SSO Ã  tester";
+    if (s === "a_tester") return "SSO à tester";
     if (s === "erreur") return "Erreur SSO";
     return "Standard Novoskill";
   }
@@ -222,9 +222,9 @@
     setInputValue("ficheSsoMetadataXml", c.metadata_xml);
     const hint = byId("ficheSsoSchemaHint");
     if (hint) {
-      if (c.schema_ready === false) hint.textContent = "Table SSO non installÃ©e : exÃ©cuter PATCH_SQL_SSO_CONNEXIONS.sql avant enregistrement.";
+      if (c.schema_ready === false) hint.textContent = "Table SSO non installée : exécuter PATCH_SQL_SSO_CONNEXIONS.sql avant enregistrement.";
       else if (c.test_message) hint.textContent = c.test_message;
-      else hint.textContent = "Le SSO authentifie lâ€™utilisateur. Les droits Novoskill restent gÃ©rÃ©s dans les accÃ¨s.";
+      else hint.textContent = "Le SSO authentifie l’utilisateur. Les droits Novoskill restent gérés dans les accès.";
     }
   }
   function readConnexionPayload() {
@@ -270,7 +270,7 @@
       await saveClientConnexionIfChanged(token);
       const data = await apiJson(`${API_BASE}/studio/connexions/client/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/test`, token, { method: "POST" });
       renderClientConnexion(data || {});
-      showSsoInfoPopup((data && data.test_message) || "Configuration SSO vÃ©rifiÃ©e.");
+      showSsoInfoPopup((data && data.test_message) || "Configuration SSO vérifiée.");
     } catch (e) { showSsoInfoPopup(e?.message || "Erreur lors du test de configuration SSO."); }
     finally { if (btn) { btn.disabled = false; btn.textContent = old || "Tester la configuration"; } }
   }
@@ -343,17 +343,17 @@
         img.style.display = "none";
       }
       if (empty) {
-        empty.textContent = "Aucun logo enregistrÃ©.";
+        empty.textContent = "Aucun logo enregistré.";
         empty.style.display = "";
       }
       if (meta) {
-        meta.textContent = "Le logo enregistrÃ© sera rÃ©utilisÃ© automatiquement dans les sorties PDF de cette structure.";
+        meta.textContent = "Le logo enregistré sera réutilisé automatiquement dans les sorties PDF de cette structure.";
       }
       return;
     }
 
     if (empty) {
-      empty.textContent = "Chargement du logoâ€¦";
+      empty.textContent = "Chargement du logo…";
       empty.style.display = "";
     }
 
@@ -363,7 +363,7 @@
       if (logoMeta.filename) parts.push(logoMeta.filename);
       if (mime) parts.push(mime);
       if (logoMeta.size_bytes) parts.push(formatLogoBytes(logoMeta.size_bytes));
-      meta.textContent = parts.join(" Â· ") || "Logo actif.";
+      meta.textContent = parts.join(" · ") || "Logo actif.";
     }
 
     try {
@@ -401,7 +401,7 @@
           img.removeAttribute("src");
           img.style.display = "none";
           if (empty) {
-            empty.textContent = "Impossible dâ€™afficher le logo.";
+            empty.textContent = "Impossible d’afficher le logo.";
             empty.style.display = "";
           }
         };
@@ -420,7 +420,7 @@
         img.style.display = "none";
       }
       if (empty) {
-        empty.textContent = e.message || "Impossible dâ€™afficher le logo.";
+        empty.textContent = e.message || "Impossible d’afficher le logo.";
         empty.style.display = "";
       }
     }
@@ -434,7 +434,7 @@
 
     const name = String(file.name || "").toLowerCase();
     if (!/\.(png|jpg|jpeg)$/.test(name)) {
-      throw new Error("Format logo non supportÃ©. Utilise un fichier PNG ou JPG.");
+      throw new Error("Format logo non supporté. Utilise un fichier PNG ou JPG.");
     }
 
     if ((file.size || 0) > (2 * 1024 * 1024)) {
@@ -546,7 +546,7 @@
     if (v === "multi_site") return "Multi-site";
     if (v === "holding_multi_entreprise") return "Holding multi-entreprise";
     if (v === "holding_multi_entreprise_multi_site") return "Holding multi-entreprise + multi-site";
-    return "â€”";
+    return "—";
   }
 
   function getOrganisationCapabilities(){
@@ -752,15 +752,15 @@
 
     if (!query) {
       if (isOrgCreate) {
-        setOrgModalInlineError("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les donnÃ©es officielles.");
+        setOrgModalInlineError("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.");
       } else {
-        setMessage("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les donnÃ©es officielles.");
+        setMessage("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.");
       }
       return;
     }
 
     const btn = isOrgCreate ? byId("btnOrgLoadPublicData") : byId("btnFicheLoadPublicData");
-    const initialText = btn?.textContent || "Charger les donnÃ©es officielles";
+    const initialText = btn?.textContent || "Charger les données officielles";
 
     try {
       _publicLookupLoading = true;
@@ -771,7 +771,7 @@
 
       const item = await fetchPublicCompanyData(query);
       if (!item) {
-        throw new Error("Aucune donnÃ©e publique rÃ©cupÃ©rable.");
+        throw new Error("Aucune donnée publique récupérable.");
       }
 
       if (isOrgCreate) {
@@ -783,9 +783,9 @@
       }
     } catch (e) {
       if (isOrgCreate) {
-        setOrgModalInlineError(e.message || "Impossible de charger les donnÃ©es officielles.");
+        setOrgModalInlineError(e.message || "Impossible de charger les données officielles.");
       } else {
-        setMessage(e.message || "Impossible de charger les donnÃ©es officielles.");
+        setMessage(e.message || "Impossible de charger les données officielles.");
       }
     } finally {
       _publicLookupLoading = false;
@@ -832,7 +832,7 @@
 
   function formatDateFr(value){
     const v = (value || "").toString().trim();
-    if (!v) return "â€”";
+    if (!v) return "—";
     const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return v;
     return `${m[3]}/${m[2]}/${m[1]}`;
@@ -852,7 +852,7 @@
 
   function textOrDash(value){
     const v = (value ?? "").toString().trim();
-    return v || "â€”";
+    return v || "—";
   }
 
   function toInt(value){
@@ -1045,7 +1045,7 @@ function schedulePostalLookup(source){
 
       applyPostalRowsFromCity(cityValue, rows);
     } catch (_) {
-      // Pas de bandeau ni de bruit inutile sur un simple lookup rÃ©fÃ©rentiel
+      // Pas de bandeau ni de bruit inutile sur un simple lookup référentiel
     }
   }, 180);
 }
@@ -1274,8 +1274,8 @@ function bindPostalAssist(){
     const sub = byId("orgModalSub");
     if (title) title.textContent = kind === "site" ? "Attacher un site" : "Attacher une entreprise";
     if (sub) sub.textContent = kind === "site"
-      ? "CrÃ©ation dâ€™un site rattachÃ© avec son propre espace de gestion."
-      : "CrÃ©ation dâ€™une entreprise rattachÃ©e avec son propre espace de gestion.";
+      ? "Création d’un site rattaché avec son propre espace de gestion."
+      : "Création d’une entreprise rattachée avec son propre espace de gestion.";
   }
 
   function openOrgCreateModal(kind, parentId){
@@ -1353,7 +1353,7 @@ function bindPostalAssist(){
       closeOrgCreateModal();
       await loadOrganisationData();
     } catch (e) {
-      setMessage(e.message || "Erreur lors de la crÃ©ation de la structure rattachÃ©e.");
+      setMessage(e.message || "Erreur lors de la création de la structure rattachée.");
     } finally {
       if (btnSave) {
         btnSave.disabled = false;
@@ -1435,7 +1435,7 @@ function bindPostalAssist(){
 
     _authInitPromise = (async () => {
       if (!window.PortalAuthCommon) {
-        throw new Error("portal_auth_common.js non chargÃ©.");
+        throw new Error("portal_auth_common.js non chargé.");
       }
 
       const r = await fetch(`${API_BASE}/portal/config/studio`);
@@ -1575,9 +1575,9 @@ function bindPostalAssist(){
   }
 
   // ======================================================
-  // Mode embarquÃ© du dashboard Insights dans Studio.
+  // Mode embarqué du dashboard Insights dans Studio.
   // Le HTML/JS reste celui de /menus/skills_dashboard.* ; Studio fournit uniquement
-  // l'auth, le pÃ©rimÃ¨tre client/site et la route API sÃ©curisÃ©e cÃ´tÃ© Studio.
+  // l'auth, le périmètre client/site et la route API sécurisée côté Studio.
   // ======================================================
   function buildDashboardOrganisationItems(){
     const clientId = getClientId();
@@ -1623,7 +1623,7 @@ function bindPostalAssist(){
     host.innerHTML = html;
 
     const root = host.querySelector("#view-dashboard");
-    if (!root) throw new Error("Dashboard Insights partagÃ© introuvable.");
+    if (!root) throw new Error("Dashboard Insights partagé introuvable.");
     root.classList.add("is-embedded-studio");
 
     mount.innerHTML = "";
@@ -1641,7 +1641,7 @@ function bindPostalAssist(){
     }
     await _insightsDashboardScriptPromise;
     if (!window.SkillsDashboard || typeof window.SkillsDashboard.onShow !== "function"){
-      throw new Error("Initialisation dashboard Insights introuvable aprÃ¨s chargement du script partagÃ©.");
+      throw new Error("Initialisation dashboard Insights introuvable après chargement du script partagé.");
     }
   }
 
@@ -1658,7 +1658,7 @@ function bindPostalAssist(){
       apiBase: API_BASE,
       contactId: ownerId,
       embeddedMode: "studio_client_space",
-      dashboardTitle: "SynthÃ¨se des indicateurs",
+      dashboardTitle: "Synthèse des indicateurs",
       dashboardHideLogo: true,
       dashboardEntId: clientId,
       dashboardOrganisationValue: _dashboardOrgValue,
@@ -1735,10 +1735,10 @@ function bindPostalAssist(){
   }
 
   // ======================================================
-  // Mode embarquÃ© Entretiens & Ã©valuations Insights dans Studio.
-  // Studio fournit l'auth, le pÃ©rimÃ¨tre client/site et le sÃ©lecteur d'organisation.
-  // Les routes restent les routes /skills/... existantes, sÃ©curisÃ©es cÃ´tÃ© serveur
-  // par le contexte studio_embedded=1 ajoutÃ© Ã  chaque appel.
+  // Mode embarqué Entretiens & évaluations Insights dans Studio.
+  // Studio fournit l'auth, le périmètre client/site et le sélecteur d'organisation.
+  // Les routes restent les routes /skills/... existantes, sécurisées côté serveur
+  // par le contexte studio_embedded=1 ajouté à chaque appel.
   // ======================================================
   function buildEvaluationOrganisationItems(){
     const clientId = getClientId();
@@ -1823,7 +1823,7 @@ function bindPostalAssist(){
     const includeNonLie = params.includeNonLie === true;
     const allowIndent = params.allowIndent !== false;
     const labelAll = params.labelAll || "Tous les services";
-    const labelNonLie = params.labelNonLie || "Non liÃ©";
+    const labelNonLie = params.labelNonLie || "Non lié";
     const storageKey = params.storageKey || "";
     const preferStored = storageKey ? localStorage.getItem(storageKey) : "";
     const preferId = normalizeStudioServiceId(params.preferId || preferStored || sel.value || "");
@@ -1845,7 +1845,7 @@ function bindPostalAssist(){
       const opt = document.createElement("option");
       opt.value = item.id_service;
       const depth = Math.min(6, Number(item.depth || 0) || 0);
-      const prefix = allowIndent && depth > 0 ? "\u00A0\u00A0".repeat(depth) + "â€º " : "";
+      const prefix = allowIndent && depth > 0 ? "\u00A0\u00A0".repeat(depth) + "› " : "";
       opt.textContent = prefix + item.nom_service;
       sel.appendChild(opt);
     });
@@ -1900,7 +1900,7 @@ function bindPostalAssist(){
     host.innerHTML = html;
 
     const root = host.querySelector("#view-entretien-performance");
-    if (!root) throw new Error("Vue Entretiens & Ã©valuations partagÃ©e introuvable.");
+    if (!root) throw new Error("Vue Entretiens & évaluations partagée introuvable.");
     root.style.display = "block";
     root.classList.add("is-embedded-studio");
 
@@ -1920,7 +1920,7 @@ function bindPostalAssist(){
     }
     await _evaluationWorkspaceScriptPromise;
     if (!window.SkillsEntretienPerformance || typeof window.SkillsEntretienPerformance.onShow !== "function"){
-      throw new Error("Initialisation Entretiens & Ã©valuations introuvable aprÃ¨s chargement du script partagÃ©.");
+      throw new Error("Initialisation Entretiens & évaluations introuvable après chargement du script partagé.");
     }
   }
 
@@ -1942,7 +1942,7 @@ function bindPostalAssist(){
     const win = window.open(blobUrl, "_blank", "noopener");
     if (!win){
       try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-      throw new Error("Le navigateur a bloquÃ© l'ouverture du PDF.");
+      throw new Error("Le navigateur a bloqué l'ouverture du PDF.");
     }
 
     setTimeout(() => {
@@ -2085,7 +2085,7 @@ function bindPostalAssist(){
         );
 
         if (typeof window.__studioOrganisationInit !== "function"){
-          throw new Error("Initialisation Organisation introuvable aprÃ¨s chargement du script partagÃ©.");
+          throw new Error("Initialisation Organisation introuvable après chargement du script partagé.");
         }
       })();
     }
@@ -2117,11 +2117,11 @@ function bindPostalAssist(){
 
         ensureOrganisationPortalBridge();
 
-        // On charge d'abord le vrai JS partagÃ©.
-        // Comme le HTML n'est pas encore montÃ©, il ne s'auto-initialise pas.
+        // On charge d'abord le vrai JS partagé.
+        // Comme le HTML n'est pas encore monté, il ne s'auto-initialise pas.
         await ensureOrganisationScriptLoaded();
 
-        // Puis on injecte le vrai HTML partagÃ© validÃ©.
+        // Puis on injecte le vrai HTML partagé validé.
         await ensureOrganisationWorkspaceMarkup(mount);
         applyClientSpaceOrganisationLabels(mount);
 
@@ -2207,8 +2207,8 @@ function bindPostalAssist(){
         const isAccessMailInfo =
           level !== "error" &&
           (
-            /^mail dâ€™accÃ¨s envoyÃ© Ã  /i.test(msg) ||
-            /^\d+\s+mail\(s\)\s+envoyÃ©\(s\)\./i.test(msg)
+            /^mail d’accès envoyé à /i.test(msg) ||
+            /^\d+\s+mail\(s\)\s+envoyé\(s\)\./i.test(msg)
           );
 
         if (isAccessMailInfo){
@@ -2236,7 +2236,7 @@ function bindPostalAssist(){
       await loadExternalScriptOnce(jsUrl, `studio_collaborateurs.js::${collabAssetsVersion}`);
 
       if (typeof window.__studioCollaborateursInit !== "function"){
-        throw new Error("Initialiseur Collaborateurs introuvable aprÃ¨s chargement du script.");
+        throw new Error("Initialiseur Collaborateurs introuvable après chargement du script.");
       }
     })();
 
@@ -2299,7 +2299,7 @@ function bindPostalAssist(){
             setMessage("");
             await loadOrganisationWorkspace();
           } catch (e) {
-            setMessage(e.message || "Erreur lors du chargement de lâ€™organisation.");
+            setMessage(e.message || "Erreur lors du chargement de l’organisation.");
           }
           return;
         }
@@ -2319,7 +2319,7 @@ function bindPostalAssist(){
             setMessage("");
             await loadEvaluationsWorkspace();
           } catch (e) {
-            setMessage(e.message || "Erreur lors du chargement des Ã©valuations.");
+            setMessage(e.message || "Erreur lors du chargement des évaluations.");
           }
           return;
         }
@@ -2333,7 +2333,7 @@ function bindPostalAssist(){
         await loadOrganisationWorkspace();
         await openOrgHistoryModal();
       } catch (e) {
-        setMessage(e.message || "Erreur lors du chargement de lâ€™historique.");
+        setMessage(e.message || "Erreur lors du chargement de l’historique.");
       }
     });
 
@@ -2362,8 +2362,8 @@ function bindPostalAssist(){
     const sectionSub = byId("sectionCompanySheetSub");
     if (sectionSub) {
       sectionSub.textContent = label === "Fiche site"
-        ? "Informations gÃ©nÃ©rales, administratives et de rattachement du site."
-        : "Informations gÃ©nÃ©rales, administratives et de rattachement de lâ€™entreprise.";
+        ? "Informations générales, administratives et de rattachement du site."
+        : "Informations générales, administratives et de rattachement de l’entreprise.";
     }
   }
 
@@ -2398,7 +2398,7 @@ function bindPostalAssist(){
 
     function pushItem(item){
       const structureType = normalizeStructureType(item.type_entreprise);
-      const typeLabel = structureType === "site" ? "Site rattachÃ©" : "Entreprise rattachÃ©e";
+      const typeLabel = structureType === "site" ? "Site rattaché" : "Entreprise rattachée";
       const badgeClass = structureType === "site" ? "cs-org-badge--site" : "cs-org-badge--entreprise";
       const ownerLabel = item.has_owner_scope ? "Oui" : "Non";
       const ownerClass = item.has_owner_scope ? "sb-badge sb-badge--success cs-org-owner" : "sb-badge cs-org-owner";
@@ -2425,12 +2425,12 @@ function bindPostalAssist(){
     }
 
     if (entreprises.length) {
-      pushGroup("Entreprises rattachÃ©es");
+      pushGroup("Entreprises rattachées");
       entreprises.forEach(pushItem);
     }
 
     if (sites.length) {
-      pushGroup("Sites rattachÃ©s");
+      pushGroup("Sites rattachés");
       sites.forEach(pushItem);
     }
 
@@ -2572,7 +2572,7 @@ function bindPostalAssist(){
 
     const ville = textOrDash(node?.ville_ent);
     const profil = formatProfilStructurelLabel(node?.profil_structurel);
-    const countLabel = hasChildren ? ` â€¢ ${children.length} rattachement(s)` : "";
+    const countLabel = hasChildren ? ` • ${children.length} rattachement(s)` : "";
 
     const toggleHtml = hasChildren
       ? `
@@ -2580,8 +2580,8 @@ function bindPostalAssist(){
           type="button"
           class="sb-btn sb-btn--secondary cs-org-node-toggle${expanded ? " is-open" : ""}"
           data-org-toggle="${escHtml(id)}"
-          title="${expanded ? "RÃ©duire" : "Afficher"}"
-          aria-label="${expanded ? "RÃ©duire" : "Afficher"}"
+          title="${expanded ? "Réduire" : "Afficher"}"
+          aria-label="${expanded ? "Réduire" : "Afficher"}"
         >
           ${getOrgToggleSvg()}
         </button>
@@ -2625,8 +2625,8 @@ function bindPostalAssist(){
         type="button"
         class="sb-icon-btn"
         data-org-edit-id="${escHtml(id)}"
-        title="Ã‰diter la structure"
-        aria-label="Ã‰diter la structure"
+        title="Éditer la structure"
+        aria-label="Éditer la structure"
       >
         ${getOrgPencilSvg()}
       </button>
@@ -2663,7 +2663,7 @@ function bindPostalAssist(){
               <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
               <div class="cs-org-struct-main">
                 <div class="cs-org-struct-name">${escHtml(textOrDash(node?.nom_ent))}</div>
-                <div class="cs-org-struct-sub">${escHtml(profil)}${ville !== "â€”" ? ` â€¢ ${escHtml(ville)}` : ""}${countLabel}</div>
+                <div class="cs-org-struct-sub">${escHtml(profil)}${ville !== "—" ? ` • ${escHtml(ville)}` : ""}${countLabel}</div>
               </div>
             </div>
           </div>
@@ -2770,7 +2770,7 @@ function bindPostalAssist(){
 
     if (!ownerId || !pId || !cId) return;
 
-    const confirmed = window.confirm("Retirer cette structure va archiver toute sa branche dans le pÃ©rimÃ¨tre actif. Continuer ?");
+    const confirmed = window.confirm("Retirer cette structure va archiver toute sa branche dans le périmètre actif. Continuer ?");
     if (!confirmed) return;
 
     const token = await getStudioAccessToken();
@@ -2805,7 +2805,7 @@ function bindPostalAssist(){
       const profil = formatProfilStructurelLabel(item?.profil_structurel);
       const parent = textOrDash(item?.previous_parent_name);
       const descendants = parseInt(item?.nb_descendants, 10) || 0;
-      const childLabel = descendants > 0 ? ` â€¢ ${descendants} descendant(s)` : "";
+      const childLabel = descendants > 0 ? ` • ${descendants} descendant(s)` : "";
 
       return `
         <div class="cs-history-row">
@@ -2813,12 +2813,12 @@ function bindPostalAssist(){
             <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
             <div class="cs-history-text">
               <div class="cs-history-title">${escHtml(textOrDash(item?.nom_ent))}</div>
-              <div class="cs-history-sub">${escHtml(profil)}${ville !== "â€”" ? ` â€¢ ${escHtml(ville)}` : ""} â€¢ Ancien parent : ${escHtml(parent)}${childLabel}</div>
+              <div class="cs-history-sub">${escHtml(profil)}${ville !== "—" ? ` • ${escHtml(ville)}` : ""} • Ancien parent : ${escHtml(parent)}${childLabel}</div>
             </div>
           </div>
 
           <div class="cs-history-actions">
-            <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" data-org-restore-id="${escHtml(item.id_ent)}">RÃ©activer ici</button>
+            <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" data-org-restore-id="${escHtml(item.id_ent)}">Réactiver ici</button>
             <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-org-promote-id="${escHtml(item.id_ent)}">Client direct</button>
           </div>
         </div>
@@ -2866,7 +2866,7 @@ function bindPostalAssist(){
     const id = (idEnt || "").toString().trim();
     if (!ownerId || !clientId || !id) return;
 
-    const confirmed = window.confirm("RÃ©activer cette structure comme client direct dans le portefeuille Studio ?");
+    const confirmed = window.confirm("Réactiver cette structure comme client direct dans le portefeuille Studio ?");
     if (!confirmed) return;
 
     const token = await getStudioAccessToken();
@@ -2904,20 +2904,20 @@ function bindPostalAssist(){
     if (ville) parts.push(ville);
     if (pays) parts.push(pays);
 
-    byId("csClientSub").textContent = parts.join(" â€¢ ") || "Contexte client chargÃ©.";
+    byId("csClientSub").textContent = parts.join(" • ") || "Contexte client chargé.";
 
     const badges = [];
     if (_detail?.studio_actif) {
       badges.push(`<span class="cs-badge cs-badge--studio">Studio actif</span>`);
     }
     if (_detail?.gestion_acces_studio_autorisee) {
-      badges.push(`<span class="cs-badge cs-badge--deleg">Gestion accÃ¨s Studio</span>`);
+      badges.push(`<span class="cs-badge cs-badge--deleg">Gestion accès Studio</span>`);
     }
     if (_detail?.group_ok) {
-      badges.push(`<span class="cs-badge cs-badge--group">${textOrDash(_detail?.type_groupe || "Groupe / rÃ©seau")}</span>`);
+      badges.push(`<span class="cs-badge cs-badge--group">${textOrDash(_detail?.type_groupe || "Groupe / réseau")}</span>`);
     }
     if (_detail?.tete_groupe) {
-      badges.push(`<span class="cs-badge cs-badge--head">TÃªte de groupe</span>`);
+      badges.push(`<span class="cs-badge cs-badge--head">Tête de groupe</span>`);
     }
 
     const badgesEl = byId("csClientBadges");
@@ -3127,7 +3127,7 @@ function bindPostalAssist(){
       setFicheEditMode(false);
       setMessage("");
     } catch (e) {
-      setMessage(e.message || "Erreur lors de lâ€™enregistrement de la fiche.");
+      setMessage(e.message || "Erreur lors de l’enregistrement de la fiche.");
     } finally {
       _ficheSaving = false;
       if (btnSave) {
@@ -3237,7 +3237,7 @@ function bindPostalAssist(){
           await restoreOrgStructureHere((restoreBtn.getAttribute("data-org-restore-id") || "").trim());
           setMessage("");
         } catch (err) {
-          setMessage(err?.message || "Erreur lors de la rÃ©activation.");
+          setMessage(err?.message || "Erreur lors de la réactivation.");
         }
         return;
       }
@@ -3305,7 +3305,7 @@ function bindPostalAssist(){
           await uploadClientLogo(file);
           setMessage("");
         } catch (err) {
-          setMessage(err?.message || "Erreur lors de lâ€™import du logo.");
+          setMessage(err?.message || "Erreur lors de l’import du logo.");
         } finally {
           inputLogo.value = "";
         }
@@ -3330,10 +3330,10 @@ function bindPostalAssist(){
     const clientId = getClientId();
 
     if (!ownerId) {
-      throw new Error("ParamÃ¨tre owner manquant dans lâ€™URL.");
+      throw new Error("Paramètre owner manquant dans l’URL.");
     }
     if (!clientId) {
-      throw new Error("ParamÃ¨tre client manquant dans lâ€™URL.");
+      throw new Error("Paramètre client manquant dans l’URL.");
     }
 
     const token = await getStudioAccessToken();
@@ -3391,7 +3391,7 @@ function bindPostalAssist(){
       await loadData();
       setMessage("");
     } catch (e) {
-      setMessage(e.message || "Erreur de chargement de lâ€™espace client.");
+      setMessage(e.message || "Erreur de chargement de l’espace client.");
     }
   });
 })();

@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id){ return document.getElementById(id); }
@@ -17,7 +17,7 @@
     return `${base}?id=${encodeURIComponent(ownerId)}`;
   }
 
-  // Promesse globale pour synchroniser l'init auth (utilisÃ©e par studio_portal.js)
+  // Promesse globale pour synchroniser l'init auth (utilisée par studio_portal.js)
   window.__studioAuthReady = null;
 
   async function loadConfig() {
@@ -59,10 +59,10 @@
   }
 
   async function ensurePortalEntry() {
-    // Si l'URL contient dÃ©jÃ  ?id=..., on ne touche Ã  rien
+    // Si l'URL contient déjà ?id=..., on ne touche à rien
     const id = (getQueryParam("id") || "").trim();
     if (id) {
-      // MÃªme avec ?id= prÃ©sent, on doit init Supabase Auth
+      // Même avec ?id= présent, on doit init Supabase Auth
       // sinon topbar / apiJson ne peuvent pas lire la session.
       await initAuth();
       return;
@@ -127,7 +127,7 @@
         btn.disabled = true;
         await window.PortalAuthCommon.signOut();
       } catch (_) {
-        // mÃªme si Ã§a foire, on redirige
+        // même si ça foire, on redirige
       } finally {
         btn.disabled = false;
         window.location.href = (window.PORTAL_LOGIN_URL || "/studio_login.html");

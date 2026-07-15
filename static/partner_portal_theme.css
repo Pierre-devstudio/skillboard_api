@@ -1,5 +1,5 @@
-﻿/* partner_portal_theme.css
-   - ThÃ¨me Partner
+/* partner_portal_theme.css
+   - Thème Partner
    - Accent Partner : #67C63D
    - Sidebar : #333333
 */
@@ -19,8 +19,8 @@
   align-items:center;
   padding:4px 10px;
   border-radius:999px;
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:700;
   background: rgba(var(--pt-accent-rgb), .22);
   border:1px solid rgba(var(--pt-accent-rgb), .55);
   color:#ffffff;
@@ -39,8 +39,8 @@
   background:rgba(var(--partner-accent-rgb), .08);
   border-radius:12px;
   color:#1f3d14;
-  font-size: var(--ns-text-sm);
-  line-height: var(--ns-leading-ui);
+  font-size:13px;
+  line-height:1.35;
 }
 
 .pt-kpi-grid{
@@ -58,14 +58,14 @@
 }
 
 .pt-kpi-title{
-  font-size: var(--ns-text-sm);
-  font-weight: var(--ns-weight-bold);
+  font-size:13px;
+  font-weight:700;
   color:#374151;
 }
 
 .pt-kpi-value{
   margin-top:8px;
-  font-size: var(--ns-text-md);
+  font-size:14px;
   color:#111827;
 }
 
@@ -83,16 +83,16 @@
 }
 
 .pt-field-label{
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
+  font-size:12px;
+  font-weight:700;
   color:#6b7280;
   margin-bottom:6px;
 }
 
 .pt-field-value{
-  font-size: var(--ns-text-md);
+  font-size:14px;
   color:#111827;
-  font-weight: var(--ns-weight-medium);
+  font-weight:500;
   word-break:break-word;
 }
 
@@ -104,9 +104,9 @@
 }
 
 /* ======================================================
-   Novoskill - badges niveaux de maÃ®trise
-   RÃ¨gle transverse : libellÃ© seul, fond transparent, orange progressif.
-   A DÃ©butant | B IntermÃ©diaire | C AvancÃ© | D Expert
+   Novoskill - badges niveaux de maîtrise
+   Règle transverse : libellé seul, fond transparent, orange progressif.
+   A Débutant | B Intermédiaire | C Avancé | D Expert
    ====================================================== */
 .sb-badge.sb-badge-niv,
 .sb-badge.sb-badge--niv,
@@ -122,9 +122,9 @@
   border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size: var(--ns-text-xs);
-  font-weight: var(--ns-weight-bold);
-  line-height: var(--ns-leading-tight);
+  font-size:12px;
+  font-weight:700;
+  line-height:1;
   white-space:nowrap;
   box-sizing:border-box;
 }
@@ -157,13 +157,13 @@
   background:transparent !important;
 }
 
-/* Patch 4 niveaux maÃ®trise : badge libellÃ© seul, fond transparent, orange progressif */
+/* Patch 4 niveaux maîtrise : badge libellé seul, fond transparent, orange progressif */
 .sb-badge.sb-badge-niv,
 .sb-badge.sb-badge--niv,
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold);
+  font-weight: 600;
   white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{

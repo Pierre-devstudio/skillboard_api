@@ -1,4 +1,4 @@
-﻿<section id="view-planning-indispo" style="display:none;">
+<section id="view-planning-indispo" style="display:none;">
   <div class="card plan-page-hero">
     <div class="plan-page-hero__main">
       <div class="plan-page-hero__icon" aria-hidden="true">
@@ -10,9 +10,9 @@
         </svg>
       </div>
       <div>
-        <div class="card-title plan-page-hero__title">Planning des indisponibilitÃ©s</div>
+        <div class="card-title plan-page-hero__title">Planning des indisponibilités</div>
         <div class="card-sub plan-page-hero__sub">
-          Visualisez et planifiez les indisponibilitÃ©s de vos collaborateurs.
+          Visualisez et planifiez les indisponibilités de vos collaborateurs.
         </div>
       </div>
     </div>
@@ -28,7 +28,7 @@
         <span class="sb-btn-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
         </span>
-        <span>Ajouter des indisponibilitÃ©s</span>
+        <span>Ajouter des indisponibilités</span>
       </button>
     </div>
   </div>
@@ -47,8 +47,8 @@
                   id="btnPlanFiltersToggle"
                   aria-expanded="false"
                   aria-controls="planFilterBody"
-                  title="DÃ©plier les filtres"
-                  aria-label="DÃ©plier les filtres">
+                  title="Déplier les filtres"
+                  aria-label="Déplier les filtres">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
           </button>
         </div>
@@ -62,7 +62,7 @@
           </div>
 
           <div class="plan-filter-actions">
-            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanReset">RÃ©initialiser</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanReset">Réinitialiser</button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnPlanApply">Appliquer</button>
           </div>
         </div>
@@ -72,7 +72,7 @@
         <div class="plan-card-head plan-card-head--simple">
           <div>
             <div class="card-title" style="margin-bottom:4px;">Collaborateurs</div>
-            <div class="card-sub" style="margin:0;">SÃ©lectionnez un ou plusieurs collaborateurs.</div>
+            <div class="card-sub" style="margin:0;">Sélectionnez un ou plusieurs collaborateurs.</div>
           </div>
         </div>
 
@@ -80,7 +80,7 @@
           <div class="info-item">
             <label class="sb-label" for="planCollabSearch">Recherche</label>
             <div class="plan-search-wrap">
-              <input type="text" id="planCollabSearch" class="sb-ctrl" placeholder="Nom, prÃ©nomâ€¦" />
+              <input type="text" id="planCollabSearch" class="sb-ctrl" placeholder="Nom, prénom…" />
               <span class="plan-search-wrap__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               </span>
@@ -97,12 +97,12 @@
     <!-- Colonne calendrier -->
     <main class="card plan-calendar-card">
       <div class="plan-calendar-head">
-        <div class="card-title" id="planMonthLabel" style="margin:0;">â€”</div>
+        <div class="card-title" id="planMonthLabel" style="margin:0;">—</div>
 
         <div class="plan-calendar-actions">
-          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanPrev" aria-label="Mois prÃ©cÃ©dent">â€¹</button>
-          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanToday">Aujourdâ€™hui</button>
-          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanNext" aria-label="Mois suivant">â€º</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanPrev" aria-label="Mois précédent">‹</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanToday">Aujourd’hui</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPlanNext" aria-label="Mois suivant">›</button>
         </div>
       </div>
 
@@ -110,17 +110,17 @@
     </main>
   </div>
 
-  <!-- Modal ajout batch indisponibilitÃ©s -->
+  <!-- Modal ajout batch indisponibilités -->
   <div class="modal" id="modalBreakBatch" aria-hidden="true">
     <div class="modal-card modal-card--medium plan-break-modal plan-break-modal--batch">
       <div class="modal-header">
-        <div class="sb-modal-title">Ajouter des indisponibilitÃ©s</div>
-        <button type="button" class="modal-x" id="btnCloseBreakBatch" aria-label="Fermer">Ã—</button>
+        <div class="sb-modal-title">Ajouter des indisponibilités</div>
+        <button type="button" class="modal-x" id="btnCloseBreakBatch" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
         <div class="card-sub plan-break-modal__intro">
-          Ajoutez une ou plusieurs pÃ©riodes dâ€™indisponibilitÃ© pour un collaborateur.
+          Ajoutez une ou plusieurs périodes d’indisponibilité pour un collaborateur.
         </div>
 
         <div class="plan-break-toprow">
@@ -141,9 +141,9 @@
           <table class="sb-table plan-break-table">
             <thead>
               <tr>
-                <th>Date dÃ©but</th>
+                <th>Date début</th>
                 <th>Date fin</th>
-                <th>ContrÃ´le</th>
+                <th>Contrôle</th>
                 <th class="col-center">Suppr.</th>
               </tr>
             </thead>
@@ -177,27 +177,27 @@
     </div>
   </div>
 
-  <!-- Modal Ã©dition indisponibilitÃ© (modifier pÃ©riode / supprimer) -->
+  <!-- Modal édition indisponibilité (modifier période / supprimer) -->
   <div class="modal" id="modalBreakEdit" aria-hidden="true">
     <div class="modal-card modal-card--medium plan-break-modal plan-break-modal--edit">
       <div class="modal-header">
-        <div class="sb-modal-title">IndisponibilitÃ©</div>
-        <button type="button" class="modal-x" id="btnCloseBreakEdit" aria-label="Fermer">Ã—</button>
+        <div class="sb-modal-title">Indisponibilité</div>
+        <button type="button" class="modal-x" id="btnCloseBreakEdit" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
         <div class="plan-break-summary">
           <div>
             <span>Collaborateur</span>
-            <strong id="breakEditCollabName">â€”</strong>
+            <strong id="breakEditCollabName">—</strong>
           </div>
           <div>
-            <span>PÃ©riode actuelle</span>
-            <strong id="breakEditCurrentPeriod">â€”</strong>
+            <span>Période actuelle</span>
+            <strong id="breakEditCurrentPeriod">—</strong>
           </div>
           <div>
             <span>Service</span>
-            <strong id="breakEditService">â€”</strong>
+            <strong id="breakEditService">—</strong>
           </div>
         </div>
 
@@ -205,12 +205,12 @@
           <div class="sb-radio-card plan-break-action-card is-active" id="breakEditCardUpdate">
             <label class="sb-radio-row plan-break-radio-row">
               <input type="radio" name="breakEditAction" id="radBreakEditUpdate" value="update" checked>
-              <span>Modifier la pÃ©riode</span>
+              <span>Modifier la période</span>
             </label>
 
             <div class="sb-edit-dates-grid">
               <div class="info-item">
-                <label class="sb-label" for="breakEditStart">Date dÃ©but</label>
+                <label class="sb-label" for="breakEditStart">Date début</label>
                 <input type="date" id="breakEditStart" class="sb-ctrl">
               </div>
 
@@ -224,14 +224,14 @@
           <div class="sb-radio-card plan-break-action-card" id="breakEditCardArchive">
             <label class="sb-radio-row plan-break-radio-row">
               <input type="radio" name="breakEditAction" id="radBreakEditArchive" value="archive">
-              <span>Supprimer lâ€™indisponibilitÃ©</span>
+              <span>Supprimer l’indisponibilité</span>
             </label>
 
             <div class="plan-break-warning">
               <span aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
               </span>
-              <span>Lâ€™indisponibilitÃ© sera archivÃ©e et retirÃ©e du planning.</span>
+              <span>L’indisponibilité sera archivée et retirée du planning.</span>
             </div>
           </div>
         </div>
@@ -244,7 +244,7 @@
           <span class="plan-break-info-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><path d="M12 7h.01"/></svg>
           </span>
-          <span id="breakEditMeta">Les modifications seront prises en compte immÃ©diatement.</span>
+          <span id="breakEditMeta">Les modifications seront prises en compte immédiatement.</span>
           <span id="breakEditError" class="sb-inline-msg sb-inline-msg--danger" aria-live="polite"></span>
         </div>
 

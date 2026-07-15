@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const P = window.PeoplePortal;
   if (!P) return;
   function byId(id){ return document.getElementById(id); }
@@ -20,9 +20,9 @@
     if (identity) {
       identity.innerHTML = [
         P.infoRow("Nom", [p.prenom, p.nom].filter(Boolean).join(" ")),
-        P.infoRow("CivilitÃ©", p.civilite),
+        P.infoRow("Civilité", p.civilite),
         P.infoRow("Email", p.email),
-        P.infoRow("TÃ©lÃ©phone", p.telephone),
+        P.infoRow("Téléphone", p.telephone),
         P.infoRow("Adresse", [p.adresse, p.code_postal, p.ville, p.pays].filter(Boolean).join(" - ")),
         P.infoRow("Matricule", p.matricule)
       ].join("");
@@ -34,17 +34,17 @@
         P.infoRow("Service", p.nom_service),
         P.infoRow("Poste actuel", p.intitule_poste),
         P.infoRow("Contrat", p.type_contrat),
-        P.infoRow("Date dâ€™entrÃ©e", P.fmtDate(p.date_entree)),
-        P.infoRow("DÃ©but sur le poste", P.fmtDate(p.date_debut_poste)),
-        P.infoRow("Niveau dâ€™Ã©tudes", p.niveau_education)
+        P.infoRow("Date d’entrée", P.fmtDate(p.date_entree)),
+        P.infoRow("Début sur le poste", P.fmtDate(p.date_debut_poste)),
+        P.infoRow("Niveau d’études", p.niveau_education)
       ].join("");
     }
 
     if (mission) {
-      mission.innerHTML = `<div class="pp-rich">${P.escapeHtml(p.mission_principale || "Mission principale non renseignÃ©e.")}</div>
+      mission.innerHTML = `<div class="pp-rich">${P.escapeHtml(p.mission_principale || "Mission principale non renseignée.")}</div>
       <div class="pp-section-sep"></div>
-      <div class="pp-muted-title">Perspectives dâ€™Ã©volution</div>
-      <div class="pp-rich">${P.escapeHtml(p.perspectives_evolution || "Non renseignÃ©es.")}</div>`;
+      <div class="pp-muted-title">Perspectives d’évolution</div>
+      <div class="pp-rich">${P.escapeHtml(p.perspectives_evolution || "Non renseignées.")}</div>`;
     }
   }
 

@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id) { return document.getElementById(id); }
@@ -28,7 +28,7 @@
     const cfg = await loadConfig();
 
     if (!window.PortalAuthCommon) {
-      throw new Error("portal_auth_common.js non chargÃ©.");
+      throw new Error("portal_auth_common.js non chargé.");
     }
 
     window.PortalAuthCommon.init({
@@ -44,7 +44,7 @@
     const token = session?.access_token || "";
 
     if (!token) {
-      throw new Error("Mot de passe enregistrÃ©, mais session dâ€™activation introuvable. Relance le lien reÃ§u par email.");
+      throw new Error("Mot de passe enregistré, mais session d’activation introuvable. Relance le lien reçu par email.");
     }
 
     const r = await fetch(`${API_BASE}/people/auth/activate`, {
@@ -60,7 +60,7 @@
       throw new Error(
         (data && (data.detail || data.message))
           ? (data.detail || data.message)
-          : "Mot de passe enregistrÃ©, mais activation des accÃ¨s People impossible."
+          : "Mot de passe enregistré, mais activation des accès People impossible."
       );
     }
 
@@ -83,18 +83,18 @@
 
     try {
       if (btn) btn.disabled = true;
-      setMsg("Mise Ã  jour en coursâ€¦", "");
+      setMsg("Mise à jour en cours…", "");
 
       await window.PortalAuthCommon.updatePassword(p1);
       await activateAccesses();
 
-      setMsg("Mot de passe mis Ã  jour. Tes accÃ¨s People sont actifs. Tu peux te reconnecter.", "success");
+      setMsg("Mot de passe mis à jour. Tes accès People sont actifs. Tu peux te reconnecter.", "success");
 
       setTimeout(() => {
         window.location.href = "/people_login.html";
       }, 1000);
     } catch (e) {
-      setMsg(e.message || "Mise Ã  jour impossible.", "error");
+      setMsg(e.message || "Mise à jour impossible.", "error");
     } finally {
       if (btn) btn.disabled = false;
     }

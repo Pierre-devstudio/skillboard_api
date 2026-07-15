@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let _bound = false;
   let _config = null;
   let _laraWorkspaceTypes = [];
@@ -121,7 +121,7 @@
     if (!_laraWorkspaceTypes.length){
       const empty = document.createElement("div");
       empty.className = "card-sub";
-      empty.textContent = "Aucun type chargÃ©. Si rien nâ€™est sÃ©lectionnÃ©, tous les types exploitables seront rÃ©cupÃ©rÃ©s.";
+      empty.textContent = "Aucun type chargé. Si rien n’est sélectionné, tous les types exploitables seront récupérés.";
       host.appendChild(empty);
       return;
     }
@@ -149,7 +149,7 @@
       span.textContent = label;
 
       const meta = document.createElement("small");
-      meta.textContent = t?.is_default ? "Type par dÃ©faut" : "";
+      meta.textContent = t?.is_default ? "Type par défaut" : "";
 
       item.appendChild(cb);
       item.appendChild(span);
@@ -178,9 +178,9 @@
     const badge = byId("lmsConfigBadge");
     if (badge){
       if (isLara && _config?.configured){
-        badge.textContent = "LÃ¤ra configurÃ©";
+        badge.textContent = "Lära configuré";
       } else if (isLara) {
-        badge.textContent = "LÃ¤ra Ã  configurer";
+        badge.textContent = "Lära à configurer";
       } else {
         badge.textContent = "Export manuel";
       }
@@ -214,8 +214,8 @@
     if (hint){
       hint.className = `lf-lms-secret-hint ${_config.has_secret ? "is-ok" : "is-empty"}`;
       hint.textContent = _config.has_secret
-        ? "ClÃ© ApiID enregistrÃ©e. Laissez le champ vide pour la conserver."
-        : "Aucune clÃ© ApiID enregistrÃ©e.";
+        ? "Clé ApiID enregistrée. Laissez le champ vide pour la conserver."
+        : "Aucune clé ApiID enregistrée.";
     }
 
     syncProviderUi();
@@ -275,15 +275,15 @@
     fillConfig(res?.config || {});
 
     if (!options.silent){
-      setSuccess("Configuration enregistrÃ©e");
-      setStatus("ok", "Configuration LMS enregistrÃ©e.");
+      setSuccess("Configuration enregistrée");
+      setStatus("ok", "Configuration LMS enregistrée.");
     }
 
     return res;
   }
 
   async function testConfig(portal){
-    setStatus("info", "Enregistrement de la configuration puis test de connexionâ€¦");
+    setStatus("info", "Enregistrement de la configuration puis test de connexion…");
 
     const effectifId = getEffectifId();
     if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
@@ -300,16 +300,16 @@
     setStatus(
       "ok",
       [
-        res?.message || "Connexion validÃ©e.",
+        res?.message || "Connexion validée.",
         res?.workspace_type_label ? `Type publication : ${res.workspace_type_label}` : "",
         res?.provider_label ? `Fournisseur : ${res.provider_label}` : "",
-        Array.isArray(res?.workspace_types) ? `Types rÃ©cupÃ©rables : ${res.workspace_types.length}` : ""
+        Array.isArray(res?.workspace_types) ? `Types récupérables : ${res.workspace_types.length}` : ""
       ].filter(Boolean).join("\n")
     );
   }
 
   async function loadLaraTypes(portal){
-    setStatus("info", "Lecture des types LÃ¤raâ€¦");
+    setStatus("info", "Lecture des types Lära…");
 
     const effectifId = getEffectifId();
     if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
@@ -322,7 +322,7 @@
     );
 
     setLaraWorkspaceTypes(res?.workspace_types || []);
-    setStatus("ok", `Types LÃ¤ra chargÃ©s : ${(res?.workspace_types || []).length}`);
+    setStatus("ok", `Types Lära chargés : ${(res?.workspace_types || []).length}`);
   }
 
   function bindOnce(portal){
@@ -367,7 +367,7 @@
     byId("btnLmsClearTypes")?.addEventListener("click", () => {
       _selectedLaraRecoveryTypeIds = new Set();
       renderLaraRecoveryTypes();
-      setStatus("info", "Aucun type sÃ©lectionnÃ© : tous les types exploitables seront rÃ©cupÃ©rÃ©s.");
+      setStatus("info", "Aucun type sélectionné : tous les types exploitables seront récupérés.");
     });
   }
 

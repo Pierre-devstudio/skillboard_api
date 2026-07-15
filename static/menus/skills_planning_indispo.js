@@ -1,6 +1,6 @@
-﻿/* ======================================================
+/* ======================================================
    static/menus/skills_planning_indispo.js
-   - Vue planning indisponibilitÃ©s (agenda simple - vue mois)
+   - Vue planning indisponibilités (agenda simple - vue mois)
    - Filtres: service + recherche + multi-collaborateurs
    - Ajout batch via modal (plusieurs indispos d'un coup)
    ====================================================== */
@@ -13,15 +13,15 @@
   let _bound = false;
 
   const _state = {
-    current: new Date(),          // mois affichÃ©
+    current: new Date(),          // mois affiché
     id_service: null,             // filtre service (queryId)
     search: "",                   // filtre texte collaborateurs
     collabs: [],                  // liste collaborateurs
     collabMap: {},                // id_effectif => collab
     collabColors: {},             // id_effectif => couleur stable dans la liste courante
-    selectedIds: new Set(),       // multi-sÃ©lection; vide => tous
+    selectedIds: new Set(),       // multi-sélection; vide => tous
     pending_service_raw: "",       // valeur du select avant application du filtre
-    breaks: [],                   // indispos chargÃ©es
+    breaks: [],                   // indispos chargées
     lastRange: { start: null, end: null }, // YYYY-MM-DD
   };
 
@@ -56,7 +56,7 @@
 
   function formatDateFr(s) {
     const d = parseYmd(s);
-    return d ? `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}` : "â€”";
+    return d ? `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}` : "—";
   }
 
   function addDays(d, n) {
@@ -68,7 +68,7 @@
   function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
   function endOfMonth(d) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 
-  // Lundi dÃ©but de semaine
+  // Lundi début de semaine
   function mondayIndex(jsDay) { return (jsDay + 6) % 7; } // 0=>6,1=>0,...6=>5
 
   function monthLabelFR(d) {
@@ -235,7 +235,7 @@
       return `<option value="${escapeHtml(id)}"${selAttr}>${escapeHtml(name)}</option>`;
     }).join("");
 
-    sel.innerHTML = `<option value="">Choisirâ€¦</option>${opts}`;
+    sel.innerHTML = `<option value="">Choisir…</option>${opts}`;
   }
 
   function renderLegend() {
@@ -251,7 +251,7 @@
     });
 
     if (!used.size) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune indisponibilitÃ© sur la pÃ©riode.</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune indisponibilité sur la période.</div>`;
       return;
     }
 
@@ -343,7 +343,7 @@
           <div class="sb-cal-evt"
                data-break-id="${bid}"
                data-eff-id="${escapeHtml(id_eff)}"
-               title="${escapeHtml(name)} (${ds} â†’ ${de})"
+               title="${escapeHtml(name)} (${ds} → ${de})"
                style="background:${escapeHtml(col)};">
             ${escapeHtml(((c?.prenom_effectif || name || "Collaborateur").toString().split(" ")[0]) || "Collaborateur")}
           </div>
@@ -458,7 +458,7 @@
     tr.innerHTML = `
       <td><input type="date" class="sb-batch-date sb-ctrl" data-k="start" value="${escapeHtml(d1)}"></td>
       <td><input type="date" class="sb-batch-date sb-ctrl" data-k="end" value="${escapeHtml(d2)}"></td>
-      <td><span class="sb-batch-status">â€”</span></td>
+      <td><span class="sb-batch-status">—</span></td>
       <td class="col-center">
         <button type="button" class="sb-icon-btn sb-icon-btn--danger sb-batch-del" title="Retirer" aria-label="Retirer">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -472,7 +472,7 @@
 
     tr.querySelectorAll(".sb-batch-date").forEach(input => {
       input.addEventListener("input", () => {
-        _setBatchStatus(tr, "â€”", "");
+        _setBatchStatus(tr, "—", "");
         showBatchError(null);
         updateBatchMeta();
       });
@@ -490,7 +490,7 @@
 
   function _setBatchStatus(tr, text, kind) {
     const cell = tr ? tr.querySelector(".sb-batch-status") : null;
-    const safeText = text || "â€”";
+    const safeText = text || "—";
     const statusKind = kind || "";
 
     if (cell) {
@@ -526,7 +526,7 @@
       const e = (tr.querySelector('[data-k="end"]')?.value || "").trim();
 
       if (!s && !e) {
-        _setBatchStatus(tr, "â€”", "skip");
+        _setBatchStatus(tr, "—", "skip");
         continue;
       }
 
@@ -546,7 +546,7 @@
       }
 
       if (de < ds) {
-        _setBatchStatus(tr, "Fin < dÃ©but", "err");
+        _setBatchStatus(tr, "Fin < début", "err");
         hasError = true;
         continue;
       }
@@ -574,12 +574,12 @@
       }
     }
 
-    // items Ã  envoyer (uniquement lignes valides)
+    // items à envoyer (uniquement lignes valides)
     const items = valids
       .filter(x => (x.tr?.dataset?.batchKind || "") === "ok")
       .map(x => x.item);
 
-    // rowsOk: on garde le lien TR + dates (pour contrÃ´le DB sans recalcul destructif)
+    // rowsOk: on garde le lien TR + dates (pour contrôle DB sans recalcul destructif)
     const rowsOk = valids
       .filter(x => (x.tr?.dataset?.batchKind || "") === "ok")
       .map(x => ({ tr: x.tr, ds: x.ds, de: x.de, item: x.item }));
@@ -590,12 +590,12 @@
 
 
   async function markBatchExistingOverlaps(id_contact, id_effectif, rowsOk) {
-    // ContrÃ´le chevauchement avec existant en base (mÃªme collaborateur)
-    // RÃ¨gle inclusive: start <= other.end && end >= other.start
+    // Contrôle chevauchement avec existant en base (même collaborateur)
+    // Règle inclusive: start <= other.end && end >= other.start
     try {
       if (!rowsOk || !rowsOk.length) return { hasError: false };
 
-      // FenÃªtre minimale: min(start) -> max(end)
+      // Fenêtre minimale: min(start) -> max(end)
       let minD = rowsOk[0].ds;
       let maxD = rowsOk[0].de;
 
@@ -636,8 +636,8 @@
       return { hasError };
 
     } catch (e) {
-      // Si on ne peut pas contrÃ´ler, on bloque (sinon la colonne ne sert Ã  rien)
-      throw new Error("ContrÃ´le chevauchement impossible (rÃ©seau/API).");
+      // Si on ne peut pas contrôler, on bloque (sinon la colonne ne sert à rien)
+      throw new Error("Contrôle chevauchement impossible (réseau/API).");
     }
   }
 
@@ -651,12 +651,12 @@
     const chk = validateBatchRows();
     if (chk.hasError) throw new Error("Corrige les lignes en erreur.");
 
-    // ContrÃ´le base: chevauchement existant (mÃªme collaborateur)
+    // Contrôle base: chevauchement existant (même collaborateur)
     const ex = await markBatchExistingOverlaps(id_contact, id_eff, chk.rowsOk || []);
-    if (ex.hasError) throw new Error("Chevauchement dÃ©tectÃ© avec une indisponibilitÃ© existante.");
+    if (ex.hasError) throw new Error("Chevauchement détecté avec une indisponibilité existante.");
 
     const items = chk.items;
-    if (!items.length) throw new Error("Ajoute au moins une indisponibilitÃ©.");
+    if (!items.length) throw new Error("Ajoute au moins une indisponibilité.");
 
 
 
@@ -669,7 +669,7 @@
     });
 
     if (!data || data.ok !== true) {
-      const msg = (data && (data.detail || data.message)) ? (data.detail || data.message) : "Erreur enregistrement indisponibilitÃ©s.";
+      const msg = (data && (data.detail || data.message)) ? (data.detail || data.message) : "Erreur enregistrement indisponibilités.";
       throw new Error(msg);
     }
 
@@ -719,7 +719,7 @@
     if (btnBack) btnBack.addEventListener("click", () => {
       const base = window.location.pathname + window.location.search;
 
-      // Nettoie lâ€™URL (supprime le #...) sans ajouter dâ€™historique
+      // Nettoie l’URL (supprime le #...) sans ajouter d’historique
       if (window.location.hash) {
         history.replaceState(null, document.title, base);
       }
@@ -754,8 +754,8 @@
       btnFiltersToggle.addEventListener("click", () => {
         const collapsed = filterCard.classList.toggle("is-collapsed");
         btnFiltersToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        btnFiltersToggle.setAttribute("title", collapsed ? "DÃ©plier les filtres" : "Replier les filtres");
-        btnFiltersToggle.setAttribute("aria-label", collapsed ? "DÃ©plier les filtres" : "Replier les filtres");
+        btnFiltersToggle.setAttribute("title", collapsed ? "Déplier les filtres" : "Replier les filtres");
+        btnFiltersToggle.setAttribute("aria-label", collapsed ? "Déplier les filtres" : "Replier les filtres");
       });
     }
 
@@ -818,7 +818,7 @@
       });
     }
 
-    // --- Modal Ã©dition indisponibilitÃ© ---
+    // --- Modal édition indisponibilité ---
     const editModal = byId("modalBreakEdit");
     const btnEditX = byId("btnCloseBreakEdit");
     const btnEditCancel = byId("btnBreakEditCancel");
@@ -854,8 +854,8 @@
       const summaryPeriod = byId("breakEditCurrentPeriod");
       const summaryService = byId("breakEditService");
       if (summaryName) summaryName.textContent = collabLabel(collab || null);
-      if (summaryPeriod) summaryPeriod.textContent = `${formatDateFr(b?.date_debut)} â†’ ${formatDateFr(b?.date_fin)}`;
-      if (summaryService) summaryService.textContent = (collab?.nom_service || "â€”").trim() || "â€”";
+      if (summaryPeriod) summaryPeriod.textContent = `${formatDateFr(b?.date_debut)} → ${formatDateFr(b?.date_fin)}`;
+      if (summaryService) summaryService.textContent = (collab?.nom_service || "—").trim() || "—";
 
       if (radUpdate) radUpdate.checked = true;
       if (radArchive) radArchive.checked = false;
@@ -903,7 +903,7 @@
         showEditError(null);
         try {
           const bid = (editId?.value || "").trim();
-          if (!bid) throw new Error("IndisponibilitÃ© introuvable.");
+          if (!bid) throw new Error("Indisponibilité introuvable.");
 
           const action = (radArchive && radArchive.checked) ? "archive" : "update";
           const payload = { action };
@@ -926,7 +926,7 @@
           });
 
           if (!data || data.ok !== true) {
-            throw new Error((data && (data.detail || data.message)) || "Erreur mise Ã  jour.");
+            throw new Error((data && (data.detail || data.message)) || "Erreur mise à jour.");
           }
 
           closeEditModal();
@@ -978,12 +978,12 @@
         const msg = err?.message || String(err);
         showBatchError(msg);
 
-        // Si le serveur refuse un chevauchement, on marque les lignes comme KO (sinon colonne "ContrÃ´le" inutile)
+        // Si le serveur refuse un chevauchement, on marque les lignes comme KO (sinon colonne "Contrôle" inutile)
         try {
           if ((msg || "").toLowerCase().includes("chevauchement")) {
             const sel = byId("breakBatchEffectifSelect");
             const id_eff = (sel?.value || "").trim();
-            const chk = validateBatchRows(); // remet Ã  jour les statuts locaux
+            const chk = validateBatchRows(); // remet à jour les statuts locaux
             if (id_eff && chk.rowsOk && chk.rowsOk.length) {
               await markBatchExistingOverlaps(id_contact, id_eff, chk.rowsOk);
             }
@@ -1015,7 +1015,7 @@
         selectId: "planServiceSelect",
         storageKey: "sb_plan_service",
         labelAll: "Tous les services",
-        labelNonLie: "Non liÃ©",
+        labelNonLie: "Non lié",
         includeAll: true,
         includeNonLie: true,
         allowIndent: true

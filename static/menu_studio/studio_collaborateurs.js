@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let _bound = false;
   let _loaded = false;
   let _ctx = null;
@@ -86,8 +86,8 @@
 
   function nsLevelKey(v){
     const raw = String(v ?? "").trim();
-    const norm = raw.normalize("NFD").replace(/[Ì€-Í¯]/g, "").toLowerCase();
-    if (!norm || norm === "-" || norm === "â€”") return "";
+    const norm = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    if (!norm || norm === "-" || norm === "—") return "";
     if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
     if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
     if (norm === "c" || norm.includes("avance") || norm.includes("advanced")) return "C";
@@ -97,7 +97,7 @@
 
   function nsLevelLabel(v){
     const k = nsLevelKey(v);
-    return ({ A:"DÃ©butant", B:"IntermÃ©diaire", C:"AvancÃ©", D:"Expert" })[k] || (String(v ?? "").trim() || "â€”");
+    return ({ A:"Débutant", B:"Intermédiaire", C:"Avancé", D:"Expert" })[k] || (String(v ?? "").trim() || "—");
   }
 
   function collabSkillLevelLabel(v){
@@ -387,7 +387,7 @@
 
   function formatDateFR(value){
     const s = String(value || "").trim();
-    if (!s) return "â€“";
+    if (!s) return "–";
     const d = new Date(s);
     if (Number.isNaN(d.getTime())) return s;
     return d.toLocaleDateString("fr-FR");
@@ -427,7 +427,7 @@
     if (code === 'admin') return 'Administrateur';
     if (code === 'supervisor') return 'Superviseur';
     if (code === 'user') return 'Utilisateur';
-    return 'Aucun accÃ¨s';
+    return 'Aucun accès';
   }
 
   function getConsoleIconUrl(consoleCode){
@@ -440,7 +440,7 @@
 
   function renderConsoleIcons(accessSummary){
     const items = Array.isArray(accessSummary) ? accessSummary : [];
-    if (!items.length) return '<span class="sb-console-dash">â€”</span>';
+    if (!items.length) return '<span class="sb-console-dash">—</span>';
 
     return `
       <div class="sb-console-inline">
@@ -484,19 +484,19 @@
   }
 
   async function syncCompetencesFromSelectedPoste(portal){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error("Owner introuvable.");
 
     const poste = getCurrentPosteForSkills();
-    if (!poste.id) throw new Error("SÃ©lectionnez un poste actuel.");
+    if (!poste.id) throw new Error("Sélectionnez un poste actuel.");
 
     const btn = byId('btnSyncCollabSkillsFromPoste');
     const previousHtml = btn ? btn.innerHTML : '';
 
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = '<span>Importâ€¦</span>';
+      btn.innerHTML = '<span>Import…</span>';
     }
 
     try {
@@ -519,25 +519,25 @@
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = previousHtml || `<span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les compÃ©tences du poste</span>`;
+        btn.innerHTML = previousHtml || `<span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les compétences du poste</span>`;
       }
     }
   }
 
   async function syncCertificationsFromSelectedPoste(portal){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error("Owner introuvable.");
 
     const poste = getCurrentPosteForSkills();
-    if (!poste.id) throw new Error("SÃ©lectionnez un poste actuel.");
+    if (!poste.id) throw new Error("Sélectionnez un poste actuel.");
 
     const btn = byId('btnSyncCollabCertsFromPoste');
     const previousHtml = btn ? btn.innerHTML : '';
 
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = '<span>Importâ€¦</span>';
+      btn.innerHTML = '<span>Import…</span>';
     }
 
     try {
@@ -562,13 +562,13 @@
 
 
   async function removeCompetenceFromCollaborateur(portal, idComp){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error("Owner introuvable.");
 
     const id = String(idComp || '').trim();
-    if (!id) throw new Error("CompÃ©tence introuvable.");
+    if (!id) throw new Error("Compétence introuvable.");
 
     await portal.apiJson(
       `${portal.apiBase}/studio/collaborateurs/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/remove`,
@@ -660,7 +660,7 @@
     if (!items.length){
       const e = document.createElement('div');
       e.className = 'card-sub';
-      e.textContent = 'Aucune compÃ©tence Ã  afficher.';
+      e.textContent = 'Aucune compétence à afficher.';
       host.appendChild(e);
       return;
     }
@@ -674,7 +674,7 @@
 
       const code = document.createElement('span');
       code.className = 'sb-badge sb-badge--comp';
-      code.textContent = it.code || 'â€”';
+      code.textContent = it.code || '—';
 
       const title = document.createElement('div');
       title.className = 'sb-row-title';
@@ -686,10 +686,10 @@
       const right = document.createElement('div');
       right.className = 'sb-row-right';
 
-      if ((it.etat || '').toLowerCase() === 'Ã  valider'){
+      if ((it.etat || '').toLowerCase() === 'à valider'){
         const v = document.createElement('span');
         v.className = 'sb-badge sb-badge--accent-soft';
-        v.textContent = 'Ã€ valider';
+        v.textContent = 'À valider';
         right.appendChild(v);
       }
 
@@ -716,7 +716,7 @@
   }
 
   async function loadCollabCompAddList(portal){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
@@ -732,7 +732,7 @@
     items = items.filter(it => {
       const et = (it.etat || '').toLowerCase();
       if (et === 'active' || et === 'valide') return true;
-      if (_collabCompAddIncludeToValidate && et === 'Ã  valider') return true;
+      if (_collabCompAddIncludeToValidate && et === 'à valider') return true;
       return false;
     });
 
@@ -754,14 +754,14 @@
   }
 
   async function openCollabCompAddModal(portal){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
     resetCollabCompAddState();
     openModal('modalCollabCompAdd');
     await loadCollabCompAddList(portal);
   }
 
   async function addCompetenceToCollaborateur(portal, idComp, opts = {}){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
@@ -789,18 +789,18 @@
 
     function certificationStateLabel(code){
     const s = String(code || '').trim().toLowerCase();
-    if (s === 'a_obtenir') return 'Ã€ obtenir';
+    if (s === 'a_obtenir') return 'À obtenir';
     if (s === 'en_cours') return 'En cours';
     if (s === 'acquise') return 'Acquise';
-    if (s === 'a_renouveler') return 'Ã€ renouveler';
-    if (s === 'expiree') return 'ExpirÃ©e';
-    return 'â€“';
+    if (s === 'a_renouveler') return 'À renouveler';
+    if (s === 'expiree') return 'Expirée';
+    return '–';
   }
 
   function certificationMonthLabel(value){
-    if (value == null || value === '') return 'â€“';
+    if (value == null || value === '') return '–';
     const n = Number(value);
-    if (!Number.isFinite(n)) return 'â€“';
+    if (!Number.isFinite(n)) return '–';
     if (n <= 0) return 'Permanent';
     return `${n} mois`;
   }
@@ -920,7 +920,7 @@
     if (sel){
       sel.innerHTML = `
         <option value="">Toutes</option>
-        <option value="__none__">Sans catÃ©gorie</option>
+        <option value="__none__">Sans catégorie</option>
       `;
       sel.value = '';
     }
@@ -940,13 +940,13 @@
 
     (items || []).forEach(it => {
       const value = (it.categorie || '').toString().trim() || '__none__';
-      const label = (it.categorie || '').toString().trim() || 'Sans catÃ©gorie';
+      const label = (it.categorie || '').toString().trim() || 'Sans catégorie';
       if (!map.has(value)) map.set(value, label);
     });
 
     sel.innerHTML = '';
     sel.appendChild(new Option('Toutes', ''));
-    sel.appendChild(new Option('Sans catÃ©gorie', '__none__'));
+    sel.appendChild(new Option('Sans catégorie', '__none__'));
 
     Array.from(map.entries())
       .filter(([id]) => id !== '__none__')
@@ -979,7 +979,7 @@
     if (!items.length){
       const e = document.createElement('div');
       e.className = 'card-sub';
-      e.textContent = 'Aucune certification Ã  afficher.';
+      e.textContent = 'Aucune certification à afficher.';
       host.appendChild(e);
       return;
     }
@@ -1001,7 +1001,7 @@
       const meta = document.createElement('div');
       meta.className = 'card-sub';
       meta.style.margin = '4px 0 0 0';
-      meta.textContent = (it.categorie || 'Sans catÃ©gorie').toString();
+      meta.textContent = (it.categorie || 'Sans catégorie').toString();
 
       main.appendChild(title);
       main.appendChild(meta);
@@ -1029,7 +1029,7 @@
   }
 
   async function loadCollabCertAddList(portal){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
@@ -1087,7 +1087,7 @@
   }
 
   async function openCollabCertCreateModal(portal){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     closeModal('modalCollabCertAdd');
 
@@ -1130,24 +1130,24 @@
 
     if (rawValidity){
       if (!/^\d+$/.test(rawValidity)) {
-        portal.showAlert('error', 'La validitÃ© catalogue doit Ãªtre un entier positif.');
+        portal.showAlert('error', 'La validité catalogue doit être un entier positif.');
         return;
       }
       duree_validite = parseInt(rawValidity, 10);
       if (!Number.isFinite(duree_validite) || duree_validite <= 0){
-        portal.showAlert('error', 'La validitÃ© catalogue doit Ãªtre supÃ©rieure Ã  0.');
+        portal.showAlert('error', 'La validité catalogue doit être supérieure à 0.');
         return;
       }
     }
 
     if (rawRenewal){
       if (!/^\d+$/.test(rawRenewal)) {
-        portal.showAlert('error', 'Le dÃ©lai de renouvellement doit Ãªtre un entier positif.');
+        portal.showAlert('error', 'Le délai de renouvellement doit être un entier positif.');
         return;
       }
       delai_renouvellement = parseInt(rawRenewal, 10);
       if (!Number.isFinite(delai_renouvellement) || delai_renouvellement <= 0){
-        portal.showAlert('error', 'Le dÃ©lai de renouvellement doit Ãªtre supÃ©rieur Ã  0.');
+        portal.showAlert('error', 'Le délai de renouvellement doit être supérieur à 0.');
         return;
       }
     }
@@ -1190,14 +1190,14 @@
   }
 
   async function openCollabCertAddModal(portal){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
     resetCollabCertAddState();
     openModal('modalCollabCertAdd');
     await loadCollabCertAddList(portal);
   }
 
   async function addCertificationToCollaborateur(portal, idCertification, opts = {}){
-    if (!_editingId) throw new Error("Enregistrez dâ€™abord le collaborateur.");
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
@@ -1232,7 +1232,7 @@
       proofFile: null,
     };
 
-    if (byId('collabCertEditTitle')) byId('collabCertEditTitle').textContent = 'â€”';
+    if (byId('collabCertEditTitle')) byId('collabCertEditTitle').textContent = '—';
     if (byId('collabCertEtat')) byId('collabCertEtat').value = 'a_obtenir';
     if (byId('collabCertDateObtention')) byId('collabCertDateObtention').value = '';
     if (byId('collabCertDateExpiration')) byId('collabCertDateExpiration').value = '';
@@ -1250,21 +1250,21 @@
     const openBtn = byId('btnCollabCertProofOpen');
 
     if (_collabCertEditState.proofFile){
-      if (nameEl) nameEl.textContent = _collabCertEditState.proofFile.name || 'Document sÃ©lectionnÃ©';
-      if (metaEl) metaEl.textContent = 'Le document sera enregistrÃ© avec la certification.';
+      if (nameEl) nameEl.textContent = _collabCertEditState.proofFile.name || 'Document sélectionné';
+      if (metaEl) metaEl.textContent = 'Le document sera enregistré avec la certification.';
       if (openBtn) openBtn.disabled = true;
       return;
     }
 
     if (_collabCertEditState.preuve_nom_fichier){
       if (nameEl) nameEl.textContent = _collabCertEditState.preuve_nom_fichier;
-      if (metaEl) metaEl.textContent = 'Document preuve dÃ©jÃ  enregistrÃ©.';
+      if (metaEl) metaEl.textContent = 'Document preuve déjà enregistré.';
       if (openBtn) openBtn.disabled = false;
       return;
     }
 
     if (nameEl) nameEl.textContent = 'Aucun document preuve';
-    if (metaEl) metaEl.textContent = 'PDF, PNG, JPEG ou WEBP Â· 5 Mo max.';
+    if (metaEl) metaEl.textContent = 'PDF, PNG, JPEG ou WEBP · 5 Mo max.';
     if (openBtn) openBtn.disabled = true;
   }
 
@@ -1403,16 +1403,16 @@
       last_audit: null
     };
 
-    if (byId('collabSkillEvalHint')) byId('collabSkillEvalHint').textContent = 'Chargementâ€¦';
+    if (byId('collabSkillEvalHint')) byId('collabSkillEvalHint').textContent = 'Chargement…';
     const codeBadge = byId('collabSkillEvalCompCode');
     if (codeBadge){
       codeBadge.textContent = '';
       codeBadge.style.display = 'none';
     }
 
-    if (byId('collabSkillEvalCompTitle')) byId('collabSkillEvalCompTitle').textContent = 'â€”';
-    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = 'â€”';
-    if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = 'â€”';
+    if (byId('collabSkillEvalCompTitle')) byId('collabSkillEvalCompTitle').textContent = '—';
+    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = '—';
+    if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = '—';
     if (byId('collabSkillEvalLastAuditMeta')) byId('collabSkillEvalLastAuditMeta').textContent = '';
 
     const domain = byId('collabSkillEvalCompDomain');
@@ -1433,7 +1433,7 @@
       if (tr) tr.style.display = '';
 
       const lbl = byId(`collabSkillEvalCritLabel${i}`);
-      if (lbl) lbl.textContent = 'â€”';
+      if (lbl) lbl.textContent = '—';
 
       const sel = byId(`collabSkillEvalCritNote${i}`);
       if (sel){
@@ -1448,9 +1448,9 @@
       }
     }
 
-    if (byId('collabSkillEvalScoreRaw')) byId('collabSkillEvalScoreRaw').textContent = 'â€”';
-    if (byId('collabSkillEvalScore24')) byId('collabSkillEvalScore24').textContent = 'â€”';
-    if (byId('collabSkillEvalLevel')) byId('collabSkillEvalLevel').textContent = 'â€”';
+    if (byId('collabSkillEvalScoreRaw')) byId('collabSkillEvalScoreRaw').textContent = '—';
+    if (byId('collabSkillEvalScore24')) byId('collabSkillEvalScore24').textContent = '—';
+    if (byId('collabSkillEvalLevel')) byId('collabSkillEvalLevel').textContent = '—';
 
     const methodSel = byId('collabSkillEvalMethod');
     if (methodSel){
@@ -1536,8 +1536,8 @@
 
     pop.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <div style="font-weight: var(--ns-weight-semibold);">Guide de notation</div>
-        <button type="button" class="sb-modal-x" id="btnCloseCollabSkillGuide" aria-label="Fermer">Ã—</button>
+        <div style="font-weight:600;">Guide de notation</div>
+        <button type="button" class="sb-modal-x" id="btnCloseCollabSkillGuide" aria-label="Fermer">×</button>
       </div>
       <div class="card-sub" id="collabSkillGuideTitle" style="margin-top:6px;"></div>
       <div id="collabSkillGuideBody" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
@@ -1579,7 +1579,7 @@
     const title = document.getElementById('collabSkillGuideTitle');
     if (title){
       const lbl = String(critLabel || '').trim();
-      title.textContent = lbl ? `CritÃ¨re ${critIndex} : ${lbl}` : `CritÃ¨re ${critIndex}`;
+      title.textContent = lbl ? `Critère ${critIndex} : ${lbl}` : `Critère ${critIndex}`;
     }
 
     const body = document.getElementById('collabSkillGuideBody');
@@ -1609,7 +1609,7 @@
       const text = document.createElement('div');
       text.style.flex = '1';
       text.style.minWidth = '0';
-      text.textContent = txt || 'â€”';
+      text.textContent = txt || '—';
 
       line.appendChild(badge);
       line.appendChild(text);
@@ -1657,7 +1657,7 @@
       const sel = byId(`collabSkillEvalCritNote${i}`);
       const com = byId(`collabSkillEvalCritCom${i}`);
       if (!sel) continue;
-      if (!lbl || lbl === 'â€”') continue;
+      if (!lbl || lbl === '—') continue;
       if (sel.disabled) continue;
 
       arr.push({
@@ -1682,7 +1682,7 @@
 
   function levelFromCollabSkillEvalScore(score24){
     const key = nsLevelFromScore24(score24);
-    return key ? nsLevelLabel(key) : 'â€”';
+    return key ? nsLevelLabel(key) : '—';
   }
 
   function levelCodeFromCollabSkillEvalScore(score24){
@@ -1730,9 +1730,9 @@
     const levelEl = byId('collabSkillEvalLevel');
 
     if (!enabled.length){
-      if (rawEl) rawEl.textContent = 'â€”';
-      if (scoreEl) scoreEl.textContent = 'â€”';
-      if (levelEl) levelEl.textContent = 'â€”';
+      if (rawEl) rawEl.textContent = '—';
+      if (scoreEl) scoreEl.textContent = '—';
+      if (levelEl) levelEl.textContent = '—';
       refreshCollabSkillEvalSaveState();
       return;
     }
@@ -1753,9 +1753,9 @@
     const calc = computeCollabSkillEvalScore(sum, enabled.length);
 
     if (!filled){
-      if (rawEl) rawEl.textContent = 'â€”';
-      if (scoreEl) scoreEl.textContent = 'â€”';
-      if (levelEl) levelEl.textContent = 'â€”';
+      if (rawEl) rawEl.textContent = '—';
+      if (scoreEl) scoreEl.textContent = '—';
+      if (levelEl) levelEl.textContent = '—';
       refreshCollabSkillEvalSaveState();
       return;
     }
@@ -1764,13 +1764,13 @@
 
     const masteryPct = score24ToMasteryPct(calc.score24);
     if (scoreEl) {
-      scoreEl.textContent = masteryPct == null ? 'â€”' : `${masteryPct} %`;
+      scoreEl.textContent = masteryPct == null ? '—' : `${masteryPct} %`;
     }
 
     if (filled === enabled.length) {
       if (levelEl) levelEl.textContent = collabSkillLevelLabel(levelFromCollabSkillEvalScore(calc.score24));
     } else {
-      if (levelEl) levelEl.textContent = 'â€”';
+      if (levelEl) levelEl.textContent = '—';
     }
 
     refreshCollabSkillEvalSaveState();
@@ -1786,8 +1786,8 @@
 
     if (byId('collabSkillEvalHint')) {
       byId('collabSkillEvalHint').textContent = data?.last_audit?.id_audit_competence
-        ? 'Dernier audit rechargÃ©. Modifiez puis enregistrez si nÃ©cessaire.'
-        : 'Aucun audit existant. Renseignez lâ€™Ã©valuation puis enregistrez.';
+        ? 'Dernier audit rechargé. Modifiez puis enregistrez si nécessaire.'
+        : 'Aucun audit existant. Renseignez l’évaluation puis enregistrez.';
     }
 
     const codeTxt = (data?.code || '').toString().trim();
@@ -1800,17 +1800,17 @@
     }
 
     if (byId('collabSkillEvalCompTitle')) {
-      byId('collabSkillEvalCompTitle').textContent = titleTxt || 'â€”';
+      byId('collabSkillEvalCompTitle').textContent = titleTxt || '—';
     }
 
     if (byId('collabSkillEvalCurrent')) {
-      byId('collabSkillEvalCurrent').textContent = collabSkillLevelLabel(data?.niveau_actuel || 'â€”');
+      byId('collabSkillEvalCurrent').textContent = collabSkillLevelLabel(data?.niveau_actuel || '—');
     }
 
     if (byId('collabSkillEvalLastEval')) {
       byId('collabSkillEvalLastEval').textContent = data?.date_derniere_eval
-        ? `DerniÃ¨re Ã©val : ${formatDateFR(data.date_derniere_eval)}`
-        : 'Jamais Ã©valuÃ©e';
+        ? `Dernière éval : ${formatDateFR(data.date_derniere_eval)}`
+        : 'Jamais évaluée';
     }
 
     if (byId('collabSkillEvalLastAuditMeta')) {
@@ -1820,7 +1820,7 @@
       if (data?.last_audit?.methode_eval) parts.push(data.last_audit.methode_eval);
 
       byId('collabSkillEvalLastAuditMeta').textContent = parts.length
-        ? `Dernier audit : ${parts.join(' â€¢ ')}`
+        ? `Dernier audit : ${parts.join(' • ')}`
         : '';
     }
 
@@ -1878,7 +1878,7 @@
       if (tr) tr.style.display = enabled ? '' : 'none';
 
       if (!enabled){
-        if (lbl) lbl.textContent = 'â€”';
+        if (lbl) lbl.textContent = '—';
         if (sel){
           sel.value = '';
           sel.disabled = true;
@@ -1950,20 +1950,20 @@
     refreshCollabSkillEvalSaveState();
 
     if (enabledCount === 0 && byId('collabSkillEvalHint')) {
-      byId('collabSkillEvalHint').textContent = 'Aucun critÃ¨re dâ€™Ã©valuation paramÃ©trÃ© sur cette compÃ©tence.';
+      byId('collabSkillEvalHint').textContent = 'Aucun critère d’évaluation paramétré sur cette compétence.';
     }
 
     recalcCollabSkillEvalScore();
   }
 
   async function openCollabSkillEvalModal(portal, idEffectifCompetence){
-    if (!_editingId) throw new Error('Enregistrez dâ€™abord le collaborateur.');
+    if (!_editingId) throw new Error('Enregistrez d’abord le collaborateur.');
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
 
     const idEc = String(idEffectifCompetence || '').trim();
-    if (!idEc) throw new Error('Ligne compÃ©tence introuvable.');
+    if (!idEc) throw new Error('Ligne compétence introuvable.');
 
     resetCollabSkillEvalModal();
     openModal('modalCollabSkillEval');
@@ -1977,17 +1977,17 @@
 
   async function saveCollabSkillEval(portal){
     if (!_editingId) throw new Error('Collaborateur introuvable.');
-    if (!_collabSkillEvalState.id_effectif_competence) throw new Error('CompÃ©tence non sÃ©lectionnÃ©e.');
+    if (!_collabSkillEvalState.id_effectif_competence) throw new Error('Compétence non sélectionnée.');
 
     const enabled = getCollabSkillEvalEnabledCriteria();
-    if (!enabled.length) throw new Error('Aucun critÃ¨re actif pour cette compÃ©tence.');
+    if (!enabled.length) throw new Error('Aucun critère actif pour cette compétence.');
 
     let sum = 0;
     const criteres = [];
 
     for (const c of enabled) {
       const raw = (c.select.value || '').trim();
-      if (!raw) throw new Error('Notes incomplÃ¨tes : renseigne tous les critÃ¨res.');
+      if (!raw) throw new Error('Notes incomplètes : renseigne tous les critères.');
 
       const note = parseInt(raw, 10);
       if (!note || note < 1 || note > 4) throw new Error('Note invalide (1..4).');
@@ -2002,7 +2002,7 @@
 
     const calc = computeCollabSkillEvalScore(sum, enabled.length);
     const niveau = levelCodeFromCollabSkillEvalScore(calc.score24);
-    if (!niveau || niveau === 'â€”') throw new Error('Impossible de dÃ©terminer le niveau.');
+    if (!niveau || niveau === '—') throw new Error('Impossible de déterminer le niveau.');
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
@@ -2010,7 +2010,7 @@
     const observation = (byId('collabSkillEvalObservation')?.value || '').trim();
 
     const methodeEval = normalizeCollabSkillEvalMethod(byId('collabSkillEvalMethod')?.value || '');
-    if (!methodeEval) throw new Error("SÃ©lectionnez une mÃ©thode dâ€™Ã©valuation.");
+    if (!methodeEval) throw new Error("Sélectionnez une méthode d’évaluation.");
 
     const res = await portal.apiJson(
       `${portal.apiBase}/studio/collaborateurs/competences/evaluation/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/save`,
@@ -2030,8 +2030,8 @@
     );
 
     if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = collabSkillLevelLabel(niveau);
-    if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = `DerniÃ¨re Ã©val : ${formatDateFR(res?.date_audit)}`;
-
+    if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = `Dernière éval : ${formatDateFR(res?.date_audit)}`;
+    
     const methodSel = byId('collabSkillEvalMethod');
     if (methodSel){
       methodSel.value = normalizeCollabSkillEvalMethod(res?.methode_eval || methodeEval);
@@ -2042,7 +2042,7 @@
       if (res?.date_audit) parts.push(formatDateFR(res.date_audit));
       if (res?.nom_evaluateur) parts.push(res.nom_evaluateur);
       if (res?.methode_eval) parts.push(res.methode_eval);
-      byId('collabSkillEvalLastAuditMeta').textContent = parts.join(' â€¢ ');
+      byId('collabSkillEvalLastAuditMeta').textContent = parts.join(' • ');
     }
 
     _collabSkillEvalState.last_audit = {
@@ -2054,7 +2054,7 @@
       detail_eval: { criteres }
     };
 
-    setCollabSkillEvalMsg(true, 'Ã‰valuation enregistrÃ©e');
+    setCollabSkillEvalMsg(true, 'Évaluation enregistrée');
 
     _tabLoaded.skills = false;
     await loadTabIfNeeded(portal, 'skills');
@@ -2078,7 +2078,7 @@
     const el = byId("collabStatus");
     if (!el) return;
     const txt = String(msg || "").trim();
-    el.textContent = (!txt || txt === "â€”") ? "Retrouvez et filtrez vos collaborateurs." : txt;
+    el.textContent = (!txt || txt === "—") ? "Retrouvez et filtrez vos collaborateurs." : txt;
   }
 
     function htmlEsc(s){
@@ -2136,7 +2136,7 @@
     const win = window.open('', '_blank');
 
     if (!win) {
-      throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du PDF.");
+      throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
     }
 
     win.document.open();
@@ -2150,7 +2150,7 @@
       height:100%;
       margin:0;
       background:#f3f4f6;
-      font-family: var(--ns-font-ui);
+      font-family:Arial,sans-serif;
       color:#111827;
     }
     .pdf-loading{
@@ -2170,7 +2170,7 @@
       animation:pdfSpin .8s linear infinite;
     }
     .pdf-loading__text{
-      font-size: var(--ns-text-md);
+      font-size:14px;
       color:#475467;
     }
     iframe{
@@ -2187,7 +2187,7 @@
 <body>
   <div class="pdf-loading">
     <div class="pdf-loading__spinner"></div>
-    <div class="pdf-loading__text">GÃ©nÃ©ration du PDFâ€¦</div>
+    <div class="pdf-loading__text">Génération du PDF…</div>
   </div>
 </body>
 </html>`);
@@ -2243,12 +2243,12 @@
     if (!ownerId) throw new Error('Owner introuvable.');
 
     const compId = String(idComp || '').trim();
-    if (!compId) throw new Error('CompÃ©tence introuvable.');
+    if (!compId) throw new Error('Compétence introuvable.');
 
     const row = (_collabSkillItems || []).find(x => String(x?.id_comp || '').trim() === compId) || null;
     const title = row
-      ? `Fiche compÃ©tence - ${String(row.code || '').trim() ? `${row.code} - ` : ''}${String(row.intitule || '').trim() || 'CompÃ©tence'}`
-      : 'Fiche compÃ©tence';
+      ? `Fiche compétence - ${String(row.code || '').trim() ? `${row.code} - ` : ''}${String(row.intitule || '').trim() || 'Compétence'}`
+      : 'Fiche compétence';
 
     const url = `${portal.apiBase}/studio/collaborateurs/competences/fiche_pdf/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(compId)}`;
     const blob = await fetchPdfBlob(url);
@@ -2262,7 +2262,7 @@
 
     if (!text){
       el.style.display = "none";
-      el.textContent = "EnregistrÃ© avec succÃ¨s";
+      el.textContent = "Enregistré avec succès";
       return;
     }
 
@@ -2280,7 +2280,7 @@
     if (el) el.style.display = "none";
   }
 
-  function setDrawerText(id, value, fallback = "â€“"){
+  function setDrawerText(id, value, fallback = "–"){
     const el = byId(id);
     if (!el) return;
     const v = String(value ?? "").trim();
@@ -2305,7 +2305,7 @@
   }
 
   function drawerStatusLabel(it){
-    if (it?.archive) return "ArchivÃ©";
+    if (it?.archive) return "Archivé";
     return it?.actif ? "Actif" : "Inactif";
   }
 
@@ -2319,7 +2319,7 @@
     if (it?.ismanager) roles.push('<span class="collab-role-badge collab-role-badge--manager">Manager</span>');
     if (it?.isformateur) roles.push('<span class="collab-role-badge collab-role-badge--formateur">Formateur</span>');
     if (it?.is_temp) roles.push('<span class="collab-role-badge">Temporaire</span>');
-    return roles.length ? roles.join('') : '<span class="card-sub" style="margin:0;">â€”</span>';
+    return roles.length ? roles.join('') : '<span class="card-sub" style="margin:0;">—</span>';
   }
 
   function renderCollabDrawer(it){
@@ -2337,13 +2337,13 @@
     }
 
     setDrawerText('collabDrawerName', fullName, 'Collaborateur');
-    setDrawerText('collabDrawerService', it?.nom_service, 'â€”');
-    setDrawerText('collabDrawerPoste', splitPosteLabel(it?.poste_label).title, 'â€”');
-    setDrawerText('collabDrawerDateEntree', formatDateFR(it?.date_entree), 'â€”');
-    setDrawerText('collabDrawerDateSortie', formatDateFR(it?.date_sortie_prevue), 'â€”');
-    setDrawerText('collabDrawerContrat', it?.type_contrat, 'â€”');
-    setDrawerText('collabDrawerEmail', it?.email, 'â€”');
-    setDrawerText('collabDrawerTelephone', formatPhoneFr(it?.telephone || ''), 'â€”');
+    setDrawerText('collabDrawerService', it?.nom_service, '—');
+    setDrawerText('collabDrawerPoste', splitPosteLabel(it?.poste_label).title, '—');
+    setDrawerText('collabDrawerDateEntree', formatDateFR(it?.date_entree), '—');
+    setDrawerText('collabDrawerDateSortie', formatDateFR(it?.date_sortie_prevue), '—');
+    setDrawerText('collabDrawerContrat', it?.type_contrat, '—');
+    setDrawerText('collabDrawerEmail', it?.email, '—');
+    setDrawerText('collabDrawerTelephone', formatPhoneFr(it?.telephone || ''), '—');
 
     if (status){
       status.className = `collab-drawer-status ${drawerStatusClass(it)}`;
@@ -2400,7 +2400,7 @@
 
   function renderTop(){
     const sub = byId("collabPageSub");
-    if (sub) sub.textContent = "Enregistrez, gÃ©rez et archivez vos collaborateurs.";
+    if (sub) sub.textContent = "Enregistrez, gérez et archivez vos collaborateurs.";
   }
 
   function computeGlobalStats(items){
@@ -2421,7 +2421,7 @@
   }
 
   function formatLicenseAvailability(item){
-    if (item?.is_unlimited) return 'IllimitÃ©';
+    if (item?.is_unlimited) return 'Illimité';
     const available = Number(item?.available_access ?? 0);
     const max = Number(item?.max_access ?? 0);
     return `${Math.max(available, 0)} / ${Math.max(max, 0)}`;
@@ -2456,7 +2456,7 @@
     const label = btn.querySelector('.sb-btn-label');
     btn.disabled = count === 0;
 
-    const text = count > 0 ? `Envoyer les accÃ¨s (${count})` : 'Envoyer les accÃ¨s';
+    const text = count > 0 ? `Envoyer les accès (${count})` : 'Envoyer les accès';
     if (label) {
       label.textContent = text;
     } else {
@@ -2489,7 +2489,7 @@
     );
 
     const target = (data?.email || '').trim() || 'le collaborateur';
-    portal.showAlert('', `Mail dâ€™accÃ¨s envoyÃ© Ã  ${target}.`);
+    portal.showAlert('', `Mail d’accès envoyé à ${target}.`);
     return data;
   }
 
@@ -2500,7 +2500,7 @@
     const ids = Array.from(_bulkSendSelectedIds).map(x => String(x || '').trim()).filter(Boolean);
     if (!ids.length) return;
 
-    if (!window.confirm(`Envoyer les accÃ¨s Ã  ${ids.length} collaborateur(s) sÃ©lectionnÃ©(s) ?`)) return;
+    if (!window.confirm(`Envoyer les accès à ${ids.length} collaborateur(s) sélectionné(s) ?`)) return;
 
     const data = await portal.apiJson(
       `${portal.apiBase}/studio/collaborateurs/acces-bulk/send/${encodeURIComponent(ownerId)}`,
@@ -2518,8 +2518,8 @@
     const skipped = Number(data?.skipped_count || 0);
     const errors = Number(data?.error_count || 0);
 
-    let msg = `${sent} mail(s) envoyÃ©(s).`;
-    if (skipped > 0) msg += ` ${skipped} ignorÃ©(s).`;
+    let msg = `${sent} mail(s) envoyé(s).`;
+    if (skipped > 0) msg += ` ${skipped} ignoré(s).`;
     if (errors > 0) msg += ` ${errors} en erreur.`;
 
     portal.showAlert('', msg);
@@ -2572,13 +2572,13 @@
 
   function fillCollabEducationSelects(){
     fillSelect(byId("collabNiveauEdu"), [
-      { value: "", label: "â€”" },
-      { value: "0", label: "Aucun diplÃ´me" },
+      { value: "", label: "—" },
+      { value: "0", label: "Aucun diplôme" },
       { value: "3", label: "Niveau 3 : CAP, BEP" },
       { value: "4", label: "Niveau 4 : Bac" },
       { value: "5", label: "Niveau 5 : Bac+2 (BTS, DUT)" },
       { value: "6", label: "Niveau 6 : Bac+3 (Licence, BUT)" },
-      { value: "7", label: "Niveau 7 : Bac+5 (Master, IngÃ©nieur, Grandes Ã©coles)" },
+      { value: "7", label: "Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)" },
       { value: "8", label: "Niveau 8 : Bac+8 (Doctorat)" }
     ], "value", "label");
 
@@ -2592,7 +2592,7 @@
       };
     });
 
-    fillSelect(byId("collabDomaineEdu"), items, "value", "label", "", "â€”");
+    fillSelect(byId("collabDomaineEdu"), items, "value", "label", "", "—");
 
     const sel = byId("collabDomaineEdu");
     if (sel){
@@ -2639,17 +2639,17 @@
       { value: "M.", label: "M." },
       { value: "Mme", label: "Mme" },
       { value: "Autre", label: "Autre" }
-    ], "value", "label", "", "â€”");
+    ], "value", "label", "", "—");
 
     fillSelect(byId("collabService"), _ctx?.services || [], "id_service", "label", "", "Aucun service");
     fillSelect(byId("collabPoste"), _ctx?.postes || [], "id_poste", "label", "", "Aucun poste");
 
     fillSelect(byId("collabTypeContrat"), [
-      { value: "", label: "â€”" },
+      { value: "", label: "—" },
       { value: "CDI", label: "CDI" },
       { value: "CDD", label: "CDD" },
       { value: "Alternance", label: "Alternance" },
-      { value: "IntÃ©rim", label: "IntÃ©rim" },
+      { value: "Intérim", label: "Intérim" },
       { value: "Stage", label: "Stage" },
       { value: "Freelance", label: "Freelance" },
       { value: "Autre", label: "Autre" }
@@ -2790,8 +2790,8 @@
       <button type="button" class="collab-sort-head${active ? ' is-active' : ''}" data-sort-collab="${esc(key)}" aria-sort="${ariaSort}">
         <span>${esc(label)}</span>
         <span class="collab-sort-arrows" aria-hidden="true">
-          <span class="collab-sort-arrow collab-sort-arrow--up${active && dir === 'asc' ? ' is-active' : ''}">â–²</span>
-          <span class="collab-sort-arrow collab-sort-arrow--down${active && dir === 'desc' ? ' is-active' : ''}">â–¼</span>
+          <span class="collab-sort-arrow collab-sort-arrow--up${active && dir === 'asc' ? ' is-active' : ''}">▲</span>
+          <span class="collab-sort-arrow collab-sort-arrow--down${active && dir === 'desc' ? ' is-active' : ''}">▼</span>
         </span>
       </button>
     `;
@@ -2804,22 +2804,22 @@
     const prevDisabled = page <= 1 ? ' disabled' : '';
     const nextDisabled = page >= totalPages ? ' disabled' : '';
     const tokens = buildCollabPaginationTokens(totalPages, page);
-    const range = total ? `${pageData.start + 1} â€“ ${pageData.end} sur ${total}` : '0 sur 0';
+    const range = total ? `${pageData.start + 1} – ${pageData.end} sur ${total}` : '0 sur 0';
 
     return `
       <div class="collab-page-size-wrap">
-        <select class="sb-select collab-page-size-select" data-collab-page-size aria-label="Nombre d'Ã©lÃ©ments par page">
+        <select class="sb-select collab-page-size-select" data-collab-page-size aria-label="Nombre d'éléments par page">
           <option value="25"${_pageSize === 25 ? ' selected' : ''}>25 par page</option>
           <option value="50"${_pageSize === 50 ? ' selected' : ''}>50 par page</option>
           <option value="100"${_pageSize === 100 ? ' selected' : ''}>100 par page</option>
         </select>
       </div>
       <div class="collab-pagination" aria-label="Pagination collaborateurs">
-        <button type="button" class="sb-icon-btn collab-page-nav" data-page-nav="prev" title="Page prÃ©cÃ©dente" aria-label="Page prÃ©cÃ©dente"${prevDisabled}>
+        <button type="button" class="sb-icon-btn collab-page-nav" data-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
         </button>
         ${tokens.map(t => {
-          if (typeof t === 'string') return '<span class="collab-page-ellipsis" aria-hidden="true">â€¦</span>';
+          if (typeof t === 'string') return '<span class="collab-page-ellipsis" aria-hidden="true">…</span>';
           return `<button type="button" class="collab-page-btn${t === page ? ' is-active' : ''}" data-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? 'page' : 'false'}">${t}</button>`;
         }).join('')}
         <button type="button" class="sb-icon-btn collab-page-nav" data-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
@@ -2834,7 +2834,7 @@
     const first = String(firstName || '').trim();
     const last = String(lastName || '').trim();
     const letters = `${first.charAt(0)}${last.charAt(0)}`.trim();
-    return (letters || 'â€“').toUpperCase();
+    return (letters || '–').toUpperCase();
   }
 
   function collabAvatarTone(value){
@@ -2847,13 +2847,13 @@
 
   function splitPosteLabel(label){
     const raw = String(label || '').trim();
-    if (!raw || raw === 'â€”') return { code: '', title: 'â€”' };
+    if (!raw || raw === '—') return { code: '', title: '—' };
 
-    const parts = raw.split('Â·');
+    const parts = raw.split('·');
     if (parts.length >= 2) {
       return {
         code: parts.shift().trim(),
-        title: parts.join('Â·').trim() || 'â€”'
+        title: parts.join('·').trim() || '—'
       };
     }
 
@@ -2873,7 +2873,7 @@
   function renderStatusRoles(it){
     const archived = !!it?.archive;
     const active = !!it?.actif && !archived;
-    const statusLabel = archived ? 'ArchivÃ©' : (active ? 'Actif' : 'Inactif');
+    const statusLabel = archived ? 'Archivé' : (active ? 'Actif' : 'Inactif');
     const statusClass = archived ? 'is-archived' : (active ? 'is-active' : 'is-inactive');
 
     return `
@@ -2897,8 +2897,8 @@
     if (body) body.style.display = isCollapsed ? 'none' : '';
     if (btn) {
       btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
-      btn.title = isCollapsed ? 'DÃ©plier les filtres' : 'Replier les filtres';
-      btn.setAttribute('aria-label', isCollapsed ? 'DÃ©plier les filtres' : 'Replier les filtres');
+      btn.title = isCollapsed ? 'Déplier les filtres' : 'Replier les filtres';
+      btn.setAttribute('aria-label', isCollapsed ? 'Déplier les filtres' : 'Replier les filtres');
     }
   }
 
@@ -2970,8 +2970,8 @@
     const rows = pageItems.map(it => {
       const cid = String(it.id_collaborateur || '').trim();
       const fullName = collabFullName(it);
-      const email = it.email || "â€”";
-      const service = String(it.nom_service || '').trim() || 'â€”';
+      const email = it.email || "—";
+      const service = String(it.nom_service || '').trim() || '—';
       const accessSummary = Array.isArray(it.access_summary) ? it.access_summary : [];
       const selectedForSend = _bulkSendSelectedIds.has(cid);
       const avatarTone = collabAvatarTone(cid || fullName);
@@ -2979,7 +2979,7 @@
       return `
         <div class="collab-table-row ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}" data-collab-row="${esc(cid)}">
           <div class="collab-table-cell collab-table-cell--check">
-            <label class="sb-collab-send-check" title="SÃ©lectionner pour lâ€™envoi des accÃ¨s">
+            <label class="sb-collab-send-check" title="Sélectionner pour l’envoi des accès">
               <input type="checkbox" data-select-collab="${esc(cid)}" ${selectedForSend ? 'checked' : ''} />
             </label>
           </div>
@@ -3052,8 +3052,8 @@
           <div class="collab-table-cell">${renderCollabSortHead('collaborateur', 'Collaborateur')}</div>
           <div class="collab-table-cell">${renderCollabSortHead('service', 'Service')}</div>
           <div class="collab-table-cell">${renderCollabSortHead('poste', 'Poste')}</div>
-          <div class="collab-table-cell">${renderCollabSortHead('roles', 'Statut & rÃ´les')}</div>
-          <div class="collab-table-cell">${renderCollabSortHead('access', 'AccÃ¨s')}</div>
+          <div class="collab-table-cell">${renderCollabSortHead('roles', 'Statut & rôles')}</div>
+          <div class="collab-table-cell">${renderCollabSortHead('access', 'Accès')}</div>
           <div class="collab-table-cell collab-table-cell--actions">Actions</div>
         </div>
         ${rows}
@@ -3208,7 +3208,7 @@
 
   function normalizeModalContextLabel(value){
     return String(value || "")
-      .replace(/^â€”\s*/, "")
+      .replace(/^—\s*/, "")
       .replace(/^Tous\s+/i, "")
       .trim();
   }
@@ -3225,8 +3225,8 @@
     if (sub){
       const poste = normalizeModalContextLabel(data?.poste_label || data?.poste_actuel || getSelectedLabel("collabPoste"));
       const service = normalizeModalContextLabel(data?.service_label || data?.service || getSelectedLabel("collabService"));
-      const line = [poste, service].filter(Boolean).join(" Â· ");
-      sub.textContent = line || (_modalMode === "create" ? "CrÃ©ation dâ€™un collaborateur" : "Collaborateur sans poste renseignÃ©");
+      const line = [poste, service].filter(Boolean).join(" · ");
+      sub.textContent = line || (_modalMode === "create" ? "Création d’un collaborateur" : "Collaborateur sans poste renseigné");
     }
   }
 
@@ -3237,7 +3237,7 @@
     const badges = [];
 
     if (data?.archive) {
-      badges.push({ label: "ArchivÃ©", cls: "sb-badge sb-badge--status-archive" });
+      badges.push({ label: "Archivé", cls: "sb-badge sb-badge--status-archive" });
     } else if (data?.actif) {
       badges.push({ label: "Actif", cls: "sb-badge sb-badge--status-active" });
     } else {
@@ -3318,15 +3318,15 @@
     _tabLoaded = { skills: false, certs: false, history: false, rights: false };
 
     if (_editingId) {
-      setPanelMessage('collabSkillsPanel', 'Ouvrez lâ€™onglet pour charger les compÃ©tences.');
-      setPanelMessage('collabCertsPanel', 'Ouvrez lâ€™onglet pour charger les certifications.');
-      setPanelMessage('collabHistoryPanel', 'Ouvrez lâ€™onglet pour charger lâ€™historique.');
-      setPanelMessage('collabRightsPanel', 'Ouvrez lâ€™onglet pour charger les droits dâ€™accÃ¨s.');
+      setPanelMessage('collabSkillsPanel', 'Ouvrez l’onglet pour charger les compétences.');
+      setPanelMessage('collabCertsPanel', 'Ouvrez l’onglet pour charger les certifications.');
+      setPanelMessage('collabHistoryPanel', 'Ouvrez l’onglet pour charger l’historique.');
+      setPanelMessage('collabRightsPanel', 'Ouvrez l’onglet pour charger les droits d’accès.');
     } else {
-      setPanelMessage('collabSkillsPanel', 'Enregistrez dâ€™abord le collaborateur pour accÃ©der aux compÃ©tences.');
-      setPanelMessage('collabCertsPanel', 'Enregistrez dâ€™abord le collaborateur pour accÃ©der aux certifications.');
-      setPanelMessage('collabHistoryPanel', 'Enregistrez dâ€™abord le collaborateur pour accÃ©der Ã  lâ€™historique.');
-      setPanelMessage('collabRightsPanel', 'Enregistrez dâ€™abord le collaborateur pour gÃ©rer les droits dâ€™accÃ¨s.');
+      setPanelMessage('collabSkillsPanel', 'Enregistrez d’abord le collaborateur pour accéder aux compétences.');
+      setPanelMessage('collabCertsPanel', 'Enregistrez d’abord le collaborateur pour accéder aux certifications.');
+      setPanelMessage('collabHistoryPanel', 'Enregistrez d’abord le collaborateur pour accéder à l’historique.');
+      setPanelMessage('collabRightsPanel', 'Enregistrez d’abord le collaborateur pour gérer les droits d’accès.');
     }
   }
 
@@ -3341,13 +3341,13 @@
     _collabSkillItems = ownedItems.slice();
 
     const poste = getCurrentPosteForSkills();
-    const posteLabel = poste.label || data?.intitule_poste || 'â€“';
+    const posteLabel = poste.label || data?.intitule_poste || '–';
     const canAdd = !!_editingId;
 
     const levelMeta = (niv) => {
       const key = nsLevelKey(niv);
       if (key) return { text: nsLevelLabel(key), cls: `sb-badge--niv sb-badge--niv-${key.toLowerCase()}` };
-      return { text: 'â€”', cls: 'sb-badge--outline-accent' };
+      return { text: '—', cls: 'sb-badge--outline-accent' };
     };
 
     const levelRank = (niv) => {
@@ -3401,7 +3401,7 @@
       return `
         <div class="sb-collab-skill-titleline">
           ${code ? `<span class="sb-badge sb-badge--comp">${esc(code)}</span>` : ''}
-          <span class="sb-collab-skill-title" title="${esc(title)}">${esc(title || 'CompÃ©tence')}</span>
+          <span class="sb-collab-skill-title" title="${esc(title)}">${esc(title || 'Compétence')}</span>
         </div>
       `;
     };
@@ -3414,7 +3414,7 @@
     const sortHead = (scope, key, label, cls = '') => {
       const state = _collabSkillSorts[scope] || { key:'competence', dir:'asc' };
       const active = state.key === key;
-      const arrow = active ? (state.dir === 'asc' ? 'â–²' : 'â–¼') : 'â†•';
+      const arrow = active ? (state.dir === 'asc' ? '▲' : '▼') : '↕';
       return `
         <th class="${cls}">
           <button type="button" class="sb-collab-sort-head${active ? ' is-active' : ''}" data-skill-sort="${esc(scope)}" data-skill-sort-key="${esc(key)}" aria-label="Trier par ${esc(label)}">
@@ -3426,7 +3426,7 @@
     };
 
     const renderOwnedRows = (rows) => {
-      if (!rows.length) return `<tr><td colspan="4" class="sb-collab-skill-empty">Aucune compÃ©tence dans cette catÃ©gorie.</td></tr>`;
+      if (!rows.length) return `<tr><td colspan="4" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
       return rows.map(x => {
         const lastEval = formatDateFR(x.date_derniere_eval);
         const idComp = (x.id_comp || '').toString().trim();
@@ -3441,8 +3441,8 @@
             <td class="sb-table-action-cell">
               <div class="sb-icon-actions">
                 ${idComp ? `<button type="button" class="sb-icon-btn" data-act="open-skill-sheet-btn" data-id-comp="${esc(idComp)}" title="Voir la fiche" aria-label="Voir la fiche">${iconPdf}</button>` : ``}
-                ${idEffectifComp ? `<button type="button" class="sb-icon-btn" data-act="open-skill-eval-btn" data-id-effectif-comp="${esc(idEffectifComp)}" title="Ã‰valuer la compÃ©tence" aria-label="Ã‰valuer la compÃ©tence">${iconEval}</button>` : ``}
-                ${idComp ? `<button type="button" class="sb-icon-btn sb-icon-btn--danger" data-act="remove-skill" data-id-comp="${esc(idComp)}" title="Retirer la compÃ©tence" aria-label="Retirer la compÃ©tence">${iconTrash}</button>` : ``}
+                ${idEffectifComp ? `<button type="button" class="sb-icon-btn" data-act="open-skill-eval-btn" data-id-effectif-comp="${esc(idEffectifComp)}" title="Évaluer la compétence" aria-label="Évaluer la compétence">${iconEval}</button>` : ``}
+                ${idComp ? `<button type="button" class="sb-icon-btn sb-icon-btn--danger" data-act="remove-skill" data-id-comp="${esc(idComp)}" title="Retirer la compétence" aria-label="Retirer la compétence">${iconTrash}</button>` : ``}
               </div>
             </td>
           </tr>
@@ -3460,9 +3460,9 @@
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--owned">
             <thead>
               <tr>
-                ${sortHead(scope, 'competence', 'CompÃ©tence')}
+                ${sortHead(scope, 'competence', 'Compétence')}
                 ${sortHead(scope, 'niveau', 'Niveau actuel', 'col-center sb-collab-skill-col-level')}
-                ${sortHead(scope, 'date_eval', 'DerniÃ¨re Ã©val.', 'col-center sb-collab-skill-col-date')}
+                ${sortHead(scope, 'date_eval', 'Dernière éval.', 'col-center sb-collab-skill-col-date')}
                 <th class="col-center sb-collab-skill-col-actions">Actions</th>
               </tr>
             </thead>
@@ -3474,18 +3474,18 @@
 
     host.innerHTML = `
       <div class="sb-collab-metrics">
-        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('contract')}</span><strong>${requiredOwned.length}</strong><em>CompÃ©tences requises<br>dÃ©tenues</em></div>
-        <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('skills')}</span><strong>${validatedCount}</strong><em>CompÃ©tences validÃ©es<br>au niveau requis ou supÃ©rieur</em></div>
-        <div class="sb-collab-metric sb-collab-metric--green"><span aria-hidden="true">${collabModalSvg('certs')}</span><strong>${otherOwned.length}</strong><em>Autres compÃ©tences<br>dÃ©tenues</em></div>
+        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('contract')}</span><strong>${requiredOwned.length}</strong><em>Compétences requises<br>détenues</em></div>
+        <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('skills')}</span><strong>${validatedCount}</strong><em>Compétences validées<br>au niveau requis ou supérieur</em></div>
+        <div class="sb-collab-metric sb-collab-metric--green"><span aria-hidden="true">${collabModalSvg('certs')}</span><strong>${otherOwned.length}</strong><em>Autres compétences<br>détenues</em></div>
       </div>
 
       <div class="sb-collab-tab-actions">
-        ${canAdd ? `<button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnSyncCollabSkillsFromPoste"><span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les compÃ©tences du poste</span></button>` : ``}
-        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCompAdd"><span class="sb-btn-icon" aria-hidden="true">${iconPlus}</span><span>Ajouter une compÃ©tence</span></button>` : ``}
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnSyncCollabSkillsFromPoste"><span class="sb-btn-icon" aria-hidden="true">${collabModalSvg('import')}</span><span>Importer les compétences du poste</span></button>` : ``}
+        ${canAdd ? `<button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCollabCompAdd"><span class="sb-btn-icon" aria-hidden="true">${iconPlus}</span><span>Ajouter une compétence</span></button>` : ``}
       </div>
 
-      ${renderOwnedSection('CompÃ©tences requises dÃ©tenues par le collaborateur', requiredOwned, 'sb-collab-skill-section--required', 'required')}
-      ${renderOwnedSection('Autres compÃ©tences dÃ©tenues', otherOwned, 'sb-collab-skill-section--other', 'other')}
+      ${renderOwnedSection('Compétences requises détenues par le collaborateur', requiredOwned, 'sb-collab-skill-section--required', 'required')}
+      ${renderOwnedSection('Autres compétences détenues', otherOwned, 'sb-collab-skill-section--other', 'other')}
     `;
 
     host.querySelectorAll('[data-skill-sort]').forEach(btn => {
@@ -3536,7 +3536,7 @@
     _collabCertItems = items.slice();
 
     const poste = getCurrentPosteForSkills();
-    const posteLabel = poste.label || data?.intitule_poste || 'â€“';
+    const posteLabel = poste.label || data?.intitule_poste || '–';
     const canAdd = !!_editingId;
 
     const iconPen = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
@@ -3556,12 +3556,12 @@
       if (raw.includes('obten') || raw.includes('valide')) cls = 'sb-collab-cert-status--ok';
       if (raw.includes('renouvel')) cls = 'sb-collab-cert-status--warn';
       if (raw.includes('expire')) cls = 'sb-collab-cert-status--danger';
-      return `<span class="sb-badge sb-collab-cert-status ${cls}">${esc(label || 'â€”')}</span>`;
+      return `<span class="sb-badge sb-collab-cert-status ${cls}">${esc(label || '—')}</span>`;
     };
 
     const requirementBadge = (x) => {
       if (x.is_required_poste) return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--required">Requis</span>`;
-      if (x.is_wanted_poste) return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--wanted">SouhaitÃ©</span>`;
+      if (x.is_wanted_poste) return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--wanted">Souhaité</span>`;
       return `<span class="sb-badge sb-collab-cert-badge">Hors poste</span>`;
     };
 
@@ -3588,9 +3588,9 @@
 
     host.innerHTML = `
       <div class="sb-collab-metrics">
-        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('medal')}</span><strong>${requiredCount}</strong><em>Certifications<br>requises / souhaitÃ©es</em></div>
+        <div class="sb-collab-metric sb-collab-metric--red"><span aria-hidden="true">${collabModalSvg('medal')}</span><strong>${requiredCount}</strong><em>Certifications<br>requises / souhaitées</em></div>
         <div class="sb-collab-metric sb-collab-metric--green"><span aria-hidden="true">${collabModalSvg('certs')}</span><strong>${acquiredCount}</strong><em>Certifications<br>obtenues</em></div>
-        <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('calendar')}</span><strong>${watchCount}</strong><em>Ã€ surveiller<br>ou renouveler</em></div>
+        <div class="sb-collab-metric sb-collab-metric--blue"><span aria-hidden="true">${collabModalSvg('calendar')}</span><strong>${watchCount}</strong><em>À surveiller<br>ou renouveler</em></div>
       </div>
 
       <div class="sb-collab-tab-actions">
@@ -3606,10 +3606,10 @@
         ${items.length ? `
           <div class="sb-table-wrap">
             <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-certs-table">
-              <thead><tr><th>Certification</th><th class="col-center" style="width:130px;">ValiditÃ©</th><th class="col-center" style="width:140px;">Ã‰tat</th><th class="col-center" style="width:170px;">Dates</th><th class="col-center" style="width:94px;">Actions</th></tr></thead>
+              <thead><tr><th>Certification</th><th class="col-center" style="width:130px;">Validité</th><th class="col-center" style="width:140px;">État</th><th class="col-center" style="width:170px;">Dates</th><th class="col-center" style="width:94px;">Actions</th></tr></thead>
               <tbody>${rows}</tbody>
             </table>
-          </div>` : `<div class="sb-collab-empty-card">Aucune certification enregistrÃ©e pour ce collaborateur.</div>`}
+          </div>` : `<div class="sb-collab-empty-card">Aucune certification enregistrée pour ce collaborateur.</div>`}
       </div>
     `;
 
@@ -3658,49 +3658,49 @@
       const service = (x.nom_service || '').toString().trim();
       return `
         <tr>
-          <td class="col-center"><span class="sb-collab-history-action-code">${esc(code || 'â€“')}</span></td>
+          <td class="col-center"><span class="sb-collab-history-action-code">${esc(code || '–')}</span></td>
           <td><div class="sb-collab-history-formation">${esc(intitule)}</div>${service ? `<div class="sb-collab-history-code">${esc(service)}</div>` : ''}</td>
           <td class="col-center">${esc(formatDateFR(x.date_debut))}</td>
           <td class="col-center">${esc(formatDateFR(x.date_fin))}</td>
           <td class="col-center"><span class="sb-badge sb-collab-history-status--neutral">${esc(x.source_changement_label || historyPosteSourceLabel(x.source_changement))}</span></td>
         </tr>
       `;
-    }).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune Ã©volution structurante enregistrÃ©e.</td></tr>`;
+    }).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune évolution structurante enregistrée.</td></tr>`;
 
     const formationError = (data?.formations_jmb?.error || '').toString().trim();
     const formationRows = formationError
       ? `<tr><td colspan="5" class="sb-collab-skill-empty">Impossible de charger les formations JMB : ${esc(formationError)}</td></tr>`
       : (formationItems.length ? formationItems.map(x => `
         <tr>
-          <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_action_formation || x.code_formation || 'â€“')}</span></td>
+          <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_action_formation || x.code_formation || '–')}</span></td>
           <td><div class="sb-collab-history-formation">${esc(x.titre_formation || 'Formation')}</div>${x.code_formation ? `<div class="sb-collab-history-code">${esc(x.code_formation)}</div>` : ''}</td>
           <td class="col-center">${esc(formatDateFR(x.date_debut_formation))}</td>
           <td class="col-center">${esc(formatDateFR(x.date_fin_formation))}</td>
-          <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.etat_action || 'â€”')}</span></td>
+          <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.etat_action || '—')}</span></td>
         </tr>
-      `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune formation JMB enregistrÃ©e.</td></tr>`);
+      `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune formation JMB enregistrée.</td></tr>`);
 
     const auditRows = auditItems.length ? auditItems.map(x => `
       <tr>
-        <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_competence || 'â€“')}</span></td>
-        <td><div class="sb-collab-history-formation">${esc(x.intitule_competence || 'CompÃ©tence')}</div>${x.methode_eval ? `<div class="sb-collab-history-code">${esc(x.methode_eval)}</div>` : ''}</td>
+        <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_competence || '–')}</span></td>
+        <td><div class="sb-collab-history-formation">${esc(x.intitule_competence || 'Compétence')}</div>${x.methode_eval ? `<div class="sb-collab-history-code">${esc(x.methode_eval)}</div>` : ''}</td>
         <td class="col-center">${esc(formatDateFR(x.date_audit))}</td>
-        <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.niveau_label || x.niveau_actuel || 'â€”')}</span></td>
-        <td class="col-center">${esc(x.nom_evaluateur || 'â€”')}</td>
+        <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.niveau_label || x.niveau_actuel || '—')}</span></td>
+        <td class="col-center">${esc(x.nom_evaluateur || '—')}</td>
       </tr>
-    `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucun audit de compÃ©tence enregistrÃ©.</td></tr>`;
+    `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucun audit de compétence enregistré.</td></tr>`;
 
     host.innerHTML = `
       <div class="sb-history-accordion-list">
         <div class="sb-acc sb-accordion sb-history-accordion is-open" id="studioHistAccJmb">
           <button type="button" class="sb-acc-head is-open" data-acc="jmb" aria-expanded="true">
-            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('school')}</span><span>Formations effectuÃ©es avec JMBCONSULTANT</span></span>
-            <span class="sb-acc-chevron">â–¾</span>
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('school')}</span><span>Formations effectuées avec JMBCONSULTANT</span></span>
+            <span class="sb-acc-chevron">▾</span>
           </button>
           <div class="sb-acc-body" data-acc-body="jmb">
             <div class="sb-table-wrap">
               <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
-                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>Formation</th><th class="col-center" style="width:120px;">DÃ©but</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">Ã‰tat</th></tr></thead>
+                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>Formation</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">État</th></tr></thead>
                 <tbody>${formationRows}</tbody>
               </table>
             </div>
@@ -3709,13 +3709,13 @@
 
         <div class="sb-acc sb-accordion sb-history-accordion" id="studioHistAccMoves">
           <button type="button" class="sb-acc-head" data-acc="moves" aria-expanded="false">
-            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('trend')}</span><span>Ã‰volutions structurantes</span></span>
-            <span class="sb-acc-chevron">â–¾</span>
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('trend')}</span><span>Évolutions structurantes</span></span>
+            <span class="sb-acc-chevron">▾</span>
           </button>
           <div class="sb-acc-body" data-acc-body="moves" style="display:none;">
             <div class="sb-table-wrap">
               <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
-                <thead><tr><th class="col-center" style="width:110px;">Code</th><th>Poste</th><th class="col-center" style="width:120px;">DÃ©but</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">Source</th></tr></thead>
+                <thead><tr><th class="col-center" style="width:110px;">Code</th><th>Poste</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin</th><th class="col-center" style="width:140px;">Source</th></tr></thead>
                 <tbody>${evolutionRows}</tbody>
               </table>
             </div>
@@ -3724,13 +3724,13 @@
 
         <div class="sb-acc sb-accordion sb-history-accordion" id="studioHistAccAudits">
           <button type="button" class="sb-acc-head" data-acc="audits" aria-expanded="false">
-            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('audit')}</span><span>Audits des compÃ©tences</span></span>
-            <span class="sb-acc-chevron">â–¾</span>
+            <span class="sb-history-acc-title"><span class="sb-history-acc-icon" aria-hidden="true">${collabModalSvg('audit')}</span><span>Audits des compétences</span></span>
+            <span class="sb-acc-chevron">▾</span>
           </button>
           <div class="sb-acc-body" data-acc-body="audits" style="display:none;">
             <div class="sb-table-wrap">
               <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-history-table">
-                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>CompÃ©tence</th><th class="col-center" style="width:120px;">Date</th><th class="col-center" style="width:150px;">Niveau</th><th class="col-center" style="width:170px;">Ã‰valuateur</th></tr></thead>
+                <thead><tr><th class="col-center" style="width:130px;">Code</th><th>Compétence</th><th class="col-center" style="width:120px;">Date</th><th class="col-center" style="width:150px;">Niveau</th><th class="col-center" style="width:170px;">Évaluateur</th></tr></thead>
                 <tbody>${auditRows}</tbody>
               </table>
             </div>
@@ -3773,8 +3773,8 @@
       const availableAccess = Number(item?.available_access ?? 0);
 
       const quotaLabel = contractActive
-        ? (isUnlimited ? 'Licence disponible : IllimitÃ©' : `Licence disponible : ${Math.max(availableAccess, 0)} / ${Math.max(maxAccess, 0)}`)
-        : 'Licence non incluse dans lâ€™abonnement';
+        ? (isUnlimited ? 'Licence disponible : Illimité' : `Licence disponible : ${Math.max(availableAccess, 0)} / ${Math.max(maxAccess, 0)}`)
+        : 'Licence non incluse dans l’abonnement';
 
       const quotaBlocked = contractActive && hasEmail && !isUnlimited && !hasAccess && availableAccess <= 0;
       const disabled = (!contractActive && !hasAccess) || (!hasEmail && !hasAccess) || quotaBlocked;
@@ -3783,13 +3783,13 @@
       if (!contractActive) {
         stateText = `<strong>Console non incluse</strong><br>Le contrat owner ne permet pas cette console.`;
       } else if (!hasEmail && !hasAccess) {
-        stateText = `<strong>Email manquant</strong><br>Renseignez et enregistrez un email pour ouvrir lâ€™accÃ¨s.`;
+        stateText = `<strong>Email manquant</strong><br>Renseignez et enregistrez un email pour ouvrir l’accès.`;
       } else if (quotaBlocked) {
-        stateText = `<strong>Quota atteint</strong><br>Aucune licence supplÃ©mentaire disponible pour cette console.`;
+        stateText = `<strong>Quota atteint</strong><br>Aucune licence supplémentaire disponible pour cette console.`;
       } else if (hasAccess && !isUnlimited && availableAccess <= 0) {
-        stateText = `<strong>Quota atteint</strong><br>Ce collaborateur a dÃ©jÃ  une licence sur cette console. Vous pouvez conserver ou retirer cet accÃ¨s.`;
+        stateText = `<strong>Quota atteint</strong><br>Ce collaborateur a déjà une licence sur cette console. Vous pouvez conserver ou retirer cet accès.`;
       } else {
-        stateText = `<strong>Console active</strong><br>${hasEmail || hasAccess ? 'AccÃ¨s gÃ©rable pour ce collaborateur.' : 'Renseignez et enregistrez un email pour ouvrir lâ€™accÃ¨s.'}`;
+        stateText = `<strong>Console active</strong><br>${hasEmail || hasAccess ? 'Accès gérable pour ce collaborateur.' : 'Renseignez et enregistrez un email pour ouvrir l’accès.'}`;
       }
 
       return `
@@ -3814,7 +3814,7 @@
 
           <div>
             <select data-console-role="${esc(consoleCode)}" ${disabled ? 'disabled' : ''}>
-              <option value="none" ${roleCode === 'none' ? 'selected' : ''}>Aucun accÃ¨s</option>
+              <option value="none" ${roleCode === 'none' ? 'selected' : ''}>Aucun accès</option>
               <option value="user" ${roleCode === 'user' ? 'selected' : ''}>Utilisateur</option>
               <option value="supervisor" ${roleCode === 'supervisor' ? 'selected' : ''}>Superviseur</option>
               <option value="admin" ${roleCode === 'admin' ? 'selected' : ''}>Administrateur</option>
@@ -3829,10 +3829,10 @@
     host.innerHTML = `
       <div class="sb-stack sb-stack--sm">
         <div class="card-sub" style="margin:0;">
-          DÃ©finissez les accÃ¨s console du collaborateur. <strong>Email enregistrÃ© :</strong> ${esc(savedEmail || 'non renseignÃ©')}
+          Définissez les accès console du collaborateur. <strong>Email enregistré :</strong> ${esc(savedEmail || 'non renseigné')}
         </div>
 
-        ${hasEmail ? '' : `<div class="sb-access-note">Aucun accÃ¨s ne peut Ãªtre ouvert tant que lâ€™email nâ€™est pas renseignÃ© et enregistrÃ© sur le collaborateur.</div>`}
+        ${hasEmail ? '' : `<div class="sb-access-note">Aucun accès ne peut être ouvert tant que l’email n’est pas renseigné et enregistré sur le collaborateur.</div>`}
 
         <div class="sb-access-grid">${rows}</div>
       </div>
@@ -3842,7 +3842,7 @@
   async function saveRights(portal, options){
     const opts = options || {};
 
-    if (!_editingId) throw new Error('Enregistrez dâ€™abord le collaborateur.');
+    if (!_editingId) throw new Error('Enregistrez d’abord le collaborateur.');
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
 
@@ -3877,21 +3877,21 @@
     if (!ownerId) throw new Error('Owner introuvable.');
 
     if (tab === 'skills') {
-      setPanelMessage('collabSkillsPanel', 'Chargementâ€¦');
+      setPanelMessage('collabSkillsPanel', 'Chargement…');
       const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
       renderCompetences(data, portal);
       return;
     }
 
     if (tab === 'certs') {
-      setPanelMessage('collabCertsPanel', 'Chargementâ€¦');
+      setPanelMessage('collabCertsPanel', 'Chargement…');
       const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
       renderCertifications(data, portal);
       return;
     }
 
     if (tab === 'history') {
-      setPanelMessage('collabHistoryPanel', 'Chargementâ€¦');
+      setPanelMessage('collabHistoryPanel', 'Chargement…');
       const [formationsJmb, evolutions, audits] = await Promise.all([
         loadHistorySection(portal, `${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
         loadHistorySection(portal, `${portal.apiBase}/studio/collaborateurs/historique/evolutions/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`),
@@ -3902,7 +3902,7 @@
     }
 
     if (tab === 'rights') {
-      setPanelMessage('collabRightsPanel', 'Chargementâ€¦');
+      setPanelMessage('collabRightsPanel', 'Chargement…');
       const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/acces/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
       renderRights(data, portal);
     }
@@ -4030,8 +4030,8 @@
     }
 
     /* IMPORTANT :
-      le poste actuel peut avoir changÃ©, donc les onglets dÃ©pendants du poste
-      doivent Ãªtre invalidÃ©s aprÃ¨s chaque enregistrement. */
+      le poste actuel peut avoir changé, donc les onglets dépendants du poste
+      doivent être invalidés après chaque enregistrement. */
     _tabLoaded.skills = false;
     _tabLoaded.certs = false;
     _tabLoaded.history = false;
@@ -4057,7 +4057,7 @@
       }
 
       refreshModalSendButton();
-      setCollabSaveMsg('EnregistrÃ© avec succÃ¨s');
+      setCollabSaveMsg('Enregistré avec succès');
     }
 
     return _editingId || data?.id_collaborateur || null;
@@ -4204,11 +4204,11 @@
     });
 
     byId('btnCollabDrawerEval')?.addEventListener('click', () => {
-      portal.showAlert('', 'La page Entretiens et Ã©valuations sera branchÃ©e dans un prochain chantier.');
+      portal.showAlert('', 'La page Entretiens et évaluations sera branchée dans un prochain chantier.');
     });
 
     byId('btnCollabDrawerPlan')?.addEventListener('click', () => {
-      portal.showAlert('', 'Le planning sera branchÃ© dans un prochain chantier.');
+      portal.showAlert('', 'Le planning sera branché dans un prochain chantier.');
     });
 
     document.addEventListener('keydown', (e) => {
@@ -4346,7 +4346,7 @@
       } catch (e) {
         portal.showAlert('error', getErrorMessage(e));
       }
-    });
+    });    
 
     byId('btnCollabSkillEvalSave')?.addEventListener('click', async () => {
       try {
@@ -4355,7 +4355,7 @@
         if (btn) btn.disabled = true;
         await saveCollabSkillEval(portal);
       } catch (e) {
-        setCollabSkillEvalMsg(false, `Ã‰chec de l'enregistrement - ${getErrorMessage(e)}`);
+        setCollabSkillEvalMsg(false, `Échec de l'enregistrement - ${getErrorMessage(e)}`);
       } finally {
         refreshCollabSkillEvalSaveState();
       }
@@ -4472,13 +4472,13 @@
     _loaded = true;
 
     bindOnce(portal);
-    setStatus('Chargementâ€¦');
+    setStatus('Chargement…');
 
     await loadContext(portal);
     await loadGlobalStats(portal);
     await loadList(portal);
 
-    setStatus('â€”');
+    setStatus('—');
   }
 
   function handleInitError(e){

@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id){ return document.getElementById(id); }
@@ -65,8 +65,8 @@
     }
   }
 
-  // DÃ©marrage immÃ©diat de l'auth pour Ã©viter que le portail lance une vue
-  // avant que Supabase soit initialisÃ©.
+  // Démarrage immédiat de l'auth pour éviter que le portail lance une vue
+  // avant que Supabase soit initialisé.
   initAuth().catch(() => {});
 
   async function ensurePortalEntry() {

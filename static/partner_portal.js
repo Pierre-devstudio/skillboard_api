@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   window.portal.registerMenu({
@@ -38,7 +38,7 @@
     const name = byId("topbarName");
     const sel = byId("selPartnerProfile");
 
-    if (info) info.textContent = "Chargementâ€¦";
+    if (info) info.textContent = "Chargement…";
     if (name) name.textContent = "Partner";
 
     try {
@@ -81,7 +81,7 @@
 
         if (sel) {
           if (scope.profiles.length > 1) {
-            sel.innerHTML = `<option value="">Profilâ€¦</option>`;
+            sel.innerHTML = `<option value="">Profil…</option>`;
 
             scope.profiles.forEach(p => {
               const opt = document.createElement("option");

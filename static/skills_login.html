@@ -1,12 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Novoskill Insights â€” Connexion</title>
+  <title>Novoskill Insights — Connexion</title>
 
-
-  <link rel="stylesheet" href="novoskill_typography.css">
-<!-- Favicons (optionnel mais propre) -->
+  <!-- Favicons (optionnel mais propre) -->
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -14,17 +12,17 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- On rÃ©utilise ton CSS commun + thÃ¨me Skills -->
+  <!-- On réutilise ton CSS commun + thème Skills -->
   <link rel="stylesheet" href="/portal_common.css" />
   <link rel="stylesheet" href="/skills_portal_theme.css" />
 
   <style>
-    /* Login simple, sans rÃ©inventer ton design */
+    /* Login simple, sans réinventer ton design */
     /* Login layout: 2 colonnes (gauche form, droite image) */
     body{
       margin:0;
       min-height:100vh;
-      background: #f3f4f6; /* cohÃ©rent avec ton thÃ¨me */
+      background: #f3f4f6; /* cohérent avec ton thème */
       display:block; /* override du body flex global de portal_common.css */
     }
 
@@ -54,7 +52,7 @@
       position: relative;
     }
 
-    /* lÃ©ger voile pour Ã©viter les variations de lisibilitÃ© (discret) */
+    /* léger voile pour éviter les variations de lisibilité (discret) */
     .login-right::after{
       content:"";
       position:absolute;
@@ -63,7 +61,7 @@
       pointer-events:none;
     }
 
-    /* Responsive: sur Ã©crans Ã©troits on masque l'image */
+    /* Responsive: sur écrans étroits on masque l'image */
     @media (max-width: 980px){
       .login-right{ display:none; }
       .login-left{
@@ -86,14 +84,14 @@
       box-shadow:0 6px 20px rgba(0,0,0,.06);
     }
     .login-title{
-      font-size: var(--ns-title-sm);
-      font-weight: var(--ns-weight-bold);
+      font-size:18px;
+      font-weight:700;
       margin:0 0 6px 0;
     }
     .login-sub{
       margin:0 0 14px 0;
       color:#4b5563;
-      font-size: var(--ns-text-sm);
+      font-size:13px;
     }
     .login-row{
       display:flex;
@@ -102,15 +100,15 @@
       margin-bottom:12px;
     }
     .login-row label{
-      font-size: var(--ns-text-xs);
+      font-size:12px;
       color:#374151;
-      font-weight: var(--ns-weight-semibold);
+      font-weight:600;
     }
     .login-row input{
       border:1px solid #d1d5db;
       border-radius:10px;
       padding:10px 12px;
-      font-size: var(--ns-text-md);
+      font-size:14px;
       outline:none;
       background:#fff;
     }
@@ -131,9 +129,9 @@
       color:#fff;
       padding:10px 14px;
       border-radius:10px;
-      font-weight: var(--ns-weight-bold);
+      font-weight:700;
       cursor:pointer;
-      font-size: var(--ns-text-md);
+      font-size:14px;
     }
     .btn-primary:disabled{
       opacity:.6;
@@ -142,22 +140,22 @@
     .link{
       color: var(--accent, #c1272d);
       text-decoration:none;
-      font-weight: var(--ns-weight-semibold);
-      font-size: var(--ns-text-sm);
+      font-weight:600;
+      font-size:13px;
       cursor:pointer;
       user-select:none;
     }
     .hint{
-      font-size: var(--ns-text-xs);
+      font-size:12px;
       color:#6b7280;
       margin-top:10px;
-      line-height: var(--ns-leading-ui);
+      line-height:1.35;
     }
     .panel{ display:none; }
     .panel.active{ display:block; }
     .msg{
       margin: 10px 0 0 0;
-      font-size: var(--ns-text-sm);
+      font-size: 13px;
       color:#111827;
     }
     .msg.error{ color:#b91c1c; }
@@ -168,12 +166,12 @@
       gap:10px;
       margin-bottom:12px;
     }
-
+    
     .brand-name{
-      font-size: var(--ns-text-sm);
-      font-weight: var(--ns-weight-bold);
+      font-size:13px;
+      font-weight:800;
       color:#111827;
-      letter-spacing: var(--ns-letter-label);
+      letter-spacing:.2px;
     }
     .brand-module{
       display:inline-flex;
@@ -182,9 +180,9 @@
       border-radius:999px;
       background: var(--accent, #c1272d);
       color:#fff;
-      font-size: var(--ns-text-xs);
-      font-weight: var(--ns-weight-bold);
-      letter-spacing: var(--ns-letter-label);
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.2px;
       box-shadow: 0 4px 12px rgba(193,39,45,.18);
     }
 
@@ -202,7 +200,7 @@
 
         <!-- PANEL LOGIN -->
         <div class="panel active" id="panelLogin">
-          <h1 class="login-title">Connexion</h1>
+          <h1 class="login-title">Connexion</h1>          
 
           <div class="login-row">
             <label for="loginEmail">Email</label>
@@ -211,23 +209,23 @@
 
           <div class="login-row">
             <label for="loginPassword">Mot de passe</label>
-            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
           </div>
 
           <div class="login-actions">
             <button class="btn-primary" id="btnLogin">Se connecter</button>
-            <span class="link" id="lnkForgot">Mot de passe oubliÃ©</span>
+            <span class="link" id="lnkForgot">Mot de passe oublié</span>
           </div>
 
           <p class="hint">
-            Novoskill est une solution propriÃ©taire JMBCONSULTANT.
+            Novoskill est une solution propriétaire JMBCONSULTANT.
           </p>
         </div>
 
         <!-- PANEL RESET EMAIL -->
         <div class="panel" id="panelForgot">
-          <h1 class="login-title">Mot de passe oubliÃ©</h1>
-          <p class="login-sub">On tâ€™envoie un lien de rÃ©initialisation par email.</p>
+          <h1 class="login-title">Mot de passe oublié</h1>
+          <p class="login-sub">On t’envoie un lien de réinitialisation par email.</p>
 
           <div class="login-row">
             <label for="resetEmail">Email</label>
@@ -240,7 +238,7 @@
           </div>
 
           <p class="hint">
-            Le lien ouvre une page Skills dÃ©diÃ©e pour choisir un nouveau mot de passe.
+            Le lien ouvre une page Skills dédiée pour choisir un nouveau mot de passe.
           </p>
         </div>
 
@@ -254,10 +252,10 @@
   <!-- Supabase JS (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Ton wrapper commun Auth (dÃ©jÃ  commitÃ©) -->
+  <!-- Ton wrapper commun Auth (déjà commité) -->
   <script src="/portal_auth_common.js"></script>
 
-  <!-- JS spÃ©cifique Skills -->
+  <!-- JS spécifique Skills -->
   <script src="/skills_login.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const DEFAULT_HTML_URL = null;
   let _htmlPromise = null;
 
@@ -71,8 +71,8 @@
 
     function defaultSummary(isCreate){
       return isCreate
-        ? "Enregistre dâ€™abord le poste pour lancer une cotation traÃ§able."
-        : "Aucune cotation conventionnelle enregistrÃ©e.";
+        ? "Enregistre d’abord le poste pour lancer une cotation traçable."
+        : "Aucune cotation conventionnelle enregistrée.";
     }
 
     function getReferential(){
@@ -88,7 +88,7 @@
       return {
         coefficient: String(labels.coefficient || "Coefficient").trim(),
         palier: String(labels.palier || "Palier").trim(),
-        categorie: String(labels.categorie || "CatÃ©gorie").trim(),
+        categorie: String(labels.categorie || "Catégorie").trim(),
         points: String(labels.points || "Points").trim(),
       };
     }
@@ -104,12 +104,12 @@
 
       setText("posteCcnResultLabel", `${labels.coefficient} / ${labels.palier} retenu`);
       setText("posteCcnCategoryLabel", `${labels.categorie} retenue`);
-      setText("posteCcnPropCoeffLabel", `${labels.coefficient} proposÃ©`);
-      setText("posteCcnPropPalierLabel", `${labels.palier} proposÃ©`);
-      setText("posteCcnPropCategorieLabel", `${labels.categorie} proposÃ©e`);
-      setText("posteCcnPropPointsLabel", mode === "group_level" ? "RepÃ¨re" : labels.points);
+      setText("posteCcnPropCoeffLabel", `${labels.coefficient} proposé`);
+      setText("posteCcnPropPalierLabel", `${labels.palier} proposé`);
+      setText("posteCcnPropCategorieLabel", `${labels.categorie} proposée`);
+      setText("posteCcnPropPointsLabel", mode === "group_level" ? "Repère" : labels.points);
       setText("posteCcnCritHeadLevel", mode === "group_level" ? labels.coefficient : "Niveau");
-      setText("posteCcnCritHeadPoints", mode === "group_level" ? "RepÃ¨re" : labels.points);
+      setText("posteCcnCritHeadPoints", mode === "group_level" ? "Repère" : labels.points);
       setText("posteCcnFinalCoefficientLabel", `${labels.coefficient} retenu`);
       setText("posteCcnFinalPalierLabel", `${labels.palier} retenu`);
       setText("posteCcnFinalCategorieLabel", `${labels.categorie} retenue`);
@@ -216,7 +216,7 @@
         const grp = String(band?.groupe || "").trim().toUpperCase();
         if (!grp) return "";
         const cadreGroups = new Set((ref?.cadre_groups || ["F","G","H","I"]).map(x => String(x || "").trim().toUpperCase()));
-        return `Groupe ${grp} Â· ${cadreGroups.has(grp) ? "Cadre" : "Non-cadre"}`;
+        return `Groupe ${grp} · ${cadreGroups.has(grp) ? "Cadre" : "Non-cadre"}`;
       }
 
       if (n >= 350) return "Cadre";
@@ -227,10 +227,10 @@
         if (marche("management") >= 3) ok += 1;
         if (marche("ampleur_connaissances") >= 4) ok += 1;
         if (marche("autonomie") >= 6) ok += 1;
-        return ok >= 2 ? "Cadre" : "Agent de maÃ®trise / technicien";
+        return ok >= 2 ? "Cadre" : "Agent de maîtrise / technicien";
       }
-      if (n >= 171) return "Agent de maÃ®trise / technicien";
-      if (n >= 100) return "EmployÃ©";
+      if (n >= 171) return "Agent de maîtrise / technicien";
+      if (n >= 100) return "Employé";
       return "";
     }
 
@@ -239,9 +239,9 @@
       const coef = parseInt(data?.coefficient ?? 0, 10) || 0;
       const palier = parseInt(data?.palier ?? 0, 10) || 0;
       if (mode === "group_level"){
-        return (!coef && !palier) ? "â€”" : `Groupe ${coef || "â€”"} Â· Niveau ${palier || "â€”"}`;
+        return (!coef && !palier) ? "—" : `Groupe ${coef || "—"} · Niveau ${palier || "—"}`;
       }
-      return (!coef && !palier) ? "â€”" : `Coef. ${coef || "â€”"} Â· Palier ${palier || "â€”"}`;
+      return (!coef && !palier) ? "—" : `Coef. ${coef || "—"} · Palier ${palier || "—"}`;
     }
 
     function renderCriteriaRows(analysis){
@@ -255,9 +255,9 @@
 
       (Array.isArray(analysis?.criteres) ? analysis.criteres : []).forEach(x => {
         rows.push({
-          libelle: x?.libelle || x?.code || "CritÃ¨re",
+          libelle: x?.libelle || x?.code || "Critère",
           niveau: mode === "group_level" ? `G${parseInt(x?.marche ?? 0, 10) || 0}` : `M${parseInt(x?.marche ?? 0, 10) || 0}`,
-          points: mode === "group_level" ? "â€”" : (parseInt(x?.points ?? 0, 10) || 0),
+          points: mode === "group_level" ? "—" : (parseInt(x?.points ?? 0, 10) || 0),
           justification: x?.justification || ""
         });
       });
@@ -281,21 +281,21 @@
         const tr = document.createElement("tr");
 
         const tdLib = document.createElement("td");
-        tdLib.textContent = r.libelle || "â€”";
+        tdLib.textContent = r.libelle || "—";
 
         const tdNiv = document.createElement("td");
         tdNiv.style.textAlign = "center";
         const badge = document.createElement("span");
         badge.className = "sb-badge sb-badge--ccn-level";
-        badge.textContent = r.niveau || "â€”";
+        badge.textContent = r.niveau || "—";
         tdNiv.appendChild(badge);
 
         const tdPts = document.createElement("td");
         tdPts.style.textAlign = "center";
-        tdPts.textContent = String(r.points ?? "â€”");
+        tdPts.textContent = String(r.points ?? "—");
 
         const tdJust = document.createElement("td");
-        tdJust.textContent = r.justification || "â€”";
+        tdJust.textContent = r.justification || "—";
 
         tr.appendChild(tdLib);
         tr.appendChild(tdNiv);
@@ -317,10 +317,10 @@
       const proposal = analysis?.proposal || {};
       const mode = String(analysis?.mode || getMode() || "").trim().toLowerCase();
 
-      setValue("posteCcnPropCoeff", proposal?.coefficient ?? "â€”");
-      setValue("posteCcnPropPalier", proposal?.palier ?? "â€”");
-      setValue("posteCcnPropCategorie", proposal?.categorie_professionnelle || "â€”");
-      setValue("posteCcnPropPoints", mode === "group_level" ? "â€”" : (analysis?.total_points ?? "â€”"));
+      setValue("posteCcnPropCoeff", proposal?.coefficient ?? "—");
+      setValue("posteCcnPropPalier", proposal?.palier ?? "—");
+      setValue("posteCcnPropCategorie", proposal?.categorie_professionnelle || "—");
+      setValue("posteCcnPropPoints", mode === "group_level" ? "—" : (analysis?.total_points ?? "—"));
       setValue("posteCcnPropResume", proposal?.resume_cotation || "");
       setValue("posteCcnPropJustification", analysis?.justification_globale || "");
 
@@ -364,7 +364,7 @@
       const rows = analysis?.criteres || analysis?.bonifications || [];
       rows.forEach(x => {
         const tr = document.createElement("tr");
-        [x?.critere_label || x?.label || x?.critere || "â€”", x?.niveau ?? x?.degre ?? "â€”", x?.points ?? "â€”", x?.justification || "â€”"].forEach((value, idx) => {
+        [x?.critere_label || x?.label || x?.critere || "—", x?.niveau ?? x?.degre ?? "—", x?.points ?? "—", x?.justification || "—"].forEach((value, idx) => {
           const td = document.createElement("td");
           td.textContent = value;
           if (idx === 1 || idx === 2) td.style.textAlign = "center";
@@ -381,23 +381,23 @@
 
       const conventionTxt = ctx?.convention_label
         ? `${ctx.convention_label}${ctx?.idcc ? ` (IDCC ${ctx.idcc})` : ""}`
-        : (ctx?.idcc ? `IDCC ${ctx.idcc}` : "Convention non dÃ©tectÃ©e");
+        : (ctx?.idcc ? `IDCC ${ctx.idcc}` : "Convention non détectée");
 
       setValue("posteCcnConvention", conventionTxt);
       setValue("posteCcnModalConvention", conventionTxt);
-      setValue("posteCcnModalVersion", ctx?.version_label || "â€”");
-      setValue("posteCcnModalPoste", ctx?.poste?.intitule_poste || "â€”");
-      setValue("posteCcnModalService", ctx?.poste?.nom_service || "Non liÃ©");
+      setValue("posteCcnModalVersion", ctx?.version_label || "—");
+      setValue("posteCcnModalPoste", ctx?.poste?.intitule_poste || "—");
+      setValue("posteCcnModalService", ctx?.poste?.nom_service || "Non lié");
 
       const base = [];
       if (ctx?.poste?.mission_principale) base.push(`Mission : ${ctx.poste.mission_principale}`);
-      if (ctx?.poste?.competences_count !== undefined) base.push(`CompÃ©tences requises : ${ctx.poste.competences_count}`);
+      if (ctx?.poste?.competences_count !== undefined) base.push(`Compétences requises : ${ctx.poste.competences_count}`);
       if (ctx?.poste?.certifications_count !== undefined) base.push(`Certifications : ${ctx.poste.certifications_count}`);
       setValue("posteCcnModalBase", base.join("\n"));
 
-      let status = "Non dÃ©marrÃ©";
-      let result = "â€”";
-      let category = "â€”";
+      let status = "Non démarré";
+      let result = "—";
+      let category = "—";
       let summary = defaultSummary(false);
 
       const dossier = ctx?.dossier || null;
@@ -405,18 +405,18 @@
       const validation = dossier?.validation_json || null;
 
       if (!ctx?.supported){
-        status = "Convention non supportÃ©e";
-        summary = ctx?.support_message || "Lâ€™assistant nâ€™est pas disponible pour cette convention.";
+        status = "Convention non supportée";
+        summary = ctx?.support_message || "L’assistant n’est pas disponible pour cette convention.";
       } else if (validation && Object.keys(validation).length){
-        status = "ValidÃ©e";
+        status = "Validée";
         result = formatResultText(validation);
         summary = validation?.justification || proposal?.proposal?.resume_cotation || defaultSummary(false);
-        category = validation?.categorie_professionnelle || proposal?.proposal?.categorie_professionnelle || "â€”";
+        category = validation?.categorie_professionnelle || proposal?.proposal?.categorie_professionnelle || "—";
       } else if (proposal && Object.keys(proposal).length){
         status = "Brouillon";
         result = formatResultText(proposal?.proposal || proposal);
         summary = proposal?.justification_globale || proposal?.proposal?.resume_cotation || defaultSummary(false);
-        category = proposal?.proposal?.categorie_professionnelle || "â€”";
+        category = proposal?.proposal?.categorie_professionnelle || "—";
       }
 
       setValue("posteCcnStatus", status);
@@ -447,8 +447,8 @@
       const sub = byId("posteCcnSub");
       if (sub){
         sub.textContent = ctx?.supported
-          ? "Assistant dÃ©diÃ© Ã  la cotation de lâ€™emploi selon la convention collective dÃ©tectÃ©e."
-          : (ctx?.support_message || "Convention non encore supportÃ©e.");
+          ? "Assistant dédié à la cotation de l’emploi selon la convention collective détectée."
+          : (ctx?.support_message || "Convention non encore supportée.");
       }
     }
 
@@ -491,7 +491,7 @@
         await loadContext(portal);
       }
       if (!_ctx?.supported){
-        portal.showAlert("error", _ctx?.support_message || "Convention non supportÃ©e.");
+        portal.showAlert("error", _ctx?.support_message || "Convention non supportée.");
         return;
       }
 
@@ -502,12 +502,12 @@
       if (btn){
         btn.disabled = true;
         btn.style.opacity = ".6";
-        btn.textContent = "Analyseâ€¦";
+        btn.textContent = "Analyse…";
       }
 
       openIaBusyOverlay(
         "Cotation conventionnelle en cours",
-        "Lecture du poste, application du rÃ©fÃ©rentiel conventionnel et gÃ©nÃ©ration de la justification..."
+        "Lecture du poste, application du référentiel conventionnel et génération de la justification..."
       );
 
       try {
@@ -524,12 +524,12 @@
           _ctx.dossier.proposition_json = analysis || {};
         }
 
-        setValue("posteCcnStatus", "Proposition non enregistrÃ©e");
+        setValue("posteCcnStatus", "Proposition non enregistrée");
         setValue("posteCcnResult", formatResultText(analysis?.proposal || {}));
-        setValue("posteCcnCategory", analysis?.proposal?.categorie_professionnelle || "â€”");
+        setValue("posteCcnCategory", analysis?.proposal?.categorie_professionnelle || "—");
         setValue(
           "posteCcnSummary",
-          analysis?.justification_globale || analysis?.proposal?.resume_cotation || "Proposition IA prÃªte Ã  Ãªtre revue."
+          analysis?.justification_globale || analysis?.proposal?.resume_cotation || "Proposition IA prête à être revue."
         );
 
         portal.showAlert("", "");
@@ -538,7 +538,7 @@
         if (btn){
           btn.disabled = false;
           btn.style.opacity = "";
-          btn.textContent = "Lancer lâ€™analyse";
+          btn.textContent = "Lancer l’analyse";
         }
       }
     }
@@ -549,7 +549,7 @@
         await loadContext(portal);
       }
       if (!_ctx?.supported){
-        portal.showAlert("error", _ctx?.support_message || "Convention non supportÃ©e.");
+        portal.showAlert("error", _ctx?.support_message || "Convention non supportée.");
         return;
       }
 
@@ -561,20 +561,20 @@
 
       if (mode === "group_level"){
         if (!Number.isFinite(coef) || coef < 1 || coef > 9){
-          portal.showAlert("error", "Le groupe retenu doit Ãªtre compris entre 1 et 9.");
+          portal.showAlert("error", "Le groupe retenu doit être compris entre 1 et 9.");
           return;
         }
         const allowed = getAllowedLevels(coef);
         if (!Number.isFinite(palier) || !allowed.includes(palier)){
-          portal.showAlert("error", `Le niveau retenu nâ€™est pas autorisÃ© pour le groupe ${coef}.`);
+          portal.showAlert("error", `Le niveau retenu n’est pas autorisé pour le groupe ${coef}.`);
           return;
         }
       } else {
         const minCoef = is3248 ? 6 : 100;
         if (!Number.isFinite(coef) || coef < minCoef){
           portal.showAlert("error", is3248
-            ? "La cotation retenue doit Ãªtre supÃ©rieure ou Ã©gale Ã  6."
-            : "Le coefficient retenu doit Ãªtre supÃ©rieur ou Ã©gal Ã  100."
+            ? "La cotation retenue doit être supérieure ou égale à 6."
+            : "Le coefficient retenu doit être supérieur ou égal à 100."
           );
           return;
         }
@@ -622,22 +622,22 @@
       _analysis = null;
       applyResultLabels();
 
-      setValue("posteCcnConvention", isCreate ? "Disponible aprÃ¨s enregistrement du poste" : "Chargementâ€¦");
-      setValue("posteCcnStatus", isCreate ? "Brouillon non enregistrÃ©" : "Chargementâ€¦");
-      setValue("posteCcnResult", "â€”");
-      setValue("posteCcnCategory", "â€”");
+      setValue("posteCcnConvention", isCreate ? "Disponible après enregistrement du poste" : "Chargement…");
+      setValue("posteCcnStatus", isCreate ? "Brouillon non enregistré" : "Chargement…");
+      setValue("posteCcnResult", "—");
+      setValue("posteCcnCategory", "—");
       setValue("posteCcnSummary", defaultSummary(!!isCreate));
 
-      setValue("posteCcnModalConvention", "â€”");
-      setValue("posteCcnModalVersion", "â€”");
-      setValue("posteCcnModalPoste", "â€”");
-      setValue("posteCcnModalService", "â€”");
+      setValue("posteCcnModalConvention", "—");
+      setValue("posteCcnModalVersion", "—");
+      setValue("posteCcnModalPoste", "—");
+      setValue("posteCcnModalService", "—");
       setValue("posteCcnModalBase", "");
 
-      setValue("posteCcnPropCoeff", "â€”");
-      setValue("posteCcnPropPalier", "â€”");
-      setValue("posteCcnPropCategorie", "â€”");
-      setValue("posteCcnPropPoints", "â€”");
+      setValue("posteCcnPropCoeff", "—");
+      setValue("posteCcnPropPalier", "—");
+      setValue("posteCcnPropCategorie", "—");
+      setValue("posteCcnPropPoints", "—");
       setValue("posteCcnPropResume", "");
       setValue("posteCcnPropJustification", "");
 
@@ -660,8 +660,8 @@
       const sub = byId("posteCcnSub");
       if (sub){
         sub.textContent = isCreate
-          ? "Enregistre le poste, puis lance lâ€™assistant de cotation conventionnelle."
-          : "Assistant dÃ©diÃ© Ã  la cotation de lâ€™emploi selon la convention collective dÃ©tectÃ©e.";
+          ? "Enregistre le poste, puis lance l’assistant de cotation conventionnelle."
+          : "Assistant dédié à la cotation de l’emploi selon la convention collective détectée.";
       }
     }
 

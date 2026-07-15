@@ -1,3 +1,3 @@
-﻿(function () {
-  // Placeholder Insights volontairement sans logique mÃ©tier.
+(function () {
+  // Placeholder Insights volontairement sans logique métier.
 })();

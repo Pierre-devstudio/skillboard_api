@@ -1,20 +1,18 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Recueil des Attentes â€” Skillboard</title>
-
-  <link rel="stylesheet" href="novoskill_typography.css">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recueil des Attentes — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: var(--ns-font-ui); }
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
     body { margin: 24px; background:#fafafa; color:#222; }
-    h1 { margin: 0 0 16px; font-size: var(--ns-title-md); }
+    h1 { margin: 0 0 16px; font-size: 22px; }
     fieldset { border:1px solid #ddd; border-radius:8px; padding:16px; background:#fff; }
     legend { padding:0 8px; color:#555; }
     .row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
     .col { display:flex; flex-direction:column; min-width:180px; flex:1; }
-    label { font-size: var(--ns-text-sm); color:#444; margin-bottom:4px; }
+    label { font-size:13px; color:#444; margin-bottom:4px; }
     textarea {
       width:100%; min-height:120px; resize:vertical;
       padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff;
@@ -30,7 +28,7 @@
     }
     .btn { background:#0ea5e9; color:#fff; }
     .btn.secondary { background:#e2e8f0; color:#111; }
-    .muted { color:#666; font-size: var(--ns-text-lg); }
+    .muted { color:#666; font-size:16px; }
     .success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin-top:16px; }
     .error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px; border-radius:8px; margin-top:16px; }
   </style>
@@ -38,16 +36,16 @@
 <body>
   <header style="margin-bottom:20px; text-align:center;">
     <img src="/logo.png" alt="Logo" style="max-height:80px;">
-    <div id="formationTitle" style="margin-top:8px; font-weight: var(--ns-weight-semibold); font-size: var(--ns-title-md);"></div>
+    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:22px;"></div>
   </header>
 
-  <h1>Recueil des attentes et autoÃ©valuation</h1>
+  <h1>Recueil des attentes et autoévaluation</h1>
 
-  <div id="participantInfo" style="font-weight: var(--ns-weight-semibold); margin-bottom: 10px;"></div>
+  <div id="participantInfo" style="font-weight: 600; margin-bottom: 10px;"></div>
 
   <p class="muted" id="introText">
-    Vous Ãªtes inscrit(e) Ã  une formation organisÃ©e par JMB Consultant.
-    Merci de dÃ©crire vos attentes vis-Ã -vis de cette formation et dâ€™Ã©valuer votre niveau sur les prÃ©requis indiquÃ©s ci-dessous.
+    Vous êtes inscrit(e) à une formation organisée par JMB Consultant.  
+    Merci de décrire vos attentes vis-à-vis de cette formation et d’évaluer votre niveau sur les prérequis indiqués ci-dessous.
   </p>
 
   <div id="alert"></div>
@@ -55,14 +53,14 @@
   <!-- Bloc attentes -->
   <fieldset>
     <legend>Vos attentes personnelles</legend>
-    <textarea id="attentes" placeholder="DÃ©crivez ici ce que vous attendez de cette formation..."></textarea>
+    <textarea id="attentes" placeholder="Décrivez ici ce que vous attendez de cette formation..."></textarea>
   </fieldset>
 
   <div style="height:1px; background:#eee; margin:16px 0;"></div>
 
-  <!-- Bloc autoÃ©valuation -->
+  <!-- Bloc autoévaluation -->
   <fieldset>
-    <legend>AutoÃ©valuation des prÃ©requis</legend>
+    <legend>Autoévaluation des prérequis</legend>
     <div id="listePrerequis"></div>
   </fieldset>
 
@@ -72,10 +70,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-  // Backend unifiÃ©
+  // Backend unifié
   const API_BASE = "https://skillboard-services.onrender.com";
 
-  // Supabase (inchangÃ©)
+  // Supabase (inchangé)
   const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -107,14 +105,14 @@
     }
   }
 
-  // -------------------- Chargement prÃ©requis --------------------
+  // -------------------- Chargement prérequis --------------------
   async function chargerPrerequis(id_effectif) {
     const { data, error } = await sb.rpc("rpc_get_prerequis_from_effectif", {
       p_id_effectif: id_effectif,
     });
 
     if (error) {
-      alertBox("error", "Erreur de chargement des prÃ©requis : " + error.message);
+      alertBox("error", "Erreur de chargement des prérequis : " + error.message);
       return;
     }
 
@@ -185,10 +183,10 @@
 
       if (!response.ok) {
         if (response.status === 409) {
-          // cas gÃ©rÃ© cÃ´tÃ© API (doublon)
+          // cas géré côté API (doublon)
           alertBox(
             "error",
-            "Un recueil d'attentes a dÃ©jÃ  Ã©tÃ© enregistrÃ© pour ce participant."
+            "Un recueil d'attentes a déjà été enregistré pour ce participant."
           );
           return;
         }
@@ -201,14 +199,14 @@
       }
 
       // OK
-      alertBox("success", "Merci ! Votre rÃ©ponse a bien Ã©tÃ© enregistrÃ©e.");
+      alertBox("success", "Merci ! Votre réponse a bien été enregistrée.");
       document.getElementById("submitBtn").disabled = true;
     } catch (e) {
       alertBox("error", "Erreur : " + e.message);
     }
   }
 
-  // -------------------- Wiring Ã©vÃ¨nements --------------------
+  // -------------------- Wiring évènements --------------------
   document.getElementById("submitBtn").addEventListener("click", (e) => {
     e.preventDefault();
     soumettreFormulaire();

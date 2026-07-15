@@ -1,11 +1,11 @@
-﻿/* ======================================================
+/* ======================================================
    static/menus/skills_dashboard.js
-   - Dashboard Insights : santÃ©, risques, transmission, fiabilitÃ©
-   - RÃ©utilisÃ© aussi en mode embarquÃ© dans Studio > Espace de gestion.
-   - Toute Ã©volution du dashboard doit prÃ©server :
+   - Dashboard Insights : santé, risques, transmission, fiabilité
+   - Réutilisé aussi en mode embarqué dans Studio > Espace de gestion.
+   - Toute évolution du dashboard doit préserver :
      1) la route Insights classique /skills/dashboard/...
-     2) la route Studio embarquÃ©e /studio/clients/.../dashboard/...
-     3) le sÃ©lecteur d'organisation injectÃ© par Studio.
+     2) la route Studio embarquée /studio/clients/.../dashboard/...
+     3) le sélecteur d'organisation injecté par Studio.
    ====================================================== */
 
 (function () {
@@ -17,47 +17,47 @@
 
   const HELP_TEXTS = {
     health: {
-      title: "SantÃ© globale",
-      body: "Cet indicateur synthÃ©tise quatre dimensions du pÃ©rimÃ¨tre : robustesse des postes, robustesse des compÃ©tences, fiabilitÃ© des donnÃ©es et capacitÃ© de transmission. La transmission est calculÃ©e sur les compÃ©tences disposant dâ€™un transmetteur Expert ou AvancÃ© haut."
+      title: "Santé globale",
+      body: "Cet indicateur synthétise quatre dimensions du périmètre : robustesse des postes, robustesse des compétences, fiabilité des données et capacité de transmission. La transmission est calculée sur les compétences disposant d’un transmetteur Expert ou Avancé haut."
     },
     timeline: {
-      title: "Ã‰volution des risques",
-      body: "Ce graphique montre lâ€™Ã©volution mensuelle de lâ€™indice de fragilitÃ© des postes. Il sâ€™appuie sur les donnÃ©es connues dans Novoskill, dont les sorties prÃ©vues et les indisponibilitÃ©s enregistrÃ©es."
+      title: "Évolution des risques",
+      body: "Ce graphique montre l’évolution mensuelle de l’indice de fragilité des postes. Il s’appuie sur les données connues dans Novoskill, dont les sorties prévues et les indisponibilités enregistrées."
     },
     postes: {
-      title: "Postes Ã  surveiller",
-      body: "Cette carte rÃ©partit les postes du pÃ©rimÃ¨tre selon leur indice de fragilitÃ© : stable en dessous de 25 %, Ã  surveiller de 25 % Ã  64 %, en danger Ã  partir de 65 %. Elle permet de voir immÃ©diatement la part de lâ€™organisation sous vigilance."
+      title: "Postes à surveiller",
+      body: "Cette carte répartit les postes du périmètre selon leur indice de fragilité : stable en dessous de 25 %, à surveiller de 25 % à 64 %, en danger à partir de 65 %. Elle permet de voir immédiatement la part de l’organisation sous vigilance."
     },
     transmission: {
-      title: "CapacitÃ© de transmission",
-      body: "Cet indicateur mesure la part des compÃ©tences du pÃ©rimÃ¨tre disposant dâ€™une transmission validÃ©e ou Ã  confirmer. Un transmetteur est identifiÃ© lorsquâ€™il est Expert ou en AvancÃ© haut avec un score dâ€™au moins 63 %."
+      title: "Capacité de transmission",
+      body: "Cet indicateur mesure la part des compétences du périmètre disposant d’une transmission validée ou à confirmer. Un transmetteur est identifié lorsqu’il est Expert ou en Avancé haut avec un score d’au moins 63 %."
     },
     reliability: {
-      title: "FiabilitÃ© des donnÃ©es analysÃ©es",
-      body: "Cet indicateur mesure la fraÃ®cheur des donnÃ©es utilisÃ©es pour Ã©tablir le diagnostic. Les donnÃ©es sont considÃ©rÃ©es comme fraÃ®ches lorsquâ€™elles ont Ã©tÃ© mises Ã  jour depuis moins de 6 mois."
+      title: "Fiabilité des données analysées",
+      body: "Cet indicateur mesure la fraîcheur des données utilisées pour établir le diagnostic. Les données sont considérées comme fraîches lorsqu’elles ont été mises à jour depuis moins de 6 mois."
     },
     noaction: {
       title: "Risques sans action",
-      body: "Cette carte liste les postes en danger pour lesquels aucune action de sÃ©curisation nâ€™est identifiÃ©e dans Novoskill : formation planifiÃ©e, entretien prÃ©parÃ© ou autre levier de sÃ©curisation modÃ©lisÃ©."
+      body: "Cette carte liste les postes en danger pour lesquels aucune action de sécurisation n’est identifiée dans Novoskill : formation planifiée, entretien préparé ou autre levier de sécurisation modélisé."
     }
   };
 
   const HEALTH_COMPONENT_HELP = {
     postes: {
       title: "Robustesse des postes",
-      body: "Mesure la soliditÃ© des postes du pÃ©rimÃ¨tre. Plus le score est Ã©levÃ©, moins les postes analysÃ©s cumulent de fragilitÃ©s : titulaires insuffisants, compÃ©tences critiques fragiles, absence de relÃ¨ve ou couverture trop faible."
+      body: "Mesure la solidité des postes du périmètre. Plus le score est élevé, moins les postes analysés cumulent de fragilités : titulaires insuffisants, compétences critiques fragiles, absence de relève ou couverture trop faible."
     },
     competences: {
-      title: "Robustesse des compÃ©tences",
-      body: "Mesure la soliditÃ© des compÃ©tences sensibles du pÃ©rimÃ¨tre. Un score Ã©levÃ© signifie que les compÃ©tences utiles aux postes restent maÃ®trisÃ©es par suffisamment de collaborateurs, avec moins de zones critiques Ã  traiter."
+      title: "Robustesse des compétences",
+      body: "Mesure la solidité des compétences sensibles du périmètre. Un score élevé signifie que les compétences utiles aux postes restent maîtrisées par suffisamment de collaborateurs, avec moins de zones critiques à traiter."
     },
     fiabilite: {
-      title: "FiabilitÃ© des donnÃ©es",
-      body: "Mesure la fraÃ®cheur des donnÃ©es utilisÃ©es pour calculer le diagnostic. Plus le score est Ã©levÃ©, plus les Ã©valuations et informations exploitÃ©es sont rÃ©centes, donc plus la lecture du risque est fiable."
+      title: "Fiabilité des données",
+      body: "Mesure la fraîcheur des données utilisées pour calculer le diagnostic. Plus le score est élevé, plus les évaluations et informations exploitées sont récentes, donc plus la lecture du risque est fiable."
     },
     transmission: {
-      title: "CapacitÃ© de transmission",
-      body: "Mesure la part des compÃ©tences disposant dÃ©jÃ  dâ€™un relais interne validÃ© ou Ã  confirmer. Un bon score indique que les savoir-faire peuvent Ãªtre transmis sans dÃ©pendre dâ€™une seule personne."
+      title: "Capacité de transmission",
+      body: "Mesure la part des compétences disposant déjà d’un relais interne validé ou à confirmer. Un bon score indique que les savoir-faire peuvent être transmis sans dépendre d’une seule personne."
     }
   };
 
@@ -88,7 +88,7 @@
 
   function numTxt(v, digits = 0) {
     const n = Number(v);
-    if (!Number.isFinite(n)) return "â€”";
+    if (!Number.isFinite(n)) return "—";
     return n.toLocaleString("fr-FR", {
       minimumFractionDigits: digits,
       maximumFractionDigits: digits
@@ -109,7 +109,7 @@
 
   function updateCriticiteLabel(value) {
     const label = byId("dashboardCriticiteValue");
-    if (label) label.textContent = `â‰¥ ${Math.round(clamp(value, 0, 100))}`;
+    if (label) label.textContent = `≥ ${Math.round(clamp(value, 0, 100))}`;
   }
 
   function healthStatus(pct) {
@@ -185,7 +185,7 @@
     `;
 
     if (pctEl) pctEl.textContent = pctTxt(pct, 0);
-    if (scope) scope.textContent = data?.scope_label ? `PÃ©rimÃ¨tre : ${data.scope_label}` : "PÃ©rimÃ¨tre : â€”";
+    if (scope) scope.textContent = data?.scope_label ? `Périmètre : ${data.scope_label}` : "Périmètre : —";
 
     if (statusEl) {
       const st = healthStatus(pct);
@@ -195,7 +195,7 @@
 
     if (note) {
       const nb = Number(data?.nb_items || 0);
-      note.textContent = nb > 0 ? "" : "Aucune donnÃ©e exploitable sur ce pÃ©rimÃ¨tre.";
+      note.textContent = nb > 0 ? "" : "Aucune donnée exploitable sur ce périmètre.";
       note.classList.toggle("is-empty", nb > 0);
     }
   }
@@ -205,7 +205,7 @@
     if (!host) return;
     const list = Array.isArray(points) ? points : [];
     if (!list.length) {
-      host.innerHTML = `<div class="sb-risk-loading">Aucune donnÃ©e exploitable.</div>`;
+      host.innerHTML = `<div class="sb-risk-loading">Aucune donnée exploitable.</div>`;
       return;
     }
 
@@ -216,7 +216,7 @@
       const color = riskColor(val, false);
       const label = esc(p?.label || "");
       const nb = Number(p?.nb_postes_fragiles || 0);
-      const title = `${label} Â· indice ${Math.round(val)}% Â· ${nb} poste(s) fragile(s)`;
+      const title = `${label} · indice ${Math.round(val)}% · ${nb} poste(s) fragile(s)`;
       return `
         <div class="sb-risk-timeline-item" title="${esc(title)}">
           <div class="sb-risk-timeline-bar-wrap">
@@ -253,7 +253,7 @@
     if (!total) {
       svg.innerHTML = `<circle cx="80" cy="80" r="62" class="sb-watch-empty"></circle>`;
       if (legend) legend.innerHTML = `<div class="sb-risk-loading">Aucun poste actif.</div>`;
-      if (critical) critical.textContent = "0 poste critique dÃ©tectÃ©";
+      if (critical) critical.textContent = "0 poste critique détecté";
       return;
     }
 
@@ -269,13 +269,13 @@
     if (legend) {
       legend.innerHTML = `
         <div><span class="sb-dot sb-dot--danger"></span>${danger} en danger</div>
-        <div><span class="sb-dot sb-dot--watch"></span>${watch} Ã  surveiller</div>
-        <div><span class="sb-dot sb-dot--stable"></span>${stable} stabilisÃ©s</div>
+        <div><span class="sb-dot sb-dot--watch"></span>${watch} à surveiller</div>
+        <div><span class="sb-dot sb-dot--stable"></span>${stable} stabilisés</div>
       `;
     }
     if (critical) {
       const n = Number(data?.postes_critiques_danger || 0);
-      critical.textContent = `${n} poste(s) critique(s) dÃ©tectÃ©(s) dans les postes en danger`;
+      critical.textContent = `${n} poste(s) critique(s) détecté(s) dans les postes en danger`;
     }
   }
 
@@ -328,18 +328,18 @@
     if (!list) return;
 
     if (!rows.length) {
-      list.innerHTML = `<div class="sb-noaction-empty">Aucun poste en danger sans action identifiÃ©e.</div>`;
+      list.innerHTML = `<div class="sb-noaction-empty">Aucun poste en danger sans action identifiée.</div>`;
       return;
     }
 
     list.innerHTML = rows.slice(0, 6).map(r => {
       const title = (r?.intitule_poste || "Poste").toString().trim();
-      const service = (r?.nom_service || "Service non renseignÃ©").toString().trim();
+      const service = (r?.nom_service || "Service non renseigné").toString().trim();
       return `
         <div class="sb-noaction-row">
           <div class="sb-noaction-main">
             <div class="sb-noaction-title">${posteBadge(r)}<span>${esc(title)}</span></div>
-            <div class="sb-noaction-meta">${esc(service)} Â· Aucune action identifiÃ©e</div>
+            <div class="sb-noaction-meta">${esc(service)} · Aucune action identifiée</div>
           </div>
         </div>
       `;
@@ -352,28 +352,28 @@
     const rows = Array.isArray(_lastData?.risks_without_action?.items) ? _lastData.risks_without_action.items : [];
 
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="sb-muted">Aucun poste en danger sans action identifiÃ©e.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="sb-muted">Aucun poste en danger sans action identifiée.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = rows.map(r => {
       const title = (r?.intitule_poste || "Poste").toString().trim();
-      const service = (r?.nom_service || "Service non renseignÃ©").toString().trim();
+      const service = (r?.nom_service || "Service non renseigné").toString().trim();
       const criticite = Number(r?.criticite_poste || 0);
       const titulaires = `${Number(r?.nb_titulaires || 0)} / ${Number(r?.nb_titulaires_cible || 0)}`;
       const indice = clamp(r?.indice_fragilite ?? 0, 0, 100);
       const points = [];
       if (Number(r?.nb_critiques_sans_porteur || 0) > 0) points.push(`${Number(r.nb_critiques_sans_porteur)} critique(s) sans porteur`);
-      if (Number(r?.nb_critiques_sans_releve || 0) > 0) points.push(`${Number(r.nb_critiques_sans_releve)} critique(s) sans relÃ¨ve`);
-      if (Number(r?.nb_critiques_fragiles || 0) > 0) points.push(`${Number(r.nb_critiques_fragiles)} fragilitÃ©(s) critique(s)`);
+      if (Number(r?.nb_critiques_sans_releve || 0) > 0) points.push(`${Number(r.nb_critiques_sans_releve)} critique(s) sans relève`);
+      if (Number(r?.nb_critiques_fragiles || 0) > 0) points.push(`${Number(r.nb_critiques_fragiles)} fragilité(s) critique(s)`);
       return `
         <tr>
           <td><div class="sb-dashboard-poste-cell">${posteBadge(r)}<span>${esc(title)}</span></div></td>
           <td>${esc(service)}</td>
-          <td class="col-center">${criticite || "â€”"}</td>
+          <td class="col-center">${criticite || "—"}</td>
           <td class="col-center">${esc(titulaires)}</td>
           <td class="col-center"><span class="sb-badge sb-badge--danger">${Math.round(indice)}%</span></td>
-          <td>${esc(points.length ? points.join(" Â· ") : "Aucune action de sÃ©curisation identifiÃ©e")}</td>
+          <td>${esc(points.length ? points.join(" · ") : "Aucune action de sécurisation identifiée")}</td>
         </tr>
       `;
     }).join("");
@@ -384,7 +384,7 @@
     ids.forEach(id => {
       const el = byId(id);
       if (!el) return;
-      el.innerHTML = `<div class="sb-risk-loading">Chargementâ€¦</div>`;
+      el.innerHTML = `<div class="sb-risk-loading">Chargement…</div>`;
     });
 
     const healthNote = byId("dashHealthNote");
@@ -468,8 +468,8 @@
     rows.forEach(r => {
       const opt = document.createElement("option");
       opt.value = r.id_ent;
-      const indent = r.depth > 0 ? `${"â€” ".repeat(Math.min(r.depth, 4))}` : "";
-      const type = r.type_entreprise ? ` Â· ${r.type_entreprise}` : "";
+      const indent = r.depth > 0 ? `${"— ".repeat(Math.min(r.depth, 4))}` : "";
+      const type = r.type_entreprise ? ` · ${r.type_entreprise}` : "";
       opt.textContent = `${indent}${r.label}${type}`;
       select.appendChild(opt);
     });
@@ -551,11 +551,11 @@
 
   function healthDetailInterpretation(pct) {
     const p = clamp(pct, 0, 100);
-    if (p >= 92) return "La situation globale est robuste : les postes, compÃ©tences, donnÃ©es et capacitÃ©s de transmission sont globalement sÃ©curisÃ©s.";
-    if (p >= 80) return "La situation globale est solide, avec quelques points de vigilance Ã  confirmer dans les dÃ©tails.";
-    if (p >= 65) return "La situation reste correcte, mais plusieurs composantes peuvent dÃ©jÃ  fragiliser la continuitÃ©.";
-    if (p >= 50) return "Le pÃ©rimÃ¨tre est sous vigilance : la transmission, la fiabilitÃ© ou la couverture des postes doivent Ãªtre consolidÃ©es.";
-    return "Le pÃ©rimÃ¨tre est fragile : les risques actuels pÃ¨sent fortement sur la continuitÃ© ou la transmission des savoir-faire.";
+    if (p >= 92) return "La situation globale est robuste : les postes, compétences, données et capacités de transmission sont globalement sécurisés.";
+    if (p >= 80) return "La situation globale est solide, avec quelques points de vigilance à confirmer dans les détails.";
+    if (p >= 65) return "La situation reste correcte, mais plusieurs composantes peuvent déjà fragiliser la continuité.";
+    if (p >= 50) return "Le périmètre est sous vigilance : la transmission, la fiabilité ou la couverture des postes doivent être consolidées.";
+    return "Le périmètre est fragile : les risques actuels pèsent fortement sur la continuité ou la transmission des savoir-faire.";
   }
 
   function healthTone(pct) {
@@ -646,25 +646,25 @@
         key: "postes",
         label: "Robustesse des postes",
         weight: 40,
-        source: "Inverse de la fragilitÃ© moyenne des postes issue du moteur analyse."
+        source: "Inverse de la fragilité moyenne des postes issue du moteur analyse."
       },
       {
         key: "competences",
-        label: "Robustesse des compÃ©tences",
+        label: "Robustesse des compétences",
         weight: 25,
-        source: "Inverse de la fragilitÃ© moyenne des compÃ©tences fragiles du pÃ©rimÃ¨tre."
+        source: "Inverse de la fragilité moyenne des compétences fragiles du périmètre."
       },
       {
         key: "fiabilite",
-        label: "FiabilitÃ© des donnÃ©es",
+        label: "Fiabilité des données",
         weight: 15,
-        source: "Part des Ã©valuations rÃ©centes sur les Ã©lÃ©ments analysÃ©s."
+        source: "Part des évaluations récentes sur les éléments analysés."
       },
       {
         key: "transmission",
-        label: "CapacitÃ© de transmission",
+        label: "Capacité de transmission",
         weight: 20,
-        source: "Part des compÃ©tences disposant d'une transmission validÃ©e ou Ã  confirmer."
+        source: "Part des compétences disposant d'une transmission validée ou à confirmer."
       }
     ];
   }
@@ -732,11 +732,11 @@
     const nbItems = Number(health?.nb_items);
     const scoreLabel = (Number.isFinite(score) && Number.isFinite(maxScore) && maxScore > 0)
       ? `${numTxt(score, 1)} / ${numTxt(maxScore, 0)}`
-      : "â€”";
-    const nbLabel = Number.isFinite(nbItems) ? numTxt(nbItems, 0) : "â€”";
-    const scopeLabel = health?.scope_label || _lastData?.scope?.nom_service || "â€”";
+      : "—";
+    const nbLabel = Number.isFinite(nbItems) ? numTxt(nbItems, 0) : "—";
+    const scopeLabel = health?.scope_label || _lastData?.scope?.nom_service || "—";
     const criticite = Number(filters?.criticite_min);
-    const criticiteLabel = Number.isFinite(criticite) ? `â‰¥ ${Math.round(criticite)}` : "â€”";
+    const criticiteLabel = Number.isFinite(criticite) ? `≥ ${Math.round(criticite)}` : "—";
 
     body.innerHTML = `
       <div class="sb-stack sb-dashboard-health-detail">
@@ -754,19 +754,19 @@
         <div class="sb-dashboard-meta-grid">
           <div class="sb-dashboard-meta-card">
             <span>${healthMetaIcon("scope")}</span>
-            <div><div>PÃ©rimÃ¨tre</div><strong>${esc(scopeLabel)}</strong></div>
+            <div><div>Périmètre</div><strong>${esc(scopeLabel)}</strong></div>
           </div>
           <div class="sb-dashboard-meta-card">
             <span>${healthMetaIcon("criticite")}</span>
-            <div><div>CriticitÃ©</div><strong>${esc(criticiteLabel)}</strong></div>
+            <div><div>Criticité</div><strong>${esc(criticiteLabel)}</strong></div>
           </div>
           <div class="sb-dashboard-meta-card">
             <span>${healthMetaIcon("postes")}</span>
-            <div><div>Postes analysÃ©s</div><strong>${esc(nbLabel)}</strong></div>
+            <div><div>Postes analysés</div><strong>${esc(nbLabel)}</strong></div>
           </div>
           <div class="sb-dashboard-meta-card">
             <span>${healthMetaIcon("score")}</span>
-            <div><div>Score pondÃ©rÃ©</div><strong>${esc(scoreLabel)}</strong></div>
+            <div><div>Score pondéré</div><strong>${esc(scoreLabel)}</strong></div>
           </div>
         </div>
 
@@ -784,10 +784,10 @@
           <div>
             <div class="sb-dashboard-read-title">Comment lire la jauge</div>
             <div class="sb-dashboard-read-text">
-              Cette jauge agrÃ¨ge quatre rÃ©sultats pondÃ©rÃ©s : <strong>robustesse des postes (40%)</strong>,
-              <strong>robustesse des compÃ©tences (25%)</strong>, <strong>fiabilitÃ© des donnÃ©es (15%)</strong>
-              et <strong>capacitÃ© de transmission (20%)</strong>. Plus le score est Ã©levÃ©, plus le pÃ©rimÃ¨tre est sÃ©curisÃ©.
-              Le statut traduit ce score en lecture opÃ©rationnelle : fragile, sous vigilance, correct, solide ou robuste.
+              Cette jauge agrège quatre résultats pondérés : <strong>robustesse des postes (40%)</strong>,
+              <strong>robustesse des compétences (25%)</strong>, <strong>fiabilité des données (15%)</strong>
+              et <strong>capacité de transmission (20%)</strong>. Plus le score est élevé, plus le périmètre est sécurisé.
+              Le statut traduit ce score en lecture opérationnelle : fragile, sous vigilance, correct, solide ou robuste.
             </div>
           </div>
         </div>
@@ -806,21 +806,21 @@
   }
 
   function transmissionStatusBadge(key, label) {
-    return `<span class="sb-dashboard-status ${transmissionStatusClass(key)}">${esc(label || "Ã€ qualifier")}</span>`;
+    return `<span class="sb-dashboard-status ${transmissionStatusClass(key)}">${esc(label || "À qualifier")}</span>`;
   }
 
   function transmissionRelayHtml(item) {
     const rows = Array.isArray(item?.transmetteurs) ? item.transmetteurs : [];
-    if (!rows.length) return `<span class="sb-muted">â€”</span>`;
+    if (!rows.length) return `<span class="sb-muted">—</span>`;
 
     const t = rows[0] || {};
     const full = (t?.full || "Collaborateur").toString();
-    const niveau = (t?.niveau_label || "Ã€ qualifier").toString();
+    const niveau = (t?.niveau_label || "À qualifier").toString();
     const score = Number(t?.score_pct);
-    const scoreTxt = Number.isFinite(score) ? ` Â· ${numTxt(score, 0)}%` : "";
-    const dateTxt = (t?.date_derniere_eval || "Date Ã  confirmer").toString();
+    const scoreTxt = Number.isFinite(score) ? ` · ${numTxt(score, 0)}%` : "";
+    const dateTxt = (t?.date_derniere_eval || "Date à confirmer").toString();
     const poste = (t?.codif_poste || t?.intitule_poste || "").toString().trim();
-    const meta = poste ? `${niveau}${scoreTxt} Â· ${dateTxt} Â· ${poste}` : `${niveau}${scoreTxt} Â· ${dateTxt}`;
+    const meta = poste ? `${niveau}${scoreTxt} · ${dateTxt} · ${poste}` : `${niveau}${scoreTxt} · ${dateTxt}`;
     const more = rows.length > 1 ? `<span class="sb-dashboard-person-more-inline">+ ${rows.length - 1}</span>` : "";
 
     return `
@@ -835,14 +835,14 @@
   function transmissionGroupRowsHtml(items) {
     const rows = Array.isArray(items) ? items : [];
     if (!rows.length) {
-      return `<tr><td colspan="3" class="sb-muted">Aucune compÃ©tence analysable sur ce pÃ©rimÃ¨tre.</td></tr>`;
+      return `<tr><td colspan="3" class="sb-muted">Aucune compétence analysable sur ce périmètre.</td></tr>`;
     }
 
     const groups = [
-      { key: "none", label: "PrioritÃ© Ã©levÃ©e", cls: "sb-dashboard-priority--high", keys: ["none"] },
-      { key: "review", label: "Ã€ vÃ©rifier", cls: "sb-dashboard-priority--review", keys: ["review"] },
-      { key: "confirm", label: "Ã€ confirmer", cls: "sb-dashboard-priority--medium", keys: ["confirm"] },
-      { key: "validated", label: "SÃ©curisÃ©es", cls: "sb-dashboard-priority--low", keys: ["validated"] }
+      { key: "none", label: "Priorité élevée", cls: "sb-dashboard-priority--high", keys: ["none"] },
+      { key: "review", label: "À vérifier", cls: "sb-dashboard-priority--review", keys: ["review"] },
+      { key: "confirm", label: "À confirmer", cls: "sb-dashboard-priority--medium", keys: ["confirm"] },
+      { key: "validated", label: "Sécurisées", cls: "sb-dashboard-priority--low", keys: ["validated"] }
     ];
 
     return groups.map(group => {
@@ -850,12 +850,12 @@
       if (!groupRows.length) return "";
       const header = `
         <tr class="sb-dashboard-priority-row ${group.cls}">
-          <td colspan="3"><span></span><strong>${esc(group.label)}</strong><em>${numTxt(groupRows.length, 0)} compÃ©tence(s)</em></td>
+          <td colspan="3"><span></span><strong>${esc(group.label)}</strong><em>${numTxt(groupRows.length, 0)} compétence(s)</em></td>
         </tr>
       `;
       const detail = groupRows.map(item => {
         const code = (item?.code || "").toString().trim();
-        const title = (item?.intitule || "CompÃ©tence").toString().trim();
+        const title = (item?.intitule || "Compétence").toString().trim();
         const statusKey = (item?.status_key || "none").toString();
         const statusLabel = (item?.status_label || "Aucun transmetteur").toString();
         return `
@@ -892,12 +892,12 @@
   function transmissionAttentionItemsHtml(items, statusKeys, limit) {
     const keys = Array.isArray(statusKeys) ? statusKeys : [statusKeys];
     const rows = (Array.isArray(items) ? items : []).filter(item => keys.includes((item?.status_key || "none").toString()));
-    if (!rows.length) return `<div class="sb-muted">Aucun Ã©lÃ©ment prioritaire sur ce statut.</div>`;
+    if (!rows.length) return `<div class="sb-muted">Aucun élément prioritaire sur ce statut.</div>`;
 
     const max = Number.isFinite(Number(limit)) ? Number(limit) : 5;
     const visible = rows.slice(0, max).map(item => {
       const code = (item?.code || "").toString().trim();
-      const title = (item?.intitule || "CompÃ©tence").toString().trim();
+      const title = (item?.intitule || "Compétence").toString().trim();
       return `
         <li>
           ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
@@ -907,7 +907,7 @@
     }).join("");
 
     const more = rows.length > max
-      ? `<li class="sb-dashboard-attention-more">+ ${numTxt(rows.length - max, 0)} autre(s) compÃ©tence(s)</li>`
+      ? `<li class="sb-dashboard-attention-more">+ ${numTxt(rows.length - max, 0)} autre(s) compétence(s)</li>`
       : "";
 
     return `<ul class="sb-dashboard-attention-list">${visible}${more}</ul>`;
@@ -922,8 +922,8 @@
         <div class="sb-dashboard-attention-card-head">
           <span></span>
           <div>
-            <strong>${esc(cfg.title || "Points dâ€™attention")}</strong>
-            <small>${numTxt(rows.length, 0)} compÃ©tence(s)</small>
+            <strong>${esc(cfg.title || "Points d’attention")}</strong>
+            <small>${numTxt(rows.length, 0)} compétence(s)</small>
           </div>
         </div>
         ${transmissionAttentionItemsHtml(items, cfg.keys || [], cfg.limit || 5)}
@@ -934,26 +934,26 @@
   function transmissionAttentionHtml(items) {
     const rows = Array.isArray(items) ? items : [];
     if (!rows.length) {
-      return `<div class="sb-dashboard-attention-empty">Aucune compÃ©tence analysable sur ce pÃ©rimÃ¨tre.</div>`;
+      return `<div class="sb-dashboard-attention-empty">Aucune compétence analysable sur ce périmètre.</div>`;
     }
 
     const panels = [
       {
-        title: "CompÃ©tences sans relais identifiÃ©",
+        title: "Compétences sans relais identifié",
         keys: ["none"],
         cls: "sb-dashboard-attention-card--high",
         limit: 5,
         hideWhenEmpty: true
       },
       {
-        title: "Transmissions Ã  vÃ©rifier",
+        title: "Transmissions à vérifier",
         keys: ["review"],
         cls: "sb-dashboard-attention-card--review",
         limit: 5,
         hideWhenEmpty: true
       },
       {
-        title: "Transmissions Ã  confirmer",
+        title: "Transmissions à confirmer",
         keys: ["confirm"],
         cls: "sb-dashboard-attention-card--medium",
         limit: 5,
@@ -961,7 +961,7 @@
       }
     ].map(cfg => transmissionAttentionPanelHtml(rows, cfg)).filter(Boolean).join("");
 
-    return panels || `<div class="sb-dashboard-attention-empty">Aucun point dâ€™attention prioritaire : les compÃ©tences analysÃ©es disposent dâ€™un relais sÃ©curisÃ©.</div>`;
+    return panels || `<div class="sb-dashboard-attention-empty">Aucun point d’attention prioritaire : les compétences analysées disposent d’un relais sécurisé.</div>`;
   }
 
   async function openTransmissionCartography() {
@@ -987,7 +987,7 @@
     const threshold = Number(transmission?.threshold_score || 63);
     const months = Number(transmission?.seuil_mois || 6);
     const criticite = Number(filters?.criticite_min);
-    const criticiteLabel = Number.isFinite(criticite) ? `â‰¥ ${Math.round(criticite)}` : "â€”";
+    const criticiteLabel = Number.isFinite(criticite) ? `≥ ${Math.round(criticite)}` : "—";
     const validPct = dashboardRatio(valid, total);
     const confirmPct = dashboardRatio(confirm, total);
     const reviewPct = dashboardRatio(review, total);
@@ -998,10 +998,10 @@
       <div class="sb-stack sb-dashboard-transmission-detail">
         <div class="sb-dashboard-transmission-hero sb-dashboard-tone--${esc(transmissionTone)}">
           <div>
-            <div class="sb-dashboard-transmission-title"><strong>${pctTxt(pct, 0)}</strong> de capacitÃ© de transmission</div>
+            <div class="sb-dashboard-transmission-title"><strong>${pctTxt(pct, 0)}</strong> de capacité de transmission</div>
             <div class="sb-dashboard-transmission-sub">
-              ${numTxt(secured, 0)} / ${numTxt(total, 0)} compÃ©tences disposent dâ€™un relais validÃ© ou Ã  confirmer.
-              ${numTxt(none, 0)} compÃ©tence(s) restent sans relais identifiÃ©.
+              ${numTxt(secured, 0)} / ${numTxt(total, 0)} compétences disposent d’un relais validé ou à confirmer.
+              ${numTxt(none, 0)} compétence(s) restent sans relais identifié.
             </div>
           </div>
           <div class="sb-dashboard-transmission-icon" aria-hidden="true">
@@ -1014,7 +1014,7 @@
           </div>
         </div>
 
-        <div class="sb-dashboard-segment-wrap" aria-label="RÃ©partition des statuts de transmission">
+        <div class="sb-dashboard-segment-wrap" aria-label="Répartition des statuts de transmission">
           <div class="sb-dashboard-segment-bar">
             <span class="sb-dashboard-segment sb-dashboard-segment--validated" style="${transmissionSegmentStyle(valid, total)}">${pctTxt(validPct, 0)}</span>
             <span class="sb-dashboard-segment sb-dashboard-segment--confirm" style="${transmissionSegmentStyle(confirm, total)}">${pctTxt(confirmPct, 0)}</span>
@@ -1022,26 +1022,26 @@
             <span class="sb-dashboard-segment sb-dashboard-segment--none" style="${transmissionSegmentStyle(none, total)}">${pctTxt(nonePct, 0)}</span>
           </div>
           <div class="sb-dashboard-segment-legend">
-            <span><i class="sb-dashboard-dot sb-dashboard-dot--validated"></i>SÃ©curisÃ©es</span>
-            <span><i class="sb-dashboard-dot sb-dashboard-dot--confirm"></i>Ã€ confirmer</span>
-            <span><i class="sb-dashboard-dot sb-dashboard-dot--review"></i>Ã€ vÃ©rifier</span>
+            <span><i class="sb-dashboard-dot sb-dashboard-dot--validated"></i>Sécurisées</span>
+            <span><i class="sb-dashboard-dot sb-dashboard-dot--confirm"></i>À confirmer</span>
+            <span><i class="sb-dashboard-dot sb-dashboard-dot--review"></i>À vérifier</span>
             <span><i class="sb-dashboard-dot sb-dashboard-dot--none"></i>Sans relais</span>
           </div>
         </div>
 
         <div class="sb-dashboard-kpi-grid sb-dashboard-kpi-grid--transmission">
           <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--validated">
-            <div class="label">SÃ©curisÃ©es</div>
+            <div class="label">Sécurisées</div>
             <div class="value">${numTxt(valid, 0)}</div>
             <div class="card-sub">${pctTxt(validPct, 0)}</div>
           </div>
           <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--confirm">
-            <div class="label">Ã€ confirmer</div>
+            <div class="label">À confirmer</div>
             <div class="value">${numTxt(confirm, 0)}</div>
             <div class="card-sub">${pctTxt(confirmPct, 0)}</div>
           </div>
           <div class="sb-dashboard-kpi-card sb-dashboard-kpi-card--review">
-            <div class="label">Ã€ vÃ©rifier</div>
+            <div class="label">À vérifier</div>
             <div class="value">${numTxt(review, 0)}</div>
             <div class="card-sub">${pctTxt(reviewPct, 0)}</div>
           </div>
@@ -1055,10 +1055,10 @@
         <div class="sb-dashboard-attention-wrap">
           <div class="sb-dashboard-attention-head">
             <div>
-              <div class="sb-dashboard-section-title">Points dâ€™attention</div>
-              <div class="sb-dashboard-attention-sub">Liste limitÃ©e aux compÃ©tences Ã  traiter en prioritÃ©. Le dÃ©tail complet se lit dans la cartographie.</div>
+              <div class="sb-dashboard-section-title">Points d’attention</div>
+              <div class="sb-dashboard-attention-sub">Liste limitée aux compétences à traiter en priorité. Le détail complet se lit dans la cartographie.</div>
             </div>
-            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-dashboard-open-cartography>Voir le dÃ©tail dans la cartographie</button>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-dashboard-open-cartography>Voir le détail dans la cartographie</button>
           </div>
           <div class="sb-dashboard-attention-grid">
             ${transmissionAttentionHtml(transmission?.items)}
@@ -1068,12 +1068,12 @@
         <div class="sb-dashboard-read-block sb-dashboard-read-block--compact">
           <div class="sb-dashboard-read-icon" aria-hidden="true">i</div>
           <div>
-            <div class="sb-dashboard-read-title">RÃ¨gle utilisÃ©e</div>
+            <div class="sb-dashboard-read-title">Règle utilisée</div>
             <div class="sb-dashboard-read-text">
-              Une compÃ©tence est transmissible lorsquâ€™au moins une personne disponible est <strong>Expert</strong>
-              ou <strong>AvancÃ© haut</strong> avec un score â‰¥ <strong>${numTxt(threshold, 0)}%</strong>.
-              Les Ã©valuations de plus de <strong>${numTxt(months, 0)} mois</strong> sont isolÃ©es.
-              <span class="sb-dashboard-rule-chip">CriticitÃ© prise en compte : ${esc(criticiteLabel)}</span>
+              Une compétence est transmissible lorsqu’au moins une personne disponible est <strong>Expert</strong>
+              ou <strong>Avancé haut</strong> avec un score ≥ <strong>${numTxt(threshold, 0)}%</strong>.
+              Les évaluations de plus de <strong>${numTxt(months, 0)} mois</strong> sont isolées.
+              <span class="sb-dashboard-rule-chip">Criticité prise en compte : ${esc(criticiteLabel)}</span>
             </div>
           </div>
         </div>
@@ -1187,7 +1187,7 @@
         try {
           await openReport(reportBtn.getAttribute("data-dash-report"));
         } catch (err) {
-          _portal?.showAlert?.("error", "Erreur ouverture du dÃ©tail : " + (err?.message || err));
+          _portal?.showAlert?.("error", "Erreur ouverture du détail : " + (err?.message || err));
         }
       }
     });

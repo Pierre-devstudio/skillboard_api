@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const P = window.PeoplePortal;
   if (!P) return;
   let lastItems = [];
@@ -10,10 +10,10 @@
     const comment = s?.commentaire || "";
     const checked = s?.besoin_accompagnement ? "checked" : "";
     return `<div class="pp-auto-row" data-id="${P.escapeHtml(r.id_comp)}">
-      <div class="pp-auto-main"><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} Â· Niveau attendu ${P.levelLabel(r.niveau_requis)} Â· Niveau actuel ${P.levelLabel(r.niveau_actuel)}</div></div>
+      <div class="pp-auto-main"><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · Niveau attendu ${P.levelLabel(r.niveau_requis)} · Niveau actuel ${P.levelLabel(r.niveau_actuel)}</div></div>
       <div class="pp-auto-fields">
         <select class="pp-auto-level"><option value="">Niveau</option><option value="A" ${val === "A" ? "selected" : ""}>A</option><option value="B" ${val === "B" ? "selected" : ""}>B</option><option value="C" ${val === "C" ? "selected" : ""}>C</option></select>
-        <label class="pp-check"><input type="checkbox" class="pp-auto-need" ${checked}> Besoin dâ€™accompagnement</label>
+        <label class="pp-check"><input type="checkbox" class="pp-auto-need" ${checked}> Besoin d’accompagnement</label>
         <input type="text" class="pp-auto-comment" placeholder="Commentaire" value="${P.escapeHtml(comment)}">
       </div>
     </div>`;
@@ -31,14 +31,14 @@
     }
     lastItems = data.items || [];
     const saved = data.entretien?.auto_evaluation_people || {};
-    el.innerHTML = lastItems.length ? lastItems.map(r => row(r, saved)).join("") : P.itemEmpty("Aucune compÃ©tence Ã  prÃ©parer pour le poste actuel.");
+    el.innerHTML = lastItems.length ? lastItems.map(r => row(r, saved)).join("") : P.itemEmpty("Aucune compétence à préparer pour le poste actuel.");
     if (byId("ppAutoComment")) byId("ppAutoComment").value = saved.commentaire_general || "";
   }
 
   async function save() {
     const id = P.getEffectifId();
     const msg = byId("ppAutoMsg");
-    if (msg) msg.textContent = "Enregistrementâ€¦";
+    if (msg) msg.textContent = "Enregistrement…";
     const items = Array.from(document.querySelectorAll(".pp-auto-row")).map(row => ({
       id_comp: row.getAttribute("data-id") || "",
       niveau_auto: row.querySelector(".pp-auto-level")?.value || "",
@@ -55,7 +55,7 @@
       return;
     }
     if (msg) {
-      msg.textContent = "EnregistrÃ© avec succÃ¨s";
+      msg.textContent = "Enregistré avec succès";
       setTimeout(() => { msg.textContent = ""; }, 5000);
     }
   }

@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let _bound = false;
   let _q = "";
   let _show = "active";
@@ -132,7 +132,7 @@
         const len = String(el.value || "").length;
 
         if (max > 0){
-        counter.textContent = `${len}/${max} caractÃ¨res`;
+        counter.textContent = `${len}/${max} caractères`;
         }
     }
 
@@ -140,7 +140,7 @@
         const counter = card?.querySelector(`[data-prereq-counter="${idx}"]`);
         if (!counter) return;
 
-        counter.textContent = `${String(value || "").length}/${FORM_PREREQ_MAX} caractÃ¨res`;
+        counter.textContent = `${String(value || "").length}/${FORM_PREREQ_MAX} caractères`;
     }
 
     function refreshCatalogueCounters(){
@@ -318,7 +318,7 @@
             date: new Date().toISOString(),
             console: "Learn",
             vue: "Catalogue formations",
-            action: action || "Action non prÃ©cisÃ©e",
+            action: action || "Action non précisée",
             url: window.location.href,
             userAgent: navigator.userAgent,
             message: getErrorMessage(err),
@@ -336,19 +336,19 @@
             `Date : ${safeReport.date || new Date().toISOString()}`,
             `Console : ${safeReport.console || "Learn"}`,
             `Vue : ${safeReport.vue || "Catalogue formations"}`,
-            `Action : ${safeReport.action || "Non prÃ©cisÃ©e"}`,
+            `Action : ${safeReport.action || "Non précisée"}`,
             `URL : ${safeReport.url || window.location.href}`,
             "",
             "Message technique :",
             safeReport.message || "Erreur inconnue.",
             "",
-            "DÃ©tail brut :",
+            "Détail brut :",
             JSON.stringify(safeReport.detail ?? {}, null, 2),
             "",
             "Contexte :",
             JSON.stringify(safeReport.contexte ?? {}, null, 2),
             "",
-            "Note : ce rapport ne contient volontairement aucun token ni clÃ© API."
+            "Note : ce rapport ne contient volontairement aucun token ni clé API."
         ].join("\n");
 
         const blob = new Blob([content], { type:"text/plain;charset=utf-8" });
@@ -387,7 +387,7 @@
 
         if (options.report){
             if (cleanType === "error"){
-                el.textContent = "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.";
+                el.textContent = "Erreur système, cliquez ici pour télécharger le rapport.";
             }
 
             el.classList.add("is-clickable");
@@ -427,7 +427,7 @@
         setLocalStatus(
             "formModalSuccess",
             "error",
-            "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
             {
                 report: buildErrorReport(action, err, extra)
             }
@@ -446,7 +446,7 @@
         setLocalStatus(
             "formCompModalStatus",
             "error",
-            "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
             {
                 report: buildErrorReport(action, err, extra)
             }
@@ -465,7 +465,7 @@
         setLocalStatus(
             "formCompAiStatus",
             "error",
-            "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
             {
                 report: buildErrorReport(action, err, extra)
             }
@@ -516,7 +516,7 @@
 
             btn.disabled = true;
             btn.style.opacity = ".6";
-            btn.textContent = "Enregistrementâ€¦";
+            btn.textContent = "Enregistrement…";
             return;
         }
 
@@ -536,7 +536,7 @@
         `;
     }
 
-
+    
     function iconLms(){
         return `
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -696,7 +696,7 @@ function iconPdf(){
 
       return shouldAppendRemoteLmsOnlyItems() ? _lmsRemoteItems : [];
     } catch(e){
-      console.warn("RÃ©cupÃ©ration formations LMS impossible", e);
+      console.warn("Récupération formations LMS impossible", e);
       return [];
     }
   }
@@ -706,11 +706,11 @@ function iconPdf(){
     if (!host) return;
 
     const rows = [
-      ["Code dÃ©tectÃ©", remote?.code || "â€”"],
+      ["Code détecté", remote?.code || "—"],
       ["Champ code", remote?.code_field || "Code_form"],
-      ["ID LÃ¤ra", remote?.external_id || "â€”"],
-      ["VisibilitÃ©", remote?.visibility_label || "â€”"],
-      ["URL", remote?.external_url || "â€”"]
+      ["ID Lära", remote?.external_id || "—"],
+      ["Visibilité", remote?.visibility_label || "—"],
+      ["URL", remote?.external_url || "—"]
     ];
 
     host.innerHTML = rows.map(([k, v]) => `
@@ -728,14 +728,14 @@ function iconPdf(){
     const entries = Object.entries(fields || {});
 
     if (!entries.length){
-      host.innerHTML = `<div class="card-sub">Aucun champ personnalisÃ© rÃ©cupÃ©rÃ©.</div>`;
+      host.innerHTML = `<div class="card-sub">Aucun champ personnalisé récupéré.</div>`;
       return;
     }
 
     host.innerHTML = entries.map(([k, v]) => `
       <div class="lf-lms-preview-field">
         <span>${htmlEsc(k)}</span>
-        <strong>${htmlEsc(v || "â€”")}</strong>
+        <strong>${htmlEsc(v || "—")}</strong>
       </div>
     `).join("");
   }
@@ -779,7 +779,7 @@ function iconPdf(){
     }
 
     sub.style.display = "";
-    sub.textContent = "Brouillon issu de LÃ¤ra";
+    sub.textContent = "Brouillon issu de Lära";
   }
 
   function fillCreateModalFromLmsPreview(data){
@@ -787,7 +787,7 @@ function iconPdf(){
     const draft = preview.draft || {};
 
     setCatalogueFieldValue("formTitre", draft.titre || "");
-    setSelectValue("formEtat", draft.etat || "Ã  valider");
+    setSelectValue("formEtat", draft.etat || "à valider");
     setSelectValue("formType", normalizeTypeFormation(draft.type_formation || "Non Certifiante"));
     setFieldValue("formObsType", "");
     syncObsTypeFormation();
@@ -826,14 +826,14 @@ function iconPdf(){
 
   async function startCreateFromLmsPreview(){
     if (!_lmsImportPreview){
-      setLocalStatus("lmsPreviewStatus", "info", "Aucune prÃ©visualisation LMS disponible.");
+      setLocalStatus("lmsPreviewStatus", "info", "Aucune prévisualisation LMS disponible.");
       return;
     }
 
     setPendingLmsImportFromPreview(_lmsImportPreview);
 
     if (!_pendingLmsImportLink?.external_id){
-      setLocalStatus("lmsPreviewStatus", "info", "Identifiant LÃ¤ra manquant, impossible de prÃ©parer la crÃ©ation.");
+      setLocalStatus("lmsPreviewStatus", "info", "Identifiant Lära manquant, impossible de préparer la création.");
       return;
     }
 
@@ -856,12 +856,12 @@ function iconPdf(){
 
     const title = byId("lmsPreviewTitle");
     if (title){
-      title.textContent = remote.titre || "PrÃ©visualisation dâ€™import LMS";
+      title.textContent = remote.titre || "Prévisualisation d’import LMS";
     }
 
     const sub = byId("lmsPreviewSub");
     if (sub){
-      sub.textContent = "Formation rÃ©cupÃ©rÃ©e depuis LÃ¤ra.";
+      sub.textContent = "Formation récupérée depuis Lära.";
     }
 
     clearLocalStatus("lmsPreviewStatus");
@@ -870,12 +870,12 @@ function iconPdf(){
 
     const remoteDesc = byId("lmsPreviewRemoteDescription");
     if (remoteDesc){
-      remoteDesc.textContent = remote.description_text || "Aucune description exploitable rÃ©cupÃ©rÃ©e.";
+      remoteDesc.textContent = remote.description_text || "Aucune description exploitable récupérée.";
     }
 
     const setTxt = (id, value) => {
       const el = byId(id);
-      if (el) el.textContent = value || "â€”";
+      if (el) el.textContent = value || "—";
     };
 
     setTxt("lmsPreviewDraftTitle", draft.titre);
@@ -900,7 +900,7 @@ function iconPdf(){
     const btnCreate = byId("btnLmsPreviewCreate");
     if (btnCreate){
       btnCreate.disabled = false;
-      btnCreate.title = "PrÃ©remplir le modal de crÃ©ation Novoskill.";
+      btnCreate.title = "Préremplir le modal de création Novoskill.";
     }
   }
 
@@ -908,20 +908,20 @@ function iconPdf(){
     const externalId = String(it?.external_id || "").trim();
 
     if (!externalId){
-      window.portal?.showAlert?.("error", "Identifiant LÃ¤ra introuvable.");
+      window.portal?.showAlert?.("error", "Identifiant Lära introuvable.");
       return;
     }
 
     _lmsImportPreview = null;
 
     const title = byId("lmsPreviewTitle");
-    if (title) title.textContent = "Chargement de la formation LÃ¤raâ€¦";
+    if (title) title.textContent = "Chargement de la formation Lära…";
 
     const sub = byId("lmsPreviewSub");
-    if (sub) sub.textContent = "Lecture des donnÃ©es LMS en cours.";
+    if (sub) sub.textContent = "Lecture des données LMS en cours.";
 
     const remoteDesc = byId("lmsPreviewRemoteDescription");
-    if (remoteDesc) remoteDesc.textContent = "Chargementâ€¦";
+    if (remoteDesc) remoteDesc.textContent = "Chargement…";
 
     renderLmsPreviewMeta({});
     renderLmsCustomFields({});
@@ -946,9 +946,9 @@ function iconPdf(){
       setLocalStatus(
         "lmsPreviewStatus",
         "error",
-        "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+        "Erreur système, cliquez ici pour télécharger le rapport.",
         {
-          report: buildErrorReport("Lecture prÃ©visualisation LMS", e, {
+          report: buildErrorReport("Lecture prévisualisation LMS", e, {
             external_id: externalId
           })
         }
@@ -968,7 +968,7 @@ function iconPdf(){
 
       const opt0 = document.createElement("option");
       opt0.value = "";
-      opt0.textContent = id === "catFormsDomain" ? "Tous" : "â€”";
+      opt0.textContent = id === "catFormsDomain" ? "Tous" : "—";
       sel.appendChild(opt0);
 
       domList.forEach(d => {
@@ -984,7 +984,7 @@ function iconPdf(){
     const fSel = byId("formFournisseur");
     if (fSel){
       const keep = fSel.value || "";
-      fSel.innerHTML = `<option value="">â€”</option>`;
+      fSel.innerHTML = `<option value="">—</option>`;
 
       (_refs?.fournisseurs || []).forEach(f => {
         const opt = document.createElement("option");
@@ -1001,7 +1001,7 @@ function iconPdf(){
         const v = String(value || "").trim().toLowerCase();
 
         if (v === "certifiante") return "Certifiante";
-        if (v === "diplomante" || v === "diplÃ´mante") return "Diplomante";
+        if (v === "diplomante" || v === "diplômante") return "Diplomante";
         if (
             v === "non certifiante" ||
             v === "non-certifiante" ||
@@ -1029,13 +1029,13 @@ function iconPdf(){
         if (label){
         label.textContent = type === "Certifiante"
             ? "Certification RNCP ou RS"
-            : "Niveau reconnu par lâ€™Ã‰tat";
+            : "Niveau reconnu par l’État";
         }
 
         if (input){
         input.placeholder = type === "Certifiante"
-            ? "Ex : RNCPXXXXX, RSXXXX, intitulÃ© de la certificationâ€¦"
-            : "Ex : Niveau 5, titre reconnu par lâ€™Ã‰tat, diplÃ´me visÃ©â€¦";
+            ? "Ex : RNCPXXXXX, RSXXXX, intitulé de la certification…"
+            : "Ex : Niveau 5, titre reconnu par l’État, diplôme visé…";
 
         if (!needsObs) input.value = "";
         }
@@ -1131,7 +1131,7 @@ function iconPdf(){
     if (!host.children.length){
       const empty = document.createElement("div");
       empty.className = "card-sub";
-      empty.textContent = "Aucun Ã©lÃ©ment disponible.";
+      empty.textContent = "Aucun élément disponible.";
       host.appendChild(empty);
     }
   }
@@ -1208,7 +1208,7 @@ function iconPdf(){
 
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "â€”";
+        opt0.textContent = "—";
         sel.appendChild(opt0);
 
         (_compDomainItems || []).forEach(d => {
@@ -1238,7 +1238,7 @@ function iconPdf(){
 
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "â€”";
+        opt0.textContent = "—";
         sel.appendChild(opt0);
 
         (_compDomainItems || []).forEach(d => {
@@ -1416,7 +1416,7 @@ function iconPdf(){
         if (!ed) return;
 
         const title = byId("formCompCritEditorTitle");
-        if (title) title.textContent = `CritÃ¨re ${idx + 1}`;
+        if (title) title.textContent = `Critère ${idx + 1}`;
 
         const c = _compCrit[idx] || compEmptyCrit();
 
@@ -1439,7 +1439,7 @@ function iconPdf(){
         const used = compCompactCrits();
 
         if (used.length <= 1){
-            setCompModalInfo("Au moins 1 critÃ¨re dâ€™Ã©valuation est obligatoire.");
+            setCompModalInfo("Au moins 1 critère d’évaluation est obligatoire.");
             return;
         }
 
@@ -1482,7 +1482,7 @@ function iconPdf(){
         if (btnAdd){
             btnAdd.disabled = used >= 4 || !isSupervisor();
             btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
-            btnAdd.title = btnAdd.disabled ? "Maximum 4 critÃ¨res." : "";
+            btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
         }
 
         let rendered = 0;
@@ -1569,7 +1569,7 @@ function iconPdf(){
         if (!host.children.length){
             const empty = document.createElement("div");
             empty.className = "card-sub";
-            empty.textContent = "Aucun critÃ¨re. Ajoute au moins 1 critÃ¨re.";
+            empty.textContent = "Aucun critère. Ajoute au moins 1 critère.";
             host.appendChild(empty);
         }
     }
@@ -1586,12 +1586,12 @@ function iconPdf(){
         const e4 = (byId("formCompCritEval4").value || "").trim();
 
         if (!nom){
-            setCompModalInfo("Nom du critÃ¨re obligatoire.");
+            setCompModalInfo("Nom du critère obligatoire.");
             return;
         }
 
         if (!e1 || !e2 || !e3 || !e4){
-            setCompModalInfo("Les 4 niveaux dâ€™Ã©valuation sont obligatoires.");
+            setCompModalInfo("Les 4 niveaux d’évaluation sont obligatoires.");
             return;
         }
 
@@ -1606,7 +1606,7 @@ function iconPdf(){
         const used = compCompactCrits();
 
         if (used.length < 1){
-            setCompModalInfo("Ajoute au moins 1 critÃ¨re dâ€™Ã©valuation.");
+            setCompModalInfo("Ajoute au moins 1 critère d’évaluation.");
             return false;
         }
 
@@ -1616,7 +1616,7 @@ function iconPdf(){
 
             for (let k = 0; k < 4; k++){
                 if (!(ev[k] || "").trim()){
-                    setCompModalInfo(`CritÃ¨re ${i + 1} : niveau ${k + 1} obligatoire.`);
+                    setCompModalInfo(`Critère ${i + 1} : niveau ${k + 1} obligatoire.`);
                     return false;
                 }
             }
@@ -1627,35 +1627,35 @@ function iconPdf(){
 
     function competenceRoleLabel(value){
         const s = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (s.includes("coeur")) return "CÅ“ur de formation";
+        if (s.includes("coeur")) return "Cœur de formation";
         if (s.includes("transversal")) return "Transversale";
-        return "ComplÃ©mentaire";
+        return "Complémentaire";
     }
 
     function competenceTypeLabel(value){
         const s = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (s.includes("specifique") || s.includes("entreprise")) return "SpÃ©cifique entreprise";
-        return "GÃ©nÃ©rique rÃ©utilisable";
+        if (s.includes("specifique") || s.includes("entreprise")) return "Spécifique entreprise";
+        return "Générique réutilisable";
     }
 
     function buildCompetenceAiContext(target, proposal){
         const p = proposal || {};
         const source = (p.source || p.intitule || "").trim();
         const roleMetier = target === "formateur"
-            ? "CompÃ©tence attendue chez un formateur pour transmettre, adapter et accompagner lâ€™appropriation dâ€™un sujet."
-            : "CompÃ©tence attendue chez un professionnel en situation de travail.";
+            ? "Compétence attendue chez un formateur pour transmettre, adapter et accompagner l’appropriation d’un sujet."
+            : "Compétence attendue chez un professionnel en situation de travail.";
 
         return [
-            "Objectif : crÃ©er une compÃ©tence catalogue Novoskill rÃ©utilisable, formulÃ©e pour un rÃ©fÃ©rentiel de compÃ©tences et non pour une fiche formation isolÃ©e.",
+            "Objectif : créer une compétence catalogue Novoskill réutilisable, formulée pour un référentiel de compétences et non pour une fiche formation isolée.",
             `Usage professionnel attendu : ${roleMetier}`,
-            source ? `IntitulÃ© proposÃ© : ${source}` : "",
-            (p.description || "").trim() ? `Description proposÃ©e : ${(p.description || "").trim()}` : "",
+            source ? `Intitulé proposé : ${source}` : "",
+            (p.description || "").trim() ? `Description proposée : ${(p.description || "").trim()}` : "",
             (p.domaine_hint || "").trim() ? `Domaine indicatif : ${(p.domaine_hint || "").trim()}` : "",
             p.role ? `Importance dans le parcours : ${competenceRoleLabel(p.role)}` : "",
             p.type_competence ? `Nature catalogue : ${competenceTypeLabel(p.type_competence)}` : "",
-            (p.justification || "").trim() ? `FinalitÃ© professionnelle : ${(p.justification || "").trim()}` : "",
-            "Consigne : ne pas ancrer la compÃ©tence dans le titre, le contenu, le public ou le programme de la formation en cours. Utiliser la formation uniquement comme indice de contexte mÃ©tier large.",
-            "RÃ¨gle Novoskill : une compÃ©tence commence par un verbe dâ€™action, dÃ©crit une capacitÃ© professionnelle observable, nâ€™est pas une tÃ¢che isolÃ©e, et doit rester compatible avec les 4 niveaux de maÃ®trise DÃ©butant / IntermÃ©diaire / AvancÃ© / Expert."
+            (p.justification || "").trim() ? `Finalité professionnelle : ${(p.justification || "").trim()}` : "",
+            "Consigne : ne pas ancrer la compétence dans le titre, le contenu, le public ou le programme de la formation en cours. Utiliser la formation uniquement comme indice de contexte métier large.",
+            "Règle Novoskill : une compétence commence par un verbe d’action, décrit une capacité professionnelle observable, n’est pas une tâche isolée, et doit rester compatible avec les 4 niveaux de maîtrise Débutant / Intermédiaire / Avancé / Expert."
         ].filter(Boolean).join("\n\n");
     }
 
@@ -1678,10 +1678,10 @@ function iconPdf(){
             badge.textContent = "";
         }
 
-        byId("formCompModalTitle").textContent = "CrÃ©er une compÃ©tence";
+        byId("formCompModalTitle").textContent = "Créer une compétence";
 
         byId("formCompIntitule").value = title;
-        byId("formCompEtat").value = "Ã  valider";
+        byId("formCompEtat").value = "à valider";
         byId("formCompDesc").value = description;
         byId("formCompNivA").value = "";
         byId("formCompNivB").value = "";
@@ -1744,7 +1744,7 @@ function iconPdf(){
 
         const title = (byId("formCompIntitule").value || "").trim();
         const dom = (byId("formCompDomaine").value || "").trim();
-        const etat = (byId("formCompEtat").value || "Ã  valider").trim();
+        const etat = (byId("formCompEtat").value || "à valider").trim();
         const desc = (byId("formCompDesc").value || "").trim();
         const a = (byId("formCompNivA").value || "").trim();
         const b = (byId("formCompNivB").value || "").trim();
@@ -1754,7 +1754,7 @@ function iconPdf(){
         clearCompModalStatus();
 
         if (!title){
-            setCompModalInfo("IntitulÃ© obligatoire.");
+            setCompModalInfo("Intitulé obligatoire.");
             return;
         }
 
@@ -1783,7 +1783,7 @@ function iconPdf(){
 
         const idComp = String(created?.id_comp || "").trim();
         if (!idComp){
-            throw new Error("CompÃ©tence crÃ©Ã©e, mais identifiant non retournÃ©.");
+            throw new Error("Compétence créée, mais identifiant non retourné.");
         }
 
         const detail = await portal.apiJson(
@@ -1811,7 +1811,7 @@ function iconPdf(){
         } catch(err){
             console.warn("Sauvegarde du brouillon IA impossible", err);
         }
-        setSuccess("CompÃ©tence crÃ©Ã©e et rattachÃ©e Ã  la formation");
+        setSuccess("Compétence créée et rattachée à la formation");
     }
 
     function openPendingCompAiModal(){
@@ -1862,14 +1862,14 @@ function iconPdf(){
                 .lf-comp-ai-doc-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#fff;color:#e100ff;box-shadow:0 8px 20px rgba(17,24,39,.08);flex:0 0 auto;}
                 .lf-comp-ai-doc-icon svg{width:23px;height:23px;}
                 .lf-comp-ai-doc-main{flex:1;min-width:0;}
-                .lf-comp-ai-doc-title{font-weight: var(--ns-weight-bold);color:#111827;font-size: var(--ns-kpi);}
-                .lf-comp-ai-doc-sub{font-size: var(--ns-kpi);color:#667085;margin-top:3px;line-height: var(--ns-leading-ui);}
-                .lf-comp-ai-doc-action{border:1px solid rgba(225,0,255,.28);background:#fff;color:#b000d4;border-radius:999px;font-weight: var(--ns-weight-bold);font-size: var(--ns-kpi);padding:8px 12px;white-space:nowrap;}
+                .lf-comp-ai-doc-title{font-weight:800;color:#111827;font-size:.92rem;}
+                .lf-comp-ai-doc-sub{font-size:.82rem;color:#667085;margin-top:3px;line-height:1.35;}
+                .lf-comp-ai-doc-action{border:1px solid rgba(225,0,255,.28);background:#fff;color:#b000d4;border-radius:999px;font-weight:800;font-size:.78rem;padding:8px 12px;white-space:nowrap;}
                 .lf-comp-ai-doc-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
                 .lf-comp-ai-doc-row{display:flex;align-items:center;gap:10px;border:1px solid rgba(15,23,42,.08);border-radius:14px;background:#fff;padding:9px 10px;}
                 .lf-comp-ai-doc-row-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
-                .lf-comp-ai-doc-row-main strong{font-size: var(--ns-kpi);color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-                .lf-comp-ai-doc-row-main span{font-size: var(--ns-kpi);color:#667085;}
+                .lf-comp-ai-doc-row-main strong{font-size:.84rem;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+                .lf-comp-ai-doc-row-main span{font-size:.76rem;color:#667085;}
             `;
             document.head.appendChild(style);
         }
@@ -1895,9 +1895,9 @@ function iconPdf(){
             </div>
             <div class="lf-comp-ai-doc-main">
               <div class="lf-comp-ai-doc-title">Ajouter des documents de contexte</div>
-              <div class="lf-comp-ai-doc-sub" id="formCompAiDocsLabel">Glissez-dÃ©posez plusieurs fichiers ou cliquez pour sÃ©lectionner. Formats : PDF, DOC, DOCX, TXT.</div>
+              <div class="lf-comp-ai-doc-sub" id="formCompAiDocsLabel">Glissez-déposez plusieurs fichiers ou cliquez pour sélectionner. Formats : PDF, DOC, DOCX, TXT.</div>
             </div>
-            <div class="lf-comp-ai-doc-action">SÃ©lectionner</div>
+            <div class="lf-comp-ai-doc-action">Sélectionner</div>
         `;
 
         const list = document.createElement("div");
@@ -1976,8 +1976,8 @@ function iconPdf(){
 
         if (label){
             label.textContent = files.length
-                ? `${files.length} document${files.length > 1 ? "s" : ""} sÃ©lectionnÃ©${files.length > 1 ? "s" : ""}. Formats acceptÃ©s : PDF, DOC, DOCX, TXT.`
-                : "Glissez-dÃ©posez plusieurs fichiers ou cliquez pour sÃ©lectionner. Formats : PDF, DOC, DOCX, TXT.";
+                ? `${files.length} document${files.length > 1 ? "s" : ""} sélectionné${files.length > 1 ? "s" : ""}. Formats acceptés : PDF, DOC, DOCX, TXT.`
+                : "Glissez-déposez plusieurs fichiers ou cliquez pour sélectionner. Formats : PDF, DOC, DOCX, TXT.";
         }
 
         if (!list) return;
@@ -1987,7 +1987,7 @@ function iconPdf(){
                 <div class="lf-comp-ai-doc-row">
                   <div class="lf-comp-ai-doc-row-main">
                     <strong>${htmlEsc(f.name || "Document")}</strong>
-                    <span>${htmlEsc((getFileExt(f) || "fichier").toUpperCase())} Â· ${htmlEsc(formatFileSize(f.size))}</span>
+                    <span>${htmlEsc((getFileExt(f) || "fichier").toUpperCase())} · ${htmlEsc(formatFileSize(f.size))}</span>
                   </div>
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-comp-ai-doc-remove="${idx}">Retirer</button>
                 </div>
@@ -2031,9 +2031,9 @@ function iconPdf(){
 
         if (rejected.length || tooLarge.length){
             const msgs = [];
-            if (rejected.length) msgs.push(`Format refusÃ© : ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "â€¦" : ""}.`);
-            if (tooLarge.length) msgs.push(`Fichier trop volumineux : ${tooLarge.slice(0, 3).join(", ")}${tooLarge.length > 3 ? "â€¦" : ""}. 8 Mo maximum par document.`);
-            setLocalStatus("formCompAiStatus", "info", `${msgs.join(" ")} Formats acceptÃ©s : PDF, DOC, DOCX, TXT.`);
+            if (rejected.length) msgs.push(`Format refusé : ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "…" : ""}.`);
+            if (tooLarge.length) msgs.push(`Fichier trop volumineux : ${tooLarge.slice(0, 3).join(", ")}${tooLarge.length > 3 ? "…" : ""}. 8 Mo maximum par document.`);
+            setLocalStatus("formCompAiStatus", "info", `${msgs.join(" ")} Formats acceptés : PDF, DOC, DOCX, TXT.`);
         } else if (accepted.length){
             clearCompAiStatus();
         }
@@ -2061,7 +2061,7 @@ function iconPdf(){
         if (btn){
             btn.disabled = true;
             btn.style.opacity = ".6";
-            btn.textContent = "GÃ©nÃ©rationâ€¦";
+            btn.textContent = "Génération…";
         }
 
         openAiWait();
@@ -2115,7 +2115,7 @@ function iconPdf(){
             closePendingCompAiModal();
 
         } catch(e){
-            setCompAiSystemError("GÃ©nÃ©ration IA dâ€™une compÃ©tence depuis une fiche formation", e, {
+            setCompAiSystemError("Génération IA d’une compétence depuis une fiche formation", e, {
                 nb_criteres: nb,
                 nb_documents: files.length
             });
@@ -2125,7 +2125,7 @@ function iconPdf(){
             if (btn){
                 btn.disabled = false;
                 btn.style.opacity = "";
-                btn.textContent = "GÃ©nÃ©rer";
+                btn.textContent = "Générer";
             }
         }
     }
@@ -2160,7 +2160,7 @@ function iconPdf(){
         if (!rows.length && !pending.length){
             const empty = document.createElement("div");
             empty.className = "card-sub";
-            empty.textContent = "Aucune compÃ©tence affectÃ©e.";
+            empty.textContent = "Aucune compétence affectée.";
             host.appendChild(empty);
             return;
         }
@@ -2174,7 +2174,7 @@ function iconPdf(){
 
             const code = document.createElement("span");
             code.className = "sb-badge sb-badge--comp";
-            code.textContent = c.code || "â€”";
+            code.textContent = c.code || "—";
 
             const title = document.createElement("div");
             title.className = "sb-row-title";
@@ -2263,8 +2263,8 @@ function iconPdf(){
             const btnCreate = document.createElement("button");
             btnCreate.type = "button";
             btnCreate.className = "sb-icon-btn sb-icon-btn--lms";
-            btnCreate.title = "CrÃ©er la compÃ©tence";
-            btnCreate.setAttribute("aria-label", "CrÃ©er la compÃ©tence");
+            btnCreate.title = "Créer la compétence";
+            btnCreate.setAttribute("aria-label", "Créer la compétence");
             btnCreate.innerHTML = iconPlus();
             btnCreate.addEventListener("click", async (e) => {
             e.preventDefault();
@@ -2333,8 +2333,8 @@ function iconPdf(){
         _prerequis = arr.map((p, idx) => ({
         id_prerequis: p.id_prerequis || null,
         titre: limitPrereqTitle(p.titre || ""),
-        r1: p.r1 || "Je ne maÃ®trise pas",
-        r2: p.r2 || "Jâ€™ai besoin dâ€™assistance",
+        r1: p.r1 || "Je ne maîtrise pas",
+        r2: p.r2 || "J’ai besoin d’assistance",
         r3: p.r3 || "",
         ordre_affichage: p.ordre_affichage || (idx + 1)
         }));
@@ -2349,7 +2349,7 @@ function iconPdf(){
     if (!_prerequis.length){
       const empty = document.createElement("div");
       empty.className = "card-sub";
-      empty.textContent = "Aucun prÃ©requis Ã©valuables ajoutÃ©.";
+      empty.textContent = "Aucun prérequis évaluables ajouté.";
       host.appendChild(empty);
       return;
     }
@@ -2360,7 +2360,7 @@ function iconPdf(){
 
       card.innerHTML = `
         <div class="lf-prereq-card-head">
-          <div class="lf-prereq-title">PrÃ©requis ${idx + 1}</div>
+          <div class="lf-prereq-title">Prérequis ${idx + 1}</div>
           <button type="button" class="sb-icon-btn sb-icon-btn--danger" title="Retirer" aria-label="Retirer">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18"/>
@@ -2374,22 +2374,22 @@ function iconPdf(){
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">LibellÃ© du prÃ©requis <span class="lf-label-muted lf-char-counter" data-prereq-counter="${idx}">${String(p.titre || "").length}/${FORM_PREREQ_MAX} caractÃ¨res</span></div>
+            <div class="label">Libellé du prérequis <span class="lf-label-muted lf-char-counter" data-prereq-counter="${idx}">${String(p.titre || "").length}/${FORM_PREREQ_MAX} caractères</span></div>
             <input type="text" class="lf-prereq-input" data-field="titre" maxlength="${FORM_PREREQ_MAX}" value="${htmlEsc(limitPrereqTitle(p.titre || ""))}" />
           </div>
         </div>
 
         <div class="lf-prereq-responses">
           <div class="info-item">
-            <div class="label">RÃ©ponse 1</div>
+            <div class="label">Réponse 1</div>
             <input type="text" class="lf-prereq-input" data-field="r1" value="${htmlEsc(p.r1 || "")}" />
           </div>
           <div class="info-item">
-            <div class="label">RÃ©ponse 2</div>
+            <div class="label">Réponse 2</div>
             <input type="text" class="lf-prereq-input" data-field="r2" value="${htmlEsc(p.r2 || "")}" />
           </div>
           <div class="info-item">
-            <div class="label">RÃ©ponse 3 <span class="lf-label-muted">(optionnelle)</span></div>
+            <div class="label">Réponse 3 <span class="lf-label-muted">(optionnelle)</span></div>
             <input type="text" class="lf-prereq-input" data-field="r3" value="${htmlEsc(p.r3 || "")}" />
           </div>
         </div>
@@ -2431,8 +2431,8 @@ function iconPdf(){
       .map((p, idx) => ({
         id_prerequis: p.id_prerequis || null,
         titre: limitPrereqTitle(p.titre || ""),
-        r1: (p.r1 || "").trim() || "Je ne maÃ®trise pas",
-        r2: (p.r2 || "").trim() || "Jâ€™ai besoin dâ€™assistance",
+        r1: (p.r1 || "").trim() || "Je ne maîtrise pas",
+        r2: (p.r2 || "").trim() || "J’ai besoin d’assistance",
         r3: (p.r3 || "").trim(),
         ordre_affichage: idx + 1
       }))
@@ -2508,7 +2508,7 @@ function iconPdf(){
         if (!rows.length){
             const empty = document.createElement("div");
             empty.className = "card-sub";
-            empty.textContent = "Aucune compÃ©tence trouvÃ©e.";
+            empty.textContent = "Aucune compétence trouvée.";
             host.appendChild(empty);
             return;
         }
@@ -2527,7 +2527,7 @@ function iconPdf(){
             cb.type = "checkbox";
             cb.checked = isAlready || _compPickerSelected.has(id);
             cb.disabled = isAlready;
-            cb.title = isAlready ? "DÃ©jÃ  affectÃ©e" : "";
+            cb.title = isAlready ? "Déjà affectée" : "";
 
             cb.addEventListener("change", () => {
             if (cb.checked) _compPickerSelected.add(id);
@@ -2536,7 +2536,7 @@ function iconPdf(){
 
             const code = document.createElement("span");
             code.className = "sb-badge sb-badge--comp";
-            code.textContent = c.code || "â€”";
+            code.textContent = c.code || "—";
 
             const title = document.createElement("div");
             title.className = "lf-comp-picker-title";
@@ -2587,14 +2587,14 @@ function iconPdf(){
 
         if (title){
             title.textContent = _compPickerTarget === "formateur"
-            ? "Ajouter des compÃ©tences requises pour le formateur"
-            : "Ajouter des compÃ©tences visÃ©es pour les stagiaires";
+            ? "Ajouter des compétences requises pour le formateur"
+            : "Ajouter des compétences visées pour les stagiaires";
         }
 
         if (sub){
             sub.textContent = _compPickerTarget === "formateur"
-            ? "SÃ©lectionnez les compÃ©tences attendues pour animer cette formation."
-            : "SÃ©lectionnez les compÃ©tences que cette formation doit permettre dâ€™acquÃ©rir ou de renforcer.";
+            ? "Sélectionnez les compétences attendues pour animer cette formation."
+            : "Sélectionnez les compétences que cette formation doit permettre d’acquérir ou de renforcer.";
         }
 
         const search = byId("formCompPickerSearch");
@@ -2648,12 +2648,12 @@ function renderContentCompBadges(l){
     : [];
 
   if (!items.length) {
-    return `<span class="card-sub" style="margin:0;">Aucune compÃ©tence liÃ©e</span>`;
+    return `<span class="card-sub" style="margin:0;">Aucune compétence liée</span>`;
   }
 
   return items.map(c => `
     <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(c.intitule || "")}">
-      ${htmlEsc(c.code || "â€”")}
+      ${htmlEsc(c.code || "—")}
     </span>
   `).join("");
 }
@@ -2674,8 +2674,8 @@ function renderContentCompBadges(l){
                 <div class="lf-content-main">
                 <div class="lf-mini-title">${htmlEsc(l.titre_sequence || `Contenu ${idx + 1}`)}</div>
                 <div class="card-sub">${htmlEsc(l.objectif || "")}</div>
-                <div class="lf-mini-subtitle">Sujets abordÃ©s</div>
-                <div class="lf-mini-body">${htmlEsc(l.contenu || "â€”").replaceAll("\n", "<br>")}</div>
+                <div class="lf-mini-subtitle">Sujets abordés</div>
+                <div class="lf-mini-body">${htmlEsc(l.contenu || "—").replaceAll("\n", "<br>")}</div>
                 </div>
             `;
 
@@ -2685,12 +2685,12 @@ function renderContentCompBadges(l){
             return;
         }
 
-        host.innerHTML = `<div class="card-sub">Enregistrez dâ€™abord la fiche formation avant dâ€™ajouter du contenu structurÃ©.</div>`;
+        host.innerHTML = `<div class="card-sub">Enregistrez d’abord la fiche formation avant d’ajouter du contenu structuré.</div>`;
         return;
         }
 
         if (!_detailContenus.length){
-            host.innerHTML = `<div class="card-sub">Aucun contenu dÃ©taillÃ© nâ€™est encore rattachÃ© Ã  cette formation.</div>`;
+            host.innerHTML = `<div class="card-sub">Aucun contenu détaillé n’est encore rattaché à cette formation.</div>`;
             return;
         }
 
@@ -2702,9 +2702,9 @@ function renderContentCompBadges(l){
 
             div.innerHTML = `
             <div class="lf-content-main">
-                <div class="lf-mini-title">${htmlEsc(l.titre_sequence || "SÃ©quence")}</div>
+                <div class="lf-mini-title">${htmlEsc(l.titre_sequence || "Séquence")}</div>
                 <div class="card-sub">${htmlEsc(l.objectif || "")}</div>
-                <div class="lf-mini-body">${htmlEsc(l.contenu || "â€”").replaceAll("\n", "<br>")}</div>
+                <div class="lf-mini-body">${htmlEsc(l.contenu || "—").replaceAll("\n", "<br>")}</div>
             </div>
 
             <div class="lf-content-side">
@@ -2787,7 +2787,7 @@ function renderContentCompBadges(l){
         const rows = ids.map(id => findCompetence(id)).filter(Boolean);
 
         if (!rows.length){
-            host.innerHTML = `<div class="card-sub">Aucune compÃ©tence stagiaire nâ€™est encore affectÃ©e Ã  la formation.</div>`;
+            host.innerHTML = `<div class="card-sub">Aucune compétence stagiaire n’est encore affectée à la formation.</div>`;
             return;
         }
 
@@ -2812,7 +2812,7 @@ function renderContentCompBadges(l){
 
             const code = document.createElement("span");
             code.className = "sb-badge sb-badge--comp";
-            code.textContent = c.code || "â€”";
+            code.textContent = c.code || "—";
 
             const title = document.createElement("span");
             title.className = "lf-content-comp-check-title";
@@ -2828,7 +2828,7 @@ function renderContentCompBadges(l){
 
         function openContentModal(l){
         if (!_editingId){
-            setLocalStatus("formContentHeadStatus", "info", "Enregistrez dâ€™abord la fiche formation avant dâ€™ajouter un contenu structurÃ©.");
+            setLocalStatus("formContentHeadStatus", "info", "Enregistrez d’abord la fiche formation avant d’ajouter un contenu structuré.");
             return;
         }
 
@@ -2866,7 +2866,7 @@ function renderContentCompBadges(l){
 
         async function saveContent(portal){
         if (!_editingId){
-            setLocalStatus("formContentModalStatus", "info", "Enregistrez dâ€™abord la fiche formation.");
+            setLocalStatus("formContentModalStatus", "info", "Enregistrez d’abord la fiche formation.");
             return;
         }
 
@@ -2909,7 +2909,7 @@ function renderContentCompBadges(l){
 
         closeContentModal();
         renderContenus();
-        setSuccess("Contenu enregistrÃ©");
+        setSuccess("Contenu enregistré");
         }
 
         async function archiveContent(l){
@@ -2928,7 +2928,7 @@ function renderContentCompBadges(l){
         _detailContenus.forEach((x, idx) => x.position = idx + 1);
 
         renderContenus();
-        setSuccess("Contenu retirÃ©");
+        setSuccess("Contenu retiré");
         }
 
         function moveContentLocal(sourceId, targetId){
@@ -2958,7 +2958,7 @@ function renderContentCompBadges(l){
             }
         );
     }
-
+ 
     function makeTmpId(prefix){
         return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     }
@@ -2994,7 +2994,7 @@ function renderContentCompBadges(l){
 
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "â€”";
+        opt0.textContent = "—";
         sel.appendChild(opt0);
 
         (_refs?.modalites || []).forEach(m => {
@@ -3031,7 +3031,7 @@ function renderContentCompBadges(l){
         if (pEl) pEl.textContent = formatHours(plan);
 
         if (dEl){
-            if (!formation && !plan) dEl.textContent = "â€”";
+            if (!formation && !plan) dEl.textContent = "—";
             else if (diff === 0) dEl.textContent = "Conforme";
             else dEl.textContent = `${diff > 0 ? "+" : ""}${String(diff).replace(".", ",")} h`;
         }
@@ -3060,7 +3060,7 @@ function renderContentCompBadges(l){
 
         return items.map(x => `
             <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(x.intitule || "")}">
-            ${htmlEsc(x.code || "â€”")}
+            ${htmlEsc(x.code || "—")}
             </span>
         `).join("");
     }
@@ -3195,7 +3195,7 @@ function renderContentCompBadges(l){
         const ids = Array.isArray(block.contenus) ? block.contenus : [];
 
         if (!ids.length){
-            return `<div class="card-sub">DÃ©posez ici les contenus Ã  travailler dans cette sÃ©quence.</div>`;
+            return `<div class="card-sub">Déposez ici les contenus à travailler dans cette séquence.</div>`;
         }
 
         return ids.map((id, idx) => {
@@ -3222,9 +3222,9 @@ function renderContentCompBadges(l){
         const spans = card.querySelectorAll(".lf-plan-block-summary span");
         if (!spans || spans.length < 3) return;
 
-        spans[0].textContent = (block.titre || `SÃ©quence ${idx + 1}`).trim();
-        spans[1].textContent = block.duree ? formatHours(block.duree) : "DurÃ©e non dÃ©finie";
-        spans[2].textContent = (block.modalite_intervention || "ModalitÃ© non dÃ©finie").trim();
+        spans[0].textContent = (block.titre || `Séquence ${idx + 1}`).trim();
+        spans[1].textContent = block.duree ? formatHours(block.duree) : "Durée non définie";
+        spans[2].textContent = (block.modalite_intervention || "Modalité non définie").trim();
     }
 
     function renderPlanBlocks(){
@@ -3236,7 +3236,7 @@ function renderContentCompBadges(l){
         if (!_planBlocks.length){
             const empty = document.createElement("div");
             empty.className = "card-sub";
-            empty.textContent = "Aucune sÃ©quence. Ajoutez une premiÃ¨re sÃ©quence pÃ©dagogique.";
+            empty.textContent = "Aucune séquence. Ajoutez une première séquence pédagogique.";
             host.appendChild(empty);
             updatePlanDurationUI();
             return;
@@ -3246,9 +3246,9 @@ function renderContentCompBadges(l){
             const key = planBlockKey(b);
             const isCollapsed = !!b.collapsed;
 
-            const shortTitle = (b.titre || `SÃ©quence ${idx + 1}`).trim();
-            const shortDuree = b.duree ? formatHours(b.duree) : "DurÃ©e non dÃ©finie";
-            const shortModalite = (b.modalite_intervention || "ModalitÃ© non dÃ©finie").trim();
+            const shortTitle = (b.titre || `Séquence ${idx + 1}`).trim();
+            const shortDuree = b.duree ? formatHours(b.duree) : "Durée non définie";
+            const shortModalite = (b.modalite_intervention || "Modalité non définie").trim();
 
             const card = document.createElement("div");
             card.className = "lf-plan-block-edit" + (isCollapsed ? " is-collapsed" : "");
@@ -3256,10 +3256,10 @@ function renderContentCompBadges(l){
 
             card.innerHTML = `
             <div class="lf-plan-block-edit-head">
-                <div class="lf-plan-drag-handle" title="Glisser pour rÃ©ordonner" draggable="true">â˜°</div>
+                <div class="lf-plan-drag-handle" title="Glisser pour réordonner" draggable="true">☰</div>
 
                 <div class="lf-plan-block-title-wrap">
-                <div class="lf-plan-block-title">SÃ©quence ${idx + 1}</div>
+                <div class="lf-plan-block-title">Séquence ${idx + 1}</div>
                 <div class="lf-plan-block-summary">
                     <span>${htmlEsc(shortTitle)}</span>
                     <span>${htmlEsc(shortDuree)}</span>
@@ -3267,11 +3267,11 @@ function renderContentCompBadges(l){
                 </div>
                 </div>
 
-                <button type="button" class="sb-icon-btn" data-action="toggle-block" title="${isCollapsed ? "Afficher le dÃ©tail" : "Masquer le dÃ©tail"}" aria-label="${isCollapsed ? "Afficher le dÃ©tail" : "Masquer le dÃ©tail"}">
+                <button type="button" class="sb-icon-btn" data-action="toggle-block" title="${isCollapsed ? "Afficher le détail" : "Masquer le détail"}" aria-label="${isCollapsed ? "Afficher le détail" : "Masquer le détail"}">
                 ${isCollapsed ? iconDoubleDown() : iconDoubleUp()}
                 </button>
 
-                <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-action="remove-block" title="Retirer la sÃ©quence" aria-label="Retirer la sÃ©quence">
+                <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-action="remove-block" title="Retirer la séquence" aria-label="Retirer la séquence">
                 ${iconTrash()}
                 </button>
             </div>
@@ -3279,19 +3279,19 @@ function renderContentCompBadges(l){
             <div class="lf-plan-block-body">
                 <div class="row">
                 <div class="info-item" style="flex:1; min-width:260px;">
-                    <div class="label">Titre de la sÃ©quence</div>
+                    <div class="label">Titre de la séquence</div>
                     <input type="text" data-field="titre" value="${htmlEsc(b.titre || "")}" />
                 </div>
                 </div>
 
                 <div class="lf-plan-block-meta-row">
                 <div class="info-item lf-plan-duration-field">
-                    <div class="label">DurÃ©e (heures)</div>
+                    <div class="label">Durée (heures)</div>
                     <input type="number" min="0" step="0.25" data-field="duree" value="${htmlEsc(b.duree || "")}" />
                 </div>
 
                 <div class="info-item" style="flex:1; min-width:220px;">
-                    <div class="label">ModalitÃ©</div>
+                    <div class="label">Modalité</div>
                     <select data-field="modalite_intervention"></select>
                 </div>
                 </div>
@@ -3494,7 +3494,7 @@ function renderContentCompBadges(l){
 
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "â€”";
+        opt0.textContent = "—";
         sel.appendChild(opt0);
 
         (_refs?.modalites || []).forEach(m => {
@@ -3538,7 +3538,7 @@ function renderContentCompBadges(l){
 
     async function openPlanModal(p){
         if (!_editingId){
-            setLocalStatus("formPlanHeadStatus", "info", "Enregistrez dâ€™abord la fiche formation avant de crÃ©er un plan pÃ©dagogique.");
+            setLocalStatus("formPlanHeadStatus", "info", "Enregistrez d’abord la fiche formation avant de créer un plan pédagogique.");
             return;
         }
 
@@ -3566,7 +3566,7 @@ function renderContentCompBadges(l){
             + `/plans/${encodeURIComponent(_planEditId)}`
             );
 
-            byId("planModalTitle").textContent = "Modifier le plan pÃ©dagogique";
+            byId("planModalTitle").textContent = "Modifier le plan pédagogique";
 
             const badge = byId("planModalBadge");
             if (badge){
@@ -3583,7 +3583,7 @@ function renderContentCompBadges(l){
             _planMode = "create";
             _planEditId = null;
 
-            byId("planModalTitle").textContent = "CrÃ©er un plan pÃ©dagogique";
+            byId("planModalTitle").textContent = "Créer un plan pédagogique";
 
             const badge = byId("planModalBadge");
             if (badge){
@@ -3626,7 +3626,7 @@ function renderContentCompBadges(l){
             modalite_generale: (byId("planModaliteGenerale")?.value || "").trim() || null,
             commentaire: (byId("planObservations")?.value || "").trim() || null,
             blocs: (_planBlocks || []).map((b, idx) => ({
-            titre: (b.titre || "").trim() || `SÃ©quence ${idx + 1}`,
+            titre: (b.titre || "").trim() || `Séquence ${idx + 1}`,
             duree: (b.duree || "").toString().trim() || null,
             modalite_intervention: (b.modalite_intervention || "").trim() || null,
             objectif: (b.objectif || "").trim() || null,
@@ -3692,7 +3692,7 @@ function renderContentCompBadges(l){
 
             enrichPlansWithLmsState();
         } catch(e){
-            console.warn("Lecture des sessions LÃ¤ra impossible", e);
+            console.warn("Lecture des sessions Lära impossible", e);
             _lmsPlanSessions = [];
             _lmsPlanStatus = null;
         }
@@ -3720,7 +3720,7 @@ function renderContentCompBadges(l){
 
     async function savePlan(portal){
         if (!_editingId){
-            setLocalStatus("planModalStatus", "info", "Enregistrez dâ€™abord la fiche formation.");
+            setLocalStatus("planModalStatus", "info", "Enregistrez d’abord la fiche formation.");
             return;
         }
 
@@ -3761,7 +3761,7 @@ function renderContentCompBadges(l){
 
         closePlanModal();
         await reloadFormationTechnicalDetail(portal);
-        setSuccess("Plan pÃ©dagogique enregistrÃ©");
+        setSuccess("Plan pédagogique enregistré");
     }
 
     function planLmsFunctionalMessage(err){
@@ -3769,8 +3769,8 @@ function renderContentCompBadges(l){
         const clean = String(msg || "").toLowerCase();
 
         if (
-            clean.includes("formation non synchronisÃ©e")
-            || clean.includes("publiez dâ€™abord")
+            clean.includes("formation non synchronisée")
+            || clean.includes("publiez d’abord")
             || clean.includes("publiez d'abord")
             || clean.includes("aucun connecteur")
         ){
@@ -3785,8 +3785,8 @@ function renderContentCompBadges(l){
         const planId = String(p?.id_plan_peda || "").trim();
 
         if (!effectifId) throw new Error("Profil Learn manquant.");
-        if (!_editingId) throw new Error("Formation non chargÃ©e.");
-        if (!planId) throw new Error("Plan pÃ©dagogique introuvable.");
+        if (!_editingId) throw new Error("Formation non chargée.");
+        if (!planId) throw new Error("Plan pédagogique introuvable.");
 
         clearLocalStatus("formPlanHeadStatus");
 
@@ -3800,7 +3800,7 @@ function renderContentCompBadges(l){
 
         await reloadFormationTechnicalDetail(window.portal);
 
-        setLocalStatus("formPlanHeadStatus", "success", "Formation et plan publiÃ©s dans le LMS.");
+        setLocalStatus("formPlanHeadStatus", "success", "Formation et plan publiés dans le LMS.");
     }
 
     async function createPlanFromLmsSession(session){
@@ -3810,7 +3810,7 @@ function renderContentCompBadges(l){
         if (!effectifId) throw new Error("Profil Learn manquant.");
 
         if (!_editingId){
-            setLocalStatus("formPlanHeadStatus", "info", "Enregistrez dâ€™abord la fiche formation.");
+            setLocalStatus("formPlanHeadStatus", "info", "Enregistrez d’abord la fiche formation.");
             return;
         }
 
@@ -3831,7 +3831,7 @@ function renderContentCompBadges(l){
 
         await reloadFormationTechnicalDetail(window.portal);
 
-        setLocalStatus("formPlanHeadStatus", "success", "Session LMS ajoutÃ©e comme plan Novoskill.");
+        setLocalStatus("formPlanHeadStatus", "success", "Session LMS ajoutée comme plan Novoskill.");
 
         if (res?.item?.id_plan_peda){
             await openPlanModal(res.item);
@@ -3856,8 +3856,8 @@ function renderContentCompBadges(l){
             empty.className = "card-sub";
 
             empty.textContent = _lmsPlanStatus?.published
-                ? "Aucun plan pÃ©dagogique Novoskill ni session LÃ¤ra disponible."
-                : "Aucun plan pÃ©dagogique nâ€™est encore rattachÃ© Ã  cette formation.";
+                ? "Aucun plan pédagogique Novoskill ni session Lära disponible."
+                : "Aucun plan pédagogique n’est encore rattaché à cette formation.";
 
             host.appendChild(empty);
             return;
@@ -3868,7 +3868,7 @@ function renderContentCompBadges(l){
             div.className = "lf-plan-card";
 
             const syncLine = p.lms_sync_active
-                ? `<div class="lf-plan-sync-line">PubliÃ© dans le LMS</div>`
+                ? `<div class="lf-plan-sync-line">Publié dans le LMS</div>`
                 : "";
 
             const lmsButton = _lmsPlanStatus?.published
@@ -3888,10 +3888,10 @@ function renderContentCompBadges(l){
                 <div class="lf-plan-head-main">
                 <div class="lf-plan-title">
                     <span class="sb-badge sb-badge--plan">${htmlEsc(p.codification || "PLAN")}</span>
-                    <span>${htmlEsc(p.titre || "Plan pÃ©dagogique")}</span>
+                    <span>${htmlEsc(p.titre || "Plan pédagogique")}</span>
                 </div>
                 <div class="card-sub" style="margin:4px 0 0 0;">
-                    ${htmlEsc(p.modalite_generale || "â€”")} â€¢ ${htmlEsc(p.duree_totale || "0")} h â€¢ ${htmlEsc(p.nb_blocs || "0")} bloc(s)
+                    ${htmlEsc(p.modalite_generale || "—")} • ${htmlEsc(p.duree_totale || "0")} h • ${htmlEsc(p.nb_blocs || "0")} bloc(s)
                 </div>
                 ${syncLine}
                 </div>
@@ -3914,7 +3914,7 @@ function renderContentCompBadges(l){
                 ${(p.blocs || []).map(b => `
                 <div class="lf-plan-bloc">
                     <strong>${htmlEsc(b.titre || "Bloc")}</strong>
-                    <span>${htmlEsc(b.duree || "â€”")} h â€¢ ${htmlEsc(b.modalite_intervention || "â€”")}</span>
+                    <span>${htmlEsc(b.duree || "—")} h • ${htmlEsc(b.modalite_intervention || "—")}</span>
                 </div>
                 `).join("")}
             </div>
@@ -3934,9 +3934,9 @@ function renderContentCompBadges(l){
                     setLocalStatus(
                         "formPlanHeadStatus",
                         "error",
-                        "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+                        "Erreur système, cliquez ici pour télécharger le rapport.",
                         {
-                            report: buildErrorReport("Synchronisation plan pÃ©dagogique vers LÃ¤ra", e, {
+                            report: buildErrorReport("Synchronisation plan pédagogique vers Lära", e, {
                                 id_form: _editingId,
                                 id_plan_peda: p?.id_plan_peda || null
                             })
@@ -3976,16 +3976,16 @@ function renderContentCompBadges(l){
             <div class="lf-plan-head">
                 <div class="lf-plan-head-main">
                 <div class="lf-plan-title">
-                    <span class="sb-badge sb-badge--lms-only">LÃ¤ra</span>
-                    <span>${htmlEsc(s.name || "Session LÃ¤ra")}</span>
+                    <span class="sb-badge sb-badge--lms-only">Lära</span>
+                    <span>${htmlEsc(s.name || "Session Lära")}</span>
                 </div>
                 <div class="card-sub" style="margin:4px 0 0 0;">
-                    PrÃ©sente dans le LMS â€¢ non ajoutÃ©e dans Novoskill
+                    Présente dans le LMS • non ajoutée dans Novoskill
                 </div>
                 </div>
 
                 <div class="sb-icon-actions">
-                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="create-local" title="CrÃ©er le plan Novoskill" aria-label="CrÃ©er le plan Novoskill">
+                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="create-local" title="Créer le plan Novoskill" aria-label="Créer le plan Novoskill">
                     ${iconPlus()}
                 </button>
                 </div>
@@ -3999,9 +3999,9 @@ function renderContentCompBadges(l){
                     setLocalStatus(
                         "formPlanHeadStatus",
                         "error",
-                        "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+                        "Erreur système, cliquez ici pour télécharger le rapport.",
                         {
-                            report: buildErrorReport("CrÃ©ation plan depuis session LÃ¤ra", e, {
+                            report: buildErrorReport("Création plan depuis session Lära", e, {
                                 id_form: _editingId,
                                 external_id: s?.external_id || null,
                                 session_name: s?.name || null
@@ -4073,7 +4073,7 @@ function renderContentCompBadges(l){
     if (!_items.length){
       const empty = document.createElement("div");
       empty.className = "card-sub";
-      empty.textContent = "Aucune formation Ã  afficher.";
+      empty.textContent = "Aucune formation à afficher.";
       host.appendChild(empty);
       return;
     }
@@ -4100,7 +4100,7 @@ function renderContentCompBadges(l){
 
       const code = document.createElement("span");
       code.className = lmsOnly ? "sb-badge sb-badge--lms-code" : "sb-badge sb-badge--form";
-      code.textContent = it.code || (lmsOnly ? "LMS" : "â€”");
+      code.textContent = it.code || (lmsOnly ? "LMS" : "—");
 
       const titleWrap = document.createElement("div");
       titleWrap.style.minWidth = "0";
@@ -4115,9 +4115,9 @@ function renderContentCompBadges(l){
 
         if (lmsOnly){
             sub.textContent = [
-                "PrÃ©sente dans le LMS",
+                "Présente dans le LMS",
                 it.type_lms_label ? `Type LMS : ${it.type_lms_label}` : ""
-            ].filter(Boolean).join(" â€¢ ");
+            ].filter(Boolean).join(" • ");
             } else {
             const subParts = [
                 it.duree ? `${it.duree} h` : "",
@@ -4126,18 +4126,18 @@ function renderContentCompBadges(l){
             ];
 
             if (it.lms_match_status === "diverged"){
-                subParts.push("Ã‰cart LMS Ã  traiter");
+                subParts.push("Écart LMS à traiter");
             } else if (isLmsOutdatedItem(it)){
-                subParts.push("Ã€ publier dans le LMS");
+                subParts.push("À publier dans le LMS");
             } else if (it.lms_match_status === "remote_changed"){
-                subParts.push("ModifiÃ©e dans le LMS");
+                subParts.push("Modifiée dans le LMS");
             } else if (isLmsSyncActive(it)){
-                subParts.push("PubliÃ©e dans le LMS");
+                subParts.push("Publiée dans le LMS");
             } else {
-                subParts.push("Non publiÃ©e dans le LMS");
+                subParts.push("Non publiée dans le LMS");
             }
 
-            sub.textContent = subParts.filter(Boolean).join(" â€¢ ");
+            sub.textContent = subParts.filter(Boolean).join(" • ");
         }
 
       titleWrap.appendChild(title);
@@ -4255,7 +4255,7 @@ function renderContentCompBadges(l){
 
             setCatalogueStatus(
               "error",
-              "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+              "Erreur système, cliquez ici pour télécharger le rapport.",
               {
                 report: buildErrorReport("Synchronisation formation LMS depuis le catalogue", err, {
                   id_form: it?.id_form || null,
@@ -4389,7 +4389,7 @@ function renderContentCompBadges(l){
 
   function fillFormationModal(d){
     if (!d || !d.id_form){
-      throw new Error("DÃ©tail formation vide ou invalide.");
+      throw new Error("Détail formation vide ou invalide.");
     }
 
     const badge = byId("formModalBadge");
@@ -4404,7 +4404,7 @@ function renderContentCompBadges(l){
     }
 
     setCatalogueFieldValue("formTitre", d.titre || "");
-    setSelectValue("formEtat", d.etat || "Ã  valider");
+    setSelectValue("formEtat", d.etat || "à valider");
     setSelectValue("formDomaine", d.domaine || "");
     setSelectValue("formFournisseur", d.fournisseur_formation || "");
     setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
@@ -4446,7 +4446,7 @@ function renderContentCompBadges(l){
         if (input) input.value = "";
 
         const name = byId("formImportFileName");
-        if (name) name.textContent = "Aucun fichier sÃ©lectionnÃ©";
+        if (name) name.textContent = "Aucun fichier sélectionné";
 
         const status = byId("formImportStatus");
         if (status){
@@ -4463,7 +4463,7 @@ function renderContentCompBadges(l){
 
     function openImportModal(){
         if (_modalMode !== "create"){
-            window.portal.showAlert("error", "Lâ€™import est disponible uniquement lors de la crÃ©ation dâ€™une formation.");
+            window.portal.showAlert("error", "L’import est disponible uniquement lors de la création d’une formation.");
             return;
         }
 
@@ -4520,7 +4520,7 @@ function renderContentCompBadges(l){
                 type_competence: (r?.type_competence || "generique").toString().trim(),
                 justification: (r?.justification || "").toString().trim(),
                 usage: (r?.usage || "").toString().trim(),
-                status: r?.status || "Ã  crÃ©er",
+                status: r?.status || "à créer",
                 matches: Array.isArray(r?.matches) ? r.matches : []
             }))
             .filter(r => r.source);
@@ -4600,7 +4600,7 @@ function renderContentCompBadges(l){
             await persistAiBrouillonIfPossible(portal);
         } catch(err){
             console.warn("Sauvegarde du brouillon IA impossible", err);
-            setFormInfo("Formation enregistrÃ©e. Le brouillon IA nâ€™a pas pu Ãªtre sauvegardÃ© automatiquement.");
+            setFormInfo("Formation enregistrée. Le brouillon IA n’a pas pu être sauvegardé automatiquement.");
         }
     }
 
@@ -4636,7 +4636,7 @@ function renderContentCompBadges(l){
 
     function cleanGeneratedSubjectLine(value){
         let txt = String(value || "").trim();
-        txt = txt.replace(/^[-â€¢â€“â€”*]+\s*/g, "").trim();
+        txt = txt.replace(/^[-•–—*]+\s*/g, "").trim();
         txt = txt.replace(/^\d+[.)]\s*/g, "").trim();
         return txt;
     }
@@ -4786,7 +4786,7 @@ function renderContentCompBadges(l){
         host.innerHTML = "";
 
         if (!rows || !rows.length){
-            host.innerHTML = `<div class="card-sub">Aucune compÃ©tence dÃ©tectÃ©e.</div>`;
+            host.innerHTML = `<div class="card-sub">Aucune compétence détectée.</div>`;
             return;
         }
 
@@ -4794,16 +4794,16 @@ function renderContentCompBadges(l){
             const div = document.createElement("div");
             div.className = "lf-import-comp-row";
 
-            const status = r.status || "Ã  crÃ©er";
+            const status = r.status || "à créer";
             const statusClass = importStatusClass(status);
             const radioName = `${hostId}_${idx}`;
             const selectedId = (r.selected_id || "").toString().trim();
             const sourceChecked = !selectedId;
             const meta = [
                 r.domaine_hint ? `Domaine : ${r.domaine_hint}` : "",
-                r.role ? `RÃ´le : ${competenceRoleLabel(r.role)}` : "",
+                r.role ? `Rôle : ${competenceRoleLabel(r.role)}` : "",
                 r.type_competence ? competenceTypeLabel(r.type_competence) : ""
-            ].filter(Boolean).join(" Â· ");
+            ].filter(Boolean).join(" · ");
 
             const options = (r.matches || []).map(m => {
                 const idComp = (m.id_comp || "").toString().trim();
@@ -4814,7 +4814,7 @@ function renderContentCompBadges(l){
                         name="${htmlEsc(radioName)}"
                         value="${htmlEsc(idComp)}"
                         ${selectedId === idComp ? "checked" : ""} />
-                    <span class="sb-badge sb-badge--comp">${htmlEsc(m.code || "â€”")}</span>
+                    <span class="sb-badge sb-badge--comp">${htmlEsc(m.code || "—")}</span>
                     <span class="lf-import-match-title">${htmlEsc(m.intitule || "")}</span>
                     <span class="lf-import-score">${htmlEsc(m.score || 0)}%</span>
                 </label>
@@ -4838,7 +4838,7 @@ function renderContentCompBadges(l){
             ${r.justification ? `<div class="card-sub" style="margin:4px 0 0 26px;">${htmlEsc(r.justification)}</div>` : ""}
 
             <div class="lf-import-matches">
-                ${options || `<div class="card-sub">Aucune compÃ©tence approchante trouvÃ©e.</div>`}
+                ${options || `<div class="card-sub">Aucune compétence approchante trouvée.</div>`}
             </div>
             `;
 
@@ -4868,17 +4868,17 @@ function renderContentCompBadges(l){
             summary.innerHTML = `
             <div class="lf-result-title-card">
                 <span>Titre</span>
-                <strong>${htmlEsc(data.titre || "â€”")}</strong>
+                <strong>${htmlEsc(data.titre || "—")}</strong>
             </div>
 
             <div class="lf-result-summary-grid">
                 <div class="lf-import-summary-item">
                 <span>Type</span>
-                <strong>${htmlEsc(data.type_formation || "â€”")}</strong>
+                <strong>${htmlEsc(data.type_formation || "—")}</strong>
                 </div>
                 <div class="lf-import-summary-item">
-                <span>DurÃ©e</span>
-                <strong>${data.duree ? htmlEsc(data.duree) + " h" : "â€”"}</strong>
+                <span>Durée</span>
+                <strong>${data.duree ? htmlEsc(data.duree) + " h" : "—"}</strong>
                 </div>
                 <div class="lf-import-summary-item">
                 <span>Contenus</span>
@@ -4904,7 +4904,7 @@ function renderContentCompBadges(l){
                 </div>
                 </div>
             `).join("")
-            : `<div class="card-sub">Aucun contenu dÃ©tectÃ©.</div>`;
+            : `<div class="card-sub">Aucun contenu détecté.</div>`;
         }
 
         const apply = byId("btnFormImportApply");
@@ -4916,14 +4916,14 @@ function renderContentCompBadges(l){
         const file = input?.files?.[0] || null;
 
         if (!file){
-            setImportStatus("SÃ©lectionne dâ€™abord un document PDF ou Word.", "error");
+            setImportStatus("Sélectionne d’abord un document PDF ou Word.", "error");
             return;
         }
 
         const btn = byId("btnFormImportAnalyse");
         if (btn){
             btn.disabled = true;
-            btn.textContent = "Analyse en coursâ€¦";
+            btn.textContent = "Analyse en cours…";
         }
 
         try{
@@ -4944,7 +4944,7 @@ function renderContentCompBadges(l){
 
             _importDraft = data;
             renderImportPreview(data);
-            setImportStatus("Analyse terminÃ©e. VÃ©rifie les propositions avant de remplir la fiche.", "ok");
+            setImportStatus("Analyse terminée. Vérifie les propositions avant de remplir la fiche.", "ok");
 
         } catch(e){
             _importDraft = null;
@@ -4964,12 +4964,12 @@ function renderContentCompBadges(l){
     function applyImportDraft(){
         const d = _importDraft;
         if (!d){
-            setImportStatus("Aucune analyse Ã  appliquer.", "error");
+            setImportStatus("Aucune analyse à appliquer.", "error");
             return;
         }
 
         setCatalogueFieldValue("formTitre", d.titre || "");
-        setSelectValue("formEtat", "Ã  valider");
+        setSelectValue("formEtat", "à valider");
         setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
         setFieldValue("formObsType", d.obs_type_form || "");
         syncObsTypeFormation();
@@ -5005,7 +5005,7 @@ function renderContentCompBadges(l){
 
         setTab("identite");
         closeImportModal();
-        setSuccess("Document importÃ© dans la fiche");
+        setSuccess("Document importé dans la fiche");
     }
 
     const AI_DOC_EXTENSIONS = new Set(["pdf", "doc", "docx", "txt"]);
@@ -5038,8 +5038,8 @@ function renderContentCompBadges(l){
 
         if (label){
             label.textContent = files.length
-                ? `${files.length} document${files.length > 1 ? "s" : ""} sÃ©lectionnÃ©${files.length > 1 ? "s" : ""}.`
-                : "Aucun document sÃ©lectionnÃ©.";
+                ? `${files.length} document${files.length > 1 ? "s" : ""} sélectionné${files.length > 1 ? "s" : ""}.`
+                : "Aucun document sélectionné.";
         }
 
         if (!list) return;
@@ -5049,7 +5049,7 @@ function renderContentCompBadges(l){
                 <div class="lf-ai-doc-row">
                   <div class="lf-ai-doc-row-main">
                     <strong>${htmlEsc(f.name || "Document")}</strong>
-                    <span>${htmlEsc((getFileExt(f) || "fichier").toUpperCase())} Â· ${htmlEsc(formatFileSize(f.size))}</span>
+                    <span>${htmlEsc((getFileExt(f) || "fichier").toUpperCase())} · ${htmlEsc(formatFileSize(f.size))}</span>
                   </div>
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-ai-doc-remove="${idx}">Retirer</button>
                 </div>
@@ -5087,7 +5087,7 @@ function renderContentCompBadges(l){
             setLocalStatus(
                 "aiCadrageStatus",
                 "error",
-                `Format refusÃ© : ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "â€¦" : ""}. Formats acceptÃ©s : PDF, DOC, DOCX, TXT.`
+                `Format refusé : ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "…" : ""}. Formats acceptés : PDF, DOC, DOCX, TXT.`
             );
         } else if (accepted.length){
             clearLocalStatus("aiCadrageStatus");
@@ -5142,7 +5142,7 @@ function renderContentCompBadges(l){
         if (run){
             run.disabled = false;
             run.style.opacity = "";
-            run.textContent = "GÃ©nÃ©rer";
+            run.textContent = "Générer";
         }
     }
 
@@ -5161,7 +5161,7 @@ function renderContentCompBadges(l){
 
     function openGenerateAiModal(){
         if (_modalMode !== "create"){
-            setFormInfo("La gÃ©nÃ©ration IA est disponible uniquement lors de la crÃ©ation dâ€™une formation.");
+            setFormInfo("La génération IA est disponible uniquement lors de la création d’une formation.");
             return;
         }
 
@@ -5179,12 +5179,12 @@ function renderContentCompBadges(l){
 
     function openAiWait(){
         const msg = byId("aiWaitMessage");
-        if (msg) msg.textContent = "Cette opÃ©ration peut prendre quelques minutes.";
+        if (msg) msg.textContent = "Cette opération peut prendre quelques minutes.";
 
         window.clearTimeout(_aiLongTimer);
         _aiLongTimer = window.setTimeout(() => {
             const m = byId("aiWaitMessage");
-            if (m) m.textContent = "La durÃ©e de cette opÃ©ration est anormalement longue. Appuyez sur Ã‰chap pour annuler et relancer la gÃ©nÃ©ration.";
+            if (m) m.textContent = "La durée de cette opération est anormalement longue. Appuyez sur Échap pour annuler et relancer la génération.";
         }, 200000);
 
         openModal("modalFormAiWait");
@@ -5214,17 +5214,17 @@ function renderContentCompBadges(l){
             summary.innerHTML = `
             <div class="lf-result-title-card">
                 <span>Titre</span>
-                <strong>${htmlEsc(data.titre || "â€”")}</strong>
+                <strong>${htmlEsc(data.titre || "—")}</strong>
             </div>
 
             <div class="lf-result-summary-grid">
                 <div class="lf-import-summary-item">
-                <span>DurÃ©e proposÃ©e</span>
-                <strong>${data.duree ? htmlEsc(data.duree) + " h" : "â€”"}</strong>
+                <span>Durée proposée</span>
+                <strong>${data.duree ? htmlEsc(data.duree) + " h" : "—"}</strong>
                 </div>
                 <div class="lf-import-summary-item">
-                <span>Analyse durÃ©e</span>
-                <strong>${htmlEsc(data.duree_statut || "â€”")}</strong>
+                <span>Analyse durée</span>
+                <strong>${htmlEsc(data.duree_statut || "—")}</strong>
                 </div>
                 <div class="lf-import-summary-item">
                 <span>Contenus</span>
@@ -5249,11 +5249,11 @@ function renderContentCompBadges(l){
                 <div>
                     <strong>${htmlEsc(c.titre_sequence || "Contenu")}</strong>
                     <div class="card-sub">${htmlEsc(c.objectif || c.intention_pedagogique || "")}</div>
-                    ${subjects.length ? `<div class="card-sub">Sujets abordÃ©s : ${subjects.map(x => htmlEsc(x)).join(" Â· ")}</div>` : ""}
+                    ${subjects.length ? `<div class="card-sub">Sujets abordés : ${subjects.map(x => htmlEsc(x)).join(" · ")}</div>` : ""}
                 </div>
                 </div>
             `}).join("")
-            : `<div class="card-sub">Aucun contenu proposÃ©.</div>`;
+            : `<div class="card-sub">Aucun contenu proposé.</div>`;
         }
 
         const report = byId("aiFormReport");
@@ -5302,7 +5302,7 @@ function renderContentCompBadges(l){
         const files = Array.isArray(_aiSelectedDocs) ? _aiSelectedDocs : [];
 
         if (!objectif && !situation && !files.length){
-            setLocalStatus("aiCadrageStatus", "info", "Indiquez au moins un objectif, un besoin Ã  traiter ou un document de rÃ©fÃ©rence.");
+            setLocalStatus("aiCadrageStatus", "info", "Indiquez au moins un objectif, un besoin à traiter ou un document de référence.");
             return;
         }
 
@@ -5330,7 +5330,7 @@ function renderContentCompBadges(l){
         if (btn){
             btn.disabled = true;
             btn.style.opacity = ".6";
-            btn.textContent = "GÃ©nÃ©rationâ€¦";
+            btn.textContent = "Génération…";
         }
 
         _aiAbortController = new AbortController();
@@ -5351,16 +5351,16 @@ function renderContentCompBadges(l){
             success = true;
             closeAiCadrageModal();
             openModal("modalFormGenerateAi");
-            setLocalStatus("aiFormStatus", "success", "GÃ©nÃ©ration terminÃ©e.");
+            setLocalStatus("aiFormStatus", "success", "Génération terminée.");
 
         } catch(e){
             if (e?.name !== "AbortError"){
                 setLocalStatus(
                     "aiCadrageStatus",
                     "error",
-                    "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+                    "Erreur système, cliquez ici pour télécharger le rapport.",
                     {
-                        report: buildErrorReport("GÃ©nÃ©ration fiche formation IA", e, {
+                        report: buildErrorReport("Génération fiche formation IA", e, {
                             objectif: objectif,
                             situation_besoin: situation,
                             nb_documents: files.length
@@ -5375,7 +5375,7 @@ function renderContentCompBadges(l){
             if (btn){
                 btn.disabled = false;
                 btn.style.opacity = "";
-                btn.textContent = "GÃ©nÃ©rer";
+                btn.textContent = "Générer";
             }
         }
     }
@@ -5383,12 +5383,12 @@ function renderContentCompBadges(l){
     function applyGeneratedFormation(){
         const d = _aiGenerationDraft;
         if (!d){
-            window.portal.showAlert("error", "Aucune gÃ©nÃ©ration IA Ã  appliquer.");
+            window.portal.showAlert("error", "Aucune génération IA à appliquer.");
             return;
         }
 
         setCatalogueFieldValue("formTitre", d.titre || "");
-        setSelectValue("formEtat", "Ã  valider");
+        setSelectValue("formEtat", "à valider");
         setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
         setFieldValue("formObsType", d.obs_type_form || "");
         syncObsTypeFormation();
@@ -5424,13 +5424,13 @@ function renderContentCompBadges(l){
 
         setTab("identite");
         closeGenerateAiModal();
-        setSuccess("GÃ©nÃ©ration IA injectÃ©e dans la fiche");
+        setSuccess("Génération IA injectée dans la fiche");
     }
 
     function downloadAiReport(){
         const txt = (_aiGenerationDraft?.rapport_ia || "").trim();
         if (!txt){
-            window.portal.showAlert("error", "Aucun rapport IA Ã  tÃ©lÃ©charger.");
+            window.portal.showAlert("error", "Aucun rapport IA à télécharger.");
             return;
         }
 
@@ -5473,10 +5473,10 @@ function renderContentCompBadges(l){
         b.textContent = "";
         }
 
-        byId("formModalTitle").textContent = "CrÃ©er une formation";
+        byId("formModalTitle").textContent = "Créer une formation";
 
         setCatalogueFieldValue("formTitre", "");
-        byId("formEtat").value = "Ã  valider";
+        byId("formEtat").value = "à valider";
         byId("formDomaine").value = "";
         byId("formFournisseur").value = "";
         setSelectValue("formType", "Non Certifiante");
@@ -5538,11 +5538,11 @@ function renderContentCompBadges(l){
 
         const modalTitle = byId("formModalTitle");
         if (modalTitle){
-            modalTitle.textContent = it?.titre || "Chargement de la formationâ€¦";
+            modalTitle.textContent = it?.titre || "Chargement de la formation…";
         }
 
         setCatalogueFieldValue("formTitre", "");
-        setSelectValue("formEtat", "Ã  valider");
+        setSelectValue("formEtat", "à valider");
         setSelectValue("formDomaine", "");
         setSelectValue("formFournisseur", "");
         setFieldValue("formType", "");
@@ -5596,7 +5596,7 @@ function renderContentCompBadges(l){
   function buildPayload(){
     return {
       titre: readCatalogueField("formTitre"),
-      etat: (byId("formEtat").value || "Ã  valider").trim(),
+      etat: (byId("formEtat").value || "à valider").trim(),
       domaine: (byId("formDomaine").value || "").trim() || null,
       fournisseur_formation: (byId("formFournisseur").value || "").trim() || null,
       type_formation: normalizeTypeFormation(byId("formType").value || ""),
@@ -5698,11 +5698,11 @@ function renderContentCompBadges(l){
             await persistAiBrouillonSafely(portal);
         }
 
-        let successMessage = wasCreate ? "Formation crÃ©Ã©e avec succÃ¨s" : "EnregistrÃ© avec succÃ¨s";
+        let successMessage = wasCreate ? "Formation créée avec succès" : "Enregistré avec succès";
 
         if (_editingId && mustLinkLms && _pendingLmsImportLink){
             await linkCreatedFormationToRemoteLms(portal);
-            successMessage = "Formation crÃ©Ã©e et rattachÃ©e Ã  LÃ¤ra";
+            successMessage = "Formation créée et rattachée à Lära";
         }
 
         window.portal.showAlert("", "");
@@ -5720,7 +5720,7 @@ function renderContentCompBadges(l){
     if (!isSupervisor()) return;
 
     _archiveId = it.id_form;
-    byId("formArchiveMsg").textContent = `Archiver "${it.code || "â€”"} â€“ ${it.titre || ""}" ?`;
+    byId("formArchiveMsg").textContent = `Archiver "${it.code || "—"} – ${it.titre || ""}" ?`;
 
     openModal("modalFormArchive");
   }
@@ -5780,7 +5780,7 @@ function renderContentCompBadges(l){
         const win = window.open("", "_blank");
 
         if (!win){
-            throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du code HTML.");
+            throw new Error("Le navigateur a bloqué l’ouverture du code HTML.");
         }
 
         const safeTitle = htmlEsc(title || "HTML LMS");
@@ -5793,11 +5793,11 @@ function renderContentCompBadges(l){
         <meta charset="utf-8">
         <title>${safeTitle}</title>
         <style>
-        body{margin:0;background:#f3f4f6;font-family: var(--ns-font-ui);color:#111827}
+        body{margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
         .wrap{max-width:1100px;margin:24px auto;padding:0 18px}
-        h1{font-size: var(--ns-title-md);margin:0 0 8px}
+        h1{font-size:20px;margin:0 0 8px}
         p{color:#64748b;margin:0 0 14px}
-        textarea{width:100%;height:72vh;border:1px solid #cbd5e1;border-radius:12px;padding:14px;font-family: var(--ns-font-mono);font-size: var(--ns-text-sm);box-sizing:border-box;background:#fff}
+        textarea{width:100%;height:72vh;border:1px solid #cbd5e1;border-radius:12px;padding:14px;font-family:Consolas,monospace;font-size:13px;box-sizing:border-box;background:#fff}
         </style>
         </head>
         <body>
@@ -5842,7 +5842,7 @@ function renderContentCompBadges(l){
         showLmsImportSubLabel();
 
         return res;
-    }
+    }        
 
     async function publishFormationLms(it){
         const effectifId = getEffectifId();
@@ -5884,8 +5884,8 @@ function renderContentCompBadges(l){
             setCatalogueStatus(
                 "success",
                 planIds.length > 1
-                    ? `Formation et ${planIds.length} plans publiÃ©s dans le LMS.`
-                    : "Formation et plan publiÃ©s dans le LMS."
+                    ? `Formation et ${planIds.length} plans publiés dans le LMS.`
+                    : "Formation et plan publiés dans le LMS."
             );
 
             return {
@@ -5907,7 +5907,7 @@ function renderContentCompBadges(l){
 
         setCatalogueStatus(
             "success",
-            "Formation publiÃ©e dans le LMS."
+            "Formation publiée dans le LMS."
         );
 
         return res;
@@ -5939,7 +5939,7 @@ async function copyFormationHtmlLms(it){
             }
 
             await navigator.clipboard.writeText(htmlCode);
-            setSuccess("HTML LMS copiÃ© dans le presse-papiers");
+            setSuccess("HTML LMS copié dans le presse-papiers");
         } catch(_){
             openHtmlFallbackWindow(title, htmlCode);
         }
@@ -5982,7 +5982,7 @@ async function copyFormationHtmlLms(it){
     const win = window.open("", "_blank");
 
     if (!win){
-      throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du PDF.");
+      throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
     }
 
     win.document.open();
@@ -5992,7 +5992,7 @@ async function copyFormationHtmlLms(it){
 <meta charset="utf-8">
 <title>${htmlEsc(title || "Document PDF")}</title>
 <style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family: var(--ns-font-ui);color:#111827}
+html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
 .pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
 .pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.12);border-top-color:#c2410c;animation:pdfSpin .8s linear infinite}
 @keyframes pdfSpin{to{transform:rotate(360deg)}}
@@ -6001,7 +6001,7 @@ html,body{height:100%;margin:0;background:#f3f4f6;font-family: var(--ns-font-ui)
 <body>
 <div class="pdf-loading">
   <div class="pdf-loading__spinner"></div>
-  <div>Chargement du PDFâ€¦</div>
+  <div>Chargement du PDF…</div>
 </div>
 </body>
 </html>`);
@@ -6047,14 +6047,14 @@ iframe{width:100%;height:100%;border:0;display:block}
         const compId = String(c?.id_comp || "").trim();
 
         if (!effectifId) throw new Error("Profil Learn manquant.");
-        if (!compId) throw new Error("CompÃ©tence introuvable.");
+        if (!compId) throw new Error("Compétence introuvable.");
 
         const title =
-            `Fiche compÃ©tence - ${
+            `Fiche compétence - ${
             String(c?.code || "").trim()
                 ? `${String(c.code).trim()} - `
                 : ""
-            }${String(c?.intitule || "").trim() || "CompÃ©tence"}`;
+            }${String(c?.intitule || "").trim() || "Compétence"}`;
 
         let popupWin = null;
 
@@ -6083,15 +6083,15 @@ iframe{width:100%;height:100%;border:0;display:block}
         const planId = String(p?.id_plan_peda || "").trim();
 
         if (!effectifId) throw new Error("Profil Learn manquant.");
-        if (!formId) throw new Error("Formation non chargÃ©e.");
-        if (!planId) throw new Error("Plan pÃ©dagogique introuvable.");
+        if (!formId) throw new Error("Formation non chargée.");
+        if (!planId) throw new Error("Plan pédagogique introuvable.");
 
         const title =
-            `Plan pÃ©dagogique - ${
+            `Plan pédagogique - ${
             String(p?.codification || "").trim()
                 ? `${String(p.codification).trim()} - `
                 : ""
-            }${String(p?.titre || "").trim() || "Plan pÃ©dagogique"}`;
+            }${String(p?.titre || "").trim() || "Plan pédagogique"}`;
 
         let popupWin = null;
 
@@ -6119,13 +6119,13 @@ iframe{width:100%;height:100%;border:0;display:block}
         const planId = String(p?.id_plan_peda || "").trim();
 
         if (!planId){
-            window.portal.showAlert("error", "Plan pÃ©dagogique introuvable.");
+            window.portal.showAlert("error", "Plan pédagogique introuvable.");
             return;
         }
 
-        const label = `${p?.codification || "PLAN"} â€“ ${p?.titre || "Plan pÃ©dagogique"}`;
+        const label = `${p?.codification || "PLAN"} – ${p?.titre || "Plan pédagogique"}`;
 
-        if (!window.confirm(`Archiver le plan pÃ©dagogique "${label}" ?`)){
+        if (!window.confirm(`Archiver le plan pédagogique "${label}" ?`)){
             return;
         }
 
@@ -6140,8 +6140,8 @@ iframe{width:100%;height:100%;border:0;display:block}
         const planId = String(p?.id_plan_peda || "").trim();
 
         if (!effectifId) throw new Error("Profil Learn manquant.");
-        if (!formId) throw new Error("Formation non chargÃ©e.");
-        if (!planId) throw new Error("Plan pÃ©dagogique introuvable.");
+        if (!formId) throw new Error("Formation non chargée.");
+        if (!planId) throw new Error("Plan pédagogique introuvable.");
 
         await window.portal.apiJson(
             `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
@@ -6153,9 +6153,9 @@ iframe{width:100%;height:100%;border:0;display:block}
         _detailPlans = _detailPlans.filter(x => String(x.id_plan_peda || "") !== planId);
 
         renderPlans();
-        setSuccess("Plan pÃ©dagogique archivÃ©");
+        setSuccess("Plan pédagogique archivé");
     }
-
+    
   async function openFormationPdf(it){
     const effectifId = getEffectifId();
     const formId = String(it?.id_form || "").trim();
@@ -6227,7 +6227,7 @@ iframe{width:100%;height:100%;border:0;display:block}
       try{
         await savePendingCompetence(portal);
       } catch(e){
-        setCompModalSystemError("CrÃ©ation compÃ©tence depuis une fiche formation", e);
+        setCompModalSystemError("Création compétence depuis une fiche formation", e);
       }
     });
 
@@ -6236,7 +6236,7 @@ iframe{width:100%;height:100%;border:0;display:block}
         await ensureCompetenceDomains(portal);
         openPendingCompAiModal();
       } catch(e){
-        setCompModalSystemError("Ouverture gÃ©nÃ©ration IA compÃ©tence", e);
+        setCompModalSystemError("Ouverture génération IA compétence", e);
       }
     });
 
@@ -6257,7 +6257,7 @@ iframe{width:100%;height:100%;border:0;display:block}
       try{
         compSaveCritFromEditor(portal);
       } catch(e){
-        setCompModalSystemError("Enregistrement critÃ¨re compÃ©tence", e);
+        setCompModalSystemError("Enregistrement critère compétence", e);
       }
     });
 
@@ -6351,7 +6351,7 @@ iframe{width:100%;height:100%;border:0;display:block}
     const name = byId("formImportFileName");
 
     if (name){
-        name.textContent = file ? file.name : "Aucun fichier sÃ©lectionnÃ©";
+        name.textContent = file ? file.name : "Aucun fichier sélectionné";
     }
 
     _importDraft = null;
@@ -6372,13 +6372,13 @@ iframe{width:100%;height:100%;border:0;display:block}
       window.portal?.showAlert?.("", "");
 
       if (!_aiGenerationDraft){
-        setFormInfo("Aucun brouillon IA enregistrÃ© pour cette fiche.");
+        setFormInfo("Aucun brouillon IA enregistré pour cette fiche.");
         return;
       }
 
       renderGenerationPreview(_aiGenerationDraft);
       openModal("modalFormGenerateAi");
-      setLocalStatus("aiFormStatus", "info", "Brouillon IA enregistrÃ© chargÃ©.");
+      setLocalStatus("aiFormStatus", "info", "Brouillon IA enregistré chargé.");
     });
 
     byId("btnFormX")?.addEventListener("click", () => {
@@ -6440,9 +6440,9 @@ iframe{width:100%;height:100%;border:0;display:block}
         setLocalStatus(
             "planModalStatus",
             "error",
-            "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
             {
-                report: buildErrorReport("Enregistrement plan pÃ©dagogique", e, {
+                report: buildErrorReport("Enregistrement plan pédagogique", e, {
                     id_form: _editingId,
                     id_plan_peda: _planEditId
                 })
@@ -6463,7 +6463,7 @@ iframe{width:100%;height:100%;border:0;display:block}
         setLocalStatus(
             "formContentModalStatus",
             "error",
-            "Erreur systÃ¨me, cliquez ici pour tÃ©lÃ©charger le rapport.",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
             {
                 report: buildErrorReport("Enregistrement contenu formation", e, {
                     id_form: _editingId,

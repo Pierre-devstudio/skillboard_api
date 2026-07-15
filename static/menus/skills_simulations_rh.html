@@ -1,4 +1,4 @@
-﻿<section id="view-simulations-rh" style="display:none;">
+<section id="view-simulations-rh" style="display:none;">
   <div class="card sim-workshop-hero">
     <div class="sim-workshop-hero__main">
       <div>
@@ -9,12 +9,12 @@
           <div>
             <div class="card-title">Simulateur RH</div>
             <div class="card-sub sim2-hero-sub">
-              Testez des hypothÃ¨ses terrain et mesurez leurs impacts sur les postes, les compÃ©tences et les transmissions.
+              Testez des hypothèses terrain et mesurez leurs impacts sur les postes, les compétences et les transmissions.
             </div>
           </div>
         </div>
       </div>
-      <div class="sim-workshop-steps" aria-label="Ã‰tapes de simulation RH">
+      <div class="sim-workshop-steps" aria-label="Étapes de simulation RH">
         <span><strong>1</strong> Poste</span>
         <span><strong>2</strong> Briques</span>
         <span><strong>3</strong> Impact</span>
@@ -35,25 +35,25 @@
         <div class="card sim-workshop-card">
           <div class="sim-workshop-card-head">
             <div>
-              <div class="card-title" id="simFocusPosteTitle">Poste de dÃ©part</div>
-              <div class="card-sub sim2-muted-top">Le poste charge le contexte. Depuis lâ€™analyse, il est renseignÃ© automatiquement.</div>
+              <div class="card-title" id="simFocusPosteTitle">Poste de départ</div>
+              <div class="card-sub sim2-muted-top">Le poste charge le contexte. Depuis l’analyse, il est renseigné automatiquement.</div>
             </div>
             <details class="sim2-details sim-workshop-settings">
-              <summary>RÃ©glages</summary>
+              <summary>Réglages</summary>
               <div class="sim2-detail-body">
                 <div class="sim-form-grid">
                   <div class="info-item">
-                    <div class="label">Service analysÃ©</div>
+                    <div class="label">Service analysé</div>
                     <select id="simServiceSelect" class="sb-select">
                       <option value="__ALL__">Tous les services</option>
                     </select>
                   </div>
                   <div class="info-item">
-                    <div class="label">CriticitÃ© minimale</div>
+                    <div class="label">Criticité minimale</div>
                     <div class="sb-filter-slider">
-                      <input type="range" id="simCriticiteRange" min="0" max="100" step="5" value="70" aria-label="CriticitÃ© minimale">
+                      <input type="range" id="simCriticiteRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
                       <div class="sb-filter-slider__meta">
-                        <span>CompÃ©tences si criticitÃ© â‰¥</span>
+                        <span>Compétences si criticité ≥</span>
                         <strong id="simCriticiteValue">70</strong>
                       </div>
                     </div>
@@ -68,7 +68,7 @@
 
           <div class="sim-form-grid sim-workshop-poste-row">
             <div class="info-item">
-              <div class="label">Poste Ã©tudiÃ©</div>
+              <div class="label">Poste étudié</div>
               <select id="simFocusPosteSelect" class="sb-select"></select>
             </div>
           </div>
@@ -77,27 +77,27 @@
 
         <div class="card sim-workshop-card" style="margin-top:12px;">
           <div class="card-title">Ajouter une brique</div>
-          <div class="card-sub sim2-muted-top">Choisissez une action terrain. Le scÃ©nario peut combiner plusieurs briques pour mesurer les effets directs et les consÃ©quences en chaÃ®ne.</div>
+          <div class="card-sub sim2-muted-top">Choisissez une action terrain. Le scénario peut combiner plusieurs briques pour mesurer les effets directs et les conséquences en chaîne.</div>
           <div id="simBrickPalette" class="sim-lego-palette"></div>
           <div id="simBrickEditor" class="sim-lego-editor"></div>
           <div class="sb-actions sb-actions--end" style="margin-top:12px;">
             <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddBrick">
               <span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
-              <span>Ajouter au scÃ©nario</span>
+              <span>Ajouter au scénario</span>
             </button>
           </div>
         </div>
 
         <div class="card sim-workshop-card" id="simRecommendationsCard" style="margin-top:12px; display:none;">
           <div class="card-title">Profils proches du poste</div>
-          <div class="card-sub sim2-muted-top">Suggestions utiles pour tester une mobilitÃ©. Elles restent Ã  confirmer avec le terrain.</div>
+          <div class="card-sub sim2-muted-top">Suggestions utiles pour tester une mobilité. Elles restent à confirmer avec le terrain.</div>
           <div id="simRecommendations" class="sim-lego-person-list"></div>
         </div>
       </div>
 
       <aside class="sim-workshop-side">
         <div class="card sim-workshop-card sim-workshop-scenario-card">
-          <div class="card-title">ScÃ©nario en cours</div>
+          <div class="card-title">Scénario en cours</div>
           <div id="simScenarioPreview" class="sim2-scenario-preview">
             <div class="sim-empty-state">Ajoutez une brique pour commencer.</div>
           </div>
@@ -109,7 +109,7 @@
             </button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">
               <span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-7"/></svg></span>
-              <span>Analyser lâ€™impact</span>
+              <span>Analyser l’impact</span>
             </button>
           </div>
         </div>
@@ -117,9 +117,9 @@
         <div class="card sim-workshop-card sim-workshop-help-card" style="margin-top:12px;">
           <div class="card-title">Ce que Novoskill va lire</div>
           <div class="sim-workshop-read-list">
-            <div><strong>Impact immÃ©diat</strong><span>postes, services, effet domino</span></div>
-            <div><strong>Impact projetÃ©</strong><span>aprÃ¨s compÃ©tence acquise</span></div>
-            <div><strong>Besoins gÃ©nÃ©rÃ©s</strong><span>Ã  traiter ensuite hors simulation</span></div>
+            <div><strong>Impact immédiat</strong><span>postes, services, effet domino</span></div>
+            <div><strong>Impact projeté</strong><span>après compétence acquise</span></div>
+            <div><strong>Besoins générés</strong><span>à traiter ensuite hors simulation</span></div>
           </div>
         </div>
       </aside>
@@ -129,8 +129,8 @@
   <div class="sim-panel" data-sim-panel="result" style="display:none;">
     <div id="simResultContainer" class="sim-result-container">
       <div class="card">
-        <div class="card-title">RÃ©sultat du scÃ©nario</div>
-        <div class="card-sub sim2-muted-top">Construisez un scÃ©nario puis lancez le calcul.</div>
+        <div class="card-title">Résultat du scénario</div>
+        <div class="card-sub sim2-muted-top">Construisez un scénario puis lancez le calcul.</div>
       </div>
     </div>
   </div>
@@ -139,8 +139,8 @@
     <div class="card sim-history-head-card">
       <div class="sim2-hero-layout">
         <div>
-          <div class="card-title">Historique des scÃ©narios</div>
-          <div class="card-sub sim2-muted-top">Retrouvez les scÃ©narios enregistrÃ©s, ouvrez le rÃ©sultat complet ou cochez plusieurs scÃ©narios pour les comparer.</div>
+          <div class="card-title">Historique des scénarios</div>
+          <div class="card-sub sim2-muted-top">Retrouvez les scénarios enregistrés, ouvrez le résultat complet ou cochez plusieurs scénarios pour les comparer.</div>
         </div>
         <div class="sb-actions sb-actions--end">
           <button type="button" class="sb-btn sb-btn--soft" id="btnSimHistoryRefresh">Actualiser</button>
@@ -155,8 +155,8 @@
     <div class="card">
       <div class="sim2-hero-layout">
         <div>
-          <div class="card-title">Comparateur de scÃ©narios</div>
-          <div class="card-sub sim2-muted-top">Comparez les scÃ©narios enregistrÃ©s ajoutÃ©s au comparateur depuis un rÃ©sultat ou lâ€™historique.</div>
+          <div class="card-title">Comparateur de scénarios</div>
+          <div class="card-sub sim2-muted-top">Comparez les scénarios enregistrés ajoutés au comparateur depuis un résultat ou l’historique.</div>
         </div>
         <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompare">Vider le comparateur</button>
       </div>

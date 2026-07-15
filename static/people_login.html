@@ -1,12 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Novoskill People â€” Connexion</title>
+  <title>Novoskill People — Connexion</title>
 
-
-  <link rel="stylesheet" href="novoskill_typography.css">
-<link rel="icon" href="/favicon-people.ico" sizes="any">
+  <link rel="icon" href="/favicon-people.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-people-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-people-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-people.png">
@@ -85,15 +83,15 @@
     }
 
     .login-title{
-      font-size: var(--ns-title-sm);
-      font-weight: var(--ns-weight-bold);
+      font-size:18px;
+      font-weight:700;
       margin:0 0 6px 0;
     }
 
     .login-sub{
       margin:0 0 14px 0;
       color:#4b5563;
-      font-size: var(--ns-text-sm);
+      font-size:13px;
     }
 
     .login-row{
@@ -104,16 +102,16 @@
     }
 
     .login-row label{
-      font-size: var(--ns-text-xs);
+      font-size:12px;
       color:#374151;
-      font-weight: var(--ns-weight-semibold);
+      font-weight:600;
     }
 
     .login-row input{
       border:1px solid #d1d5db;
       border-radius:10px;
       padding:10px 12px;
-      font-size: var(--ns-text-md);
+      font-size:14px;
       outline:none;
       background:#fff;
     }
@@ -137,9 +135,9 @@
       color:#fff;
       padding:10px 14px;
       border-radius:10px;
-      font-weight: var(--ns-weight-bold);
+      font-weight:800;
       cursor:pointer;
-      font-size: var(--ns-text-md);
+      font-size:14px;
     }
 
     .btn-primary:disabled{
@@ -150,17 +148,17 @@
     .link{
       color:var(--accent);
       text-decoration:none;
-      font-weight: var(--ns-weight-bold);
-      font-size: var(--ns-text-sm);
+      font-weight:700;
+      font-size:13px;
       cursor:pointer;
       user-select:none;
     }
 
     .hint{
-      font-size: var(--ns-text-xs);
+      font-size:12px;
       color:#6b7280;
       margin-top:10px;
-      line-height: var(--ns-leading-ui);
+      line-height:1.35;
     }
 
     .panel{ display:none; }
@@ -168,7 +166,7 @@
 
     .msg{
       margin:10px 0 0 0;
-      font-size: var(--ns-text-sm);
+      font-size:13px;
       color:#111827;
     }
 
@@ -183,10 +181,10 @@
     }
 
     .brand-name{
-      font-size: var(--ns-text-sm);
-      font-weight: var(--ns-weight-bold);
+      font-size:13px;
+      font-weight:800;
       color:#111827;
-      letter-spacing: var(--ns-letter-label);
+      letter-spacing:.2px;
     }
 
     .brand-module{
@@ -196,9 +194,9 @@
       border-radius:999px;
       background:var(--accent);
       color:#fff;
-      font-size: var(--ns-text-xs);
-      font-weight: var(--ns-weight-bold);
-      letter-spacing: var(--ns-letter-label);
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.2px;
       box-shadow:0 4px 12px rgba(var(--pp-accent-rgb), .18);
     }
   </style>
@@ -223,22 +221,22 @@
 
           <div class="login-row">
             <label for="loginPassword">Mot de passe</label>
-            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
           </div>
 
           <div class="login-actions">
             <button class="btn-primary" id="btnLogin">Se connecter</button>
-            <span class="link" id="lnkForgot">Mot de passe oubliÃ©</span>
+            <span class="link" id="lnkForgot">Mot de passe oublié</span>
           </div>
 
           <p class="hint">
-            Novoskill est une solution propriÃ©taire JMBCONSULTANT.
+            Novoskill est une solution propriétaire JMBCONSULTANT.
           </p>
         </div>
 
         <div class="panel" id="panelForgot">
-          <h1 class="login-title">Mot de passe oubliÃ©</h1>
-          <p class="login-sub">On tâ€™envoie un lien de rÃ©initialisation par email.</p>
+          <h1 class="login-title">Mot de passe oublié</h1>
+          <p class="login-sub">On t’envoie un lien de réinitialisation par email.</p>
 
           <div class="login-row">
             <label for="resetEmail">Email</label>
@@ -251,7 +249,7 @@
           </div>
 
           <p class="hint">
-            Le lien ouvre une page People dÃ©diÃ©e pour choisir un nouveau mot de passe.
+            Le lien ouvre une page People dédiée pour choisir un nouveau mot de passe.
           </p>
         </div>
 

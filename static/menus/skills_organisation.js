@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const NON_LIE_ID = "__NON_LIE__";
   const TOUS_SERVICES_ID = "__ALL__";
 
@@ -35,15 +35,15 @@
       try { return String.fromCharCode(parseInt(h, 16)); } catch (_) { return _; }
     });
 
-    const cp1252 = {"91":"â€˜", "92":"â€™", "93":"â€œ", "94":"â€", "95":"â€¢", "96":"â€“", "97":"â€”", "9c":"Å“", "8c":"Å’", "a0":" ", "ab":"Â«", "bb":"Â»"};
+    const cp1252 = {"91":"‘", "92":"’", "93":"“", "94":"”", "95":"•", "96":"–", "97":"—", "9c":"œ", "8c":"Œ", "a0":" ", "ab":"«", "bb":"»"};
     s = s.replace(/\\x([0-9a-fA-F]{2})/g, (m, h) => cp1252[String(h || "").toLowerCase()] || m);
 
-    const letters = "A-Za-zÃ€-Ã–Ã˜-Ã¶Ã¸-Ã¿";
-    s = s.replace(new RegExp("\\b([ldjtmncsLDJTMNCS])(?:b4|92|4)(?=[" + letters + "])", "g"), "$1â€™");
-    s = s.replace(/\b9c(?=uvre|uvr|il|ufs?\b)/gi, "Å“");
-    s = s.replace(/\b9(?=uvre|uvr|il|ufs?\b)/gi, "Å“");
+    const letters = "A-Za-zÀ-ÖØ-öø-ÿ";
+    s = s.replace(new RegExp("\\b([ldjtmncsLDJTMNCS])(?:b4|92|4)(?=[" + letters + "])", "g"), "$1’");
+    s = s.replace(/\b9c(?=uvre|uvr|il|ufs?\b)/gi, "œ");
+    s = s.replace(/\b9(?=uvre|uvr|il|ufs?\b)/gi, "œ");
 
-    [["e0","Ã "], ["e7","Ã§"], ["e8","Ã¨"], ["e9","Ã©"], ["f4","Ã´"], ["f9","Ã¹"], ["c7","Ã‡"], ["c8","Ãˆ"], ["c9","Ã‰"], ["d9","Ã™"]]
+    [["e0","à"], ["e7","ç"], ["e8","è"], ["e9","é"], ["f4","ô"], ["f9","ù"], ["c7","Ç"], ["c8","È"], ["c9","É"], ["d9","Ù"]]
       .forEach(([code, ch]) => {
         s = s.replace(new RegExp("([" + letters + "])" + code + "(?=[" + letters + "])", "g"), (_, p1) => p1 + ch);
         s = s.replace(new RegExp("\\b" + code + "(?=[" + letters + "])", "g"), ch);
@@ -87,7 +87,7 @@
     // Contexte (utile pour save RH)
     modal.setAttribute("data-id-poste", id_poste);
 
-    // Reset RH Ã©dition
+    // Reset RH édition
     _rhEdit.editing = false;
     _rhEdit.snapshot = null;
     _setRhEditMode(false);
@@ -110,7 +110,7 @@
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
 
-    // Placeholder rapide (Ã©vite effet â€œvideâ€)
+    // Placeholder rapide (évite effet “vide”)
     fillPosteDefinitionTab({
       mission_principale: "",
       responsabilites_html: "",
@@ -126,7 +126,7 @@
     fillPosteCotationTab({ __force_empty: true });
 
 
-    // DÃ©tail (fetch)
+    // Détail (fetch)
     try {
       if (!id_poste) return;
       const detail = await fetchPosteDetail(portal, id_poste);
@@ -159,7 +159,7 @@
     byId("orgPosteModalClose")?.addEventListener("click", closeOrgPosteModal);
     byId("orgPosteModalX")?.addEventListener("click", closeOrgPosteModal);
 
-    // Click backdrop (zone grisÃ©e = .modal)
+    // Click backdrop (zone grisée = .modal)
     modal.addEventListener("click", (e) => {
       if (e.target === modal) closeOrgPosteModal();
     });
@@ -270,7 +270,7 @@
 
 
     // ============================
-  // ParamÃ©trage RH: Ã©dition / save / cancel
+  // Paramétrage RH: édition / save / cancel
   // ============================
   let _rhEdit = { editing:false, snapshot:null };
 
@@ -477,7 +477,7 @@
   function _setRhEditMode(editing){
     _rhEdit.editing = !!editing;
 
-    // source + date maj restent toujours non Ã©ditables
+    // source + date maj restent toujours non éditables
     _rhSetDisabled(["orgRhSource", "orgRhDateMaj"], true);
 
     // champs RH
@@ -507,7 +507,7 @@
     _rhEdit.snapshot = _rhReadForm();
     _setRhEditMode(true);
 
-    // affichage immÃ©diat (sans attendre le serveur)
+    // affichage immédiat (sans attendre le serveur)
     _setValue("orgRhSource", "insights");
     _setValue("orgRhDateMaj", _rhFormatNowDateOnly());
   }
@@ -529,7 +529,7 @@
     const modal = byId("modalOrgPoste");
     const id_poste = modal?.getAttribute("data-id-poste") || "";
     if (!id_poste) {
-      _showInlineMsg("orgRhMsg", "danger", "Impossible dâ€™enregistrer : id_poste manquant.");
+      _showInlineMsg("orgRhMsg", "danger", "Impossible d’enregistrer : id_poste manquant.");
       return;
     }
 
@@ -539,13 +539,13 @@
     const d1 = v.date_debut_validite || "";
     const d2 = v.date_fin_validite || "";
     if (d1 && d2 && d2 < d1){
-      _showInlineMsg("orgRhMsg", "danger", "La date de fin doit Ãªtre â‰¥ Ã  la date de dÃ©but.");
+      _showInlineMsg("orgRhMsg", "danger", "La date de fin doit être ≥ à la date de début.");
       return;
     }
 
     const statutNorm = (v.statut_poste || "actif").trim().toLowerCase();
 
-    // Defaults si l'utilisateur laisse "â€”"
+    // Defaults si l'utilisateur laisse "—"
     const payload = {
       statut_poste: statutNorm || "actif",
       criticite_poste: Number(v.criticite_poste || 2),
@@ -554,7 +554,7 @@
       date_debut_validite: v.date_debut_validite || null,
       date_fin_validite: _rhIsStatutSansFin(statutNorm) ? null : (v.date_fin_validite || null),
       param_rh_commentaire: (v.param_rh_commentaire || "").trim() || null
-      // source/date_maj/verrouille forcÃ©s cÃ´tÃ© API
+      // source/date_maj/verrouille forcés côté API
     };
 
     try {
@@ -568,13 +568,13 @@
 
       const merged = Object.assign({}, _posteDetailCache.get(id_poste) || {}, updated || {});
 
-      // cache dÃ©tail
+      // cache détail
       _posteDetailCache.set(id_poste, merged);
 
       // refresh UI (retour lecture)
       fillPosteParamRhTab(merged);
-      _showInlineMsg("orgRhMsg", "success", "ParamÃ©trage RH enregistrÃ©.");
-
+      _showInlineMsg("orgRhMsg", "success", "Paramétrage RH enregistré.");
+      
     } catch (e) {
       _showInlineMsg("orgRhMsg", "danger", "Erreur enregistrement RH : " + e.message);
     }
@@ -611,8 +611,8 @@
     const meta = document.getElementById("orgServiceMeta");
 
     if (!node) {
-      if (title) title.textContent = "Service non sÃ©lectionnÃ©";
-      if (meta) meta.textContent = "â€”";
+      if (title) title.textContent = "Service non sélectionné";
+      if (meta) meta.textContent = "—";
       updateServiceStats(null, []);
       return;
     }
@@ -620,7 +620,7 @@
     if (title) title.textContent = node.nom_service || "Service";
     const nbPostes = node.nb_postes ?? 0;
     const nbEff = node.nb_effectifs ?? 0;
-    if (meta) meta.textContent = `${nbPostes} poste(s) Â· ${nbEff} collaborateur(s)`;
+    if (meta) meta.textContent = `${nbPostes} poste(s) · ${nbEff} collaborateur(s)`;
   }
 
   function setActiveTreeItem(id_service) {
@@ -657,7 +657,7 @@
 
         item.innerHTML = `
           <div class="sb-tree-name">${escapeHtml(n.nom_service || "Sans nom")}</div>
-          <div class="org-tree-arrow" aria-hidden="true">â€º</div>
+          <div class="org-tree-arrow" aria-hidden="true">›</div>
         `;
 
         item.addEventListener("click", () => selectService(n.id_service));
@@ -669,7 +669,7 @@
 
     rec(nodes, 0);
 
-    // sÃ©lection par dÃ©faut: Tous les services si prÃ©sent, sinon premier service
+    // sélection par défaut: Tous les services si présent, sinon premier service
     const tous = (nodes || []).find(x => x.id_service === TOUS_SERVICES_ID);
     if (tous) selectService(TOUS_SERVICES_ID);
     else if ((nodes || []).length > 0) selectService(nodes[0].id_service);
@@ -733,9 +733,9 @@
   function openPdfViewerWindow(title) {
     const safeTitle = escapeHtml(title || "Document PDF");
     const win = window.open("", "_blank");
-    if (!win) throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du PDF.");
+    if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
     win.document.open();
-    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight: var(--ns-weight-semibold)}.bar__status{display:flex;align-items:center;gap:10px;color:#667085}.bar__spinner{width:18px;height:18px;border-radius:999px;border:3px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}@keyframes pdfSpin{to{transform:rotate(360deg)}} </style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><div class="bar__status"><div class="bar__spinner"></div><span>GÃ©nÃ©ration du PDFâ€¦</span></div></div><div class="viewer"></div></body></html>`);
+    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bar__status{display:flex;align-items:center;gap:10px;color:#667085}.bar__spinner{width:18px;height:18px;border-radius:999px;border:3px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}@keyframes pdfSpin{to{transform:rotate(360deg)}} </style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><div class="bar__status"><div class="bar__spinner"></div><span>Génération du PDF…</span></div></div><div class="viewer"></div></body></html>`);
     win.document.close();
     return win;
   }
@@ -753,7 +753,7 @@
     }
 
     win.document.open();
-    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight: var(--ns-weight-semibold)}.bar__btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#334155;text-decoration:none;font-weight: var(--ns-weight-semibold)}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}</style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><a class="bar__btn" href="${blobUrl}" download="${safeTitle}">TÃ©lÃ©charger</a></div><div class="viewer"><iframe src="${blobUrl}" title="${safeTitle}"></iframe></div></body></html>`);
+    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8" /><title>${safeTitle}</title><style>html,body{margin:0;height:100%;background:#f5f6f8}body{display:flex;flex-direction:column}.bar{height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid #d7dbe2;background:#fff;font:14px/1.2 Arial,sans-serif;color:#1f2937}.bar__title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bar__btn{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#334155;text-decoration:none;font-weight:600}.viewer{flex:1;min-height:0}.viewer iframe{width:100%;height:100%;border:0;background:#fff}</style></head><body><div class="bar"><div class="bar__title">${safeTitle}</div><a class="bar__btn" href="${blobUrl}" download="${safeTitle}">Télécharger</a></div><div class="viewer"><iframe src="${blobUrl}" title="${safeTitle}"></iframe></div></body></html>`);
     win.document.close();
     try { win.addEventListener("beforeunload", () => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, { once:true }); } catch(_) {}
     setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch(_){} }, 5 * 60 * 1000);
@@ -783,11 +783,11 @@
   async function openOrgCompetenceFichePdf(portal, item) {
     const cid = String(item?.id_competence || item?.id_comp || "").trim();
     if (!portal?.contactId) throw new Error("Contact introuvable.");
-    if (!cid) throw new Error("CompÃ©tence manquante.");
+    if (!cid) throw new Error("Compétence manquante.");
 
     const code = String(item?.code || "").trim();
-    const title = String(item?.intitule || "CompÃ©tence").trim();
-    const fallbackFilename = buildPdfFilename(code || cid, title, "CompÃ©tence", "CompÃ©tence");
+    const title = String(item?.intitule || "Compétence").trim();
+    const fallbackFilename = buildPdfFilename(code || cid, title, "Compétence", "Compétence");
     const viewer = openPdfViewerWindow(fallbackFilename);
 
     try {
@@ -993,12 +993,12 @@
       }
     }
 
-    // ResponsabilitÃ©s (HTML)
+    // Responsabilités (HTML)
     if (respWrap && resp) {
       if (rh) {
         resp.innerHTML = rh;
         _cleanResponsibilitiesHtml(resp);
-        // On garde le RTF brut en mÃ©moire pour le round-trip futur
+        // On garde le RTF brut en mémoire pour le round-trip futur
         resp.dataset.rtf = repairAiTextEncodingGlitches(detail?.responsabilites || "");
         respWrap.style.display = "";
       } else {
@@ -1017,7 +1017,7 @@
     if (dateEl) {
       const d = formatDateOnly(detail?.date_maj);
       if (d) {
-        dateEl.textContent = `DerniÃ¨re mise Ã  jour : ${d}`;
+        dateEl.textContent = `Dernière mise à jour : ${d}`;
         dateEl.style.display = "";
       } else {
         dateEl.textContent = "";
@@ -1046,7 +1046,7 @@
     const el = byId(id);
     if (!el) return;
     const s = (v ?? "").toString().trim();
-    el.textContent = s || "â€”";
+    el.textContent = s || "—";
   }
 
   function _setChecked(id, v){
@@ -1063,7 +1063,7 @@
     if (!el) return;
     const opt = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex] : null;
     const txt = (opt?.textContent || "").trim();
-    el.title = txt && txt !== "â€”" ? txt : "";
+    el.title = txt && txt !== "—" ? txt : "";
   }
 
   function _fillSelect(el, options){
@@ -1105,7 +1105,7 @@
       }
     }
 
-    // match normalisÃ© (accents / casse)
+    // match normalisé (accents / casse)
     const nv = _norm(v);
     for (const opt of el.options){
       if (_norm(opt.value) === nv){
@@ -1238,8 +1238,8 @@
     nsfSel.innerHTML = "";
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = "â€”";
-    empty.title = "â€”";
+    empty.textContent = "—";
+    empty.title = "—";
     nsfSel.appendChild(empty);
 
     let selectedFound = !code;
@@ -1333,7 +1333,7 @@
       const merged = Object.assign({}, _posteDetailCache.get(id_poste) || {}, updated || {}, v);
       _posteDetailCache.set(id_poste, merged);
       fillPosteContraintesTab(merged);
-      _showInlineMsg("orgCtrMsg", "success", "Contraintes enregistrÃ©es.");
+      _showInlineMsg("orgCtrMsg", "success", "Contraintes enregistrées.");
     } catch (e) {
       _showInlineMsg("orgCtrMsg", "danger", "Erreur enregistrement : " + e.message);
     }
@@ -1343,58 +1343,58 @@
     if (_contraintesSelectsInit) return;
     _contraintesSelectsInit = true;
 
-    // Niveau Ã©ducation (valeurs stockÃ©es : "0","3","4","5","6","7","8")
+    // Niveau éducation (valeurs stockées : "0","3","4","5","6","7","8")
     _fillSelect(byId("orgCtrEduMin"), [
-      { value:"",  text:"â€”" },
-      { value:"0", text:"Aucun diplÃ´me" },
+      { value:"",  text:"—" },
+      { value:"0", text:"Aucun diplôme" },
       { value:"3", text:"Niveau 3 : CAP, BEP" },
       { value:"4", text:"Niveau 4 : Bac" },
       { value:"5", text:"Niveau 5 : Bac+2 (BTS, DUT)" },
       { value:"6", text:"Niveau 6 : Bac+3 (Licence, BUT)" },
-      { value:"7", text:"Niveau 7 : Bac+5 (Master, IngÃ©nieur, Grandes Ã©coles)" },
+      { value:"7", text:"Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)" },
       { value:"8", text:"Niveau 8 : Bac+8 (Doctorat)" }
     ]);
 
-        // MobilitÃ©
+        // Mobilité
     _fillSelect(byId("orgCtrMobilite"), [
-      { value:"", text:"â€”" },
+      { value:"", text:"—" },
       { value:"Aucune", text:"Aucune" },
       { value:"Rare", text:"Rare" },
       { value:"Occasionnelle", text:"Occasionnelle" },
-      { value:"FrÃ©quente", text:"FrÃ©quente" }
+      { value:"Fréquente", text:"Fréquente" }
     ]);
 
-    // Perspectives Ã©volution
+    // Perspectives évolution
     _fillSelect(byId("orgCtrPerspEvol"), [
-      { value:"", text:"â€”" },
+      { value:"", text:"—" },
       { value:"Aucune", text:"Aucune" },
       { value:"Faible", text:"Faible" },
-      { value:"ModÃ©rÃ©e", text:"ModÃ©rÃ©e" },
+      { value:"Modérée", text:"Modérée" },
       { value:"Forte", text:"Forte" },
       { value:"Rapide", text:"Rapide" }
     ]);
 
 
-    // Risques physiques (valeurs stockÃ©es : "Aucun","Faible","ModÃ©rÃ©","Ã‰levÃ©","Critique")
+    // Risques physiques (valeurs stockées : "Aucun","Faible","Modéré","Élevé","Critique")
     _fillSelect(byId("orgCtrRisquePhys"), [
-      { value:"", text:"â€”" },
-      { value:"Aucun", text:"Aucun : pas de risque identifiÃ©." },
-      { value:"Faible", text:"Faible : exposition occasionnelle, faible intensitÃ©." },
-      { value:"ModÃ©rÃ©", text:"ModÃ©rÃ© : exposition rÃ©guliÃ¨re mais maÃ®trisÃ©e." },
-      { value:"Ã‰levÃ©", text:"Ã‰levÃ© : risque important, pouvant gÃ©nÃ©rer une pathologie." },
+      { value:"", text:"—" },
+      { value:"Aucun", text:"Aucun : pas de risque identifié." },
+      { value:"Faible", text:"Faible : exposition occasionnelle, faible intensité." },
+      { value:"Modéré", text:"Modéré : exposition régulière mais maîtrisée." },
+      { value:"Élevé", text:"Élevé : risque important, pouvant générer une pathologie." },
       { value:"Critique", text:"Critique : risque vital ou accident grave possible." }
     ]);
 
-    // Niveau contraintes (valeurs stockÃ©es : "Aucune","ModÃ©rÃ©e","Ã‰levÃ©e","Critique")
+    // Niveau contraintes (valeurs stockées : "Aucune","Modérée","Élevée","Critique")
     _fillSelect(byId("orgCtrNivContrainte"), [
-      { value:"", text:"â€”" },
-      { value:"Aucune", text:"Aucune : poste standard, sans pression ni particularitÃ©." },
-      { value:"ModÃ©rÃ©e", text:"ModÃ©rÃ©e : quelques contraintes psychosociales/organisationnelles." },
-      { value:"Ã‰levÃ©e", text:"Ã‰levÃ©e : forte pression, conditions difficiles, grande responsabilitÃ©." },
-      { value:"Critique", text:"Critique : stress ou responsabilitÃ© vitale." }
+      { value:"", text:"—" },
+      { value:"Aucune", text:"Aucune : poste standard, sans pression ni particularité." },
+      { value:"Modérée", text:"Modérée : quelques contraintes psychosociales/organisationnelles." },
+      { value:"Élevée", text:"Élevée : forte pression, conditions difficiles, grande responsabilité." },
+      { value:"Critique", text:"Critique : stress ou responsabilité vitale." }
     ]);
 
-    // Les libellÃ©s complets sont visibles dans le select et dans les options.
+    // Les libellés complets sont visibles dans le select et dans les options.
 
   }
 
@@ -1407,9 +1407,9 @@
 
     function _nivLabel(niv){
     const n = (niv || "").toString().trim().toUpperCase();
-    if (n === "A") return "DÃ©butant";
-    if (n === "B") return "IntermÃ©diaire";
-    if (n === "C") return "AvancÃ©";
+    if (n === "A") return "Débutant";
+    if (n === "B") return "Intermédiaire";
+    if (n === "C") return "Avancé";
     if (n === "D") return "Expert";
     return n || "";
   }
@@ -1458,7 +1458,7 @@
       const critTxt = (crit === null || crit === undefined || crit === "") ? "" : String(crit).trim();
 
       const nivLbl = _nivLabel(niv);
-      const nivCell = (!nivLbl) ? "â€”" : `<span class="sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
+      const nivCell = (!nivLbl) ? "—" : `<span class="sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
 
       const tr = document.createElement("tr");
       const critVal = Number(critTxt);
@@ -1470,12 +1470,12 @@
         critVal >= 20 ? 2 : 1);
 
       const critHtml = isFinite(critVal)
-        ? `<span class="sb-crit-badge sb-crit-l${lvl}" title="CriticitÃ© : ${escapeHtml(String(critVal))}">${escapeHtml(String(critVal))}</span>`
-        : "â€”";
+        ? `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${escapeHtml(String(critVal))}">${escapeHtml(String(critVal))}</span>`
+        : "—";
 
       tr.innerHTML = `
         <td class="col-center">${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
-        <td title="${escapeHtml(desc)}">${escapeHtml(title || "â€”")}</td>
+        <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
         <td class="col-center">${nivCell}</td>
         <td class="col-center">${critHtml}</td>
         <td class="col-center"><div class="sb-icon-actions org-exi-row-actions"></div></td>
@@ -1486,8 +1486,8 @@
         const btnCrit = document.createElement("button");
         btnCrit.type = "button";
         btnCrit.className = "sb-icon-btn";
-        btnCrit.title = "Ã‰valuer la criticitÃ©";
-        btnCrit.setAttribute("aria-label", "Ã‰valuer la criticitÃ©");
+        btnCrit.title = "Évaluer la criticité";
+        btnCrit.setAttribute("aria-label", "Évaluer la criticité");
         btnCrit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>';
         btnCrit.addEventListener("click", (e) => {
           e.preventDefault();
@@ -1499,8 +1499,8 @@
         const btnPdf = document.createElement("button");
         btnPdf.type = "button";
         btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
-        btnPdf.title = "Ouvrir la fiche compÃ©tence PDF";
-        btnPdf.setAttribute("aria-label", "Ouvrir la fiche compÃ©tence PDF");
+        btnPdf.title = "Ouvrir la fiche compétence PDF";
+        btnPdf.setAttribute("aria-label", "Ouvrir la fiche compétence PDF");
         btnPdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
         btnPdf.addEventListener("click", async (e) => {
           e.preventDefault();
@@ -1524,8 +1524,8 @@
       btnMore.style.display = hidden > 0 ? "flex" : "none";
       btnMore.classList.toggle("is-expanded", !!_orgCompState.expanded);
       if (btnText) btnText.textContent = _orgCompState.expanded
-        ? "Voir moins de compÃ©tences"
-        : `Voir plus de compÃ©tences (${hidden})`;
+        ? "Voir moins de compétences"
+        : `Voir plus de compétences (${hidden})`;
     }
   }
 
@@ -1549,12 +1549,12 @@
       const cat = (it?.categorie || "").toString().trim();
       const validity = _getCertEffectiveValidity(it);
       const validityTitle = validity.isOverride
-        ? `ValiditÃ© spÃ©cifique au poste. ${_buildCertBaseInfo(it)}`
+        ? `Validité spécifique au poste. ${_buildCertBaseInfo(it)}`
         : _buildCertBaseInfo(it);
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td title="${escapeHtml(desc)}">${escapeHtml(nom || "â€”")}</td>
+        <td title="${escapeHtml(desc)}">${escapeHtml(nom || "—")}</td>
         <td>${escapeHtml(cat || "-")}</td>
         <td class="col-center" title="${escapeHtml(validityTitle)}">${escapeHtml(validity.label)}</td>
         <td class="col-center">${_certRequirementBadge(it?.niveau_exigence)}</td>
@@ -1566,8 +1566,8 @@
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
         btnEdit.className = "sb-icon-btn";
-        btnEdit.title = "Modifier le paramÃ©trage de la certification";
-        btnEdit.setAttribute("aria-label", "Modifier le paramÃ©trage de la certification");
+        btnEdit.title = "Modifier le paramétrage de la certification";
+        btnEdit.setAttribute("aria-label", "Modifier le paramétrage de la certification");
         btnEdit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
         btnEdit.addEventListener("click", (e) => {
           e.preventDefault();
@@ -1626,10 +1626,10 @@
   }
 
   function _setOrgCompCritLevelTexts(it){
-    _setText('orgCompCritRefA', it?.niveaua || 'Premiers repÃ¨res, exÃ©cution accompagnÃ©e.');
-    _setText('orgCompCritRefB', it?.niveaub || 'ExÃ©cution rÃ©guliÃ¨re sur situations simples.');
-    _setText('orgCompCritRefC', it?.niveauc || 'Autonomie sur situations courantes et alÃ©as modÃ©rÃ©s.');
-    _setText('orgCompCritRefD', it?.niveaud || 'MaÃ®trise complÃ¨te, sÃ©curisation et transmission.');
+    _setText('orgCompCritRefA', it?.niveaua || 'Premiers repères, exécution accompagnée.');
+    _setText('orgCompCritRefB', it?.niveaub || 'Exécution régulière sur situations simples.');
+    _setText('orgCompCritRefC', it?.niveauc || 'Autonomie sur situations courantes et aléas modérés.');
+    _setText('orgCompCritRefD', it?.niveaud || 'Maîtrise complète, sécurisation et transmission.');
   }
 
   function openOrgCompCritModal(it){
@@ -1641,7 +1641,7 @@
       badge.textContent = code;
       badge.style.display = code ? "" : "none";
     }
-    _setText("orgCompCritTitle", _orgCompCritEdit.intitule || "CompÃ©tence");
+    _setText("orgCompCritTitle", _orgCompCritEdit.intitule || "Compétence");
     _setOrgCompCritLevelTexts(_orgCompCritEdit);
     _setOrgCompCritNiv(_orgCompCritEdit.niveau_requis || "C");
 
@@ -1674,7 +1674,7 @@
     const id_poste = modal?.getAttribute("data-id-poste") || "";
     const id_competence = (_orgCompCritEdit.id_competence || _orgCompCritEdit.id_comp || "").toString().trim();
     if (!id_poste || !id_competence){
-      _showInlineMsg("orgCompCritMsg", "danger", "Poste ou compÃ©tence introuvable.");
+      _showInlineMsg("orgCompCritMsg", "danger", "Poste ou compétence introuvable.");
       return;
     }
 
@@ -1730,7 +1730,7 @@
   function openOrgCertValidModal(it){
     _orgCertValidEdit = Object.assign({}, it || {});
     _setText("orgCertValidTitle", _orgCertValidEdit.nom_certification || "Certification");
-    _setText("orgCertValidSub", _orgCertValidEdit.categorie || "Sans catÃ©gorie");
+    _setText("orgCertValidSub", _orgCertValidEdit.categorie || "Sans catégorie");
     _setValue("orgCertValidOverride", (_orgCertValidEdit.validite_override ?? "").toString());
     _setText("orgCertValidBaseInfo", _buildCertBaseInfo(_orgCertValidEdit));
     _setValue("orgCertValidLevel", (_orgCertValidEdit.niveau_exigence || "requis").toString().trim().toLowerCase());
@@ -1767,7 +1767,7 @@
 
     const raw = (byId("orgCertValidOverride")?.value || "").trim();
     if (raw && !/^\d+$/.test(raw)){
-      _showInlineMsg("orgCertValidMsg", "danger", "La validitÃ© doit Ãªtre un nombre de mois.");
+      _showInlineMsg("orgCertValidMsg", "danger", "La validité doit être un nombre de mois.");
       return;
     }
 
@@ -1815,7 +1815,7 @@
 
   function _formatValidityMonths(v){
     const n = parseInt(v ?? "", 10);
-    if (!Number.isFinite(n) || n <= 0) return "â€”";
+    if (!Number.isFinite(n) || n <= 0) return "—";
     return `${n} mois`;
   }
 
@@ -1830,22 +1830,22 @@
       return { label: `${base} mois`, isOverride: false };
     }
 
-    return { label: "â€”", isOverride: false };
+    return { label: "—", isOverride: false };
   }
 
   function _certRequirementBadge(v){
     const raw = (v || "requis").toString().trim().toLowerCase();
-    const isSouhaite = raw === "souhaitÃ©" || raw === "souhaite";
-    const label = isSouhaite ? "SouhaitÃ©" : "Requis";
+    const isSouhaite = raw === "souhaité" || raw === "souhaite";
+    const label = isSouhaite ? "Souhaité" : "Requis";
     const cls = isSouhaite ? "org-cert-req-badge org-cert-req-badge--soft" : "org-cert-req-badge org-cert-req-badge--strong";
     return `<span class="${cls}">${escapeHtml(label)}</span>`;
   }
 
   function _buildCertBaseInfo(it){
-    const parts = [`ValiditÃ© catalogue : ${_formatValidityMonths(it?.duree_validite)}`];
+    const parts = [`Validité catalogue : ${_formatValidityMonths(it?.duree_validite)}`];
     const renewal = _formatValidityMonths(it?.delai_renouvellement);
-    if (renewal !== "â€”") parts.push(`DÃ©lai de renouvellement : ${renewal}`);
-    return parts.join(" Â· ");
+    if (renewal !== "—") parts.push(`Délai de renouvellement : ${renewal}`);
+    return parts.join(" · ");
   }
 
   let _rhSelectsInit = false;
@@ -1855,25 +1855,25 @@
     _rhSelectsInit = true;
 
     _fillSelect(byId("orgRhStatut"), [
-      { value:"", text:"â€”" },
+      { value:"", text:"—" },
       { value:"actif", text:"Actif" },
-      { value:"a_pourvoir", text:"Ã€ pourvoir" },
-      { value:"gele", text:"GelÃ©" },
+      { value:"a_pourvoir", text:"À pourvoir" },
+      { value:"gele", text:"Gelé" },
       { value:"temporaire", text:"Temporaire" },
-      { value:"archive", text:"ArchivÃ©" }
+      { value:"archive", text:"Archivé" }
     ]);
 
     _fillSelect(byId("orgRhCriticite"), [
-      { value:"", text:"â€”" },
+      { value:"", text:"—" },
       { value:"0", text:"0 - Non critique" },
       { value:"1", text:"1 - Faible" },
       { value:"2", text:"2 - Important" },
-      { value:"3", text:"3 - Ã‰levÃ©" },
+      { value:"3", text:"3 - Élevé" },
       { value:"4", text:"4 - Critique" }
     ]);
 
     _fillSelect(byId("orgRhStrategie"), [
-      { value:"", text:"â€”" },
+      { value:"", text:"—" },
       { value:"interne", text:"Interne" },
       { value:"externe", text:"Externe" },
       { value:"mixte", text:"Mixte" }
@@ -1883,7 +1883,7 @@
   function _toIsoDate(v){
     if (!v) return "";
     const s = String(v);
-    // si dÃ©jÃ  YYYY-MM-DD
+    // si déjà YYYY-MM-DD
     if (s.length >= 10 && s[4] === "-" && s[7] === "-") return s.substring(0,10);
     return "";
   }
@@ -1909,8 +1909,8 @@
     _setValue("orgRhDateDebut", _toIsoDate(detail?.rh_date_debut_validite));
     _setValue("orgRhDateFin", _toIsoDate(detail?.rh_date_fin_validite));
 
-    _setValue("orgRhSource", src || "â€”");
-    _setValue("orgRhDateMaj", maj || "â€”");
+    _setValue("orgRhSource", src || "—");
+    _setValue("orgRhDateMaj", maj || "—");
 
     _setValue("orgRhCommentaire", detail?.rh_param_rh_commentaire ?? "");
 
@@ -1936,7 +1936,7 @@
     bindOnce(minus, -1);
     bindOnce(plus, +1);
 
-    // Retour en lecture systÃ©matique quand on remplit depuis API
+    // Retour en lecture systématique quand on remplit depuis API
     _rhEdit.snapshot = null;
     _setRhEditMode(false);
     _rhApplyFinValiditeVisibility();
@@ -2000,7 +2000,7 @@
 
     try {
       portal.showAlert("", "");
-      document.getElementById("postesContainer").innerHTML = `<div class="card-sub">Chargementâ€¦</div>`;
+      document.getElementById("postesContainer").innerHTML = `<div class="card-sub">Chargement…</div>`;
       document.getElementById("postesEmpty").style.display = "none";
       updateServiceStats(node || { id_service }, []);
 
@@ -2070,7 +2070,7 @@
       bindOrgPosteModalOnce();
 
       try {
-        bindOnce(portal);
+        bindOnce(portal);        
         if (!_servicesLoaded) await loadServices(portal);
         await processReferentielPendingPosteAction(portal);
       } catch (e) {
