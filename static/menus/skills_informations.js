@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   let _bound = false;
   let _loaded = false;
 
@@ -19,7 +19,7 @@
   // Garde uniquement les chiffres (max 10)
   let digits = (input.value || "").replace(/\D/g, "");
 
-  // Petit confort si quelqu’un colle un +33...
+  // Petit confort si quelquâ€™un colle un +33...
   if (digits.startsWith("33") && digits.length >= 11) {
     digits = "0" + digits.slice(2);
   }
@@ -37,7 +37,7 @@
   function setTextOrDash(id, value, isError) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = (value != null && value !== "") ? value : "—";
+    el.textContent = (value != null && value !== "") ? value : "â€”";
     el.classList.toggle("error", !!isError);
   }
 
@@ -116,7 +116,7 @@
     const sel = document.getElementById("ent_id_opco");
     if (!sel) return;
 
-    sel.innerHTML = `<option value="">(Non renseigné)</option>`;
+    sel.innerHTML = `<option value="">(Non renseignÃ©)</option>`;
     (list || []).forEach(it => {
       const opt = document.createElement("option");
       opt.value = it.id_opco;
@@ -131,17 +131,17 @@
     const sel = document.getElementById("ent_id_opco");
     if (!sel) return;
     const id = sel.value || "";
-    if (!id) { setTextOrDash("opcoHint", "—", false); return; }
+    if (!id) { setTextOrDash("opcoHint", "â€”", false); return; }
     const item = (_refOpco || []).find(x => x.id_opco === id);
-    setTextOrDash("opcoHint", item ? item.nom_opco : "—", false);
+    setTextOrDash("opcoHint", item ? item.nom_opco : "â€”", false);
   }
 
   async function lookupIdcc(portal, idcc) {
     const v = (idcc || "").trim();
-    if (!v) { setTextOrDash("idccHint", "—", false); return; }
+    if (!v) { setTextOrDash("idccHint", "â€”", false); return; }
     try {
       const r = await portal.apiJson(`${portal.apiBase}/skills/referentiels/idcc/${encodeURIComponent(v)}`);
-      setTextOrDash("idccHint", r.libelle || "—", false);
+      setTextOrDash("idccHint", r.libelle || "â€”", false);
     } catch {
       setTextOrDash("idccHint", "IDCC introuvable", true);
     }
@@ -155,10 +155,10 @@
 
   async function lookupApe(portal, codeApe) {
     const v = (codeApe || "").trim();
-    if (!v) { setTextOrDash("apeHint", "—", false); return; }
+    if (!v) { setTextOrDash("apeHint", "â€”", false); return; }
     try {
       const r = await portal.apiJson(`${portal.apiBase}/skills/referentiels/ape/${encodeURIComponent(v)}`);
-      setTextOrDash("apeHint", r.intitule_ape || "—", false);
+      setTextOrDash("apeHint", r.intitule_ape || "â€”", false);
     } catch {
       setTextOrDash("apeHint", "Code APE invalide ou introuvable", true);
     }
@@ -182,12 +182,12 @@
     setValueOrEmpty("ent_site_web", ent.site_web);
 
     setValueOrEmpty("ent_code_ape_ent", ent.code_ape_ent);
-    setTextOrDash("apeHint", ent.code_ape_intitule || "—", false);
+    setTextOrDash("apeHint", ent.code_ape_intitule || "â€”", false);
 
     setValueOrEmpty("ent_idcc", ent.idcc);
-    setTextOrDash("idccHint", ent.idcc_libelle || "—", false);
+    setTextOrDash("idccHint", ent.idcc_libelle || "â€”", false);
 
-    setTextOrDash("opcoHint", ent.opco_nom || "—", false);
+    setTextOrDash("opcoHint", ent.opco_nom || "â€”", false);
   }
 
   function renderContact(ct) {
@@ -268,7 +268,7 @@
     const patch = buildPatchFromInitial(_initialEntreprise, current, allowed);
 
     if (Object.keys(patch).length === 0) {
-      showSaveFeedback("entreprise", "warning", "Aucune modification à enregistrer.");
+      showSaveFeedback("entreprise", "warning", "Aucune modification Ã  enregistrer.");
       setEntrepriseEditMode(false);
       return;
     }
@@ -285,7 +285,7 @@
     renderOpcoSelect(opco, data.entreprise.id_opco || "");
     renderEntreprise(data.entreprise);
 
-    showSaveFeedback("entreprise", "success", "Informations entreprise enregistrées.");
+    showSaveFeedback("entreprise", "success", "Informations entreprise enregistrÃ©es.");
     setEntrepriseEditMode(false);
   }
 
@@ -300,7 +300,7 @@
     }
 
     if (Object.keys(patch).length === 0) {
-      showSaveFeedback("contact", "warning", "Aucune modification à enregistrer.");
+      showSaveFeedback("contact", "warning", "Aucune modification Ã  enregistrer.");
       setContactEditMode(false);
       return;
     }
@@ -315,7 +315,7 @@
 
     renderContact(data.contact);
 
-    showSaveFeedback("contact", "success", "Informations du contact enregistrées.");
+    showSaveFeedback("contact", "success", "Informations du contact enregistrÃ©es.");
     setContactEditMode(false);
   }
 

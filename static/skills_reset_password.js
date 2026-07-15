@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id) { return document.getElementById(id); }
@@ -26,7 +26,7 @@
     const cfg = await loadConfig();
 
     if (!window.PortalAuthCommon) {
-      throw new Error("portal_auth_common.js non chargé.");
+      throw new Error("portal_auth_common.js non chargÃ©.");
     }
 
     window.PortalAuthCommon.init({
@@ -46,7 +46,7 @@
     const token = session?.access_token || "";
 
     if (!token) {
-      throw new Error("Mot de passe enregistré, mais session d’activation introuvable. Relance le lien reçu par email.");
+      throw new Error("Mot de passe enregistrÃ©, mais session dâ€™activation introuvable. Relance le lien reÃ§u par email.");
     }
 
     const r = await fetch(`${API_BASE}/skills/auth/activate`, {
@@ -62,7 +62,7 @@
       throw new Error(
         (data && (data.detail || data.message))
           ? (data.detail || data.message)
-          : "Mot de passe enregistré, mais activation des accès Insights impossible."
+          : "Mot de passe enregistrÃ©, mais activation des accÃ¨s Insights impossible."
       );
     }
 
@@ -85,19 +85,19 @@
 
     try {
       if (btn) btn.disabled = true;
-      setMsg("Mise à jour en cours…", "");
+      setMsg("Mise Ã  jour en coursâ€¦", "");
 
       await window.PortalAuthCommon.updatePassword(p1);
       await activateAccesses();
 
-      setMsg("Mot de passe mis à jour. Tes accès Insights sont actifs. Tu peux te reconnecter.", "success");
+      setMsg("Mot de passe mis Ã  jour. Tes accÃ¨s Insights sont actifs. Tu peux te reconnecter.", "success");
 
-      // Redirection vers login après 1s
+      // Redirection vers login aprÃ¨s 1s
       setTimeout(() => {
         window.location.href = "/skills_login.html";
       }, 1000);
     } catch (e) {
-      setMsg(e.message || "Mise à jour impossible.", "error");
+      setMsg(e.message || "Mise Ã  jour impossible.", "error");
     } finally {
       if (btn) btn.disabled = false;
     }

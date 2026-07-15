@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   let _bound = false;
   let _loaded = false;
 
@@ -71,17 +71,17 @@
         img.style.display = "none";
       }
       if (empty) {
-        empty.textContent = "Aucun logo enregistré.";
+        empty.textContent = "Aucun logo enregistrÃ©.";
         empty.style.display = "";
       }
       if (meta) {
-        meta.textContent = "Le logo enregistré sera réutilisé automatiquement dans les sorties PDF Studio.";
+        meta.textContent = "Le logo enregistrÃ© sera rÃ©utilisÃ© automatiquement dans les sorties PDF Studio.";
       }
       return;
     }
 
     if (empty) {
-      empty.textContent = "Chargement du logo…";
+      empty.textContent = "Chargement du logoâ€¦";
       empty.style.display = "";
     }
 
@@ -91,7 +91,7 @@
       if (logoMeta.filename) parts.push(logoMeta.filename);
       if (mime) parts.push(mime);
       if (logoMeta.size_bytes) parts.push(formatBytes(logoMeta.size_bytes));
-      meta.textContent = parts.join(" · ") || "Logo actif.";
+      meta.textContent = parts.join(" Â· ") || "Logo actif.";
     }
 
     try {
@@ -130,7 +130,7 @@
           img.removeAttribute("src");
           img.style.display = "none";
           if (empty) {
-            empty.textContent = "Impossible d’afficher le logo.";
+            empty.textContent = "Impossible dâ€™afficher le logo.";
             empty.style.display = "";
           }
         };
@@ -149,7 +149,7 @@
         img.style.display = "none";
       }
       if (empty) {
-        empty.textContent = e.message || "Impossible d’afficher le logo.";
+        empty.textContent = e.message || "Impossible dâ€™afficher le logo.";
         empty.style.display = "";
       }
     }
@@ -162,7 +162,7 @@
 
     const name = String(file.name || "").toLowerCase();
     if (!/\.(png|jpg|jpeg)$/.test(name)) {
-      throw new Error("Format logo non supporté. Utilise un fichier PNG ou JPG.");
+      throw new Error("Format logo non supportÃ©. Utilise un fichier PNG ou JPG.");
     }
 
     if ((file.size || 0) > (2 * 1024 * 1024)) {
@@ -246,7 +246,7 @@
   function setTextOrDash(id, value, isError) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = (value != null && String(value).trim() !== "") ? value : "—";
+    el.textContent = (value != null && String(value).trim() !== "") ? value : "â€”";
     el.classList.toggle("error", !!isError);
   }
 
@@ -277,7 +277,7 @@
       delete _saveSuccessTimers[id];
     }
 
-    el.textContent = "Enregistré avec succès";
+    el.textContent = "EnregistrÃ© avec succÃ¨s";
     el.style.display = "inline-flex";
 
     _saveSuccessTimers[id] = setTimeout(() => {
@@ -356,9 +356,9 @@
     if (xml) xml.value = c.metadata_xml || "";
     const hint = document.getElementById("ownerSsoSchemaHint");
     if (hint) {
-      if (c.schema_ready === false) hint.textContent = "Table SSO non installée : exécuter PATCH_SQL_SSO_CONNEXIONS.sql avant enregistrement.";
+      if (c.schema_ready === false) hint.textContent = "Table SSO non installÃ©e : exÃ©cuter PATCH_SQL_SSO_CONNEXIONS.sql avant enregistrement.";
       else if (c.test_message) hint.textContent = c.test_message;
-      else hint.textContent = "Le SSO complète la connexion Novoskill. Les droits restent gérés dans les accès utilisateurs.";
+      else hint.textContent = "Le SSO complÃ¨te la connexion Novoskill. Les droits restent gÃ©rÃ©s dans les accÃ¨s utilisateurs.";
     }
   }
   function collectOwnerConnexionFromUI() {
@@ -419,7 +419,7 @@
       if (bt) { bt.disabled = true; bt.textContent = "Test..."; }
       const data = await portal.apiJson(`${portal.apiBase}/studio/connexions/owner/${encodeURIComponent(ownerId)}/test`, { method: "POST" });
       renderOwnerConnexion(data || {});
-      showSsoInfoPopup((data && data.test_message) || "Configuration SSO vérifiée.");
+      showSsoInfoPopup((data && data.test_message) || "Configuration SSO vÃ©rifiÃ©e.");
     } catch (e) { showSsoInfoPopup(e.message || String(e)); }
     finally { if (bt) { bt.disabled = false; bt.textContent = old || "Tester la configuration"; } }
   }
@@ -483,8 +483,8 @@
     if (hint) {
       hint.className = `sd-sirh-secret-hint ${c.has_secret ? "is-ok" : "is-empty"}`;
       hint.textContent = c.has_secret
-        ? "Clé API enregistrée. Laissez le champ vide pour la conserver."
-        : "Aucune clé API enregistrée.";
+        ? "ClÃ© API enregistrÃ©e. Laissez le champ vide pour la conserver."
+        : "Aucune clÃ© API enregistrÃ©e.";
     }
     syncSirhProviderUi();
     setSirhStatus("", "");
@@ -564,7 +564,7 @@
     renderSirhConfig((data && data.config) || data || {});
     setSirhEditMode(false);
     showSaveSuccess("sirhSaveSuccess");
-    setSirhStatus("ok", "Configuration SIRH enregistrée. Aucune synchronisation n’a été lancée.");
+    setSirhStatus("ok", "Configuration SIRH enregistrÃ©e. Aucune synchronisation nâ€™a Ã©tÃ© lancÃ©e.");
   }
 
 
@@ -574,7 +574,7 @@
 
     const provider = document.getElementById("sirhProvider")?.value || "manual";
     if (provider === "manual") {
-      showSsoInfoPopup("Sélectionnez un connecteur SIRH / paie avant de lancer le test.");
+      showSsoInfoPopup("SÃ©lectionnez un connecteur SIRH / paie avant de lancer le test.");
       return;
     }
 
@@ -591,8 +591,8 @@
           body: JSON.stringify(collectSirhConfigFromUI()),
         }
       );
-      setSirhStatus("ok", (data && data.test_message) || "Configuration SIRH contrôlée.");
-      showSsoInfoPopup((data && data.test_message) || "Configuration SIRH contrôlée.");
+      setSirhStatus("ok", (data && data.test_message) || "Configuration SIRH contrÃ´lÃ©e.");
+      showSsoInfoPopup((data && data.test_message) || "Configuration SIRH contrÃ´lÃ©e.");
     } catch (e) {
       const msg = e.message || String(e);
       setSirhStatus("error", msg);
@@ -670,7 +670,7 @@
       el.disabled = !isEdit;
     });
 
-    // IMPORTANT : le champ rôle est disabled dans le HTML et n'a PAS data-editable-ct
+    // IMPORTANT : le champ rÃ´le est disabled dans le HTML et n'a PAS data-editable-ct
     const b1 = document.getElementById("btnEditContact");
     const b2 = document.getElementById("btnSaveContact");
     const b3 = document.getElementById("btnCancelContact");
@@ -690,7 +690,7 @@
     const sel = document.getElementById("ent_id_opco");
     if (!sel) return;
 
-    sel.innerHTML = `<option value="">(Non renseigné)</option>`;
+    sel.innerHTML = `<option value="">(Non renseignÃ©)</option>`;
     (list || []).forEach(it => {
       const opt = document.createElement("option");
       opt.value = it.id_opco;
@@ -703,10 +703,10 @@
 
   async function lookupIdcc(portal, idcc) {
     const v = (idcc || "").trim();
-    if (!v) { setTextOrDash("idccHint", "—", false); return; }
+    if (!v) { setTextOrDash("idccHint", "â€”", false); return; }
     try {
       const r = await portal.apiJson(`${portal.apiBase}/studio/referentiels/idcc/${encodeURIComponent(v)}`);
-      setTextOrDash("idccHint", r.libelle || "—", false);
+      setTextOrDash("idccHint", r.libelle || "â€”", false);
     } catch {
       setTextOrDash("idccHint", "IDCC introuvable", true);
     }
@@ -714,10 +714,10 @@
 
   async function lookupApe(portal, codeApe) {
     const v = (codeApe || "").trim();
-    if (!v) { setTextOrDash("apeHint", "—", false); return; }
+    if (!v) { setTextOrDash("apeHint", "â€”", false); return; }
     try {
       const r = await portal.apiJson(`${portal.apiBase}/studio/referentiels/ape/${encodeURIComponent(v)}`);
-      setTextOrDash("apeHint", r.intitule_ape || "—", false);
+      setTextOrDash("apeHint", r.intitule_ape || "â€”", false);
     } catch {
       setTextOrDash("apeHint", "Code APE invalide ou introuvable", true);
     }
@@ -742,10 +742,10 @@
     setValueOrEmpty("ent_site_web", org.site_web);
 
     setValueOrEmpty("ent_code_ape_ent", org.code_ape_ent);
-    setTextOrDash("apeHint", org.code_ape_intitule || "—", false);
+    setTextOrDash("apeHint", org.code_ape_intitule || "â€”", false);
 
     setValueOrEmpty("ent_idcc", org.idcc);
-    setTextOrDash("idccHint", org.idcc_libelle || "—", false);
+    setTextOrDash("idccHint", org.idcc_libelle || "â€”", false);
 
     renderEntrepriseLogo(org.logo || { has_logo: false }).catch(() => {});
   }
@@ -757,7 +757,7 @@
     setValueOrEmpty("ct_prenom_ca", normalizeContactPrenom(ct.prenom));
     setValueOrEmpty("ct_nom_ca", normalizeContactNom(ct.nom));
 
-    // Lecture seule: rôle d'accès Studio
+    // Lecture seule: rÃ´le d'accÃ¨s Studio
     setValueOrEmpty("ct_role_ca", ct.role);
 
     setValueOrEmpty("ct_tel_ca", ct.telephone);
@@ -833,7 +833,7 @@
       telephone: normalizeValue(document.getElementById("ct_tel_ca")?.value),
       telephone2: normalizeValue(document.getElementById("ct_tel2_ca")?.value),
       observations: normalizeValue(document.getElementById("ct_obs_ca")?.value),
-      // role: lecture seule => pas envoyé
+      // role: lecture seule => pas envoyÃ©
     };
   }
 
@@ -851,7 +851,7 @@
 
     if (Object.keys(patch).length === 0) {
       portal.showAlert("", "");
-      setEntrepriseEditMode(false);      
+      setEntrepriseEditMode(false);
       return;
     }
 
@@ -954,7 +954,7 @@
     });
     btnTestConnexion?.addEventListener("click", async () => { await testConnexion(portal); });
 
-    // Entreprise: admin only (UX). L'API est déjà sécurisée en 403.
+    // Entreprise: admin only (UX). L'API est dÃ©jÃ  sÃ©curisÃ©e en 403.
     const btnEditEnt = document.getElementById("btnEditEntreprise");
     const btnSaveEnt = document.getElementById("btnSaveEntreprise");
     const btnCancelEnt = document.getElementById("btnCancelEntreprise");

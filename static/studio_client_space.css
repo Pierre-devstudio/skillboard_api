@@ -1,4 +1,4 @@
-:root{
+﻿:root{
   --cs-bg:#f4f6fb;
   --cs-panel:#ffffff;
   --cs-border:rgba(17,24,39,.10);
@@ -21,7 +21,7 @@ html, body{
   min-height:100%;
   background:var(--cs-bg);
   color:var(--cs-text);
-  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  font-family: var(--ns-font-ui);
 }
 
 button, input, select, textarea{
@@ -58,9 +58,9 @@ a{
   border:1px solid rgba(var(--cs-accent-rgb), .78);
   border-radius:14px;
   background:rgba(255,255,255,.05);
-  font-size:15px;
-  font-weight:600;
-  line-height:1.35;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-ui);
 }
 
 .cs-sidebar-header{
@@ -78,10 +78,10 @@ a{
 
 .cs-subproduct-label{
   color:rgba(255,255,255,.88);
-  font-size:13px;
-  font-weight:700;
-  line-height:1.2;
-  letter-spacing:.01em;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
+  letter-spacing: var(--ns-letter-label);
 }
 
 .cs-client-menu{
@@ -112,24 +112,24 @@ a{
 }
 
 .cs-kicker{
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   color:var(--cs-muted);
   text-transform:uppercase;
-  letter-spacing:.04em;
+  letter-spacing: var(--ns-letter-label);
 }
 
 .cs-title{
   margin:4px 0 0 0;
-  font-size:28px;
-  line-height:1.15;
+  font-size: var(--ns-kpi);
+  line-height: var(--ns-leading-tight);
 }
 
 .cs-sub{
   margin-top:6px;
   color:var(--cs-muted);
-  font-size:14px;
-  line-height:1.45;
+  font-size: var(--ns-text-md);
+  line-height: var(--ns-leading-body);
 }
 
 .cs-topbar-actions{
@@ -139,7 +139,7 @@ a{
   justify-content:flex-end;
 }
 
-/* boutons topbar : on réutilise désormais les classes standard studio (.sb-btn ...) */
+/* boutons topbar : on rÃ©utilise dÃ©sormais les classes standard studio (.sb-btn ...) */
 
 .cs-message{
   margin-bottom:14px;
@@ -148,7 +148,7 @@ a{
   border:1px solid #fecaca;
   background:#fff1f2;
   color:#991b1b;
-  line-height:1.45;
+  line-height: var(--ns-leading-body);
 }
 
 .cs-section{
@@ -176,14 +176,14 @@ a{
 }
 
 .cs-card-title{
-  font-size:18px;
-  font-weight:700;
+  font-size: var(--ns-title-sm);
+  font-weight: var(--ns-weight-bold);
   color:var(--cs-text);
 }
 
 .cs-card-sub{
   margin-top:4px;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:var(--cs-muted);
 }
 
@@ -200,8 +200,8 @@ a{
   min-height:28px;
   padding:0 10px;
   border-radius:999px;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   border:1px solid transparent;
 }
 
@@ -243,14 +243,14 @@ a{
 }
 
 .cs-kpi-label{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:var(--cs-muted);
 }
 
 .cs-kpi-value{
   margin-top:6px;
-  font-size:20px;
-  font-weight:800;
+  font-size: var(--ns-title-md);
+  font-weight: var(--ns-weight-bold);
   color:var(--cs-text);
 }
 
@@ -284,15 +284,15 @@ a{
 }
 
 .cs-fact-label{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:var(--cs-muted);
 }
 
 .cs-fact-value{
   margin-top:5px;
-  font-size:14px;
-  font-weight:600;
-  line-height:1.45;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-body);
   color:var(--cs-text);
   word-break:break-word;
 }
@@ -307,7 +307,7 @@ a{
 .cs-placeholder-text{
   margin-top:10px;
   color:var(--cs-muted);
-  line-height:1.5;
+  line-height: var(--ns-leading-body);
 }
 
 @media (max-width: 1180px){
@@ -361,7 +361,7 @@ a{
   }
 
   .cs-title{
-    font-size:24px;
+    font-size: var(--ns-title-lg);
   }
 }
 
@@ -468,8 +468,8 @@ a{
   border:1px solid var(--cs-border-soft);
   border-radius:10px;
   background:#f8fafc;
-  font-size:14px;
-  font-weight:600;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
   color:var(--cs-text);
 }
 
@@ -480,7 +480,7 @@ a{
 .cs-inline-link{
   color:#1d4ed8;
   text-decoration:none;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 .cs-inline-link:hover{
@@ -515,15 +515,15 @@ a{
 }
 
 .cs-org-mini-kpi-label{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:var(--cs-muted);
-  font-weight:500;
+  font-weight: var(--ns-weight-medium);
 }
 
 .cs-org-mini-kpi-value{
   margin-top:4px;
-  font-size:15px;
-  font-weight:600;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-semibold);
   color:var(--cs-text);
 }
 
@@ -561,10 +561,10 @@ a{
   padding:10px 16px !important;
   background:#f8fafc !important;
   color:#111827;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   text-transform:uppercase;
-  letter-spacing:.02em;
+  letter-spacing: var(--ns-letter-label);
   border-bottom:1px solid #e5e7eb;
 }
 
@@ -584,15 +584,15 @@ a{
 }
 
 .cs-org-struct-name{
-  font-size:14px;
-  font-weight:600;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
-  line-height:1.25;
+  line-height: var(--ns-leading-title);
 }
 
 .cs-org-struct-sub{
   margin-top:2px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
@@ -621,7 +621,7 @@ a{
 }
 
 #orgStructuresCard .cs-card-title{
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
 }
 
 .cs-org-modal-card{
@@ -658,7 +658,7 @@ a{
 }
 
 /* =========================
-   Organisation – arbre structures
+   Organisation â€“ arbre structures
    ========================= */
 
 .cs-org-tree{
@@ -746,14 +746,14 @@ a{
 }
 
 .cs-org-node .cs-org-struct-name{
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
 }
 
 .cs-org-node .cs-org-struct-sub{
   margin-top:3px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
 }
 
 .cs-org-history-card{
@@ -789,17 +789,17 @@ a{
 }
 
 .cs-history-title{
-  font-size:14px;
-  font-weight:600;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
-  line-height:1.25;
+  line-height: var(--ns-leading-title);
 }
 
 .cs-history-sub{
   margin-top:3px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
 }
 
 .cs-history-actions{
@@ -833,8 +833,8 @@ a{
 
 
 /* ======================================================
-   Dashboard Insights embarqué dans Studio
-   - Le bloc garde les styles Insights, même si le thème global Studio surcharge --accent en jaune.
+   Dashboard Insights embarquÃ© dans Studio
+   - Le bloc garde les styles Insights, mÃªme si le thÃ¨me global Studio surcharge --accent en jaune.
    ====================================================== */
 .cs-insights-dashboard-mount{
   width:100%;
@@ -865,8 +865,8 @@ a{
 
 
 /* ======================================================
-   Entretiens & évaluations Insights embarqués dans Studio
-   - Le bloc garde les styles Insights, même si le thème global Studio surcharge --accent en jaune.
+   Entretiens & Ã©valuations Insights embarquÃ©s dans Studio
+   - Le bloc garde les styles Insights, mÃªme si le thÃ¨me global Studio surcharge --accent en jaune.
    ====================================================== */
 .cs-evaluations-insights-mount{
   width:100%;

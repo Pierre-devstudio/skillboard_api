@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const NON_LIE_ID = "__NON_LIE__";
   const ALL_SERVICES_ID = "__ALL__";
 
@@ -14,13 +14,13 @@
   let _lastDetailPostes = [];
   let _lastDetailCollaborateurs = [];
 
-  // Pareto (top 20%) sur les compétences, basé sur nb_postes_concernes
+  // Pareto (top 20%) sur les compÃ©tences, basÃ© sur nb_postes_concernes
   let _paretoOnly = false;      // toggle filtre ON/OFF
-  let _lastCompList = [];       // dernière liste compétences (non filtrée pareto)
-  let _paretoTopIds = new Set(); // ids compétences dans le top 20%
-  let _paretoTopCount = 0;      // combien de compétences dans le top 20%
+  let _lastCompList = [];       // derniÃ¨re liste compÃ©tences (non filtrÃ©e pareto)
+  let _paretoTopIds = new Set(); // ids compÃ©tences dans le top 20%
+  let _paretoTopCount = 0;      // combien de compÃ©tences dans le top 20%
 
-  // cache basique par service (évite de recharger si l’utilisateur clique 10 fois)
+  // cache basique par service (Ã©vite de recharger si lâ€™utilisateur clique 10 fois)
   const _cacheComp = new Map();   // key: service|domaine|q|etat
   const _cacheCert = new Map();   // key: service|q
 
@@ -42,7 +42,7 @@
     if (!raw) return "";
     const up = raw.toUpperCase();
     if (["A", "B", "C", "D"].includes(up)) return up;
-    const sx = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const sx = raw.toLowerCase().normalize("NFD").replace(/[Ì€-Í¯]/g, "");
     if (sx === "initial" || sx === "debutant" || sx.startsWith("deb")) return "A";
     if (sx === "intermediaire" || sx.startsWith("inter")) return "B";
     if (sx === "avance" || sx === "avancee" || sx.startsWith("avan")) return "C";
@@ -52,16 +52,16 @@
 
   function refLevelLabel(value) {
     const k = refLevelKey(value);
-    if (k === "A") return "Débutant";
-    if (k === "B") return "Intermédiaire";
-    if (k === "C") return "Avancé";
+    if (k === "A") return "DÃ©butant";
+    if (k === "B") return "IntermÃ©diaire";
+    if (k === "C") return "AvancÃ©";
     if (k === "D") return "Expert";
-    return "—";
+    return "â€”";
   }
 
   function refLevelBadge(value) {
     const k = refLevelKey(value);
-    if (!k) return `<span class="sb-badge">—</span>`;
+    if (!k) return `<span class="sb-badge">â€”</span>`;
     return `<span class="sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(refLevelLabel(k))}</span>`;
   }
 
@@ -70,10 +70,10 @@
     const s = raw.toString().trim();
     if (!s) return "";
 
-    // déjà du CSS
+    // dÃ©jÃ  du CSS
     if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
 
-    // certains domaines viennent de WinForms: int ARGB signé (ex: -256)
+    // certains domaines viennent de WinForms: int ARGB signÃ© (ex: -256)
     if (/^-?\d+$/.test(s)) {
       const n = parseInt(s, 10);
       const u = (n >>> 0);
@@ -100,10 +100,10 @@
   }
 
   function updateParetoKpi(total, topCount) {
-    setText("kpiRefPareto", (total > 0) ? `${topCount}` : "–");
+    setText("kpiRefPareto", (total > 0) ? `${topCount}` : "â€“");
 
     const lbl = byId("kpiRefParetoLabel");
-    if (lbl) lbl.textContent = _paretoOnly ? "Pareto (Top 20%) · filtré" : "Pareto (Top 20%)";
+    if (lbl) lbl.textContent = _paretoOnly ? "Pareto (Top 20%) Â· filtrÃ©" : "Pareto (Top 20%)";
 
     const card = byId("kpiRefParetoCard");
     if (card) {
@@ -113,7 +113,7 @@
 
   function setText(id, v) {
     const el = byId(id);
-    if (el) el.textContent = v ?? "–";
+    if (el) el.textContent = v ?? "â€“";
   }
 
   function setVisible(id, visible) {
@@ -166,7 +166,7 @@
 
   function formatDateFR(iso) {
     const s = (iso || "").toString().trim();
-    if (!s) return "—";
+    if (!s) return "â€”";
     const ymd = s.slice(0, 10);
     const parts = ymd.split("-");
     if (parts.length !== 3) return escapeHtml(s);
@@ -174,7 +174,7 @@
   }
 
   function stripEvalLevelPrefix(value) {
-    return (value || "").toString().trim().replace(/^\s*(débutant|debutant|intermédiaire|intermediaire|avancé|avance|expert)\s*[:\-–—]\s*/i, "");
+    return (value || "").toString().trim().replace(/^\s*(dÃ©butant|debutant|intermÃ©diaire|intermediaire|avancÃ©|avance|expert)\s*[:\-â€“â€”]\s*/i, "");
   }
 
   function fillDomaineSelect(domaines) {
@@ -213,14 +213,14 @@
   function levelLabelOnly(value) {
     if (window.NovoskillLevels) return window.NovoskillLevels.label(value);
     const k = (value ?? "").toString().trim().toUpperCase();
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" }[k]) || (value || "—");
+    return ({ A: "DÃ©butant", B: "IntermÃ©diaire", C: "AvancÃ©", D: "Expert" }[k]) || (value || "â€”");
   }
 
   function niveauRequisCell(item) {
     const a = (item.niveau_requis_min || "").trim();
     const b = (item.niveau_requis_max || "").trim();
-    if (!a && !b) return "—";
-    if (a && b && a !== b) return `${escapeHtml(levelLabelOnly(a))} → ${escapeHtml(levelLabelOnly(b))}`;
+    if (!a && !b) return "â€”";
+    if (a && b && a !== b) return `${escapeHtml(levelLabelOnly(a))} â†’ ${escapeHtml(levelLabelOnly(b))}`;
     return escapeHtml(levelLabelOnly(a || b));
   }
 
@@ -240,20 +240,20 @@
         <td class="col-title">
           <div class="ref-comp-titleline">
             ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
-            <span class="ref-comp-title">${escapeHtml(title || "Compétence")}</span>
+            <span class="ref-comp-title">${escapeHtml(title || "CompÃ©tence")}</span>
           </div>
         </td>
         <td class="col-domain">${domaineCell(it)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-detail">
           <div class="sb-icon-actions ref-row-actions">
-            <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
+            <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le dÃ©tail" aria-label="Voir le dÃ©tail">
               <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
             </button>
-            <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="pdf" title="Ouvrir la fiche compétence PDF" aria-label="Ouvrir la fiche compétence PDF">
+            <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="pdf" title="Ouvrir la fiche compÃ©tence PDF" aria-label="Ouvrir la fiche compÃ©tence PDF">
               <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
                 <path d="M14 2v6h6"></path>
@@ -277,17 +277,17 @@
 
   function certifRequirementBadge(value) {
     const raw = (value || "").toString().trim();
-    const normalized = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const normalized = raw.toLowerCase().normalize("NFD").replace(/[Ì€-Í¯]/g, "");
 
     if (normalized === "requis") {
       return `<span class="sb-badge sb-badge-certif-requis">Requis</span>`;
     }
 
     if (normalized === "souhaite" || normalized === "souhaitee") {
-      return `<span class="sb-badge sb-badge-certif-souhaite">Souhaité</span>`;
+      return `<span class="sb-badge sb-badge-certif-souhaite">SouhaitÃ©</span>`;
     }
 
-    return `<span class="sb-badge">${escapeHtml(raw || "—")}</span>`;
+    return `<span class="sb-badge">${escapeHtml(raw || "â€”")}</span>`;
   }
 
   function renderCertifs(list) {
@@ -299,7 +299,7 @@
     const rank = (v) => {
       const s = (v || "").toString().toLowerCase();
       if (s === "requis") return 0;
-      if (s === "souhaite" || s === "souhaité") return 1;
+      if (s === "souhaite" || s === "souhaitÃ©") return 1;
       return 2;
     };
 
@@ -325,19 +325,19 @@
       const validite = (it.validite_mixed === true)
         ? "Variable"
         : (it.duree_validite === null || it.duree_validite === undefined)
-          ? "—"
+          ? "â€”"
           : (Number(it.duree_validite) === 0 ? "Permanent" : `${it.duree_validite} mois`);
 
       tr.innerHTML = `
-        <td class="col-title" style="font-weight:600;">${escapeHtml(it.nom_certification)}</td>
-        <td>${escapeHtml(it.categorie || "—")}</td>
+        <td class="col-title" style="font-weight: var(--ns-weight-semibold);">${escapeHtml(it.nom_certification)}</td>
+        <td>${escapeHtml(it.categorie || "â€”")}</td>
         <td style="white-space:nowrap;">${escapeHtml(validite)}</td>
         <td class="col-center" style="white-space:nowrap;">${certifRequirementBadge(it.niveau_exigence_max)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-possedes">${it.nb_collaborateurs_possedant ?? 0}</td>
         <td class="col-center col-detail">
           <div class="sb-icon-actions ref-row-actions">
-            <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
+            <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le dÃ©tail" aria-label="Voir le dÃ©tail">
               <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
@@ -366,9 +366,9 @@
     const b = byId("refModalBody");
 
     if (t) {
-      // title peut être un string OU un objet { html: "..." } pour du rendu enrichi
+      // title peut Ãªtre un string OU un objet { html: "..." } pour du rendu enrichi
       if (title && typeof title === "object" && typeof title.html === "string") t.innerHTML = title.html;
-      else t.textContent = title || "Détail";
+      else t.textContent = title || "DÃ©tail";
     }
     if (s) s.innerHTML = sub || "";
     if (b) b.innerHTML = htmlBody || "";
@@ -387,7 +387,7 @@
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
   }
-  
+
   async function loadServices(portal) {
     portal.showAlert("", "");
 
@@ -398,7 +398,7 @@
         selectId: "refServiceSelect",
         storageKey: "sb_ref_service",
         labelAll: "Tous les services",
-        labelNonLie: "Non lié",
+        labelNonLie: "Non liÃ©",
         includeAll: true,
         includeNonLie: true,
         allowIndent: true
@@ -427,8 +427,8 @@
     const name = (serviceName || "").toString().trim();
 
     if (title) {
-      if (!raw || raw === ALL_SERVICES_ID) title.textContent = "Référentiel de l’entreprise";
-      else title.textContent = `Référentiel du service : ${name || "—"}`;
+      if (!raw || raw === ALL_SERVICES_ID) title.textContent = "RÃ©fÃ©rentiel de lâ€™entreprise";
+      else title.textContent = `RÃ©fÃ©rentiel du service : ${name || "â€”"}`;
     }
 
     if (sub) {
@@ -442,7 +442,7 @@
     if (!el) return;
 
     if (tab === "certifs") el.textContent = `${count ?? 0} certification(s) requise(s)`;
-    else el.textContent = `${count ?? 0} compétence(s) requise(s)`;
+    else el.textContent = `${count ?? 0} compÃ©tence(s) requise(s)`;
   }
 
   function getCurrentPage() {
@@ -478,11 +478,11 @@
     if (!el) return;
 
     if (!total) {
-      el.textContent = "0–0 sur 0";
+      el.textContent = "0â€“0 sur 0";
       return;
     }
 
-    el.textContent = `${start + 1}–${end} sur ${total}`;
+    el.textContent = `${start + 1}â€“${end} sur ${total}`;
   }
 
   function buildPaginationTokens(totalPages, page) {
@@ -513,11 +513,11 @@
     const tokens = buildPaginationTokens(totalPages, page);
 
     host.innerHTML = `
-      <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
+      <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="prev" title="Page prÃ©cÃ©dente" aria-label="Page prÃ©cÃ©dente"${prevDisabled}>
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
       </button>
       ${tokens.map(t => {
-        if (typeof t === "string") return `<span class="ref-page-ellipsis" aria-hidden="true">…</span>`;
+        if (typeof t === "string") return `<span class="ref-page-ellipsis" aria-hidden="true">â€¦</span>`;
         return `<button type="button" class="ref-page-btn${t === page ? ' is-active' : ''}" data-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? 'page' : 'false'}">${t}</button>`;
       }).join("")}
       <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
@@ -583,20 +583,20 @@
     try {
       portal.showAlert("", "");
 
-      // Compétences + certifs (en parallèle)
+      // CompÃ©tences + certifs (en parallÃ¨le)
       const pComp = fetchCompetences(portal, id_contact, f);
       const pCert = fetchCertifs(portal, id_contact, f);
 
       const [comp, cert] = await Promise.allSettled([pComp, pCert]);
 
-      // Compétences
+      // CompÃ©tences
       if (comp.status === "fulfilled" && comp.value) {
         const data = comp.value;
         setScopeLabel(data?.service?.nom_service || "", f.id_service);
         fillDomaineSelect(data?.domaines || []);
 
-        setText("kpiRefPostes", data?.kpis?.nb_postes ?? "–");
-        setText("kpiRefCompetences", data?.kpis?.nb_items ?? "–");
+        setText("kpiRefPostes", data?.kpis?.nb_postes ?? "â€“");
+        setText("kpiRefCompetences", data?.kpis?.nb_items ?? "â€“");
 
         const listAll = Array.isArray(data?.competences) ? data.competences : [];
         _lastCompList = listAll;
@@ -620,7 +620,7 @@
       // Certifications
       if (cert.status === "fulfilled" && cert.value) {
         const data = cert.value;
-        setText("kpiRefCertifs", data?.kpis?.nb_items ?? "–");
+        setText("kpiRefCertifs", data?.kpis?.nb_items ?? "â€“");
         _currentCertList = Array.isArray(data?.certifications) ? data.certifications : [];
 
         if (_activeTab === "certifs") {
@@ -628,7 +628,7 @@
         }
       }
 
-      // Si onglet actif mais chargement a échoué
+      // Si onglet actif mais chargement a Ã©chouÃ©
       if (_activeTab === "competences" && (comp.status !== "fulfilled")) {
         _currentCompList = [];
         renderActiveList();
@@ -639,7 +639,7 @@
       }
 
     } catch (e) {
-      portal.showAlert("error", "Erreur référentiel : " + e.message);
+      portal.showAlert("error", "Erreur rÃ©fÃ©rentiel : " + e.message);
       console.error(e);
     }
   }
@@ -685,8 +685,8 @@
           <button type="button" class="sb-acc-head ref-criteria-head${isOpen ? " is-open" : ""}" data-ref-criteria-toggle aria-expanded="${isOpen ? "true" : "false"}">
             <span class="ref-criteria-title">${escapeHtml(item.title)}</span>
             <span class="ref-criteria-meta">
-              <span class="sb-badge sb-badge-critere">Critère ${idx + 1}</span>
-              <span class="sb-acc-chevron">▾</span>
+              <span class="sb-badge sb-badge-critere">CritÃ¨re ${idx + 1}</span>
+              <span class="sb-acc-chevron">â–¾</span>
             </span>
           </button>
           <div class="sb-acc-body ref-criteria-body"${isOpen ? "" : " style=\"display:none;\""}>
@@ -700,7 +700,7 @@
 
     return `
       <div class="card ref-modal-card" style="padding:12px; margin:0;">
-        ${sectionTitleHtml("grid", "Grille d’évaluation")}
+        ${sectionTitleHtml("grid", "Grille dâ€™Ã©valuation")}
         <div class="ref-criteria-list">${items}</div>
       </div>
     `;
@@ -710,10 +710,10 @@
     const n = Number(raw);
     if (!isFinite(n)) return 0;
 
-    // Tolérance si la DB stocke déjà un niveau 1..5
+    // TolÃ©rance si la DB stocke dÃ©jÃ  un niveau 1..5
     if (n > 0 && n <= 5 && Number.isInteger(n)) return n;
 
-    // Sinon on considère un score 0..100 (poids_criticite)
+    // Sinon on considÃ¨re un score 0..100 (poids_criticite)
     if (n >= 80) return 5;
     if (n >= 60) return 4;
     if (n >= 40) return 3;
@@ -723,22 +723,22 @@
 
   function renderCritBadge(raw) {
     const n = Number(raw);
-    if (!isFinite(n)) return "—";
+    if (!isFinite(n)) return "â€”";
 
     const lvl = critLevel(n);
     const safe = escapeHtml(String(n));
-    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${safe}">${safe}</span>`;
+    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="CriticitÃ© : ${safe}">${safe}</span>`;
   }
 
 
   function levelBadgeHtml(value, title) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(value, title || "Niveau de maîtrise");
+    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(value, title || "Niveau de maÃ®trise");
     const raw = (value ?? "").toString().trim();
     const k = raw.toUpperCase();
-    const map = { A: ["Débutant", "sb-badge-niv-a"], B: ["Intermédiaire", "sb-badge-niv-b"], C: ["Avancé", "sb-badge-niv-c"], D: ["Expert", "sb-badge-niv-d"] };
+    const map = { A: ["DÃ©butant", "sb-badge-niv-a"], B: ["IntermÃ©diaire", "sb-badge-niv-b"], C: ["AvancÃ©", "sb-badge-niv-c"], D: ["Expert", "sb-badge-niv-d"] };
     const item = map[k];
-    if (!item) return `<span class="sb-badge sb-badge-niv">${escapeHtml(raw || "—")}</span>`;
-    return `<span class="sb-badge sb-badge-niv ${item[1]}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(item[0])}</span>`;
+    if (!item) return `<span class="sb-badge sb-badge-niv">${escapeHtml(raw || "â€”")}</span>`;
+    return `<span class="sb-badge sb-badge-niv ${item[1]}" title="${escapeHtml(title || "Niveau de maÃ®trise")}">${escapeHtml(item[0])}</span>`;
   }
 
   function renderPostesTable(postes, isCertif, baseValidite) {
@@ -759,23 +759,23 @@
 
     if (isCertif) {
       let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
-        ${sectionTitleHtml("postes", "Postes concernés")}
+        ${sectionTitleHtml("postes", "Postes concernÃ©s")}
         <div class="table-wrap ref-modal-table-wrap">
           <table class="sb-table sb-ref-postes-table sb-ref-cert-postes-table">
-            <thead><tr><th class="ref-col-poste">Poste</th><th class="ref-col-service">Service</th><th class="col-center ref-col-exigence">Exigence</th><th class="col-center ref-col-validite">Validité</th></tr></thead>
+            <thead><tr><th class="ref-col-poste">Poste</th><th class="ref-col-service">Service</th><th class="col-center ref-col-exigence">Exigence</th><th class="col-center ref-col-validite">ValiditÃ©</th></tr></thead>
             <tbody>`;
 
       if (!list.length) {
-        html += `<tr><td colspan="4">—</td></tr>`;
+        html += `<tr><td colspan="4">â€”</td></tr>`;
       } else {
         list.forEach(p => {
-          const poste = escapeHtml(((p.intitule_poste || "").toString().trim()) || ((p.codif_poste || "").toString().trim()) || "—");
-          const service = escapeHtml(p.nom_service || "—");
-          const ex = escapeHtml(p.niveau_exigence || "—");
+          const poste = escapeHtml(((p.intitule_poste || "").toString().trim()) || ((p.codif_poste || "").toString().trim()) || "â€”");
+          const service = escapeHtml(p.nom_service || "â€”");
+          const ex = escapeHtml(p.niveau_exigence || "â€”");
           const base = (baseValidite === null || baseValidite === undefined) ? null : Number(baseValidite);
           const ovRaw = (p.validite_override === null || p.validite_override === undefined) ? null : Number(p.validite_override);
           const eff = (ovRaw !== null) ? ovRaw : base;
-          let vlabel = "—";
+          let vlabel = "â€”";
           if (eff !== null) vlabel = (eff === 0 ? "Permanent" : `${eff} mois`);
 
           html += `<tr>
@@ -792,20 +792,20 @@
     }
 
     let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
-      ${sectionTitleHtml("postes", "Postes concernés")}
+      ${sectionTitleHtml("postes", "Postes concernÃ©s")}
       <div class="table-wrap ref-modal-table-wrap">
         <table class="sb-table sb-ref-postes-table sb-ref-postes-actions-table">
-          <thead><tr><th class="ref-col-poste">Poste</th><th class="ref-col-service">Service</th><th class="col-center ref-col-niveau">Niveau requis</th><th class="col-center ref-col-criticite">Criticité</th><th class="col-center ref-col-actions">Actions</th></tr></thead>
+          <thead><tr><th class="ref-col-poste">Poste</th><th class="ref-col-service">Service</th><th class="col-center ref-col-niveau">Niveau requis</th><th class="col-center ref-col-criticite">CriticitÃ©</th><th class="col-center ref-col-actions">Actions</th></tr></thead>
           <tbody>`;
 
     if (!list.length) {
-      html += `<tr><td colspan="5">—</td></tr>`;
+      html += `<tr><td colspan="5">â€”</td></tr>`;
     } else {
       list.forEach(p => {
         const idPoste = escapeHtml(p.id_poste || "");
         const code = (p.codif_poste || "").toString().trim();
-        const title = ((p.intitule_poste || "").toString().trim()) || code || "—";
-        const service = escapeHtml(p.nom_service || "—");
+        const title = ((p.intitule_poste || "").toString().trim()) || code || "â€”";
+        const service = escapeHtml(p.nom_service || "â€”");
         const niv = refLevelBadge(p.niveau_requis);
         const crit = renderCritBadge(p.poids_criticite);
 
@@ -827,19 +827,19 @@
     const list = Array.isArray(collaborateurs) ? collaborateurs : [];
 
     let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
-      ${sectionTitleHtml("collabs", "Collaborateurs concernés")}
+      ${sectionTitleHtml("collabs", "Collaborateurs concernÃ©s")}
       <div class="table-wrap ref-modal-table-wrap">
         <table class="sb-table sb-ref-collabs-table">
-          <thead><tr><th class="ref-col-collab">Collaborateur</th><th class="ref-col-collab-poste">Poste</th><th class="col-center ref-col-niveau">Niveau atteint</th><th class="col-center ref-col-date">Dernière éval.</th><th class="col-center ref-col-actions">Actions</th></tr></thead>
+          <thead><tr><th class="ref-col-collab">Collaborateur</th><th class="ref-col-collab-poste">Poste</th><th class="col-center ref-col-niveau">Niveau atteint</th><th class="col-center ref-col-date">DerniÃ¨re Ã©val.</th><th class="col-center ref-col-actions">Actions</th></tr></thead>
           <tbody>`;
 
     if (!list.length) {
-      html += `<tr><td colspan="5">Aucun collaborateur évalué sur cette compétence.</td></tr>`;
+      html += `<tr><td colspan="5">Aucun collaborateur Ã©valuÃ© sur cette compÃ©tence.</td></tr>`;
     } else {
       list.forEach(c => {
         const idEff = escapeHtml(c.id_effectif || "");
-        const fullName = `${c.prenom_effectif || ""} ${(c.nom_effectif || "").toString().toUpperCase()}`.trim() || "—";
-        const poste = ((c.intitule_poste || "").toString().trim()) || "—";
+        const fullName = `${c.prenom_effectif || ""} ${(c.nom_effectif || "").toString().toUpperCase()}`.trim() || "â€”";
+        const poste = ((c.intitule_poste || "").toString().trim()) || "â€”";
         const niv = refLevelBadge(c.niveau_actuel);
         const date = formatDateFR(c.date_derniere_eval);
 
@@ -862,7 +862,7 @@
     const dom = c?.domaine || null;
 
     const code = (c.code || "").toString().trim();
-    const label = (c.intitule || "Compétence").toString().trim();
+    const label = (c.intitule || "CompÃ©tence").toString().trim();
     const postesList = Array.isArray(data?.postes_concernes) ? data.postes_concernes : [];
     const collabsList = Array.isArray(data?.collaborateurs_concernes) ? data.collaborateurs_concernes : [];
     _lastDetailPostes = postesList;
@@ -875,28 +875,28 @@
 
     const domLabel = dom
       ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString()
-      : "—";
+      : "â€”";
     const criteriaCount = countGridCriteria(c.grille_evaluation);
 
     const summary = `
       <div class="ref-modal-kpi-strip">
         <div class="ref-modal-kpi-card ref-modal-kpi-card--domain"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("domain")}</div><div><div class="ref-modal-kpi-label">Domaine</div><div class="ref-modal-kpi-value">${escapeHtml(domLabel)}</div></div></div>
-        <div class="ref-modal-kpi-card ref-modal-kpi-card--postes"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("postes")}</div><div><div class="ref-modal-kpi-label">Postes concernés</div><div class="ref-modal-kpi-value">${postesList.length}</div></div></div>
-        <div class="ref-modal-kpi-card ref-modal-kpi-card--criteria"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("criteria")}</div><div><div class="ref-modal-kpi-label">Critères</div><div class="ref-modal-kpi-value">${criteriaCount}</div></div></div>
-        <div class="ref-modal-kpi-card ref-modal-kpi-card--collabs"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("users")}</div><div><div class="ref-modal-kpi-label">Salariés concernés</div><div class="ref-modal-kpi-value">${collabsList.length}</div></div></div>
+        <div class="ref-modal-kpi-card ref-modal-kpi-card--postes"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("postes")}</div><div><div class="ref-modal-kpi-label">Postes concernÃ©s</div><div class="ref-modal-kpi-value">${postesList.length}</div></div></div>
+        <div class="ref-modal-kpi-card ref-modal-kpi-card--criteria"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("criteria")}</div><div><div class="ref-modal-kpi-label">CritÃ¨res</div><div class="ref-modal-kpi-value">${criteriaCount}</div></div></div>
+        <div class="ref-modal-kpi-card ref-modal-kpi-card--collabs"><div class="ref-modal-kpi-icon" aria-hidden="true">${iconSvg("users")}</div><div><div class="ref-modal-kpi-label">SalariÃ©s concernÃ©s</div><div class="ref-modal-kpi-value">${collabsList.length}</div></div></div>
       </div>
     `;
 
-    const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
+    const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">â€”</div>`;
 
     const levels = `
       <div class="card ref-modal-card" style="padding:12px; margin:0;">
-        ${sectionTitleHtml("levels", "Niveaux de maîtrise")}
+        ${sectionTitleHtml("levels", "Niveaux de maÃ®trise")}
         <div class="ref-levels-table">
-          <div class="ref-level-row">${levelBadgeHtml("A", "Débutant")}<div class="ref-level-text">${escapeHtml(c.niveaua || "—")}</div></div>
-          <div class="ref-level-row">${levelBadgeHtml("B", "Intermédiaire")}<div class="ref-level-text">${escapeHtml(c.niveaub || "—")}</div></div>
-          <div class="ref-level-row">${levelBadgeHtml("C", "Avancé")}<div class="ref-level-text">${escapeHtml(c.niveauc || "—")}</div></div>
-          <div class="ref-level-row">${levelBadgeHtml("D", "Expert")}<div class="ref-level-text">${escapeHtml(c.niveaud || "—")}</div></div>
+          <div class="ref-level-row">${levelBadgeHtml("A", "DÃ©butant")}<div class="ref-level-text">${escapeHtml(c.niveaua || "â€”")}</div></div>
+          <div class="ref-level-row">${levelBadgeHtml("B", "IntermÃ©diaire")}<div class="ref-level-text">${escapeHtml(c.niveaub || "â€”")}</div></div>
+          <div class="ref-level-row">${levelBadgeHtml("C", "AvancÃ©")}<div class="ref-level-text">${escapeHtml(c.niveauc || "â€”")}</div></div>
+          <div class="ref-level-row">${levelBadgeHtml("D", "Expert")}<div class="ref-level-text">${escapeHtml(c.niveaud || "â€”")}</div></div>
         </div>
       </div>
     `;
@@ -926,18 +926,18 @@
     const list = Array.isArray(collaborateurs) ? collaborateurs : [];
 
     let html = `<div class="card ref-modal-card" style="padding:12px; margin:0;">
-      ${sectionTitleHtml("users", "Collaborateurs détenteurs")}
+      ${sectionTitleHtml("users", "Collaborateurs dÃ©tenteurs")}
       <div class="table-wrap ref-modal-table-wrap">
         <table class="sb-table sb-ref-cert-holders-table">
-          <thead><tr><th class="ref-col-collab">Prénom nom</th><th class="ref-col-poste">Poste</th><th class="col-center ref-col-date-obt">Date d’obtention</th><th class="col-center ref-col-date-renouv">Date renouvellement</th></tr></thead>
+          <thead><tr><th class="ref-col-collab">PrÃ©nom nom</th><th class="ref-col-poste">Poste</th><th class="col-center ref-col-date-obt">Date dâ€™obtention</th><th class="col-center ref-col-date-renouv">Date renouvellement</th></tr></thead>
           <tbody>`;
 
     if (!list.length) {
-      html += `<tr><td colspan="4">Aucun collaborateur détenteur de cette certification.</td></tr>`;
+      html += `<tr><td colspan="4">Aucun collaborateur dÃ©tenteur de cette certification.</td></tr>`;
     } else {
       list.forEach(c => {
-        const fullName = `${c.prenom_effectif || ""} ${(c.nom_effectif || "").toString().toUpperCase()}`.trim() || "—";
-        const poste = ((c.intitule_poste || "").toString().trim()) || "—";
+        const fullName = `${c.prenom_effectif || ""} ${(c.nom_effectif || "").toString().toUpperCase()}`.trim() || "â€”";
+        const poste = ((c.intitule_poste || "").toString().trim()) || "â€”";
         const obt = formatDateFR(c.date_obtention);
         const renouv = formatDateFR(c.date_renouvellement);
 
@@ -957,7 +957,7 @@
   function buildCertifDetailView(data) {
     const c = data?.certification || {};
     const title = c.nom_certification || "Certification";
-    const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
+    const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">â€”</div>`;
     const postes = renderPostesTable(data?.postes_concernes || [], true, c.duree_validite);
     const collaborateurs = renderCertifHoldersTable(data?.collaborateurs_detenteurs || []);
 
@@ -1009,10 +1009,10 @@
 
   function renderPdfBlobInWindow(popupWin, blob, title) {
     const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
-    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+    if (!win) throw new Error("Ouverture du PDF bloquÃ©e par le navigateur.");
 
     const blobUrl = URL.createObjectURL(blob);
-    const safeTitle = escapeHtml(title || "Fiche compétence");
+    const safeTitle = escapeHtml(title || "Fiche compÃ©tence");
 
     win.document.open();
     win.document.write(`<!doctype html>
@@ -1044,10 +1044,10 @@
     if (!id_contact || !id_comp) return;
 
     const item = _lastCompList.find(x => String(x?.id_comp || "") === String(id_comp)) || {};
-    const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+    const title = `Fiche compÃ©tence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "CompÃ©tence"}`;
 
     const popupWin = window.open("about:blank", "_blank");
-    if (popupWin) popupWin.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>");
+    if (popupWin) popupWin.document.write("<p style='font-family: var(--ns-font-ui);padding:16px;'>Ouverture du PDFâ€¦</p>");
 
     try {
       const blob = await fetchReferentielCompetencePdfBlob(portal, id_contact, id_service, id_comp);
@@ -1204,7 +1204,7 @@
         _paretoOnly = false;
         _currentPageComp = 1;
         _currentPageCert = 1;
-        // reset domaine au changement de service (sinon filtre vide et utilisateur croit que "ça bug")
+        // reset domaine au changement de service (sinon filtre vide et utilisateur croit que "Ã§a bug")
         if (selDom) selDom.value = "";
         refreshAll(portal);
       });
@@ -1247,7 +1247,7 @@
         if (txtSearch) txtSearch.value = "";
         if (selEtat) selEtat.value = "active";
 
-        // reset état UI
+        // reset Ã©tat UI
         _paretoOnly = false;
         updateParetoKpi(_lastCompList.length, _paretoTopCount);
 
@@ -1274,8 +1274,8 @@
         const card = btnFiltersToggle.closest(".ref-filter-card");
         const isCollapsed = card ? card.classList.toggle("is-collapsed") : false;
         btnFiltersToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
-        btnFiltersToggle.title = isCollapsed ? "Déplier les filtres" : "Replier les filtres";
-        btnFiltersToggle.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+        btnFiltersToggle.title = isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres";
+        btnFiltersToggle.setAttribute("aria-label", isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres");
       });
     }
 
@@ -1312,7 +1312,7 @@
 
     if (kpiParetoCard) {
       kpiParetoCard.addEventListener("click", () => {
-        // Pareto ne s'applique qu'aux compétences
+        // Pareto ne s'applique qu'aux compÃ©tences
         if (_activeTab !== "competences") return;
 
         _paretoOnly = !_paretoOnly;
@@ -1356,7 +1356,7 @@
           if (action === "pdf") await openCompetencePdf(portal, id_comp);
           else await openCompetenceDetail(portal, id_comp);
         } catch (e) {
-          const prefix = action === "pdf" ? "Erreur PDF compétence : " : "Erreur détail compétence : ";
+          const prefix = action === "pdf" ? "Erreur PDF compÃ©tence : " : "Erreur dÃ©tail compÃ©tence : ";
           portal.showAlert("error", prefix + e.message);
         }
       });
@@ -1371,7 +1371,7 @@
         try {
           await openCertifDetail(portal, id_cert);
         } catch (e) {
-          portal.showAlert("error", "Erreur détail certification : " + e.message);
+          portal.showAlert("error", "Erreur dÃ©tail certification : " + e.message);
         }
       });
     }
@@ -1428,7 +1428,7 @@
       window.__skillsPortalInstance = portal;
 
       try {
-        bindOnce(portal);       
+        bindOnce(portal);
 
 
         if (!_servicesLoaded) await loadServices(portal);
@@ -1437,7 +1437,7 @@
         await refreshAll(portal);
 
       } catch (e) {
-        portal.showAlert("error", "Erreur référentiel compétences : " + e.message);
+        portal.showAlert("error", "Erreur rÃ©fÃ©rentiel compÃ©tences : " + e.message);
         console.error(e);
       }
     }

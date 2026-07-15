@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
     let _bound = false;
     let _loaded = false;
 
@@ -19,7 +19,7 @@
     let _serviceModalMode = "create"; // create | edit
     let _editingServiceId = null;
     let _serviceModalReturnTarget = null; // null | poste_create | poste_select
-    
+
     let _showArchivedPostes = false;
 
     let _posteModalMode = "create"; // create | edit
@@ -28,7 +28,7 @@
     let _posteHistoryActive = false;
     let _posteHistoryBound = false;
 
-    // --- Poste > Compétences (Exigences)
+    // --- Poste > CompÃ©tences (Exigences)
     let _posteCompItems = [];
     let _posteCompSearch = "";
     let _posteCompSearchTimer = null;
@@ -43,7 +43,7 @@
     let _posteCompAddDomain = "";
     let _posteCompAddItemsAll = [];
 
-    let _posteCompEdit = null; // objet en cours d'édition (merge comp + assoc)
+    let _posteCompEdit = null; // objet en cours d'Ã©dition (merge comp + assoc)
     let _posteAiDraftMeta = null;
     let _posteCompAiResults = { existing: [], missing: [] };
     let _posteCompCreateCtx = null;
@@ -58,8 +58,8 @@
     let _iaBusyTimer = null;
     let _iaBusyStartedAt = 0;
     let _iaBusyLongWarnAt = 200;
-    let _iaBusyHintDefault = "Cette opération peut prendre quelques minutes";
-    let _iaBusyHintLong = "La durée de cette opération est anormalement longue, appuyez sur Échap pour annuler et relancer la recherche";
+    let _iaBusyHintDefault = "Cette opÃ©ration peut prendre quelques minutes";
+    let _iaBusyHintLong = "La durÃ©e de cette opÃ©ration est anormalement longue, appuyez sur Ã‰chap pour annuler et relancer la recherche";
 
     // --- Poste > Certifications (Exigences)
     let _posteCertItems = [];
@@ -72,14 +72,14 @@
     let _posteCertAddTimer = null;
     let _posteCertAddCategory = "";
 
-    let _posteCertEdit = null; // objet en cours d'édition (merge cert + assoc)
+    let _posteCertEdit = null; // objet en cours d'Ã©dition (merge cert + assoc)
 
     const POSTE_IMPORT_EXTENSIONS = [".doc", ".docx", ".pdf"];
     const POSTE_IMPORT_MAX_BYTES = 15 * 1024 * 1024;
     let _posteImportFile = null;
     let _posteCcnContext = null;
     let _posteCcnAnalysis = null;
-    
+
     let _orgCcnController = null;
     let _orgCcnAssetsPromise = null;
     let _posteSaveInlineTimer = null;
@@ -128,7 +128,7 @@
                 }
 
                 if (!window.__studioOrganisationCcn){
-                    throw new Error("Composant CCN introuvable après chargement.");
+                    throw new Error("Composant CCN introuvable aprÃ¨s chargement.");
                 }
 
                 const root = getOrganisationRoot();
@@ -200,7 +200,7 @@
     }
 
     async function ensureRole(portal){
-        // Si le rôle est déjà connu, on ne refait rien
+        // Si le rÃ´le est dÃ©jÃ  connu, on ne refait rien
         if (_roleCode && ["admin","supervisor","user"].includes(_roleCode)) return;
 
         const ownerId = getOwnerId();
@@ -210,7 +210,7 @@
             const ctx = await portal.apiJson(`${portal.apiBase}/studio/context/${encodeURIComponent(ownerId)}`);
             const rc = (ctx && ctx.role_code ? String(ctx.role_code) : "user").trim().toLowerCase();
             _roleCode = ["admin","supervisor","user"].includes(rc) ? rc : "user";
-            window.__studioRoleCode = _roleCode; // synchronise le reste de l’app
+            window.__studioRoleCode = _roleCode; // synchronise le reste de lâ€™app
         } catch (_) {
             // fallback safe
             const rc = (window.__studioRoleCode || "user").toString().trim().toLowerCase();
@@ -243,8 +243,8 @@
 
     function nsLevelKey(v){
         const raw = String(v ?? "").trim();
-        const norm = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-        if (!norm || norm === "-" || norm === "—") return "";
+        const norm = raw.normalize("NFD").replace(/[Ì€-Í¯]/g, "").toLowerCase();
+        if (!norm || norm === "-" || norm === "â€”") return "";
         if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
         if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
         if (norm === "c" || norm.includes("avance") || norm.includes("advanced")) return "C";
@@ -254,7 +254,7 @@
 
     function nsLevelLabel(v){
         const k = nsLevelKey(v);
-        return ({ A:"Débutant", B:"Intermédiaire", C:"Avancé", D:"Expert" })[k] || (String(v ?? "").trim() || "—");
+        return ({ A:"DÃ©butant", B:"IntermÃ©diaire", C:"AvancÃ©", D:"Expert" })[k] || (String(v ?? "").trim() || "â€”");
     }
 
     function setStatus(msg, isError = false){
@@ -262,7 +262,7 @@
         if (!el) return;
 
         const text = String(msg || "").trim();
-        if (!text || text === "—") {
+        if (!text || text === "â€”") {
             el.textContent = "";
             el.style.display = "none";
             return;
@@ -298,7 +298,7 @@
             _posteSaveInlineTimer = null;
         }
 
-        el.textContent = message || "Enregistré avec succès";
+        el.textContent = message || "EnregistrÃ© avec succÃ¨s";
         el.classList.toggle("is-error", !!isError);
         el.classList.remove("is-hidden");
 
@@ -316,7 +316,7 @@
         }, extra || {});
 
         const parts = [
-            `étape=${payload.step}`,
+            `Ã©tape=${payload.step}`,
             `owner=${payload.ownerId || "-"}`,
             `scope=${payload.scopeEntId || "-"}`,
             `service=${payload.selectedService || "-"}`
@@ -381,26 +381,26 @@
         });
 
         const cp1252 = {
-            "80":"€", "82":"’", "83":"ƒ", "84":"„", "85":"…", "86":"†", "87":"‡",
-            "88":"ˆ", "89":"‰", "8a":"Š", "8b":"‹", "8c":"Œ", "8e":"Ž",
-            "91":"‘", "92":"’", "93":"“", "94":"”", "95":"•", "96":"–", "97":"—",
-            "98":"˜", "99":"™", "9a":"š", "9b":"›", "9c":"œ", "9e":"ž", "9f":"Ÿ",
-            "a0":" ", "ab":"«", "bb":"»"
+            "80":"â‚¬", "82":"â€™", "83":"Æ’", "84":"â€ž", "85":"â€¦", "86":"â€ ", "87":"â€¡",
+            "88":"Ë†", "89":"â€°", "8a":"Å ", "8b":"â€¹", "8c":"Å’", "8e":"Å½",
+            "91":"â€˜", "92":"â€™", "93":"â€œ", "94":"â€", "95":"â€¢", "96":"â€“", "97":"â€”",
+            "98":"Ëœ", "99":"â„¢", "9a":"Å¡", "9b":"â€º", "9c":"Å“", "9e":"Å¾", "9f":"Å¸",
+            "a0":" ", "ab":"Â«", "bb":"Â»"
         };
 
         s = s.replace(/\\x([0-9a-fA-F]{2})/g, (m, h) => cp1252[String(h || "").toLowerCase()] || m);
 
-        const letters = "A-Za-zÀ-ÖØ-öø-ÿ";
-        s = s.replace(new RegExp("\\b([ldjtmncsLDJTMNCS])(?:b4|92|4)(?=[" + letters + "])", "g"), "$1’");
-        s = s.replace(new RegExp("\\b([qQ])u(?:b4|92|4)(?=[" + letters + "])", "g"), "$1u’");
-        s = s.replace(/\b9c(?=uvre|uvr|il|ufs?\b)/gi, "œ");
-        s = s.replace(/\b9(?=uvre|uvr|il|ufs?\b)/gi, "œ");
+        const letters = "A-Za-zÃ€-Ã–Ã˜-Ã¶Ã¸-Ã¿";
+        s = s.replace(new RegExp("\\b([ldjtmncsLDJTMNCS])(?:b4|92|4)(?=[" + letters + "])", "g"), "$1â€™");
+        s = s.replace(new RegExp("\\b([qQ])u(?:b4|92|4)(?=[" + letters + "])", "g"), "$1uâ€™");
+        s = s.replace(/\b9c(?=uvre|uvr|il|ufs?\b)/gi, "Å“");
+        s = s.replace(/\b9(?=uvre|uvr|il|ufs?\b)/gi, "Å“");
 
         const repairs = [
-            // Fragments sans ambiguïté constatés dans les sorties IA/web.
+            // Fragments sans ambiguÃ¯tÃ© constatÃ©s dans les sorties IA/web.
             // Les autres accents passent par les formes explicites \xHH / \uHHHH.
-            ["e0","à"], ["e7","ç"], ["e8","è"], ["e9","é"],
-            ["f4","ô"], ["f9","ù"], ["c7","Ç"], ["c8","È"], ["c9","É"], ["d9","Ù"]
+            ["e0","Ã "], ["e7","Ã§"], ["e8","Ã¨"], ["e9","Ã©"],
+            ["f4","Ã´"], ["f9","Ã¹"], ["c7","Ã‡"], ["c8","Ãˆ"], ["c9","Ã‰"], ["d9","Ã™"]
         ];
 
         repairs.forEach(([code, ch]) => {
@@ -436,8 +436,8 @@
         if (txt) txt.textContent = text || "Traitement en cours...";
         if (sec) sec.textContent = "0";
 
-        _iaBusyHintDefault = hintDefault || "Cette opération peut prendre quelques minutes";
-        _iaBusyHintLong = hintLong || "La durée de cette opération est anormalement longue, appuyez sur Échap pour annuler et relancer la recherche";
+        _iaBusyHintDefault = hintDefault || "Cette opÃ©ration peut prendre quelques minutes";
+        _iaBusyHintLong = hintLong || "La durÃ©e de cette opÃ©ration est anormalement longue, appuyez sur Ã‰chap pour annuler et relancer la recherche";
 
         if (hint) {
             hint.textContent = _iaBusyHintDefault;
@@ -508,7 +508,7 @@
         if (reason === "escape"){
             const summary = byId("posteCompAiSummary");
             if (summary){
-                summary.textContent = "Recherche IA annulée.";
+                summary.textContent = "Recherche IA annulÃ©e.";
                 summary.style.display = "";
             }
         }
@@ -588,7 +588,7 @@
         const n = Number(score);
 
         if (!text && Number.isFinite(n)){
-            text = n >= 0.85 ? "Correspondance forte" : (n >= 0.65 ? "Correspondance probable" : "À contrôler");
+            text = n >= 0.85 ? "Correspondance forte" : (n >= 0.65 ? "Correspondance probable" : "Ã€ contrÃ´ler");
         }
         if (!text) return null;
 
@@ -680,8 +680,8 @@ function refreshPosteCompNivCards(){
         else el.innerHTML = cleanHtml;
     }
 
-    const RT_MAIN_ACTIVITY_PLACEHOLDER = "Activité principale à renseigner";
-    const RT_SUB_ACTIVITY_PLACEHOLDER = "Sous-activité à renseigner";
+    const RT_MAIN_ACTIVITY_PLACEHOLDER = "ActivitÃ© principale Ã  renseigner";
+    const RT_SUB_ACTIVITY_PLACEHOLDER = "Sous-activitÃ© Ã  renseigner";
 
     function rtFocusAndSelectNode(node){
         if (!node) return;
@@ -858,7 +858,7 @@ function refreshPosteCompNivCards(){
 
         bar._sbBound = true;
 
-        // Paste propre : on évite le HTML Word/Outlook, sinon la fiche de poste devient une décharge CSS.
+        // Paste propre : on Ã©vite le HTML Word/Outlook, sinon la fiche de poste devient une dÃ©charge CSS.
         ed.addEventListener("paste", (e) => {
             try{
                 e.preventDefault();
@@ -933,7 +933,7 @@ function refreshPosteCompNivCards(){
                 <div class="sb-modal-head">
                   <div>
                     <div class="card-title" id="orgPopupTitle" style="margin-bottom:2px;">Information</div>
-                    <div class="card-sub" id="orgPopupMessage" style="margin:0;">—</div>
+                    <div class="card-sub" id="orgPopupMessage" style="margin:0;">â€”</div>
                   </div>
                   <button type="button" class="sb-modal-x" id="btnCloseOrgPopup" aria-label="Fermer">&times;</button>
                 </div>
@@ -974,8 +974,8 @@ function refreshPosteCompNivCards(){
 
         if (!forceClose && pending > 0){
             const msg = pending > 1
-                ? "Si vous fermez maintenant, les propositions de compétences non enregistrées seront perdues. Il faudra relancer la recherche IA pour les retrouver.\n\nVoulez-vous vraiment fermer ?"
-                : "Si vous fermez maintenant, la proposition de compétence non enregistrée sera perdue. Il faudra relancer la recherche IA pour la retrouver.\n\nVoulez-vous vraiment fermer ?";
+                ? "Si vous fermez maintenant, les propositions de compÃ©tences non enregistrÃ©es seront perdues. Il faudra relancer la recherche IA pour les retrouver.\n\nVoulez-vous vraiment fermer ?"
+                : "Si vous fermez maintenant, la proposition de compÃ©tence non enregistrÃ©e sera perdue. Il faudra relancer la recherche IA pour la retrouver.\n\nVoulez-vous vraiment fermer ?";
 
             if (!window.confirm(msg)){
                 return false;
@@ -1018,9 +1018,9 @@ function refreshPosteCompNivCards(){
 
         if (input) input.value = "";
         if (card) card.style.display = "none";
-        if (name) name.textContent = "—";
-        if (meta) meta.textContent = "—";
-        if (empty) empty.textContent = "Aucun document sélectionné.";
+        if (name) name.textContent = "â€”";
+        if (meta) meta.textContent = "â€”";
+        if (empty) empty.textContent = "Aucun document sÃ©lectionnÃ©.";
         if (analyze){
             analyze.disabled = true;
             analyze.style.opacity = ".6";
@@ -1065,7 +1065,7 @@ function refreshPosteCompNivCards(){
 
         const ext = getPosteImportExt(file.name || "");
         if (!POSTE_IMPORT_EXTENSIONS.includes(ext)){
-            throw new Error("Format non supporté. Utilise un fichier .doc, .docx ou .pdf.");
+            throw new Error("Format non supportÃ©. Utilise un fichier .doc, .docx ou .pdf.");
         }
 
         if ((file.size || 0) > POSTE_IMPORT_MAX_BYTES){
@@ -1083,8 +1083,8 @@ function refreshPosteCompNivCards(){
 
         if (card) card.style.display = "";
         if (name) name.textContent = file.name || "Document";
-        if (meta) meta.textContent = `${ext.toUpperCase().replace(".", "")} · ${formatFileSize(file.size || 0)}`;
-        if (empty) empty.textContent = "Document chargé. Vérifie le fichier puis lance l’analyse.";
+        if (meta) meta.textContent = `${ext.toUpperCase().replace(".", "")} Â· ${formatFileSize(file.size || 0)}`;
+        if (empty) empty.textContent = "Document chargÃ©. VÃ©rifie le fichier puis lance lâ€™analyse.";
         if (analyze){
             analyze.disabled = false;
             analyze.style.opacity = "";
@@ -1128,7 +1128,7 @@ function refreshPosteCompNivCards(){
 
         const sub = byId("posteModalSub");
         if (sub){
-            sub.textContent = "Brouillon importé depuis un document. Vérifie puis enregistre.";
+            sub.textContent = "Brouillon importÃ© depuis un document. VÃ©rifie puis enregistre.";
         }
 
         seedPosteAiModalFromCurrent();
@@ -1137,7 +1137,7 @@ function refreshPosteCompNivCards(){
 
     async function launchPosteImport(portal){
         if (!_posteImportFile){
-            portal.showAlert("error", "Sélectionne un document avant de lancer l’analyse.");
+            portal.showAlert("error", "SÃ©lectionne un document avant de lancer lâ€™analyse.");
             return;
         }
 
@@ -1150,7 +1150,7 @@ function refreshPosteCompNivCards(){
         if (btnAnalyze){
             btnAnalyze.disabled = true;
             btnAnalyze.style.opacity = ".6";
-            btnAnalyze.textContent = "Analyse…";
+            btnAnalyze.textContent = "Analyseâ€¦";
         }
         if (btnChange){
             btnChange.disabled = true;
@@ -1159,7 +1159,7 @@ function refreshPosteCompNivCards(){
 
         openIaBusyOverlay(
             "Lecture du document en cours",
-            "Extraction du texte, analyse de la fiche et préremplissage du poste..."
+            "Extraction du texte, analyse de la fiche et prÃ©remplissage du poste..."
         );
 
         try{
@@ -1202,7 +1202,7 @@ function refreshPosteCompNivCards(){
             if (btnAnalyze){
                 btnAnalyze.disabled = !_posteImportFile;
                 btnAnalyze.style.opacity = _posteImportFile ? "" : ".6";
-                btnAnalyze.textContent = "Lancer l’analyse";
+                btnAnalyze.textContent = "Lancer lâ€™analyse";
             }
             if (btnChange){
                 btnChange.disabled = !_posteImportFile;
@@ -1274,7 +1274,7 @@ function refreshPosteCompNivCards(){
         const win = window.open("", "_blank");
 
         if (!win){
-            throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
+            throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du PDF.");
         }
 
         win.document.open();
@@ -1288,7 +1288,7 @@ function refreshPosteCompNivCards(){
         height:100%;
         margin:0;
         background:#f3f4f6;
-        font-family:Arial,sans-serif;
+        font-family: var(--ns-font-ui);
         color:#111827;
         }
         .pdf-loading{
@@ -1308,7 +1308,7 @@ function refreshPosteCompNivCards(){
         animation:pdfSpin .8s linear infinite;
         }
         .pdf-loading__text{
-        font-size:14px;
+        font-size: var(--ns-text-md);
         color:#475467;
         }
         iframe{
@@ -1325,7 +1325,7 @@ function refreshPosteCompNivCards(){
     <body>
     <div class="pdf-loading">
         <div class="pdf-loading__spinner"></div>
-        <div class="pdf-loading__text">Génération du PDF…</div>
+        <div class="pdf-loading__text">GÃ©nÃ©ration du PDFâ€¦</div>
     </div>
     </body>
     </html>`);
@@ -1379,9 +1379,9 @@ function refreshPosteCompNivCards(){
         if (!ownerId) throw new Error("Owner introuvable.");
 
         const compId = String(item?.id_comp || item?.id_competence || "").trim();
-        if (!compId) throw new Error("Compétence introuvable.");
+        if (!compId) throw new Error("CompÃ©tence introuvable.");
 
-        const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+        const title = `Fiche compÃ©tence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "CompÃ©tence"}`;
         const url = `${portal.apiBase}/studio/org/competences/fiche_pdf/${encodeURIComponent(ownerId)}/${encodeURIComponent(compId)}`;
         const blob = await fetchOrgPdfBlob(url);
 
@@ -1496,7 +1496,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold);
 }
 .bar__btn {
   display: inline-flex;
@@ -1509,7 +1509,7 @@ body {
   background: #eef4ff;
   color: #28407a;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold);
   flex: 0 0 auto;
 }
 .viewer {
@@ -1527,7 +1527,7 @@ body {
 <body>
   <div class="bar">
     <div class="bar__title">${escHtml(title)}</div>
-    <a class="bar__btn" href="${blobUrl}" download="${escHtml(title)}">Télécharger</a>
+    <a class="bar__btn" href="${blobUrl}" download="${escHtml(title)}">TÃ©lÃ©charger</a>
   </div>
   <div class="viewer">
     <iframe src="${blobUrl}" title="${escHtml(title)}"></iframe>
@@ -1638,7 +1638,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold);
 }
 .bar__btn {
   display: inline-flex;
@@ -1651,7 +1651,7 @@ body {
   background: #eef4ff;
   color: #28407a;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold);
   flex: 0 0 auto;
 }
 .viewer {
@@ -1669,7 +1669,7 @@ body {
 <body>
   <div class="bar">
     <div class="bar__title">${escHtml(title)}</div>
-    <a class="bar__btn" href="${blobUrl}" download="${escHtml(title)}">Télécharger</a>
+    <a class="bar__btn" href="${blobUrl}" download="${escHtml(title)}">TÃ©lÃ©charger</a>
   </div>
   <div class="viewer">
     <iframe src="${blobUrl}" title="${escHtml(title)}"></iframe>
@@ -1704,7 +1704,7 @@ body {
         }
 
         if (_selectedService === "__none__"){
-            _selectedServiceName = "Non lié";
+            _selectedServiceName = "Non liÃ©";
             return;
         }
 
@@ -1724,7 +1724,7 @@ body {
         }
 
         if (_selectedService === "__none__"){
-            return "Non lié";
+            return "Non liÃ©";
         }
 
         return _selectedServiceName || "Service";
@@ -1761,7 +1761,7 @@ body {
         const stats = getSelectedServiceStats();
         const sub = byId("orgScopeSub");
         if (sub){
-            sub.textContent = `${stats.nb_postes} poste(s) · ${stats.nb_collabs} collaborateur(s)`;
+            sub.textContent = `${stats.nb_postes} poste(s) Â· ${stats.nb_collabs} collaborateur(s)`;
         }
 
         const statPostes = byId("orgStatPostes");
@@ -1782,12 +1782,12 @@ body {
         // Pseudo: Tous les services
         host.appendChild(buildSvcRow("__all__", "Tous les services", 0, _totaux.nb_postes, _totaux.nb_collabs));
 
-        // Services réels
+        // Services rÃ©els
         (_services || []).forEach(s => {
         host.appendChild(buildSvcRow(s.id_service, s.nom_service, s.depth, s.nb_postes, s.nb_collabs));
         });
 
-        // Pseudo "Non lié" volontairement masqué dans Studio Organisation
+        // Pseudo "Non liÃ©" volontairement masquÃ© dans Studio Organisation
 
         applySvcActive();
     }
@@ -1805,7 +1805,7 @@ body {
         const chevron = document.createElement("span");
         chevron.className = "org-service-chevron";
         chevron.setAttribute("aria-hidden", "true");
-        chevron.textContent = "›";
+        chevron.textContent = "â€º";
 
         row.appendChild(left);
         row.appendChild(chevron);
@@ -1845,8 +1845,8 @@ body {
         btn.disabled = !ok;
         btn.style.opacity = ok ? "" : ".6";
         btn.title = !ok
-            ? "Accès admin requis."
-            : (hasServices ? "" : "Créer un service avant d'ajouter un poste.");
+            ? "AccÃ¨s admin requis."
+            : (hasServices ? "" : "CrÃ©er un service avant d'ajouter un poste.");
     }
 
     async function loadServices(portal){
@@ -1924,7 +1924,7 @@ body {
             if (!postes.length) {
                 const empty = document.createElement("div");
                 empty.className = "org-empty-state";
-                empty.textContent = "Aucun poste à afficher.";
+                empty.textContent = "Aucun poste Ã  afficher.";
                 host.appendChild(empty);
 
                 traceOrg("postes:empty", {
@@ -1960,7 +1960,7 @@ body {
 
                 const code = document.createElement("span");
                 code.className = "sb-badge sb-badge--poste";
-                code.textContent = p.code || "—";
+                code.textContent = p.code || "â€”";
 
                 const title = document.createElement("div");
                 title.className = "sb-row-title";
@@ -1977,7 +1977,7 @@ body {
                 if (p.actif === false){
                     const arch = document.createElement("span");
                     arch.className = "sb-badge sb-badge--accent-soft";
-                    arch.textContent = "ARCHIVÉ";
+                    arch.textContent = "ARCHIVÃ‰";
                     right.appendChild(arch);
                 }
 
@@ -2141,7 +2141,7 @@ body {
         const opt = sel.options[sel.selectedIndex];
         const txt = (opt?.dataset?.helpText || opt?.dataset?.longText || "").trim();
 
-        if (txt && txt !== "—"){
+        if (txt && txt !== "â€”"){
             help.textContent = txt;
             help.style.display = "";
             sel.title = txt;
@@ -2179,48 +2179,48 @@ body {
     _posteContraintesInit = true;
 
     _fillSelect(byId("posteCtrEduMin"), [
-        { value:"",  text:"—" },
-        { value:"0", text:"Aucun diplôme" },
+        { value:"",  text:"â€”" },
+        { value:"0", text:"Aucun diplÃ´me" },
         { value:"3", text:"Niveau 3 : CAP, BEP" },
         { value:"4", text:"Niveau 4 : Bac" },
         { value:"5", text:"Niveau 5 : Bac+2 (BTS, DUT)" },
         { value:"6", text:"Niveau 6 : Bac+3 (Licence, BUT)" },
-        { value:"7", text:"Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)" },
+        { value:"7", text:"Niveau 7 : Bac+5 (Master, IngÃ©nieur, Grandes Ã©coles)" },
         { value:"8", text:"Niveau 8 : Bac+8 (Doctorat)" }
     ]);
 
     _fillSelect(byId("posteCtrMobilite"), [
-        { value:"", text:"—" },
+        { value:"", text:"â€”" },
         { value:"Aucune", text:"Aucune" },
         { value:"Rare", text:"Rare" },
         { value:"Occasionnelle", text:"Occasionnelle" },
-        { value:"Fréquente", text:"Fréquente" }
+        { value:"FrÃ©quente", text:"FrÃ©quente" }
     ]);
 
     _fillSelect(byId("posteCtrPerspEvol"), [
-        { value:"", text:"—" },
+        { value:"", text:"â€”" },
         { value:"Aucune", text:"Aucune" },
         { value:"Faible", text:"Faible" },
-        { value:"Modérée", text:"Modérée" },
+        { value:"ModÃ©rÃ©e", text:"ModÃ©rÃ©e" },
         { value:"Forte", text:"Forte" },
         { value:"Rapide", text:"Rapide" }
     ]);
 
     _fillSelect(byId("posteCtrRisquePhys"), [
-        { value:"", text:"—", shortText:"—", longText:"—", helpText:"" },
-        { value:"Aucun", shortText:"Aucun", longText:"Aucun : pas de risque identifié.", helpText:"Aucun : pas de risque identifié." },
-        { value:"Faible", shortText:"Faible", longText:"Faible : exposition occasionnelle, faible intensité.", helpText:"Faible : exposition occasionnelle, faible intensité." },
-        { value:"Modéré", shortText:"Modéré", longText:"Modéré : exposition régulière mais maîtrisée.", helpText:"Modéré : exposition régulière mais maîtrisée." },
-        { value:"Élevé", shortText:"Élevé", longText:"Élevé : risque important, pouvant générer une pathologie.", helpText:"Élevé : risque important, pouvant générer une pathologie." },
+        { value:"", text:"â€”", shortText:"â€”", longText:"â€”", helpText:"" },
+        { value:"Aucun", shortText:"Aucun", longText:"Aucun : pas de risque identifiÃ©.", helpText:"Aucun : pas de risque identifiÃ©." },
+        { value:"Faible", shortText:"Faible", longText:"Faible : exposition occasionnelle, faible intensitÃ©.", helpText:"Faible : exposition occasionnelle, faible intensitÃ©." },
+        { value:"ModÃ©rÃ©", shortText:"ModÃ©rÃ©", longText:"ModÃ©rÃ© : exposition rÃ©guliÃ¨re mais maÃ®trisÃ©e.", helpText:"ModÃ©rÃ© : exposition rÃ©guliÃ¨re mais maÃ®trisÃ©e." },
+        { value:"Ã‰levÃ©", shortText:"Ã‰levÃ©", longText:"Ã‰levÃ© : risque important, pouvant gÃ©nÃ©rer une pathologie.", helpText:"Ã‰levÃ© : risque important, pouvant gÃ©nÃ©rer une pathologie." },
         { value:"Critique", shortText:"Critique", longText:"Critique : risque vital ou accident grave possible.", helpText:"Critique : risque vital ou accident grave possible." }
     ]);
 
     _fillSelect(byId("posteCtrNivContrainte"), [
-        { value:"", text:"—", shortText:"—", longText:"—", helpText:"" },
-        { value:"Aucune", shortText:"Aucune", longText:"Aucune : poste standard, sans pression ni particularité.", helpText:"Aucune : poste standard, sans pression ni particularité." },
-        { value:"Modérée", shortText:"Modérée", longText:"Modérée : quelques contraintes psychosociales/organisationnelles.", helpText:"Modérée : quelques contraintes psychosociales/organisationnelles." },
-        { value:"Élevée", shortText:"Élevée", longText:"Élevée : forte pression, conditions difficiles, grande responsabilité.", helpText:"Élevée : forte pression, conditions difficiles, grande responsabilité." },
-        { value:"Critique", shortText:"Critique", longText:"Critique : stress ou responsabilité vitale.", helpText:"Critique : stress ou responsabilité vitale." }
+        { value:"", text:"â€”", shortText:"â€”", longText:"â€”", helpText:"" },
+        { value:"Aucune", shortText:"Aucune", longText:"Aucune : poste standard, sans pression ni particularitÃ©.", helpText:"Aucune : poste standard, sans pression ni particularitÃ©." },
+        { value:"ModÃ©rÃ©e", shortText:"ModÃ©rÃ©e", longText:"ModÃ©rÃ©e : quelques contraintes psychosociales/organisationnelles.", helpText:"ModÃ©rÃ©e : quelques contraintes psychosociales/organisationnelles." },
+        { value:"Ã‰levÃ©e", shortText:"Ã‰levÃ©e", longText:"Ã‰levÃ©e : forte pression, conditions difficiles, grande responsabilitÃ©.", helpText:"Ã‰levÃ©e : forte pression, conditions difficiles, grande responsabilitÃ©." },
+        { value:"Critique", shortText:"Critique", longText:"Critique : stress ou responsabilitÃ© vitale.", helpText:"Critique : stress ou responsabilitÃ© vitale." }
     ]);
 
     _bindSelectShortValueDisplay("posteCtrRisquePhys", "posteCtrRisquePhysHelp");
@@ -2237,7 +2237,7 @@ body {
         const r = await portal.apiJson(url);
         _nsfGroupes = Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : []);
     } catch(e){
-        // on ne bloque pas le modal pour ça
+        // on ne bloque pas le modal pour Ã§a
         _nsfGroupes = [];
     }
     }
@@ -2251,7 +2251,7 @@ body {
         sel.innerHTML = "";
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "—";
+        opt0.textContent = "â€”";
         sel.appendChild(opt0);
 
         (_nsfGroupes || []).forEach(g => {
@@ -2286,19 +2286,19 @@ body {
     }
 
     // ------------------------------------------------------
-    // Poste > Paramétrage RH
+    // Poste > ParamÃ©trage RH
     // ------------------------------------------------------
     function rhSourceLabel(v){
         const s = (v || "").toString().trim().toLowerCase();
         if (s === "studio") return "Studio";
         if (s === "desktop") return "Desktop";
         if (s === "insights") return "Insights";
-        return "—";
+        return "â€”";
     }
 
     function formatRhDateMaj(v){
         const s = (v || "").toString().trim();
-        if (!s) return "—";
+        if (!s) return "â€”";
 
         const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
         if (m){
@@ -2331,11 +2331,11 @@ body {
 
         const v = (sel.value || "").trim();
         if (v === "1"){
-            help.textContent = "1 = Faible : poste peu sensible, impact limité.";
+            help.textContent = "1 = Faible : poste peu sensible, impact limitÃ©.";
         } else if (v === "2"){
-            help.textContent = "2 = Modérée : poste important, impact réel sur l’activité.";
+            help.textContent = "2 = ModÃ©rÃ©e : poste important, impact rÃ©el sur lâ€™activitÃ©.";
         } else if (v === "3"){
-            help.textContent = "3 = Forte : poste clé, difficile à remplacer ou à sécuriser.";
+            help.textContent = "3 = Forte : poste clÃ©, difficile Ã  remplacer ou Ã  sÃ©curiser.";
         } else {
             help.textContent = "";
         }
@@ -2361,10 +2361,10 @@ body {
 
         _fillSelect(byId("posteRhStatut"), [
             { value:"actif", text:"Actif" },
-            { value:"a_pourvoir", text:"À pourvoir" },
-            { value:"gele", text:"Gelé" },
+            { value:"a_pourvoir", text:"Ã€ pourvoir" },
+            { value:"gele", text:"GelÃ©" },
             { value:"temporaire", text:"Temporaire" },
-            { value:"archive", text:"Archivé (RH)" }
+            { value:"archive", text:"ArchivÃ© (RH)" }
         ]);
 
         _fillSelect(byId("posteRhStrategie"), [
@@ -2375,7 +2375,7 @@ body {
 
         _fillSelect(byId("posteRhCriticite"), [
             { value:"1", text:"1 - Faible" },
-            { value:"2", text:"2 - Modérée" },
+            { value:"2", text:"2 - ModÃ©rÃ©e" },
             { value:"3", text:"3 - Forte" }
         ]);
 
@@ -2405,14 +2405,14 @@ body {
         _setValue("posteRhSource", rhSourceLabel(src));
 
         const maj = detail?.param_rh_date_maj || "";
-        _setValue("posteRhDateMaj", isCreate && !maj ? "Création à l’enregistrement" : formatRhDateMaj(maj));
+        _setValue("posteRhDateMaj", isCreate && !maj ? "CrÃ©ation Ã  lâ€™enregistrement" : formatRhDateMaj(maj));
 
         refreshPosteRhCriticiteHelp();
         refreshPosteRhDateFinVisibility();
     }
 
         // ------------------------------------------------------
-    // Poste > Paramétrage RH > Cotation conventionnelle
+    // Poste > ParamÃ©trage RH > Cotation conventionnelle
     // ------------------------------------------------------
     function resetPosteCcnUi(isCreate){
         if (_orgCcnController){
@@ -2433,7 +2433,7 @@ body {
         try{
             await loadPosteCcnContext(portal);
         } catch(e){
-            console.warn("[Studio][Organisation] Impossible de rafraîchir la cotation conventionnelle après enregistrement du poste", e);
+            console.warn("[Studio][Organisation] Impossible de rafraÃ®chir la cotation conventionnelle aprÃ¨s enregistrement du poste", e);
         }
     }
 
@@ -2484,11 +2484,11 @@ body {
         const respTxt = htmlToPlainText(respHtml);
         const ctr = (byId("posteCtrDetailContrainte")?.value || "").trim();
         const pieces = [];
-        if ((byId("posteCtrMobilite")?.value || "").trim()) pieces.push(`Mobilité: ${(byId("posteCtrMobilite").value || "").trim()}`);
+        if ((byId("posteCtrMobilite")?.value || "").trim()) pieces.push(`MobilitÃ©: ${(byId("posteCtrMobilite").value || "").trim()}`);
         if ((byId("posteCtrRisquePhys")?.value || "").trim()) pieces.push(`Risques physiques: ${(byId("posteCtrRisquePhys").value || "").trim()}`);
         if ((byId("posteCtrNivContrainte")?.value || "").trim()) pieces.push(`Niveau de contraintes: ${(byId("posteCtrNivContrainte").value || "").trim()}`);
         if ((byId("posteCtrPerspEvol")?.value || "").trim()) pieces.push(`Perspectives: ${(byId("posteCtrPerspEvol").value || "").trim()}`);
-        if ((byId("posteCtrEduMin")?.value || "").trim()) pieces.push(`Niveau d'étude minimum: ${(byId("posteCtrEduMin").value || "").trim()}`);
+        if ((byId("posteCtrEduMin")?.value || "").trim()) pieces.push(`Niveau d'Ã©tude minimum: ${(byId("posteCtrEduMin").value || "").trim()}`);
         const mergedCtr = [ctr, pieces.join(" | ")].filter(Boolean).join("\n");
 
         if (byId("posteAiIntitule") && !byId("posteAiIntitule").value.trim()) byId("posteAiIntitule").value = title;
@@ -2502,12 +2502,12 @@ body {
         const sub = byId("posteAiSub");
 
         if (ttl) ttl.textContent = (_posteModalMode === "edit")
-            ? "Proposer des textes de remplacement avec l’IA"
-            : "Générer une fiche de poste avec l’IA";
+            ? "Proposer des textes de remplacement avec lâ€™IA"
+            : "GÃ©nÃ©rer une fiche de poste avec lâ€™IA";
 
         if (sub) sub.textContent = (_posteModalMode === "edit")
-            ? "L’IA reformule et enrichit la fiche actuelle sans changer le métier visé."
-            : "L’IA propose un brouillon exploitable à partir de tes éléments et d’une recherche web.";
+            ? "Lâ€™IA reformule et enrichit la fiche actuelle sans changer le mÃ©tier visÃ©."
+            : "Lâ€™IA propose un brouillon exploitable Ã  partir de tes Ã©lÃ©ments et dâ€™une recherche web.";
 
         resetPosteAiModalFields();
         seedPosteAiModalFromCurrent();
@@ -2537,16 +2537,16 @@ body {
         };
 
         if (!payload.intitule){
-            portal.showAlert("error", "Intitulé du poste obligatoire pour lancer la génération IA.");
+            portal.showAlert("error", "IntitulÃ© du poste obligatoire pour lancer la gÃ©nÃ©ration IA.");
             return;
         }
 
             const btn = byId("btnPosteAiGenerate");
-            if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Génération…"; }
+            if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "GÃ©nÃ©rationâ€¦"; }
 
             openIaBusyOverlay(
-                "Génération IA de la fiche de poste",
-                "Recherche web, analyse du contexte métier et rédaction du brouillon..."
+                "GÃ©nÃ©ration IA de la fiche de poste",
+                "Recherche web, analyse du contexte mÃ©tier et rÃ©daction du brouillon..."
             );
 
             try{
@@ -2582,7 +2582,7 @@ body {
             portal.showAlert("error", e?.message || String(e));
         } finally {
             closeIaBusyOverlay();
-            if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "Générer"; }
+            if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "GÃ©nÃ©rer"; }
         }
     }
 
@@ -2594,7 +2594,7 @@ body {
         const miWrap = byId("posteCompAiMissingWrap");
         const exList = byId("posteCompAiExistingList");
         const miList = byId("posteCompAiMissingList");
-        if (loading){ loading.style.display = "none"; loading.textContent = "Analyse en cours…"; }
+        if (loading){ loading.style.display = "none"; loading.textContent = "Analyse en coursâ€¦"; }
         if (summary){ summary.style.display = "none"; summary.textContent = ""; }
         if (exWrap) exWrap.style.display = "none";
         if (miWrap) miWrap.style.display = "none";
@@ -2649,7 +2649,7 @@ body {
         sel.innerHTML = "";
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "—";
+        opt0.textContent = "â€”";
         sel.appendChild(opt0);
 
         (_posteCompCreateDomainItems || []).forEach(d => {
@@ -2817,7 +2817,7 @@ body {
         if (!ed) return;
 
         const title = byId("posteCompCreateCritEditorTitle");
-        if (title) title.textContent = `Critère ${idx+1}`;
+        if (title) title.textContent = `CritÃ¨re ${idx+1}`;
 
         const c = _posteCompCreateCrit[idx] || posteCompCreateEmptyCrit();
 
@@ -2858,11 +2858,11 @@ body {
             btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
 
             if (used >= 4){
-                btnAdd.title = "Maximum 4 critères.";
+                btnAdd.title = "Maximum 4 critÃ¨res.";
             } else if (used >= 3){
-                btnAdd.title = "4e critère seulement si nécessaire.";
+                btnAdd.title = "4e critÃ¨re seulement si nÃ©cessaire.";
             } else {
-                btnAdd.title = "1 à 3 critères suffisent dans la plupart des cas.";
+                btnAdd.title = "1 Ã  3 critÃ¨res suffisent dans la plupart des cas.";
             }
         }
 
@@ -2881,7 +2881,7 @@ body {
 
             const t = document.createElement("div");
             t.className = "sb-acc-title";
-            t.textContent = `Critère ${i+1} – ${nom}`;
+            t.textContent = `CritÃ¨re ${i+1} â€“ ${nom}`;
             head.appendChild(t);
 
             const body = document.createElement("div");
@@ -2946,7 +2946,7 @@ body {
         if (!host.children.length){
             const empty = document.createElement("div");
             empty.className = "card-sub";
-            empty.textContent = "Aucun critère. Ajoute au moins 1 critère.";
+            empty.textContent = "Aucun critÃ¨re. Ajoute au moins 1 critÃ¨re.";
             host.appendChild(empty);
         }
     }
@@ -2961,11 +2961,11 @@ body {
         const e4 = (byId("posteCompCreateCritEval4").value || "").trim();
 
         if (!nom){
-            portal.showAlert("error", "Nom du critère obligatoire.");
+            portal.showAlert("error", "Nom du critÃ¨re obligatoire.");
             return;
         }
         if (!e1 || !e2 || !e3 || !e4){
-            portal.showAlert("error", "Les 4 niveaux d’évaluation sont obligatoires.");
+            portal.showAlert("error", "Les 4 niveaux dâ€™Ã©valuation sont obligatoires.");
             return;
         }
 
@@ -2986,7 +2986,7 @@ body {
         }
 
         if (usedPosteCompCreateCritCount() < 1){
-            portal.showAlert("error", "Ajoute au moins 1 critère d’évaluation.");
+            portal.showAlert("error", "Ajoute au moins 1 critÃ¨re dâ€™Ã©valuation.");
             return false;
         }
 
@@ -2999,12 +2999,12 @@ body {
             if (!nom && !anyEval) continue;
 
             if (!nom){
-                portal.showAlert("error", `Critère ${i+1} : nom obligatoire.`);
+                portal.showAlert("error", `CritÃ¨re ${i+1} : nom obligatoire.`);
                 return false;
             }
             for (let k=0;k<4;k++){
                 if (!(ev[k] || "").trim()){
-                    portal.showAlert("error", `Critère ${i+1} : niveau ${k+1} obligatoire.`);
+                    portal.showAlert("error", `CritÃ¨re ${i+1} : niveau ${k+1} obligatoire.`);
                     return false;
                 }
             }
@@ -3043,7 +3043,7 @@ body {
         const sel = byId("posteCompCreateFrameDomaine");
         if (!sel) return;
         const selected = (selectedId || "").toString();
-        sel.innerHTML = '<option value="">—</option>';
+        sel.innerHTML = '<option value="">â€”</option>';
         (_posteCompCreateDomainItems || []).forEach(d => {
             const opt = document.createElement("option");
             opt.value = d.id_domaine_competence || "";
@@ -3095,11 +3095,11 @@ body {
         if (![1,2,3,4].includes(nb)) nb = 3;
 
         if (!title){
-            setPosteCompCreateFrameMsg("Intitulé obligatoire.", true);
+            setPosteCompCreateFrameMsg("IntitulÃ© obligatoire.", true);
             return null;
         }
         if (!why){
-            setPosteCompCreateFrameMsg("Précise ce que cette compétence doit permettre d’évaluer.", true);
+            setPosteCompCreateFrameMsg("PrÃ©cise ce que cette compÃ©tence doit permettre dâ€™Ã©valuer.", true);
             return null;
         }
 
@@ -3142,15 +3142,15 @@ body {
         const badge = byId("posteCompCreateBadge");
         if (badge){
             badge.style.display = "";
-            badge.textContent = "Création manuelle";
+            badge.textContent = "CrÃ©ation manuelle";
         }
 
-        byId("posteCompCreateTitle").textContent = "Créer une compétence";
-        byId("posteCompCreateSub").textContent = "Création manuelle depuis la proposition IA. Complète les niveaux et la grille avant validation.";
+        byId("posteCompCreateTitle").textContent = "CrÃ©er une compÃ©tence";
+        byId("posteCompCreateSub").textContent = "CrÃ©ation manuelle depuis la proposition IA. ComplÃ¨te les niveaux et la grille avant validation.";
 
         byId("posteCompCreateIntitule").value = (it.intitule || "");
         byId("posteCompCreateDesc").value = (it.description || "");
-        byId("posteCompCreateEtat").value = "à valider";
+        byId("posteCompCreateEtat").value = "Ã  valider";
         byId("posteCompCreateNivA").value = "";
         byId("posteCompCreateNivB").value = "";
         byId("posteCompCreateNivC").value = "";
@@ -3177,10 +3177,10 @@ body {
         const nbCrit = parseInt(prepared.nb_criteres || 3, 10);
 
         openIaBusyOverlay(
-            "Préparation de la compétence",
-            "Génération des niveaux de maîtrise et de la grille d’évaluation...",
-            "Cette opération peut prendre quelques instants",
-            "La génération est longue. Échap ferme l’attente côté écran, sans créer la compétence."
+            "PrÃ©paration de la compÃ©tence",
+            "GÃ©nÃ©ration des niveaux de maÃ®trise et de la grille dâ€™Ã©valuation...",
+            "Cette opÃ©ration peut prendre quelques instants",
+            "La gÃ©nÃ©ration est longue. Ã‰chap ferme lâ€™attente cÃ´tÃ© Ã©cran, sans crÃ©er la compÃ©tence."
         );
 
         try{
@@ -3220,12 +3220,12 @@ body {
             badge.textContent = "";
         }
 
-        byId("posteCompCreateTitle").textContent = "Créer une compétence";
-        byId("posteCompCreateSub").textContent = "Brouillon proposé par l’IA. Tu valides / ajustes avant création.";
+        byId("posteCompCreateTitle").textContent = "CrÃ©er une compÃ©tence";
+        byId("posteCompCreateSub").textContent = "Brouillon proposÃ© par lâ€™IA. Tu valides / ajustes avant crÃ©ation.";
 
         byId("posteCompCreateIntitule").value = (prepared.intitule || "");
         byId("posteCompCreateDesc").value = (prepared.description || "");
-        byId("posteCompCreateEtat").value = "à valider";
+        byId("posteCompCreateEtat").value = "Ã  valider";
         byId("posteCompCreateNivA").value = (prepared.niveaua || "");
         byId("posteCompCreateNivB").value = (prepared.niveaub || "");
         byId("posteCompCreateNivC").value = (prepared.niveauc || "");
@@ -3243,7 +3243,7 @@ function promoteMissingAiCompetenceToExisting(meta){
 
         const idx = _posteCompCreateCtx.idx;
         const added = !!meta?.added;
-        const etat = (meta?.etat || "à valider").toString();
+        const etat = (meta?.etat || "Ã  valider").toString();
         const title = (byId("posteCompCreateIntitule")?.value || "").trim();
         const domainId = (byId("posteCompCreateDomaine")?.value || "").trim();
         const domainMeta = getPosteCompCreateDomainMetaById(domainId);
@@ -3284,7 +3284,7 @@ async function savePosteCompCreateModal(portal, addAfter){
         const ownerId = getOwnerId();
         const title = (byId("posteCompCreateIntitule").value || "").trim();
         const dom = (byId("posteCompCreateDomaine").value || "").trim();
-        const etat = (byId("posteCompCreateEtat").value || "à valider").trim();
+        const etat = (byId("posteCompCreateEtat").value || "Ã  valider").trim();
         const desc = (byId("posteCompCreateDesc").value || "").trim();
         const nivA = (byId("posteCompCreateNivA").value || "").trim();
         const nivB = (byId("posteCompCreateNivB").value || "").trim();
@@ -3292,7 +3292,7 @@ async function savePosteCompCreateModal(portal, addAfter){
         const nivD = (byId("posteCompCreateNivD")?.value || "").trim();
 
         if (!title){
-            portal.showAlert("error", "Intitulé obligatoire.");
+            portal.showAlert("error", "IntitulÃ© obligatoire.");
             return;
         }
 
@@ -3364,7 +3364,7 @@ async function savePosteCompCreateModal(portal, addAfter){
         const n = normText(value || "");
         if (n.includes("transversal")) return "transversal";
         if (n.includes("complement")) return "complementaire";
-        if (n.includes("coeur") || n.includes("cœur")) return "coeur";
+        if (n.includes("coeur") || n.includes("cÅ“ur")) return "coeur";
         return "coeur";
     }
 
@@ -3394,9 +3394,9 @@ function renderPosteCompAiResults(){
         const missing = Array.isArray(_posteCompAiResults?.missing) ? _posteCompAiResults.missing : [];
 
         if (!existing.length && !missing.length){
-            summary.textContent = "Aucune compétence structurante exploitable n’a été retenue pour ce poste avec les éléments fournis.";
+            summary.textContent = "Aucune compÃ©tence structurante exploitable nâ€™a Ã©tÃ© retenue pour ce poste avec les Ã©lÃ©ments fournis.";
         } else {
-            summary.textContent = `${existing.length} compétence(s) trouvée(s) dans le référentiel, ${missing.length} à créer.`;
+            summary.textContent = `${existing.length} compÃ©tence(s) trouvÃ©e(s) dans le rÃ©fÃ©rentiel, ${missing.length} Ã  crÃ©er.`;
         }
         summary.style.display = "";
 
@@ -3414,7 +3414,7 @@ function renderPosteCompAiResults(){
 
             const code = document.createElement("span");
             code.className = "sb-badge sb-badge--comp";
-            code.textContent = (it.code || "—");
+            code.textContent = (it.code || "â€”");
 
             const wrap = document.createElement("div");
             wrap.style.minWidth = "0";
@@ -3433,7 +3433,7 @@ function renderPosteCompAiResults(){
             const dom = buildAiCompDomainBadge(it.domaine_titre_court || "", it.domaine_couleur);
             if (dom) meta.appendChild(dom);
 
-            if (((it.etat || "").toLowerCase()) === "à valider"){
+            if (((it.etat || "").toLowerCase()) === "Ã  valider"){
                 const et = document.createElement("span");
                 et.className = "sb-badge sb-badge--draft";
                 et.textContent = "Brouillon";
@@ -3463,7 +3463,7 @@ function renderPosteCompAiResults(){
             btnPdf.type = "button";
             btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
             btnPdf.title = "Voir fiche";
-            btnPdf.setAttribute("aria-label", "Voir fiche compétence");
+            btnPdf.setAttribute("aria-label", "Voir fiche compÃ©tence");
             btnPdf.innerHTML = `
                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -3478,7 +3478,7 @@ function renderPosteCompAiResults(){
                 e.preventDefault();
                 e.stopPropagation();
 
-                const titlePdf = `Fiche compétence - ${String(it.code || "").trim() ? `${String(it.code).trim()} - ` : ""}${String(it.intitule || "").trim() || "Compétence"}`;
+                const titlePdf = `Fiche compÃ©tence - ${String(it.code || "").trim() ? `${String(it.code).trim()} - ` : ""}${String(it.intitule || "").trim() || "CompÃ©tence"}`;
                 let popupWin = null;
 
                 try{
@@ -3495,7 +3495,7 @@ function renderPosteCompAiResults(){
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "sb-btn sb-btn--accent sb-btn--xs";
-            btn.textContent = it._already_added ? "Ajoutée" : "Ajouter";
+            btn.textContent = it._already_added ? "AjoutÃ©e" : "Ajouter";
             btn.disabled = !!it._already_added;
             btn.style.opacity = it._already_added ? ".6" : "";
             btn.addEventListener("click", async () => {
@@ -3562,8 +3562,8 @@ function renderPosteCompAiResults(){
             const btnGenerate = document.createElement("button");
             btnGenerate.type = "button";
             btnGenerate.className = "sb-btn sb-btn--ai sb-btn--xs";
-            btnGenerate.textContent = "Générer IA";
-            btnGenerate.title = "Générer les niveaux de maîtrise et la grille d’évaluation avec l’IA";
+            btnGenerate.textContent = "GÃ©nÃ©rer IA";
+            btnGenerate.title = "GÃ©nÃ©rer les niveaux de maÃ®trise et la grille dâ€™Ã©valuation avec lâ€™IA";
             btnGenerate.addEventListener("click", async () => {
                 try { await openPosteCompCreateModalFromAi(window.portal, idx, false); }
                 catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
@@ -3572,8 +3572,8 @@ function renderPosteCompAiResults(){
             const btnManual = document.createElement("button");
             btnManual.type = "button";
             btnManual.className = "sb-btn sb-btn--outline sb-btn--xs";
-            btnManual.textContent = "Créer";
-            btnManual.title = "Créer manuellement la compétence à partir du titre, du domaine et de la description";
+            btnManual.textContent = "CrÃ©er";
+            btnManual.title = "CrÃ©er manuellement la compÃ©tence Ã  partir du titre, du domaine et de la description";
             btnManual.addEventListener("click", async () => {
                 try { await openPosteCompCreateManualModalFromAi(window.portal, idx, false); }
                 catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
@@ -3591,7 +3591,7 @@ function renderPosteCompAiResults(){
     async function openPosteCompAiModal(portal){
         const title = (byId("posteIntitule")?.value || "").trim();
         if (!title){
-            portal.showAlert("error", "Renseigne au moins l’intitulé du poste avant la recherche IA.");
+            portal.showAlert("error", "Renseigne au moins lâ€™intitulÃ© du poste avant la recherche IA.");
             return;
         }
 
@@ -3606,10 +3606,10 @@ function renderPosteCompAiResults(){
         if (loading) loading.style.display = "";
 
         openIaBusyOverlay(
-            "Recherche IA des compétences",
-            "Analyse du poste et rapprochement avec le catalogue de compétences...",
-            "Cette opération peut prendre quelques minutes",
-            "La durée est anormalement longue. Appuyez sur Échap pour annuler côté écran, puis relancer."
+            "Recherche IA des compÃ©tences",
+            "Analyse du poste et rapprochement avec le catalogue de compÃ©tences...",
+            "Cette opÃ©ration peut prendre quelques minutes",
+            "La durÃ©e est anormalement longue. Appuyez sur Ã‰chap pour annuler cÃ´tÃ© Ã©cran, puis relancer."
         );
 
         try{
@@ -3644,11 +3644,11 @@ function renderPosteCompAiResults(){
             }
         }
     }
-    
+
     async function ensureEditingPoste(portal){
         if (_posteModalMode === "edit" && _editingPosteId) return _editingPosteId;
-        await savePosteFromModal(portal, { keepOpen: true, silent: true, statusMessage: "Poste créé." });
-        if (!_editingPosteId) throw new Error("Le poste n’a pas pu être créé avant l’ajout des compétences.");
+        await savePosteFromModal(portal, { keepOpen: true, silent: true, statusMessage: "Poste crÃ©Ã©." });
+        if (!_editingPosteId) throw new Error("Le poste nâ€™a pas pu Ãªtre crÃ©Ã© avant lâ€™ajout des compÃ©tences.");
         return _editingPosteId;
     }
 
@@ -3690,11 +3690,11 @@ function renderPosteCompAiResults(){
         });
         await loadPosteCompetences(portal);
         const btn = document.querySelector(`[data-ai-missing-create="${idx}"]`);
-        if (btn){ btn.disabled = true; btn.textContent = `Créée (${r?.code || "OK"})`; }
+        if (btn){ btn.disabled = true; btn.textContent = `CrÃ©Ã©e (${r?.code || "OK"})`; }
     }
 
     // ------------------------------------------------------
-    // Poste > Exigences > Compétences
+    // Poste > Exigences > CompÃ©tences
     // ------------------------------------------------------
     async function loadPosteCompetences(portal){
         if (!_editingPosteId) return;
@@ -3729,7 +3729,7 @@ function renderPosteCompAiResults(){
         _posteCompExpanded = false;
         renderPosteCompetences();
     }
-    
+
     function renderPosteCompetences(){
         const tb = byId("posteCompTbody");
         const empty = byId("posteCompEmpty");
@@ -3742,12 +3742,12 @@ function renderPosteCompAiResults(){
             if (key) {
                 return { text: nsLevelLabel(key), cls: `sb-badge--niv sb-badge--niv-${key.toLowerCase()}` };
             }
-            return { text: "—", cls: "sb-badge--outline-accent" };
+            return { text: "â€”", cls: "sb-badge--outline-accent" };
         };
 
         const critMeta = (score) => {
             const n = parseInt(score ?? 0, 10);
-            if (Number.isNaN(n)) return { text: "—", cls: "sb-crit-badge--low" };
+            if (Number.isNaN(n)) return { text: "â€”", cls: "sb-crit-badge--low" };
             if (n >= 70) return { text: String(n), cls: "sb-crit-badge--high" };
             if (n >= 35) return { text: String(n), cls: "sb-crit-badge--mid" };
             return { text: String(n), cls: "sb-crit-badge--low" };
@@ -3810,7 +3810,7 @@ function renderPosteCompAiResults(){
 
             const code = document.createElement("span");
             code.className = "sb-badge sb-badge--comp";
-            code.textContent = it.code || "—";
+            code.textContent = it.code || "â€”";
 
             const title = document.createElement("div");
             title.className = "sb-comp-cell__title";
@@ -3821,7 +3821,7 @@ function renderPosteCompAiResults(){
             const isProposal = statutEval === "proposition";
             if (isProposal){
                 title.classList.add("sb-comp-cell__title--proposal");
-                title.title = `${it.intitule || ""} — compétence préévaluée, à confirmer par l’enregistrement de l’évaluation.`;
+                title.title = `${it.intitule || ""} â€” compÃ©tence prÃ©Ã©valuÃ©e, Ã  confirmer par lâ€™enregistrement de lâ€™Ã©valuation.`;
             }
 
             compWrap.appendChild(code);
@@ -3830,7 +3830,7 @@ function renderPosteCompAiResults(){
                 const hint = document.createElement("span");
                 hint.className = "sb-comp-cell__proposal-hint";
                 hint.textContent = "?";
-                hint.title = "Compétence préévaluée : l’intitulé reste orange jusqu’à l’enregistrement complet de l’évaluation.";
+                hint.title = "CompÃ©tence prÃ©Ã©valuÃ©e : lâ€™intitulÃ© reste orange jusquâ€™Ã  lâ€™enregistrement complet de lâ€™Ã©valuation.";
                 hint.setAttribute("aria-label", hint.title);
                 compWrap.appendChild(hint);
             }
@@ -3870,14 +3870,14 @@ function renderPosteCompAiResults(){
                 const btnPdf = document.createElement("button");
                 btnPdf.type = "button";
                 btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
-                btnPdf.title = "Voir la fiche compétence PDF";
-                btnPdf.setAttribute("aria-label", "Voir la fiche compétence PDF");
+                btnPdf.title = "Voir la fiche compÃ©tence PDF";
+                btnPdf.setAttribute("aria-label", "Voir la fiche compÃ©tence PDF");
                 btnPdf.innerHTML = iconPdf;
                 btnPdf.addEventListener("click", async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    const titlePdf = `Fiche compétence - ${String(it.code || "").trim() ? `${String(it.code).trim()} - ` : ""}${String(it.intitule || "").trim() || "Compétence"}`;
+                    const titlePdf = `Fiche compÃ©tence - ${String(it.code || "").trim() ? `${String(it.code).trim()} - ` : ""}${String(it.intitule || "").trim() || "CompÃ©tence"}`;
                     let popupWin = null;
 
                     try{
@@ -3898,7 +3898,7 @@ function renderPosteCompAiResults(){
                 btnRem.setAttribute("aria-label", "Retirer");
                 btnRem.innerHTML = iconTrash;
                 btnRem.addEventListener("click", async () => {
-                    if (!confirm(`Retirer la compétence "${it.code || ""} – ${it.intitule || ""}" du poste ?`)) return;
+                    if (!confirm(`Retirer la compÃ©tence "${it.code || ""} â€“ ${it.intitule || ""}" du poste ?`)) return;
                     try { await removePosteCompetence(window.portal, it.id_competence); }
                     catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
                 });
@@ -3908,7 +3908,7 @@ function renderPosteCompAiResults(){
                 actions.appendChild(btnRem);
                 tdAct.appendChild(actions);
             } else {
-                tdAct.textContent = "—";
+                tdAct.textContent = "â€”";
             }
 
             tr.appendChild(tdComp);
@@ -3925,8 +3925,8 @@ function renderPosteCompAiResults(){
             more.setAttribute("aria-expanded", _posteCompExpanded ? "true" : "false");
             if (moreText){
                 moreText.textContent = _posteCompExpanded
-                    ? "Voir moins de compétences"
-                    : `Voir plus de compétences (${hidden})`;
+                    ? "Voir moins de compÃ©tences"
+                    : `Voir plus de compÃ©tences (${hidden})`;
             }
         }
     }
@@ -3980,7 +3980,7 @@ function renderPosteCompAiResults(){
             btn.type = "button";
             btn.id = "btnPosteCompAddCreateNew";
             btn.className = "sb-btn sb-btn--accent";
-            btn.textContent = "Créer une compétence";
+            btn.textContent = "CrÃ©er une compÃ©tence";
             btn.addEventListener("click", async () => {
                 try { await openPosteCompCreateManualModalFromCatalog(window.portal); }
                 catch(e){ window.portal?.showAlert?.("error", e?.message || String(e)); }
@@ -4004,7 +4004,7 @@ function renderPosteCompAiResults(){
             btnImport.type = "button";
             btnImport.id = "btnPosteCompCreateImportDoc";
             btnImport.textContent = "Importer";
-            btnImport.title = "Importer un PDF, DOC ou DOCX pour préremplir la fiche compétence.";
+            btnImport.title = "Importer un PDF, DOC ou DOCX pour prÃ©remplir la fiche compÃ©tence.";
             btnImport.addEventListener("click", () => openPosteCompImportModal());
         }
         btnImport.className = "sb-btn sb-btn--outline";
@@ -4014,8 +4014,8 @@ function renderPosteCompAiResults(){
             btnIa = document.createElement("button");
             btnIa.type = "button";
             btnIa.id = "btnPosteCompCreateGenerateCurrent";
-            btnIa.textContent = "Générer IA";
-            btnIa.title = "Cadrer la compétence puis générer les niveaux et critères.";
+            btnIa.textContent = "GÃ©nÃ©rer IA";
+            btnIa.title = "Cadrer la compÃ©tence puis gÃ©nÃ©rer les niveaux et critÃ¨res.";
             btnIa.addEventListener("click", async () => {
                 try { await openPosteCompCreateFrameFromCurrentCreate(portal); }
                 catch(e){ portal.showAlert("error", e?.message || String(e)); }
@@ -4023,7 +4023,7 @@ function renderPosteCompAiResults(){
         }
         btnIa.className = "sb-btn sb-btn--ai";
 
-        // Ordre voulu : Importer | Générer IA | Enregistrer / Créer.
+        // Ordre voulu : Importer | GÃ©nÃ©rer IA | Enregistrer / CrÃ©er.
         parent.insertBefore(btnImport, mainBtn);
         parent.insertBefore(btnIa, mainBtn);
     }
@@ -4033,12 +4033,12 @@ function renderPosteCompAiResults(){
         const title = (byId("posteCompCreateIntitule")?.value || "").trim();
         const desc = (byId("posteCompCreateDesc")?.value || "").trim();
         const dom = (byId("posteCompCreateDomaine")?.value || "").trim();
-        const etat = (byId("posteCompCreateEtat")?.value || "à valider").trim();
+        const etat = (byId("posteCompCreateEtat")?.value || "Ã  valider").trim();
 
         base.intitule = title || base.intitule || "";
         base.description = desc || base.description || "";
         base.domaine_id = dom || base.domaine_id || "";
-        base.etat = etat || base.etat || "à valider";
+        base.etat = etat || base.etat || "Ã  valider";
         base.niveaua = (byId("posteCompCreateNivA")?.value || base.niveaua || "").trim();
         base.niveaub = (byId("posteCompCreateNivB")?.value || base.niveaub || "").trim();
         base.niveauc = (byId("posteCompCreateNivC")?.value || base.niveauc || "").trim();
@@ -4060,13 +4060,13 @@ function renderPosteCompAiResults(){
 
     async function openPosteCompCreateFrameFromCurrentCreate(portal){
         if (!_posteCompCreateCtx){
-            portal.showAlert("error", "Aucune compétence en cours de création.");
+            portal.showAlert("error", "Aucune compÃ©tence en cours de crÃ©ation.");
             return;
         }
         await ensurePosteCompCreateDomains(portal);
         const draft = buildPosteCompCreateDraftFromCurrent();
         if (!draft.intitule){
-            portal.showAlert("error", "Renseigne au moins l’intitulé de la compétence avant de lancer l’IA.");
+            portal.showAlert("error", "Renseigne au moins lâ€™intitulÃ© de la compÃ©tence avant de lancer lâ€™IA.");
             return;
         }
 
@@ -4093,13 +4093,13 @@ function renderPosteCompAiResults(){
         _posteCompCreateCtx = { idx: -1, addAfter: true, draft: JSON.parse(JSON.stringify(draft || {})) };
 
         const badge = byId("posteCompCreateBadge");
-        if (badge){ badge.style.display = ""; badge.textContent = "Création manuelle"; }
+        if (badge){ badge.style.display = ""; badge.textContent = "CrÃ©ation manuelle"; }
 
-        byId("posteCompCreateTitle").textContent = "Créer une compétence";
-        byId("posteCompCreateSub").textContent = "Création depuis le poste. Complète la fiche manuellement ou utilise Générer IA / Importer.";
+        byId("posteCompCreateTitle").textContent = "CrÃ©er une compÃ©tence";
+        byId("posteCompCreateSub").textContent = "CrÃ©ation depuis le poste. ComplÃ¨te la fiche manuellement ou utilise GÃ©nÃ©rer IA / Importer.";
         byId("posteCompCreateIntitule").value = draft.intitule || "";
         byId("posteCompCreateDesc").value = draft.description || "";
-        byId("posteCompCreateEtat").value = "à valider";
+        byId("posteCompCreateEtat").value = "Ã  valider";
         byId("posteCompCreateNivA").value = "";
         byId("posteCompCreateNivB").value = "";
         byId("posteCompCreateNivC").value = "";
@@ -4126,22 +4126,22 @@ function renderPosteCompAiResults(){
             <div class="sb-modal-head">
               <div>
                 <div class="card-title">Importer un document</div>
-                <div class="card-sub">PDF, DOC ou DOCX. Le texte extrait alimentera la fiche compétence et le cadrage IA.</div>
+                <div class="card-sub">PDF, DOC ou DOCX. Le texte extrait alimentera la fiche compÃ©tence et le cadrage IA.</div>
               </div>
               <button type="button" class="sb-modal-x" id="btnClosePosteCompImport" aria-label="Fermer">&times;</button>
             </div>
             <div class="sb-modal-body">
               <input type="file" id="posteCompImportFileInput" accept=".pdf,.doc,.docx" style="display:none;" />
               <div id="posteCompImportDropzone" class="sb-import-drop" style="border:1px dashed #cbd5e1;border-radius:14px;padding:18px;background:#f8fafc;cursor:pointer;">
-                <div style="font-weight:700;margin-bottom:4px;">Déposer un document ou cliquer pour sélectionner</div>
-                <div class="card-sub" id="posteCompImportEmpty">Aucun document sélectionné.</div>
+                <div style="font-weight: var(--ns-weight-bold);margin-bottom:4px;">DÃ©poser un document ou cliquer pour sÃ©lectionner</div>
+                <div class="card-sub" id="posteCompImportEmpty">Aucun document sÃ©lectionnÃ©.</div>
               </div>
               <div id="posteCompImportFileCard" class="sb-row-card" style="display:none;margin-top:12px;">
                 <div class="sb-row-left">
                   <span class="sb-badge sb-badge--accent-soft">DOC</span>
                   <div>
-                    <div class="sb-row-title" id="posteCompImportFileName">—</div>
-                    <div class="card-sub" id="posteCompImportFileMeta">—</div>
+                    <div class="sb-row-title" id="posteCompImportFileName">â€”</div>
+                    <div class="card-sub" id="posteCompImportFileMeta">â€”</div>
                   </div>
                 </div>
               </div>
@@ -4182,9 +4182,9 @@ function renderPosteCompAiResults(){
         const change = modal.querySelector("#btnPosteCompImportChange");
         if (input) input.value = "";
         if (card) card.style.display = "none";
-        if (name) name.textContent = "—";
-        if (meta) meta.textContent = "—";
-        if (empty) empty.textContent = "Aucun document sélectionné.";
+        if (name) name.textContent = "â€”";
+        if (meta) meta.textContent = "â€”";
+        if (empty) empty.textContent = "Aucun document sÃ©lectionnÃ©.";
         if (msg) msg.textContent = "";
         if (analyze){ analyze.disabled = true; analyze.style.opacity = ".6"; }
         if (change){ change.disabled = true; change.style.opacity = ".6"; }
@@ -4199,7 +4199,7 @@ function renderPosteCompAiResults(){
     function setPosteCompImportFile(file){
         if (!file) return;
         const ext = getPosteCompImportExt(file.name || "");
-        if (!POSTE_IMPORT_EXTENSIONS.includes(ext)) throw new Error("Format non supporté. Utilise un fichier .doc, .docx ou .pdf.");
+        if (!POSTE_IMPORT_EXTENSIONS.includes(ext)) throw new Error("Format non supportÃ©. Utilise un fichier .doc, .docx ou .pdf.");
         if ((file.size || 0) > POSTE_IMPORT_MAX_BYTES) throw new Error("Document trop volumineux. Limite : 15 Mo.");
         _posteCompImportFile = file;
         const modal = ensurePosteCompImportModal();
@@ -4211,8 +4211,8 @@ function renderPosteCompAiResults(){
         const change = modal.querySelector("#btnPosteCompImportChange");
         if (card) card.style.display = "";
         if (name) name.textContent = file.name || "Document";
-        if (meta) meta.textContent = `${ext.toUpperCase().replace(".", "")} · ${formatFileSize(file.size || 0)}`;
-        if (empty) empty.textContent = "Document chargé. Lance l’import pour alimenter la fiche.";
+        if (meta) meta.textContent = `${ext.toUpperCase().replace(".", "")} Â· ${formatFileSize(file.size || 0)}`;
+        if (empty) empty.textContent = "Document chargÃ©. Lance lâ€™import pour alimenter la fiche.";
         if (analyze){ analyze.disabled = false; analyze.style.opacity = ""; }
         if (change){ change.disabled = false; change.style.opacity = ""; }
     }
@@ -4263,7 +4263,7 @@ function renderPosteCompAiResults(){
             if (descEl){
                 const current = (descEl.value || "").trim();
                 const imported = repairAiTextEncodingGlitches(data.description || "").trim();
-                // Si l'ancien import avait tout jeté dans la description, on remplace par la description catégorisée.
+                // Si l'ancien import avait tout jetÃ© dans la description, on remplace par la description catÃ©gorisÃ©e.
                 if (!current || current.length > 1400 || current === extractedText.slice(0, current.length)){
                     descEl.value = imported;
                 } else {
@@ -4311,14 +4311,14 @@ function renderPosteCompAiResults(){
     }
 
     async function runPosteCompImport(portal){
-        if (!_posteCompImportFile){ portal.showAlert("error", "Sélectionne un document avant d’importer."); return; }
+        if (!_posteCompImportFile){ portal.showAlert("error", "SÃ©lectionne un document avant dâ€™importer."); return; }
         const ownerId = getOwnerId();
         if (!ownerId) throw new Error("Owner manquant (?id=...).");
         const modal = ensurePosteCompImportModal();
         const btn = modal.querySelector("#btnPosteCompImportAnalyze");
         const msg = modal.querySelector("#posteCompImportMsg");
-        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Analyse…"; }
-        if (msg) msg.textContent = "Extraction et classement du texte en cours…";
+        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Analyseâ€¦"; }
+        if (msg) msg.textContent = "Extraction et classement du texte en coursâ€¦";
         try{
             const token = await resolveStudioAccessToken();
             const headers = {};
@@ -4336,7 +4336,7 @@ function renderPosteCompAiResults(){
             }
             const data = await resp.json();
             applyPosteCompImportedDraft(data || {});
-            if (msg) msg.textContent = "Document importé et réparti dans la fiche compétence.";
+            if (msg) msg.textContent = "Document importÃ© et rÃ©parti dans la fiche compÃ©tence.";
             closePosteCompImportModal();
         } finally {
             if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "Importer le texte"; }
@@ -4410,15 +4410,15 @@ function renderPosteCompAiResults(){
         const data = await portal.apiJson(url);
         let items = data.items || [];
 
-        // Filtre etat: active/valide (toujours) + à valider si checkbox
+        // Filtre etat: active/valide (toujours) + Ã  valider si checkbox
         items = items.filter(it => {
         const et = (it.etat || "").toLowerCase();
         if (et === "active" || et === "valide") return true;
-        if (_posteCompAddIncludeToValidate && et === "à valider") return true;
+        if (_posteCompAddIncludeToValidate && et === "Ã  valider") return true;
         return false;
         });
 
-        // Exclure déjà rattachées (actives)
+        // Exclure dÃ©jÃ  rattachÃ©es (actives)
         const existing = new Set((_posteCompItems || []).map(x => x.id_competence));
         items = items.filter(it => !existing.has(it.id_comp));
 
@@ -4437,7 +4437,7 @@ function renderPosteCompAiResults(){
         if (!items.length){
         const e = document.createElement("div");
         e.className = "card-sub";
-        e.textContent = "Aucune compétence à afficher.";
+        e.textContent = "Aucune compÃ©tence Ã  afficher.";
         host.appendChild(e);
         return;
         }
@@ -4451,7 +4451,7 @@ function renderPosteCompAiResults(){
 
         const code = document.createElement("span");
         code.className = "sb-badge sb-badge--comp";
-        code.textContent = it.code || "—";
+        code.textContent = it.code || "â€”";
 
         const title = document.createElement("div");
         title.className = "sb-row-title";
@@ -4463,10 +4463,10 @@ function renderPosteCompAiResults(){
         const right = document.createElement("div");
         right.className = "sb-row-right";
 
-        if ((it.etat || "").toLowerCase() === "à valider"){
+        if ((it.etat || "").toLowerCase() === "Ã  valider"){
             const v = document.createElement("span");
             v.className = "sb-badge sb-badge--accent-soft";
-            v.textContent = "À valider";
+            v.textContent = "Ã€ valider";
             right.appendChild(v);
         }
 
@@ -4524,7 +4524,7 @@ function renderPosteCompAiResults(){
             b.textContent = code;
             b.style.display = code ? "" : "none";
         }
-        byId("posteCompEditTitle").textContent = (_posteCompEdit.intitule || "Compétence").toString();
+        byId("posteCompEditTitle").textContent = (_posteCompEdit.intitule || "CompÃ©tence").toString();
 
         const dom = byId("posteCompEditDomain");
         const domTxt = byId("posteCompEditDomainTxt");
@@ -4540,10 +4540,10 @@ function renderPosteCompAiResults(){
             }
         }
 
-        byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
-        byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
-        byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
-        if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
+        byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "â€”");
+        byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "â€”");
+        byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "â€”");
+        if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "â€”");
 
         setPosteCompEditNiv(_posteCompEdit.niveau_requis || "C");
 
@@ -4562,10 +4562,10 @@ function renderPosteCompAiResults(){
                     _posteCompEdit.niveaub = detail.niveaub || "";
                     _posteCompEdit.niveauc = detail.niveauc || "";
                     _posteCompEdit.niveaud = detail.niveaud || "";
-                    byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
-                    byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
-                    byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
-                    if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
+                    byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "â€”");
+                    byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "â€”");
+                    byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "â€”");
+                    if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "â€”");
                 } catch(_){ }
             })();
         }
@@ -4632,7 +4632,7 @@ function refreshPosteCompEditCritDisplay(){
 
     function formatValidityMonths(v){
         const n = parseInt(v ?? "", 10);
-        if (!Number.isFinite(n) || n <= 0) return "—";
+        if (!Number.isFinite(n) || n <= 0) return "â€”";
         return `${n} mois`;
     }
 
@@ -4641,7 +4641,7 @@ function refreshPosteCompEditCritDisplay(){
         if (Number.isFinite(ov) && ov > 0) return `${ov} mois`;
         const base = parseInt(it?.duree_validite ?? "", 10);
         if (Number.isFinite(base) && base > 0) return `${base} mois`;
-        return "—";
+        return "â€”";
     }
 
     function buildPosteCertBaseInfo(it){
@@ -4649,24 +4649,24 @@ function refreshPosteCompEditCritDisplay(){
         const base = formatValidityMonths(it?.duree_validite);
         const delai = formatValidityMonths(it?.delai_renouvellement);
 
-        parts.push(`Validité catalogue : ${base}`);
-        if (delai !== "—") parts.push(`Délai de renouvellement : ${delai}`);
+        parts.push(`ValiditÃ© catalogue : ${base}`);
+        if (delai !== "â€”") parts.push(`DÃ©lai de renouvellement : ${delai}`);
 
-        return parts.join(" · ");
+        return parts.join(" Â· ");
     }
 
     function buildPosteCertAddMeta(it){
         const parts = [];
 
         const cat = (it?.categorie || "").toString().trim();
-        if (cat) parts.push(`Catégorie : ${cat}`);
+        if (cat) parts.push(`CatÃ©gorie : ${cat}`);
 
-        parts.push(`Validité catalogue : ${formatValidityMonths(it?.duree_validite)}`);
+        parts.push(`ValiditÃ© catalogue : ${formatValidityMonths(it?.duree_validite)}`);
 
         const delai = formatValidityMonths(it?.delai_renouvellement);
-        if (delai !== "—") parts.push(`Délai de renouvellement : ${delai}`);
+        if (delai !== "â€”") parts.push(`DÃ©lai de renouvellement : ${delai}`);
 
-        return parts.join(" · ");
+        return parts.join(" Â· ");
     }
 
     async function loadPosteCertifications(portal){
@@ -4721,7 +4721,7 @@ function refreshPosteCompEditCritDisplay(){
 
             const tdCat = document.createElement("td");
             const cat = (it.categorie || "").toString().trim();
-            tdCat.textContent = cat || "—";
+            tdCat.textContent = cat || "â€”";
 
             const tdNom = document.createElement("td");
             const certWrap = document.createElement("div");
@@ -4738,14 +4738,14 @@ function refreshPosteCompEditCritDisplay(){
             tdVal.style.textAlign = "center";
             tdVal.textContent = getPosteCertValidityLabel(it);
             if (it.validite_override !== null && it.validite_override !== undefined && String(it.validite_override).trim() !== ""){
-                tdVal.title = `Validité catalogue : ${formatValidityMonths(it.duree_validite)}`;
+                tdVal.title = `ValiditÃ© catalogue : ${formatValidityMonths(it.duree_validite)}`;
             }
 
             const tdLvl = document.createElement("td");
             tdLvl.style.textAlign = "center";
             const bl = document.createElement("span");
-            bl.className = `sb-badge ${String(it.niveau_exigence || "").toLowerCase() === "souhaité" ? "sb-badge--poste-soft" : "sb-badge--accent-soft"}`;
-            bl.textContent = it.niveau_exigence || "—";
+            bl.className = `sb-badge ${String(it.niveau_exigence || "").toLowerCase() === "souhaitÃ©" ? "sb-badge--poste-soft" : "sb-badge--accent-soft"}`;
+            bl.textContent = it.niveau_exigence || "â€”";
             tdLvl.appendChild(bl);
 
             const tdAct = document.createElement("td");
@@ -4779,7 +4779,7 @@ function refreshPosteCompEditCritDisplay(){
                 actions.appendChild(btnRem);
                 tdAct.appendChild(actions);
             } else {
-                tdAct.textContent = "—";
+                tdAct.textContent = "â€”";
             }
 
             tr.appendChild(tdNom);
@@ -4817,13 +4817,13 @@ function refreshPosteCompEditCritDisplay(){
 
         (items || []).forEach(it => {
             const cat = (it.categorie || "").toString().trim() || "__none__";
-            const label = (it.categorie || "").toString().trim() || "Sans catégorie";
+            const label = (it.categorie || "").toString().trim() || "Sans catÃ©gorie";
             if (!map.has(cat)) map.set(cat, label);
         });
 
         sel.innerHTML = "";
         sel.appendChild(new Option("Toutes", ""));
-        sel.appendChild(new Option("Sans catégorie", "__none__"));
+        sel.appendChild(new Option("Sans catÃ©gorie", "__none__"));
 
         Array.from(map.entries())
             .filter(([id]) => id !== "__none__")
@@ -4873,7 +4873,7 @@ function refreshPosteCompEditCritDisplay(){
         if (!items.length){
             const e = document.createElement("div");
             e.className = "card-sub";
-            e.textContent = "Aucune certification à afficher.";
+            e.textContent = "Aucune certification Ã  afficher.";
             host.appendChild(e);
             return;
         }
@@ -5022,24 +5022,24 @@ function refreshPosteCompEditCritDisplay(){
 
         if (rawValidity){
             if (!/^\d+$/.test(rawValidity)) {
-                portal.showAlert("error", "La validité catalogue doit être un entier positif.");
+                portal.showAlert("error", "La validitÃ© catalogue doit Ãªtre un entier positif.");
                 return;
             }
             duree_validite = parseInt(rawValidity, 10);
             if (!Number.isFinite(duree_validite) || duree_validite <= 0){
-                portal.showAlert("error", "La validité catalogue doit être supérieure à 0.");
+                portal.showAlert("error", "La validitÃ© catalogue doit Ãªtre supÃ©rieure Ã  0.");
                 return;
             }
         }
 
         if (rawRenewal){
             if (!/^\d+$/.test(rawRenewal)) {
-                portal.showAlert("error", "Le délai de renouvellement doit être un entier positif.");
+                portal.showAlert("error", "Le dÃ©lai de renouvellement doit Ãªtre un entier positif.");
                 return;
             }
             delai_renouvellement = parseInt(rawRenewal, 10);
             if (!Number.isFinite(delai_renouvellement) || delai_renouvellement <= 0){
-                portal.showAlert("error", "Le délai de renouvellement doit être supérieur à 0.");
+                portal.showAlert("error", "Le dÃ©lai de renouvellement doit Ãªtre supÃ©rieur Ã  0.");
                 return;
             }
         }
@@ -5081,7 +5081,7 @@ function refreshPosteCompEditCritDisplay(){
         byId("posteCertEditTitle").textContent = (_posteCertEdit.nom_certification || "Certification").toString();
 
         const cat = (_posteCertEdit.categorie || "").toString().trim();
-        byId("posteCertEditSub").textContent = cat || "Sans catégorie";
+        byId("posteCertEditSub").textContent = cat || "Sans catÃ©gorie";
 
         byId("posteCertEditBaseInfo").textContent = buildPosteCertBaseInfo(_posteCertEdit);
         byId("posteCertEditOverride").value =
@@ -5104,12 +5104,12 @@ function refreshPosteCompEditCritDisplay(){
 
         if (rawOverride){
             if (!/^\d+$/.test(rawOverride)) {
-                portal.showAlert("error", "La validité spécifique doit être un entier positif.");
+                portal.showAlert("error", "La validitÃ© spÃ©cifique doit Ãªtre un entier positif.");
                 return;
             }
             validiteOverride = parseInt(rawOverride, 10);
             if (!Number.isFinite(validiteOverride) || validiteOverride <= 0){
-                portal.showAlert("error", "La validité spécifique doit être supérieure à 0.");
+                portal.showAlert("error", "La validitÃ© spÃ©cifique doit Ãªtre supÃ©rieure Ã  0.");
                 return;
             }
         }
@@ -5185,7 +5185,7 @@ function refreshPosteCompEditCritDisplay(){
         (_services || []).forEach(s => {
             const opt = document.createElement("option");
             opt.value = s.id_service;
-            opt.textContent = `${"—".repeat(Math.min(6, s.depth))} ${s.nom_service}`;
+            opt.textContent = `${"â€”".repeat(Math.min(6, s.depth))} ${s.nom_service}`;
             sel.appendChild(opt);
         });
 
@@ -5266,7 +5266,7 @@ function refreshPosteCompEditCritDisplay(){
             return (clone.textContent || "").replace(/\s+/g, " ").trim();
         }).filter(Boolean);
         if (ordered.length) return ordered.slice(0, 8);
-        return textFromHtml(html).split(/(?:\n|\r|•)/).map(x => x.trim()).filter(Boolean).slice(0, 8);
+        return textFromHtml(html).split(/(?:\n|\r|â€¢)/).map(x => x.trim()).filter(Boolean).slice(0, 8);
     }
 
     function overviewStatusClass(value){
@@ -5280,7 +5280,7 @@ function refreshPosteCompEditCritDisplay(){
 
     function constraintLevelClass(value){
         const raw = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        if (!raw || raw === "—" || raw.includes("aucun")) return "is-low";
+        if (!raw || raw === "â€”" || raw.includes("aucun")) return "is-low";
         if (raw.includes("faible") || raw.includes("locale")) return "is-low";
         if (raw.includes("modere") || raw.includes("moyen") || raw.includes("frequent")) return "is-medium";
         if (raw.includes("eleve") || raw.includes("fort") || raw.includes("critique")) return "is-high";
@@ -5295,7 +5295,7 @@ function refreshPosteCompEditCritDisplay(){
         (rows || []).forEach(([label, value]) => {
             const dt = document.createElement("dt"); dt.textContent = label;
             const dd = document.createElement("dd");
-            const shown = value || "—";
+            const shown = value || "â€”";
             if (opts.statusLabel === label){
                 const badge = document.createElement("span");
                 badge.className = `studio-poste-status-badge ${overviewStatusClass(shown)}`;
@@ -5329,7 +5329,7 @@ function refreshPosteCompEditCritDisplay(){
         if (!rows.length){
             const empty = document.createElement("div");
             empty.className = "studio-poste-collaborators__empty";
-            empty.textContent = "Aucun collaborateur affecté à ce poste.";
+            empty.textContent = "Aucun collaborateur affectÃ© Ã  ce poste.";
             host.appendChild(empty);
             return;
         }
@@ -5355,7 +5355,7 @@ function refreshPosteCompEditCritDisplay(){
     async function loadPosteCollaborators(portal){
         if (!_editingPosteId) return;
         const host = byId("posteOverviewCollaborators");
-        if (host) host.innerHTML = '<div class="studio-poste-collaborators__empty">Chargement…</div>';
+        if (host) host.innerHTML = '<div class="studio-poste-collaborators__empty">Chargementâ€¦</div>';
         try {
             const ownerId = getOwnerId();
             const qs = new URLSearchParams({ poste: _editingPosteId, active: "all", include_archived: "0" });
@@ -5370,31 +5370,31 @@ function refreshPosteCompEditCritDisplay(){
 
     function renderPosteOverview(detail){
         const d = detail || {};
-        const collabs = _editingPosteListItem?.nb_collabs ?? _editingPosteListItem?.nb_collaborateurs ?? "—";
-        const target = d.nb_titulaires_cible ?? "—";
+        const collabs = _editingPosteListItem?.nb_collabs ?? _editingPosteListItem?.nb_collaborateurs ?? "â€”";
+        const target = d.nb_titulaires_cible ?? "â€”";
         const criticalCompetences = (_posteCompItems || []).filter(it => {
             const score = Number.parseInt(it?.poids_criticite ?? "", 10);
             return Number.isFinite(score) && score > 79;
         }).length;
 
         _setValue("posteOverviewCollabs", String(collabs));
-        _setValue("posteOverviewCollabsMeta", target === "—" ? "Titularisation du poste" : `${collabs} sur ${target} titulaire${Number(target) > 1 ? "s" : ""} cible${Number(target) > 1 ? "s" : ""}`);
+        _setValue("posteOverviewCollabsMeta", target === "â€”" ? "Titularisation du poste" : `${collabs} sur ${target} titulaire${Number(target) > 1 ? "s" : ""} cible${Number(target) > 1 ? "s" : ""}`);
         _setValue("posteOverviewCompetences", String((_posteCompItems || []).length));
         _setValue("posteOverviewCompetencesMeta", `${criticalCompetences} critique${criticalCompetences > 1 ? "s" : ""} (> 79 %)`);
         _setValue("posteOverviewCertifications", String((_posteCertItems || []).length));
         _setValue("posteOverviewCertificationsMeta", (_posteCertItems || []).length ? "Exigences du poste" : "Aucune certification requise");
         const crit = d.criticite_poste ?? "";
-        const critLabel = ({1:"Faible",2:"Modérée",3:"Élevée",4:"Critique"})[String(crit)] || String(crit || "—");
+        const critLabel = ({1:"Faible",2:"ModÃ©rÃ©e",3:"Ã‰levÃ©e",4:"Critique"})[String(crit)] || String(crit || "â€”");
         _setValue("posteOverviewCriticite", critLabel);
-        _setValue("posteOverviewCriticiteMeta", critLabel === "—" ? "Non renseignée" : "Impact sur l’activité");
-        _setValue("posteOverviewMission", d.mission_principale || "—");
-        _setValue("posteOverviewComment", d.param_rh_commentaire || "—");
+        _setValue("posteOverviewCriticiteMeta", critLabel === "â€”" ? "Non renseignÃ©e" : "Impact sur lâ€™activitÃ©");
+        _setValue("posteOverviewMission", d.mission_principale || "â€”");
+        _setValue("posteOverviewComment", d.param_rh_commentaire || "â€”");
 
         const activities = byId("posteOverviewActivities");
         if (activities){
             activities.innerHTML = "";
             const items = extractMainActivities(d.responsabilites || "");
-            (items.length ? items : ["Aucune activité principale renseignée."]).forEach(x => {
+            (items.length ? items : ["Aucune activitÃ© principale renseignÃ©e."]).forEach(x => {
                 const li = document.createElement("li"); li.textContent = x; activities.appendChild(li);
             });
         }
@@ -5406,10 +5406,10 @@ function refreshPosteCompEditCritDisplay(){
                 const row = document.createElement("div");
                 const levelKey = nsLevelKey(it.niveau_requis || it.niveau || "").toLowerCase();
                 const code = String(it.code_competence || it.code || "").trim();
-                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="sb-badge sb-badge--comp"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="sb-badge sb-badge--comp"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "CompÃ©tence")}</span></span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
                 compHost.appendChild(row);
             });
-            if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
+            if (!compHost.children.length) compHost.textContent = "Aucune compÃ©tence rattachÃ©e.";
         }
 
         const certHost = byId("posteOverviewCertList");
@@ -5417,26 +5417,26 @@ function refreshPosteCompEditCritDisplay(){
             certHost.innerHTML = "";
             (_posteCertItems || []).slice(0, 4).forEach(it => {
                 const row = document.createElement("div");
-                const certStatus = it.obligatoire ? "Obligatoire" : "Recommandée";
+                const certStatus = it.obligatoire ? "Obligatoire" : "RecommandÃ©e";
                 row.innerHTML = `<span>${htmlEsc(it.intitule_certification || it.nom_certification || it.intitule || "Certification")}</span><strong class="studio-poste-overview-badge studio-poste-overview-badge--cert">${htmlEsc(certStatus)}</strong>`;
                 certHost.appendChild(row);
             });
-            if (!certHost.children.length) certHost.textContent = "Aucune certification rattachée.";
+            if (!certHost.children.length) certHost.textContent = "Aucune certification rattachÃ©e.";
         }
 
         setOverviewDl("posteOverviewInfo", [
             ["Service", d.nom_service || _editingPosteListItem?.nom_service],
             ["Code client", d.codif_client],
             ["Statut du poste", d.statut_poste],
-            ["Stratégie de pourvoi", d.strategie_pourvoi],
-            ["Nb titulaires cible", String(d.nb_titulaires_cible ?? "—")],
-            ["Début de validité", d.date_debut_validite],
-            ["Fin de validité", d.date_fin_validite]
+            ["StratÃ©gie de pourvoi", d.strategie_pourvoi],
+            ["Nb titulaires cible", String(d.nb_titulaires_cible ?? "â€”")],
+            ["DÃ©but de validitÃ©", d.date_debut_validite],
+            ["Fin de validitÃ©", d.date_fin_validite]
         ], { statusLabel: "Statut du poste" });
         setOverviewDl("posteOverviewConstraints", [
-            ["Mobilité", d.mobilite],
+            ["MobilitÃ©", d.mobilite],
             ["Risques physiques", d.risque_physique],
-            ["Perspectives d’évolution", d.perspectives_evolution],
+            ["Perspectives dâ€™Ã©volution", d.perspectives_evolution],
             ["Niveau de contraintes", d.niveau_contrainte]
         ], { constraintBadges: true });
     }
@@ -5461,7 +5461,7 @@ function refreshPosteCompEditCritDisplay(){
         if (modal) modal.setAttribute("data-id-poste", "");
 
         byId("posteModalTitle").textContent = "Ajouter un poste";
-        byId("posteModalSub").textContent = "Créez une fiche de poste et rattachez-la au service voulu.";
+        byId("posteModalSub").textContent = "CrÃ©ez une fiche de poste et rattachez-la au service voulu.";
 
         const badge = byId("posteModalBadge");
         if (badge){ badge.style.display = "none"; badge.textContent = ""; }
@@ -5472,7 +5472,7 @@ function refreshPosteCompEditCritDisplay(){
 
         fillPosteServiceSelect(defaultSid);
 
-        
+
         byId("posteCodifClient").value = "";
         byId("posteIntitule").value = "";
         byId("posteMission").value = "";
@@ -5484,7 +5484,7 @@ function refreshPosteCompEditCritDisplay(){
         refreshPosteFooterActions();
 
         const bS = byId("btnPosteSave");
-        if (bS) setBtnLabel(bS, "Créer");
+        if (bS) setBtnLabel(bS, "CrÃ©er");
 
         fillPosteContraintesTab({});
         resetPosteCcnUi(true);
@@ -5522,7 +5522,7 @@ function refreshPosteCompEditCritDisplay(){
         refreshPosteImportButton();
         resetPosteImportState();
         closePosteImportModal();
-        
+
         if (!pid) return;
 
         _posteModalMode = "edit";
@@ -5552,7 +5552,7 @@ function refreshPosteCompEditCritDisplay(){
         fillPosteServiceSelect((p && p.id_service) ? String(p.id_service) : "");
         resetPosteCompAiUi();
 
-        // On pré-remplit ce qu'on a déjà (le détail complet arrive à l'étape 2)
+        // On prÃ©-remplit ce qu'on a dÃ©jÃ  (le dÃ©tail complet arrive Ã  l'Ã©tape 2)
         byId("posteIntitule").value = (p && p.intitule) ? String(p.intitule) : "";
 
         refreshPosteFooterActions();
@@ -5573,7 +5573,7 @@ function refreshPosteCompEditCritDisplay(){
         setPosteTab("overview");
         openModal("modalPoste");
 
-        // Charge le détail (définition + exigences/contraintes)
+        // Charge le dÃ©tail (dÃ©finition + exigences/contraintes)
         (async () => {
         try{
             let d = await fetchPosteDetail(portal, _editingPosteId);
@@ -5590,17 +5590,17 @@ function refreshPosteCompEditCritDisplay(){
             await loadPosteCollaborators(portal);
             renderPosteOverview(d);
 
-            // --- Définition (remplissage robuste: si champ supprimé, pas d'erreur)
+            // --- DÃ©finition (remplissage robuste: si champ supprimÃ©, pas d'erreur)
             const elCodCli = byId("posteCodifClient"); if (elCodCli) elCodCli.value = (d.codif_client || "");
             const elInt = byId("posteIntitule"); if (elInt) elInt.value = (d.intitule_poste || "");
             const elMis = byId("posteMission"); if (elMis) elMis.value = (d.mission_principale || "");
 
-            // Responsabilités: richtext si présent, sinon textarea
+            // ResponsabilitÃ©s: richtext si prÃ©sent, sinon textarea
             if (typeof rtSetHtml === "function") rtSetHtml("posteResp", d.responsabilites || "");
             else { const elResp = byId("posteResp"); if (elResp) elResp.value = (d.responsabilites || ""); }
             seedPosteAiModalFromCurrent();
 
-            // --- Exigences > Contraintes (les fonctions seront ajoutées/existent déjà chez toi)
+            // --- Exigences > Contraintes (les fonctions seront ajoutÃ©es/existent dÃ©jÃ  chez toi)
             if (typeof ensureNsfGroupes === "function") {
             await ensureNsfGroupes(portal);
             if (typeof fillNsfSelect === "function") fillNsfSelect(d?.nsf_groupe_code || "");
@@ -5654,11 +5654,11 @@ function refreshPosteCompEditCritDisplay(){
         const resp = rtGetPosteRespHtml();
 
         if (!sid){
-            showOrgPopup("Service obligatoire", "Sélectionnez ou créez un service pour rattacher cette fiche de poste. Le bouton + à côté du champ Service permet de le créer sans quitter le poste.");
+            showOrgPopup("Service obligatoire", "SÃ©lectionnez ou crÃ©ez un service pour rattacher cette fiche de poste. Le bouton + Ã  cÃ´tÃ© du champ Service permet de le crÃ©er sans quitter le poste.");
             return null;
         }
         if (!title){
-            showPosteSaveInlineMsg("Intitulé obligatoire.", true);
+            showPosteSaveInlineMsg("IntitulÃ© obligatoire.", true);
             return null;
         }
 
@@ -5691,7 +5691,7 @@ function refreshPosteCompEditCritDisplay(){
         const rawNbTit = (byId("posteRhNbTitulaires")?.value || "").trim();
         const nbTit = parseInt(rawNbTit || "1", 10);
         if (!Number.isFinite(nbTit) || nbTit < 1){
-            showPosteSaveInlineMsg("Le nombre de titulaires cible doit être supérieur ou égal à 1.", true);
+            showPosteSaveInlineMsg("Le nombre de titulaires cible doit Ãªtre supÃ©rieur ou Ã©gal Ã  1.", true);
             return null;
         }
         payload.nb_titulaires_cible = nbTit;
@@ -5699,13 +5699,13 @@ function refreshPosteCompEditCritDisplay(){
         const rawCrit = (byId("posteRhCriticite")?.value || "").trim();
         const crit = parseInt(rawCrit || "2", 10);
         if (!Number.isFinite(crit) || crit < 1 || crit > 3){
-            showPosteSaveInlineMsg("La criticité du poste doit être comprise entre 1 et 3.", true);
+            showPosteSaveInlineMsg("La criticitÃ© du poste doit Ãªtre comprise entre 1 et 3.", true);
             return null;
         }
         payload.criticite_poste = crit;
 
         if (payload.date_debut_validite && payload.date_fin_validite && payload.date_fin_validite < payload.date_debut_validite){
-            showPosteSaveInlineMsg("La date de fin de validité doit être postérieure ou égale à la date de début.", true);
+            showPosteSaveInlineMsg("La date de fin de validitÃ© doit Ãªtre postÃ©rieure ou Ã©gale Ã  la date de dÃ©but.", true);
             return null;
         }
 
@@ -5740,11 +5740,11 @@ function refreshPosteCompEditCritDisplay(){
                 setPosteModalActif(true);
                 seedPosteAiModalFromCurrent();
                 await refreshPosteCcnContextAfterSave(portal);
-                if (!silent) setStatus(opts.statusMessage || "Poste créé.");
+                if (!silent) setStatus(opts.statusMessage || "Poste crÃ©Ã©.");
                 return r;
             }
 
-            if (!silent) setStatus(opts.statusMessage || "Poste créé.");
+            if (!silent) setStatus(opts.statusMessage || "Poste crÃ©Ã©.");
             closePosteModal();
             return r;
 
@@ -5765,11 +5765,11 @@ function refreshPosteCompEditCritDisplay(){
             await loadPostes(portal);
 
             if (!keepOpen){
-                if (!silent) setStatus(opts.statusMessage || "Poste enregistré.");
+                if (!silent) setStatus(opts.statusMessage || "Poste enregistrÃ©.");
                 closePosteModal();
             } else {
                 await refreshPosteCcnContextAfterSave(portal);
-                if (!silent) setStatus(opts.statusMessage || "Poste enregistré.");
+                if (!silent) setStatus(opts.statusMessage || "Poste enregistrÃ©.");
             }
             return r || { ok: true };
         }
@@ -5781,7 +5781,7 @@ function refreshPosteCompEditCritDisplay(){
         if (!pid) return;
 
         const isActif = !(poste && poste.actif === false);
-        const wantArchive = isActif; // actif => archive ; archivé => restaure
+        const wantArchive = isActif; // actif => archive ; archivÃ© => restaure
 
         const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/archive`);
         await portal.apiJson(url, {
@@ -5795,7 +5795,7 @@ function refreshPosteCompEditCritDisplay(){
         await loadServices(portal);
         await loadPostes(portal);
 
-        setStatus(wantArchive ? "Poste archivé." : "Poste restauré.");
+        setStatus(wantArchive ? "Poste archivÃ©." : "Poste restaurÃ©.");
     }
 
     async function toggleArchivePosteFromModal(portal){
@@ -5804,7 +5804,7 @@ function refreshPosteCompEditCritDisplay(){
         if (!pid) return;
 
         const isActif = getPosteModalActif();
-        const wantArchive = isActif; // si actif => on archive ; si archivé => on restaure
+        const wantArchive = isActif; // si actif => on archive ; si archivÃ© => on restaure
 
         const url = appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/archive`);
         const r = await portal.apiJson(url, {
@@ -5821,7 +5821,7 @@ function refreshPosteCompEditCritDisplay(){
         const nowActif = (r && typeof r.actif === "boolean") ? r.actif : !wantArchive;
         setPosteModalActif(nowActif);
 
-        setStatus(wantArchive ? "Poste archivé." : "Poste restauré.");
+        setStatus(wantArchive ? "Poste archivÃ©." : "Poste restaurÃ©.");
     }
 
     async function duplicatePosteFromModal(portal){
@@ -5831,7 +5831,7 @@ function refreshPosteCompEditCritDisplay(){
 
         const sid = (byId("posteService")?.value || "").trim();
         if (!sid){
-            showOrgPopup("Service obligatoire", "Sélectionnez ou créez un service cible avant de dupliquer cette fiche de poste.");
+            showOrgPopup("Service obligatoire", "SÃ©lectionnez ou crÃ©ez un service cible avant de dupliquer cette fiche de poste.");
             return;
         }
 
@@ -5858,9 +5858,9 @@ function refreshPosteCompEditCritDisplay(){
                 nb_collabs: 0,
                 actif: true,
             });
-            setStatus("Poste dupliqué.");
+            setStatus("Poste dupliquÃ©.");
         } else {
-            setStatus("Poste dupliqué.");
+            setStatus("Poste dupliquÃ©.");
         }
     }
 
@@ -5870,12 +5870,12 @@ function refreshPosteCompEditCritDisplay(){
         _editingServiceId = null;
         _serviceModalReturnTarget = returnTarget || null;
 
-        byId("svcModalTitle").textContent = "Créer un service";
+        byId("svcModalTitle").textContent = "CrÃ©er un service";
         byId("svcModalSub").textContent = (_serviceModalReturnTarget === "poste_create")
-            ? "Créez d’abord un service pour rattacher la fiche de poste."
+            ? "CrÃ©ez dâ€™abord un service pour rattacher la fiche de poste."
             : (_serviceModalReturnTarget === "poste_select")
-                ? "Créez le service à rattacher à cette fiche de poste."
-                : "Définissez le nom et, si besoin, le parent.";
+                ? "CrÃ©ez le service Ã  rattacher Ã  cette fiche de poste."
+                : "DÃ©finissez le nom et, si besoin, le parent.";
         byId("svcName").value = "";
         fillParentSelect(null);
 
@@ -5908,7 +5908,7 @@ function refreshPosteCompEditCritDisplay(){
         if (excludeId && s.id_service === excludeId) return;
         const opt = document.createElement("option");
         opt.value = s.id_service;
-        opt.textContent = `${"—".repeat(Math.min(6, s.depth))} ${s.nom_service}`;
+        opt.textContent = `${"â€”".repeat(Math.min(6, s.depth))} ${s.nom_service}`;
         sel.appendChild(opt);
         });
 
@@ -5922,7 +5922,7 @@ function refreshPosteCompEditCritDisplay(){
         const returnTarget = _serviceModalReturnTarget;
 
         if (!name) {
-            showOrgPopup("Service obligatoire", "Renseignez le nom du service avant d’enregistrer.");
+            showOrgPopup("Service obligatoire", "Renseignez le nom du service avant dâ€™enregistrer.");
             return;
         }
 
@@ -5962,10 +5962,10 @@ function refreshPosteCompEditCritDisplay(){
         if (returnTarget === "poste_create"){
             openCreatePosteModal(portal);
             if (createdServiceId) fillPosteServiceSelect(createdServiceId);
-            showPosteSaveInlineMsg("Service créé et sélectionné");
+            showPosteSaveInlineMsg("Service crÃ©Ã© et sÃ©lectionnÃ©");
         } else if (returnTarget === "poste_select"){
             if (createdServiceId) fillPosteServiceSelect(createdServiceId);
-            showPosteSaveInlineMsg("Service créé et sélectionné");
+            showPosteSaveInlineMsg("Service crÃ©Ã© et sÃ©lectionnÃ©");
         }
     }
 
@@ -5975,7 +5975,7 @@ function refreshPosteCompEditCritDisplay(){
         const s = (_services || []).find(x => x.id_service === _selectedService);
         if (!s) return;
 
-        byId("archiveMsg").textContent = `Archiver "${s.nom_service}" ? Les postes et collaborateurs seront détachés (Non lié).`;
+        byId("archiveMsg").textContent = `Archiver "${s.nom_service}" ? Les postes et collaborateurs seront dÃ©tachÃ©s (Non liÃ©).`;
         openModal("modalArchive");
     }
 
@@ -6042,7 +6042,7 @@ function refreshPosteCompEditCritDisplay(){
 
         const code = document.createElement("span");
         code.className = "sb-badge sb-badge--comp";
-        code.textContent = it.code || "—";
+        code.textContent = it.code || "â€”";
 
         const title = document.createElement("div");
         title.className = "sb-row-title";
@@ -6081,10 +6081,10 @@ function refreshPosteCompEditCritDisplay(){
         await loadServices(portal);
         await loadPostes(portal);
 
-        // mettre à jour meta header service sélectionné
+        // mettre Ã  jour meta header service sÃ©lectionnÃ©
         const row = document.querySelector(`.org-svc-item[data-sid="${CSS.escape(sid)}"] .org-svc-meta`);
         if (row) {
-        // on laisse la liste refléter les compteurs rechargés
+        // on laisse la liste reflÃ©ter les compteurs rechargÃ©s
         }
     }
 
@@ -6093,7 +6093,7 @@ function refreshPosteCompEditCritDisplay(){
         if (_bound) return;
         _bound = true;
 
-        // admin-only (page est admin-only, mais on blinde l’UX)
+        // admin-only (page est admin-only, mais on blinde lâ€™UX)
         if (!isAdmin()) {
         const a = byId("btnSvcAdd"); if (a) a.style.display = "none";
         const b = byId("btnSvcEdit"); if (b) b.style.display = "none";
@@ -6184,7 +6184,7 @@ function refreshPosteCompEditCritDisplay(){
         byId("btnCancelService").addEventListener("click", () => closeServiceModal());
         byId("btnSaveService").addEventListener("click", async () => {
         try { await saveService(portal); }
-        catch (e) { showOrgPopup("Création du service", e?.message || String(e)); }
+        catch (e) { showOrgPopup("CrÃ©ation du service", e?.message || String(e)); }
         });
 
         byId("btnCloseArchive").addEventListener("click", () => closeModal("modalArchive"));
@@ -6203,14 +6203,14 @@ function refreshPosteCompEditCritDisplay(){
                 }
                 openCreatePosteModal(portal);
             }
-            catch (e) { showOrgPopup("Création du poste", e?.message || String(e)); }
+            catch (e) { showOrgPopup("CrÃ©ation du poste", e?.message || String(e)); }
         });
 
         byId("btnPosteServiceAdd")?.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
             try { openCreateService("poste_select"); }
-            catch (err) { showOrgPopup("Création du service", err?.message || String(err)); }
+            catch (err) { showOrgPopup("CrÃ©ation du service", err?.message || String(err)); }
         });
 
         byId("btnCloseCatalog").addEventListener("click", () => closeModal("modalCatalog"));
@@ -6314,7 +6314,7 @@ function refreshPosteCompEditCritDisplay(){
                 });
 
                 if (saved){
-                    showPosteSaveInlineMsg("Enregistré avec succès");
+                    showPosteSaveInlineMsg("EnregistrÃ© avec succÃ¨s");
                 }
             }
             catch(e){

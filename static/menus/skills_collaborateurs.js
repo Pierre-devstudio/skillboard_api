@@ -1,4 +1,4 @@
-/* ======================================================
+﻿/* ======================================================
    static/menus/skills_collaborateurs.js
    - Menu "Vos collaborateurs"
    - Filtres (service, recherche, toggles)
@@ -17,10 +17,10 @@
   let _searchTimer = null;
   let _collabInlineMsgTimer = null;
 
-  // Indisponibilités (KPI + filtre table)
+  // IndisponibilitÃ©s (KPI + filtre table)
   let _lastListItems = [];
   let _breakNowIds = new Set();     // collaborateurs indispo aujourd'hui
-  let _breakNext30Ids = new Set();  // collaborateurs avec indispo qui démarre dans les 30j
+  let _breakNext30Ids = new Set();  // collaborateurs avec indispo qui dÃ©marre dans les 30j
   let _breakFocus = null;           // "now" | "next30" | null
 
 
@@ -38,16 +38,16 @@
       .replaceAll("'", "&#039;");
   }
 
-  function setText(id, value, fallback = "–") {
+  function setText(id, value, fallback = "â€“") {
     const el = byId(id);
     if (!el) return;
     el.textContent = value != null && value !== "" ? value : fallback;
   }
 
   function formatDateFR(iso) {
-    if (!iso) return "–";
+    if (!iso) return "â€“";
     const d = new Date(iso);
-    if (isNaN(d.getTime())) return "–";
+    if (isNaN(d.getTime())) return "â€“";
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
@@ -158,7 +158,7 @@
     _breakNowIds = new Set();
     _breakNext30Ids = new Set();
 
-    // Scope: même périmètre que la liste (service + filtres liste déjà appliqués)
+    // Scope: mÃªme pÃ©rimÃ¨tre que la liste (service + filtres liste dÃ©jÃ  appliquÃ©s)
     const list = Array.isArray(items) ? items : [];
     const ids = list.map(x => String(x?.id_effectif || "").trim()).filter(Boolean);
 
@@ -171,7 +171,7 @@
     const today = toDateOnly(new Date());
     const end30 = addDays(today, 30);
 
-    // On récupère toutes les indispos qui intersectent [today ; today+30]
+    // On rÃ©cupÃ¨re toutes les indispos qui intersectent [today ; today+30]
     const breaks = await loadBreaks(id_contact, {
       start: toYmd(today),
       end: toYmd(end30),
@@ -298,10 +298,10 @@
 
   function renderPdfBlobInWindow(popupWin, blob, title) {
     const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
-    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+    if (!win) throw new Error("Ouverture du PDF bloquÃ©e par le navigateur.");
 
     const blobUrl = URL.createObjectURL(blob);
-    const safeTitle = escapeHtml(title || "Fiche compétence");
+    const safeTitle = escapeHtml(title || "Fiche compÃ©tence");
 
     win.document.open();
     win.document.write(`<!doctype html>
@@ -329,9 +329,9 @@
 
   async function openCollaborateurCompetencePdf(id_contact, id_effectif, item, popupWin) {
     const compId = String(item?.id_comp || "").trim();
-    if (!id_contact || !id_effectif || !compId) throw new Error("Compétence introuvable.");
+    if (!id_contact || !id_effectif || !compId) throw new Error("CompÃ©tence introuvable.");
 
-    const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+    const title = `Fiche compÃ©tence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "CompÃ©tence"}`;
     const blob = await fetchCollaborateurCompetencePdfBlob(id_contact, id_effectif, compId);
     renderPdfBlobInWindow(popupWin, blob, title);
   }
@@ -372,18 +372,18 @@
     const v = (sel.value || "").trim();
 
     if (window.portal.serviceFilter.isAll(v)) {
-      el.textContent = "Périmètre : entreprise";
+      el.textContent = "PÃ©rimÃ¨tre : entreprise";
       return;
     }
 
     if (v === window.portal.serviceFilter.NON_LIE_ID) {
-      el.textContent = "Périmètre : non liés (sans service)";
+      el.textContent = "PÃ©rimÃ¨tre : non liÃ©s (sans service)";
       return;
     }
 
 
     const label = sel.options[sel.selectedIndex]?.textContent || "service";
-    el.textContent = `Périmètre : ${label}`;
+    el.textContent = `PÃ©rimÃ¨tre : ${label}`;
   }
 
   let _selectedCollaborateur = null;
@@ -397,7 +397,7 @@
     const n = (it?.nom_effectif || "").trim();
     const a = p ? p[0] : "";
     const b = n ? n[0] : "";
-    return `${a}${b}`.toUpperCase() || "–";
+    return `${a}${b}`.toUpperCase() || "â€“";
   }
 
   function getCollaborateurRoles(it) {
@@ -405,7 +405,7 @@
     if (it?.is_temp) roles.push("Temporaire");
     if (it?.ismanager) roles.push("Manager");
     if (it?.isformateur) roles.push("Formateur");
-    if (!roles.length) roles.push("Employé");
+    if (!roles.length) roles.push("EmployÃ©");
     return roles;
   }
 
@@ -462,7 +462,7 @@
         <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon(icon)}</span>
         <span>
           <span class="sb-collab-summary-label">${escapeHtml(label)}</span>
-          <strong>${escapeHtml(value || "–")}</strong>
+          <strong>${escapeHtml(value || "â€“")}</strong>
         </span>
       </div>
     `;
@@ -516,16 +516,16 @@
     if (content) content.style.display = "";
 
     const fullName = getCollaborateurFullName(it);
-    setText("collabPreviewAvatar", getCollaborateurInitials(it), "–");
+    setText("collabPreviewAvatar", getCollaborateurInitials(it), "â€“");
     setText("collabPreviewName", fullName, "Collaborateur");
-    setText("collabPreviewStatusText", it.archive ? "Archivé" : (it.statut_actif ? "Actif" : "Inactif"));
-    setText("collabPreviewService", it.nom_service || (it.id_service ? it.id_service : "Non lié"));
-    setText("collabPreviewPoste", it.intitule_poste || "–");
+    setText("collabPreviewStatusText", it.archive ? "ArchivÃ©" : (it.statut_actif ? "Actif" : "Inactif"));
+    setText("collabPreviewService", it.nom_service || (it.id_service ? it.id_service : "Non liÃ©"));
+    setText("collabPreviewPoste", it.intitule_poste || "â€“");
     setText("collabPreviewEntree", formatDateFR(it.date_entree_entreprise_effectif));
     setText("collabPreviewSortie", formatDateFR(it.date_sortie_prevue));
-    setText("collabPreviewContrat", it.type_contrat || "–");
-    setText("collabPreviewEmail", it.email_effectif || "–");
-    setText("collabPreviewPhone", it.telephone_effectif || "–");
+    setText("collabPreviewContrat", it.type_contrat || "â€“");
+    setText("collabPreviewEmail", it.email_effectif || "â€“");
+    setText("collabPreviewPhone", it.telephone_effectif || "â€“");
 
     const roles = byId("collabPreviewRoles");
     if (roles) roles.innerHTML = renderRolePills(it);
@@ -613,7 +613,7 @@
       count.textContent = `${list.length} collaborateur(s)`;
     }
     if (range) {
-      range.textContent = list.length ? `1 – ${list.length} sur ${list.length}` : "0 – 0 sur 0";
+      range.textContent = list.length ? `1 â€“ ${list.length} sur ${list.length}` : "0 â€“ 0 sur 0";
     }
 
     if (list.length === 0) {
@@ -640,12 +640,12 @@
         <td>
           <div class="collab-person-cell">
             <span class="collab-avatar">${escapeHtml(getCollaborateurInitials(it))}</span>
-            <strong>${escapeHtml(fullName || "–")}</strong>
+            <strong>${escapeHtml(fullName || "â€“")}</strong>
           </div>
         </td>
-        <td>${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non lié"))}</td>
-        <td>${escapeHtml(it.intitule_poste || "–")}</td>
-        <td><span class="sb-badge ${escapeHtml(statusCls)}">${escapeHtml(statusLabel || "–")}</span></td>
+        <td>${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non liÃ©"))}</td>
+        <td>${escapeHtml(it.intitule_poste || "â€“")}</td>
+        <td><span class="sb-badge ${escapeHtml(statusCls)}">${escapeHtml(statusLabel || "â€“")}</span></td>
       `;
 
       tr.addEventListener("click", () => {
@@ -688,7 +688,7 @@
           </button>
           <button type="button" class="sb-collab-nav-btn" data-tab="skills" role="tab" aria-selected="false">
             ${collabIcon("skills")}
-            <span>Compétences</span>
+            <span>CompÃ©tences</span>
           </button>
           <button type="button" class="sb-collab-nav-btn" data-tab="certs" role="tab" aria-selected="false">
             ${collabIcon("certs")}
@@ -702,19 +702,19 @@
 
         <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
           <div id="collabIdentPanel" class="sb-collab-ident-panel">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
+            <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
           </div>
         </div>
 
         <div class="sb-tab-panel" data-panel="skills" role="tabpanel">
           <div id="collabSkillsPanel">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
+            <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
           </div>
         </div>
 
         <div class="sb-tab-panel" data-panel="certs" role="tabpanel">
           <div id="collabCertsPanel">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
+            <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
           </div>
         </div>
 
@@ -722,7 +722,7 @@
           <div id="collabHistoryPanel">
             <div class="sb-history-filters">
               <div class="sb-field">
-                <label class="sb-label" for="histPeriodSelect">Période</label>
+                <label class="sb-label" for="histPeriodSelect">PÃ©riode</label>
                 <select id="histPeriodSelect" class="sb-select">
                   <option value="12">12 mois</option>
                   <option value="24">24 mois</option>
@@ -732,7 +732,7 @@
 
               <label class="sb-check">
                 <input type="checkbox" id="histIncludeArchived" />
-                <span>Inclure éléments expirés/archivés</span>
+                <span>Inclure Ã©lÃ©ments expirÃ©s/archivÃ©s</span>
               </label>
             </div>
 
@@ -741,12 +741,12 @@
                 <button type="button" class="sb-acc-head is-open" data-acc="jmb" aria-expanded="true">
                   <span class="sb-history-acc-title">
                     <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("school")}</span>
-                    <span>Formations effectuées avec JMBCONSULTANT</span>
+                    <span>Formations effectuÃ©es avec JMBCONSULTANT</span>
                   </span>
-                  <span class="sb-acc-chevron">▾</span>
+                  <span class="sb-acc-chevron">â–¾</span>
                 </button>
                 <div class="sb-acc-body" data-acc-body="jmb">
-                  <div class="card-sub" style="margin:0;">Chargement…</div>
+                  <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
                 </div>
               </div>
 
@@ -754,12 +754,12 @@
                 <button type="button" class="sb-acc-head" data-acc="other" aria-expanded="false">
                   <span class="sb-history-acc-title">
                     <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("org")}</span>
-                    <span>Formations effectuées via autre organisme</span>
+                    <span>Formations effectuÃ©es via autre organisme</span>
                   </span>
-                  <span class="sb-acc-chevron">▾</span>
+                  <span class="sb-acc-chevron">â–¾</span>
                 </button>
                 <div class="sb-acc-body" data-acc-body="other" style="display:none;">
-                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun Ã©lÃ©ment.</span></div>
                 </div>
               </div>
 
@@ -767,12 +767,12 @@
                 <button type="button" class="sb-acc-head" data-acc="audits" aria-expanded="false">
                   <span class="sb-history-acc-title">
                     <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("audit")}</span>
-                    <span>Audits des compétences</span>
+                    <span>Audits des compÃ©tences</span>
                   </span>
-                  <span class="sb-acc-chevron">▾</span>
+                  <span class="sb-acc-chevron">â–¾</span>
                 </button>
                 <div class="sb-acc-body" data-acc-body="audits" style="display:none;">
-                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun Ã©lÃ©ment.</span></div>
                 </div>
               </div>
 
@@ -782,10 +782,10 @@
                     <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("medal")}</span>
                     <span>Certifications</span>
                   </span>
-                  <span class="sb-acc-chevron">▾</span>
+                  <span class="sb-acc-chevron">â–¾</span>
                 </button>
                 <div class="sb-acc-body" data-acc-body="certs_hist" style="display:none;">
-                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun Ã©lÃ©ment.</span></div>
                 </div>
               </div>
 
@@ -793,12 +793,12 @@
                 <button type="button" class="sb-acc-head" data-acc="moves" aria-expanded="false">
                   <span class="sb-history-acc-title">
                     <span class="sb-history-acc-icon" aria-hidden="true">${collabIcon("trend")}</span>
-                    <span>Évolutions structurantes</span>
+                    <span>Ã‰volutions structurantes</span>
                   </span>
-                  <span class="sb-acc-chevron">▾</span>
+                  <span class="sb-acc-chevron">â–¾</span>
                 </button>
                 <div class="sb-acc-body" data-acc-body="moves" style="display:none;">
-                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun élément.</span></div>
+                  <div class="sb-history-empty">${collabIcon("contract")}<span>Aucun Ã©lÃ©ment.</span></div>
                 </div>
               </div>
             </div>
@@ -807,7 +807,7 @@
       `;
     }
 
-        // Onglets modal (Identification / Compétences / Certifications)
+        // Onglets modal (Identification / CompÃ©tences / Certifications)
     if (body) {
       const tabs = Array.from(body.querySelectorAll(".sb-collab-modal-nav [data-tab]"));
       const panels = Array.from(body.querySelectorAll(".sb-tab-panel[data-panel]"));
@@ -831,10 +831,10 @@
         });
       });
 
-      // sécurité: force l’onglet par défaut à chaque ouverture
+      // sÃ©curitÃ©: force lâ€™onglet par dÃ©faut Ã  chaque ouverture
       setActiveTab("ident");
 
-      // Accordéons (Historique)
+      // AccordÃ©ons (Historique)
       const accHeads = Array.from(body.querySelectorAll(".sb-acc-head[data-acc]"));
       accHeads.forEach(btn => {
         btn.addEventListener("click", () => {
@@ -877,13 +877,13 @@
         m.innerHTML = `
           <div class="modal-card modal-card--medium">
             <div class="modal-header">
-              <div class="card-title" id="jmbDetailTitle">Détail formation</div>
-              <button type="button" class="modal-x" id="btnCloseJmbDetailModal" aria-label="Fermer">×</button>
+              <div class="card-title" id="jmbDetailTitle">DÃ©tail formation</div>
+              <button type="button" class="modal-x" id="btnCloseJmbDetailModal" aria-label="Fermer">Ã—</button>
             </div>
             <div class="modal-body">
-              <div class="card-sub" id="jmbDetailSub">Détail à venir</div>
+              <div class="card-sub" id="jmbDetailSub">DÃ©tail Ã  venir</div>
               <div id="jmbDetailBody" class="sb-modal-content">
-                <div class="card-sub" style="margin:0;">Contenu du détail non implémenté (volontairement).</div>
+                <div class="card-sub" style="margin:0;">Contenu du dÃ©tail non implÃ©mentÃ© (volontairement).</div>
               </div>
             </div>
             <div class="modal-footer">
@@ -911,15 +911,15 @@
         const b = m.querySelector("#jmbDetailBody");
 
         const titre = row?.titre_formation ? row.titre_formation : "Formation";
-        const codeF = row?.code_formation ? ` • ${row.code_formation}` : "";
-        const codeA = row?.code_action_formation ? ` • ${row.code_action_formation}` : "";
+        const codeF = row?.code_formation ? ` â€¢ ${row.code_formation}` : "";
+        const codeA = row?.code_action_formation ? ` â€¢ ${row.code_action_formation}` : "";
 
         if (t) t.textContent = `${titre}${codeF}${codeA}`;
-        if (s) s.textContent = "Détail (contenu à venir)";
+        if (s) s.textContent = "DÃ©tail (contenu Ã  venir)";
         if (b) {
           b.innerHTML = `
             <div class="card-sub" style="margin:0;">
-              Modal placeholder. On branchera ici : compétences obtenues + documents SharePoint.
+              Modal placeholder. On branchera ici : compÃ©tences obtenues + documents SharePoint.
             </div>
           `;
         }
@@ -934,19 +934,19 @@
 
         const items = Array.isArray(data?.items) ? data.items : [];
         if (items.length === 0) {
-          host.innerHTML = `<div class="sb-history-empty">${collabIcon("contract")}<span>Aucune formation trouvée.</span></div>`;
+          host.innerHTML = `<div class="sb-history-empty">${collabIcon("contract")}<span>Aucune formation trouvÃ©e.</span></div>`;
           return;
         }
 
         const fmtEtat = (s) => {
           const v = (s ?? "").toString().trim();
-          return v ? v : "–";
+          return v ? v : "â€“";
         };
 
         const fmtEtatClass = (s) => {
           const v = (s ?? "").toString().trim().toLowerCase();
           if (v.includes("termin")) return "sb-collab-history-status--done";
-          if (v.includes("démarr") || v.includes("demarr") || v.includes("cours")) return "sb-collab-history-status--blue";
+          if (v.includes("dÃ©marr") || v.includes("demarr") || v.includes("cours")) return "sb-collab-history-status--blue";
           return "sb-collab-history-status--neutral";
         };
 
@@ -955,13 +955,13 @@
         };
 
         const fmtFormation = (x) => {
-          const titre = x?.titre_formation ? escapeHtml(x.titre_formation) : "–";
+          const titre = x?.titre_formation ? escapeHtml(x.titre_formation) : "â€“";
           const code = x?.code_formation ? ` <span class="sb-collab-history-code">(${escapeHtml(x.code_formation)})</span>` : "";
           return `<div class="sb-collab-history-formation">${titre}${code}</div>`;
         };
 
         const rows = items.map((x) => {
-          const codeAction = x?.code_action_formation ? escapeHtml(x.code_action_formation) : "–";
+          const codeAction = x?.code_action_formation ? escapeHtml(x.code_action_formation) : "â€“";
           const etat = fmtEtat(x?.etat_action);
 
           return `
@@ -976,7 +976,7 @@
                 <button type="button"
                         class="sb-btn sb-btn--soft sb-btn--xs"
                         data-jmb-detail="${escapeHtml(x.id_action_formation_effectif || "")}">
-                  Détail
+                  DÃ©tail
                 </button>
               </td>
             </tr>
@@ -991,7 +991,7 @@
                   <th style="width:120px;">Code</th>
                   <th>Formation</th>
                   <th class="col-center" style="width:120px;">Fin</th>
-                  <th class="col-center" style="width:130px;">État</th>
+                  <th class="col-center" style="width:130px;">Ã‰tat</th>
                   <th class="col-center" style="width:80px;">&nbsp;</th>
                 </tr>
               </thead>
@@ -1021,7 +1021,7 @@
         _histJmbLastKey = key;
 
         const host = getJmbAccBody();
-        if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+        if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargementâ€¦</div>`;
 
         loadHistoriqueFormationsJmb(id_contact, it.id_effectif, f.months, f.include_archived)
           .then(renderHistJmb)
@@ -1031,18 +1031,18 @@
           });
       };
 
-      // Au dépliage de l'accordéon JMB -> charge
+      // Au dÃ©pliage de l'accordÃ©on JMB -> charge
       const jmbHead = getJmbAccHead();
       if (jmbHead) {
         jmbHead.addEventListener("click", () => {
-          // On se place après le toggle (le listener accordéon a déjà tourné)
+          // On se place aprÃ¨s le toggle (le listener accordÃ©on a dÃ©jÃ  tournÃ©)
           if (jmbHead.getAttribute("aria-expanded") === "true") {
             loadHistJmb(false);
           }
         });
       }
 
-      // Si filtres changent et accordéon ouvert -> reload
+      // Si filtres changent et accordÃ©on ouvert -> reload
       const periodSel = body.querySelector("#histPeriodSelect");
       if (periodSel) {
         periodSel.addEventListener("change", () => {
@@ -1072,7 +1072,7 @@
       // Chargement Identification (API) + rendu
       const identHost = body.querySelector("#collabIdentPanel");
       if (identHost) {
-        identHost.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+        identHost.innerHTML = `<div class="card-sub" style="margin:0;">Chargementâ€¦</div>`;
 
         const id_contact = window.portal?.contactId;
         if (!id_contact || !it?.id_effectif) {
@@ -1087,7 +1087,7 @@
 
               const vDash = (x) => {
                 const s = (x ?? "").toString().trim();
-                return s ? escapeHtml(s) : "–";
+                return s ? escapeHtml(s) : "â€“";
               };
 
               const safeNum = (x) => {
@@ -1099,10 +1099,10 @@
               // Badges (statuts)
               const badges = [];
 
-              // Badge Indisponible (si indispo en cours aujourd’hui)
-              
+              // Badge Indisponible (si indispo en cours aujourdâ€™hui)
 
-              if (d.archive) badges.push({ label: "Archivé", cls: "sb-badge--archive" });
+
+              if (d.archive) badges.push({ label: "ArchivÃ©", cls: "sb-badge--archive" });
               else if (d.statut_actif) badges.push({ label: "Actif", cls: "sb-badge--actif" });
               else badges.push({ label: "Inactif", cls: "sb-badge--inactif" });
 
@@ -1121,28 +1121,28 @@
 
 
 
-              // Push badges dans le header du modal (à côté du nom)
+              // Push badges dans le header du modal (Ã  cÃ´tÃ© du nom)
               const headerBadges = byId("collabModalBadges");
               if (headerBadges) headerBadges.innerHTML = badgesHtml;
 
 
-              // Civilité: alignement Studio (M. / Mme / -)
+              // CivilitÃ©: alignement Studio (M. / Mme / -)
               const civLabel = normalizeCiviliteLabel(d.civilite_label || d.civilite_effectif);
 
-              // Préparation valeurs dates (input type=date attend YYYY-MM-DD)
+              // PrÃ©paration valeurs dates (input type=date attend YYYY-MM-DD)
               const dateEntree = (d.date_entree_entreprise_effectif || "").toString().slice(0, 10);
               const dateDebutPoste = (d.date_debut_poste_actuel || "").toString().slice(0, 10);
               const dateNaiss = (d.date_naissance_effectif || "").toString().slice(0, 10);
               const dateSortie = (d.date_sortie_prevue || "").toString().slice(0, 10);
 
-              // Sortie prévue: checkbox + date (prêt pour édition, mais disabled pour l’instant)
+              // Sortie prÃ©vue: checkbox + date (prÃªt pour Ã©dition, mais disabled pour lâ€™instant)
               const hasSortie = !!dateSortie;
 
-              // Options “Type contrat”
+              // Options â€œType contratâ€
               const contratOptions = [
                 "CDI",
                 "CDD",
-                "Intérim",
+                "IntÃ©rim",
                 "Apprentissage",
                 "Professionalisation",
                 "Stage",
@@ -1150,16 +1150,16 @@
                 "Autre",
               ];
 
-              // Options “Motif sortie” (DB stocke uniquement la catégorie)
+              // Options â€œMotif sortieâ€ (DB stocke uniquement la catÃ©gorie)
               const motifOptions = [
                 "Volontaire",
                 "Subi",
-                "Légal",
-                "Non renseigné",
+                "LÃ©gal",
+                "Non renseignÃ©",
               ];
 
-              // Niveau d’éducation: on utilise ce que renvoie l’API (label), et on prépare un select prêt édition
-              // (Les valeurs codes restent côté DB, on activera l’édition plus tard)
+              // Niveau dâ€™Ã©ducation: on utilise ce que renvoie lâ€™API (label), et on prÃ©pare un select prÃªt Ã©dition
+              // (Les valeurs codes restent cÃ´tÃ© DB, on activera lâ€™Ã©dition plus tard)
               const eduLabel = (d.niveau_education_label || "").toString().trim();
               const eduCode = (d.niveau_education_code || "").toString().trim();
 
@@ -1182,10 +1182,10 @@
                 </div>
 
                 <div class="sb-collab-summary-strip">
-                  ${renderModalSummaryItem("building", "Service", d.nom_service || "Non lié")}
-                  ${renderModalSummaryItem("briefcase", "Poste actuel", d.intitule_poste || "–")}
-                  ${renderModalSummaryItem("contract", "Type de contrat", d.type_contrat || "–")}
-                  ${renderModalSummaryItem("calendar", "Date d’entrée", formatDateFR(d.date_entree_entreprise_effectif))}
+                  ${renderModalSummaryItem("building", "Service", d.nom_service || "Non liÃ©")}
+                  ${renderModalSummaryItem("briefcase", "Poste actuel", d.intitule_poste || "â€“")}
+                  ${renderModalSummaryItem("contract", "Type de contrat", d.type_contrat || "â€“")}
+                  ${renderModalSummaryItem("calendar", "Date dâ€™entrÃ©e", formatDateFR(d.date_entree_entreprise_effectif))}
                 </div>
 
                 <div class="sb-collab-block sb-collab-block--personal">
@@ -1195,7 +1195,7 @@
                   </div>
                   <div class="sb-collab-grid">
                     <div class="sb-field">
-                      <div class="sb-label">Civilité</div>
+                      <div class="sb-label">CivilitÃ©</div>
                       <select class="sb-select" id="collabCiv" disabled>
                         <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
                         <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
@@ -1209,7 +1209,7 @@
                     </div>
 
                     <div class="sb-field">
-                      <div class="sb-label">Prénom</div>
+                      <div class="sb-label">PrÃ©nom</div>
                       <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
                     </div>
 
@@ -1221,7 +1221,7 @@
 
                   <div class="sb-collab-block-subtitle">
                     <span aria-hidden="true">${collabIcon("phone")}</span>
-                    Coordonnées
+                    CoordonnÃ©es
                   </div>
                   <div class="sb-collab-grid">
                     <div class="sb-field">
@@ -1240,7 +1240,7 @@
                     </div>
 
                     <div class="sb-field">
-                      <div class="sb-label">Téléphone</div>
+                      <div class="sb-label">TÃ©lÃ©phone</div>
                       <input class="sb-ctrl" id="collabTel" type="text" inputmode="numeric" maxlength="14" placeholder="00 00 00 00 00" value="${escapeHtml(formatPhoneFr(d.telephone_effectif))}" disabled />
                     </div>
 
@@ -1270,19 +1270,19 @@
                     <div class="sb-field">
                       <div class="sb-label">Service</div>
                       <select class="sb-select" id="collabService" disabled>
-                        <option value="">Chargement…</option>
+                        <option value="">Chargementâ€¦</option>
                       </select>
                     </div>
 
                     <div class="sb-field">
                       <div class="sb-label">Poste actuel</div>
                       <select class="sb-select" id="collabPoste" disabled>
-                        <option value="">Chargement…</option>
+                        <option value="">Chargementâ€¦</option>
                       </select>
                     </div>
 
                     <div class="sb-field">
-                      <div class="sb-label">Date entrée entreprise</div>
+                      <div class="sb-label">Date entrÃ©e entreprise</div>
                       <input class="sb-ctrl" id="collabEntree" type="date" value="${escapeHtml(dateEntree)}" disabled />
                     </div>
 
@@ -1298,7 +1298,7 @@
                     </div>
 
                     <div class="sb-field">
-                      <div class="sb-label">Date début poste actuel</div>
+                      <div class="sb-label">Date dÃ©but poste actuel</div>
                       <input class="sb-ctrl" id="collabDebutPoste" type="date" value="${escapeHtml(dateDebutPoste)}" disabled />
                     </div>
                   </div>
@@ -1313,39 +1313,39 @@
                     <div class="sb-collab-grid sb-collab-projection-grid">
                       <input type="hidden" id="collabDist" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" />
                       <div class="sb-field sb-collab-projection-field--education">
-                        <div class="sb-label">Dernier diplôme obtenu</div>
+                        <div class="sb-label">Dernier diplÃ´me obtenu</div>
                         <select class="sb-select" id="collabEduNiv" disabled>
                           <option value=""></option>
                           <option value="3"${eduCode === "3" ? " selected" : ""}>Niveau 3 : CAP / BEP</option>
                           <option value="4"${eduCode === "4" ? " selected" : ""}>Niveau 4 : Bac</option>
                           <option value="5"${eduCode === "5" ? " selected" : ""}>Niveau 5 : Bac+2 (BTS, DUT)</option>
                           <option value="6"${eduCode === "6" ? " selected" : ""}>Niveau 6 : Bac+3 (Licence, BUT)</option>
-                          <option value="7"${eduCode === "7" ? " selected" : ""}>Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)</option>
+                          <option value="7"${eduCode === "7" ? " selected" : ""}>Niveau 7 : Bac+5 (Master, IngÃ©nieur, Grandes Ã©coles)</option>
                           <option value="8"${eduCode === "8" ? " selected" : ""}>Niveau 8 : Doctorat</option>
-                          <option value="0"${eduCode === "0" ? " selected" : ""}>Aucun diplôme</option>
+                          <option value="0"${eduCode === "0" ? " selected" : ""}>Aucun diplÃ´me</option>
                         </select>
                       </div>
 
                       <div class="sb-field sb-collab-projection-field--domain">
-                        <div class="sb-label">Domaine d'éducation</div>
+                        <div class="sb-label">Domaine d'Ã©ducation</div>
                         <select class="sb-select" id="collabEduDom" disabled>
-                          <option value="">Chargement…</option>
+                          <option value="">Chargementâ€¦</option>
                         </select>
                       </div>
 
 
                       <div class="sb-field sb-collab-projection-field--retirement">
-                        <div class="sb-label">Retraite estimée</div>
+                        <div class="sb-label">Retraite estimÃ©e</div>
                         <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
                       </div>
 
                       <label class="sb-check sb-collab-sortie-check sb-collab-projection-field--exit-check">
                         <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
-                        <span>Sortie prévue</span>
+                        <span>Sortie prÃ©vue</span>
                       </label>
 
                       <div class="sb-field sb-collab-projection-field--exit-date">
-                        <div class="sb-label">Date de sortie prévue</div>
+                        <div class="sb-label">Date de sortie prÃ©vue</div>
                         <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
                       </div>
 
@@ -1375,13 +1375,13 @@
               `;
 
               // -------------------------
-              // Mode édition (toggle global sur l’onglet Identification)
+              // Mode Ã©dition (toggle global sur lâ€™onglet Identification)
               // -------------------------
               const editBtn = identHost.querySelector("#collabBtnEdit");
               const saveBtn = identHost.querySelector("#collabBtnSave");
               const cancelBtn = identHost.querySelector("#collabBtnCancel");
 
-              // Champs éditables (on les activera au clic)
+              // Champs Ã©ditables (on les activera au clic)
               const editableSelectors = [
                 "#collabCiv",
                 "#collabNom",
@@ -1445,7 +1445,7 @@
                 getEditableNodes().forEach(el => {
                   if (!el) return;
 
-                  // Retraite estimée reste non éditable (calcul)
+                  // Retraite estimÃ©e reste non Ã©ditable (calcul)
                   if (el.id === "collabRetraite") return;
 
                   el.disabled = !isEdit;
@@ -1456,7 +1456,7 @@
                 if (saveBtn) saveBtn.style.display = isEdit ? "" : "none";
                 if (cancelBtn) cancelBtn.style.display = isEdit ? "" : "none";
 
-                // Sortie prévue: dépendances
+                // Sortie prÃ©vue: dÃ©pendances
                 syncSortie();
               };
 
@@ -1493,7 +1493,7 @@
                 });
               }
 
-              // Etat global édition (pour éviter les closures foireuses)
+              // Etat global Ã©dition (pour Ã©viter les closures foireuses)
               var _collabIsEdit = false;
 
               function syncSortie() {
@@ -1502,14 +1502,14 @@
                 const motif = identHost.querySelector("#collabMotifSortie");
                 if (!chk || !dt || !motif) return;
 
-                // Hors édition: tout reste bloqué
+                // Hors Ã©dition: tout reste bloquÃ©
                 if (!_collabIsEdit) {
                   dt.disabled = true;
                   motif.disabled = true;
                   return;
                 }
 
-                // En édition: la checkbox pilote les dépendances
+                // En Ã©dition: la checkbox pilote les dÃ©pendances
                 const on = !!chk.checked;
                 dt.disabled = !on;
                 motif.disabled = !on;
@@ -1528,7 +1528,7 @@
                 });
               }
 
-              // Bind une seule fois sur la checkbox sortie prévue
+              // Bind une seule fois sur la checkbox sortie prÃ©vue
               const chkEl = identHost.querySelector("#collabChkSortie");
               if (chkEl && !chkEl._sbBoundSortie) {
                 chkEl.addEventListener("change", syncSortie);
@@ -1592,7 +1592,7 @@
                       return Number.isFinite(n) ? n : null;
                     };
 
-                    // Sortie prévue: si décoché -> NULL date + motif
+                    // Sortie prÃ©vue: si dÃ©cochÃ© -> NULL date + motif
                     const sortieOn = chk("#collabChkSortie");
 
                     const payload = {
@@ -1609,7 +1609,7 @@
                       date_naissance_effectif: dte("#collabNaissance"),
 
                       // Bloc 2
-                      // Règle métier: toujours dans matricule_interne
+                      // RÃ¨gle mÃ©tier: toujours dans matricule_interne
                       matricule_interne: t("#collabMatricule"),
                       id_service: t("#collabService"),
                       id_poste_actuel: t("#collabPoste"),
@@ -1619,7 +1619,7 @@
 
                       // Bloc 3
                       niveau_education: t("#collabEduNiv"),
-                      // Domaine éducation: stocker le texte choisi (pas d'id derrière)
+                      // Domaine Ã©ducation: stocker le texte choisi (pas d'id derriÃ¨re)
                       domaine_education: t("#collabEduDom"),
                       distance_km_entreprise: num("#collabDist"),
 
@@ -1628,7 +1628,7 @@
                       note_commentaire: t("#collabComment"),
                     };
 
-                    
+
                     // Appel API (POST JSON) - IMPORTANT: passer par portal.apiJson (auth + contexte entreprise)
                     const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}`;
 
@@ -1641,21 +1641,21 @@
                       }
                     );
 
-                    // Sécurité: l'API renvoie normalement { ok: true }
+                    // SÃ©curitÃ©: l'API renvoie normalement { ok: true }
                     if (!data || data.ok !== true) {
                       const msg = (data && (data.detail || data.message))
                         ? (data.detail || data.message)
-                        : "Erreur enregistrement (réponse invalide).";
+                        : "Erreur enregistrement (rÃ©ponse invalide).";
                       throw new Error(msg);
                     }
 
-                    // Succès: on met à jour le snapshot et on repasse en lecture seule
+                    // SuccÃ¨s: on met Ã  jour le snapshot et on repasse en lecture seule
                     _collabEditSnap = snapshotValues();
                     setEditMode(false);
-                    setInlineMsg(identHost, "success", "Enregistré");
+                    setInlineMsg(identHost, "success", "EnregistrÃ©");
                     refreshSelectSelectedSoftState(identHost);
 
-                    // Le titre modal suit les éventuelles corrections nom/prénom.
+                    // Le titre modal suit les Ã©ventuelles corrections nom/prÃ©nom.
                     if (title) {
                       title.textContent = `${payload.prenom_effectif || ""} ${(payload.nom_effectif || "").toUpperCase()}`.trim() || "Collaborateur";
                     }
@@ -1720,7 +1720,7 @@
               try {
                 const servicesUrl = `${API_BASE}/skills/collaborateurs/listes/services/${encodeURIComponent(id_contact)}`;
                 const services = await window.portal.apiJson(servicesUrl);
-                fillSelect(selService, services, d.id_service || "", "Non lié");
+                fillSelect(selService, services, d.id_service || "", "Non liÃ©");
               } catch (e) {
                 if (selService) selService.innerHTML = `<option value="">Erreur chargement</option>`;
                 console.error(e);
@@ -1742,7 +1742,7 @@
               };
               await loadPostes(d.id_service || "");
 
-              // Domaine éducation (NSF)
+              // Domaine Ã©ducation (NSF)
               try {
                 const domUrl = `${API_BASE}/skills/collaborateurs/listes/nsf_domaines/${encodeURIComponent(id_contact)}`;
                 const doms = await window.portal.apiJson(domUrl);
@@ -1752,7 +1752,7 @@
                 console.error(e);
               }
 
-              // Prêt édition: si demain on active le service select, on recharge les postes
+              // PrÃªt Ã©dition: si demain on active le service select, on recharge les postes
               if (selService && selPoste) {
                 selService.addEventListener("change", () => {
                   loadPostes(selService.value || "");
@@ -1765,7 +1765,7 @@
             });
         }
 
-              // Chargement Compétences (lazy: au premier clic onglet)
+              // Chargement CompÃ©tences (lazy: au premier clic onglet)
               let _skillsLoaded = false;
 
               const renderCompetences = (data) => {
@@ -1777,11 +1777,11 @@
                 const otherItems = items.filter(x => !x?.is_required);
 
                 if (items.length === 0) {
-                  host.innerHTML = `<div class="sb-collab-empty-card">Aucune compétence trouvée.</div>`;
+                  host.innerHTML = `<div class="sb-collab-empty-card">Aucune compÃ©tence trouvÃ©e.</div>`;
                   return;
                 }
 
-                const levelLabel = (v) => window.NovoskillLevels ? window.NovoskillLevels.label(v) : ((v || "–").toString());
+                const levelLabel = (v) => window.NovoskillLevels ? window.NovoskillLevels.label(v) : ((v || "â€“").toString());
                 const levelClass = (v) => window.NovoskillLevels ? window.NovoskillLevels.cssClass(v) : "";
 
                 const countValidated = requiredItems.filter(x => {
@@ -1805,7 +1805,7 @@
 
                 const renderRows = (rows) => {
                   if (!rows.length) {
-                    return `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
+                    return `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune compÃ©tence dans cette catÃ©gorie.</td></tr>`;
                   }
 
                   return rows.map(x => {
@@ -1821,16 +1821,16 @@
                         <td>
                           <div class="sb-collab-skill-titleline">
                             ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
-                            <span class="sb-collab-skill-title">${escapeHtml(title || "Compétence")}</span>
+                            <span class="sb-collab-skill-title">${escapeHtml(title || "CompÃ©tence")}</span>
                           </div>
                         </td>
                         <td>${renderDomainBadge(x)}</td>
                         <td class="col-center">
-                          <span class="sb-badge sb-badge-niv ${escapeHtml(levelCls)}">${escapeHtml(req || cur || "–")}</span>
+                          <span class="sb-badge sb-badge-niv ${escapeHtml(levelCls)}">${escapeHtml(req || cur || "â€“")}</span>
                         </td>
                         <td class="col-center">${escapeHtml(d)}</td>
                         <td class="col-center">
-                          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-skill-pdf="${escapeHtml(x.id_comp || "")}" title="Voir la fiche compétence PDF" aria-label="Voir la fiche compétence PDF">
+                          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-skill-pdf="${escapeHtml(x.id_comp || "")}" title="Voir la fiche compÃ©tence PDF" aria-label="Voir la fiche compÃ©tence PDF">
                             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>
                           </button>
                         </td>
@@ -1849,10 +1849,10 @@
                       <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table">
                         <thead>
                           <tr>
-                            <th>Compétence</th>
+                            <th>CompÃ©tence</th>
                             <th style="width:210px;">Domaine</th>
                             <th class="col-center" style="width:120px;">Niveau requis</th>
-                            <th class="col-center" style="width:130px;">Dernière éval.</th>
+                            <th class="col-center" style="width:130px;">DerniÃ¨re Ã©val.</th>
                             <th class="col-center" style="width:62px;">PDF</th>
                           </tr>
                         </thead>
@@ -1864,29 +1864,29 @@
 
                 host.innerHTML = `
                   <div class="card-sub sb-collab-tab-context">
-                    Poste actuel : <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                    Poste actuel : <strong>${escapeHtml(data.intitule_poste || "â€“")}</strong>
                   </div>
 
                   <div class="sb-collab-metrics">
                     <div class="sb-collab-metric sb-collab-metric--red">
                       <span aria-hidden="true">${collabIcon("contract")}</span>
                       <strong>${requiredItems.length}</strong>
-                      <em>Compétences requises<br>par le poste</em>
+                      <em>CompÃ©tences requises<br>par le poste</em>
                     </div>
                     <div class="sb-collab-metric sb-collab-metric--blue">
                       <span aria-hidden="true">${collabIcon("contract")}</span>
                       <strong>${countValidated}</strong>
-                      <em>Compétences validées<br>au niveau requis ou supérieur</em>
+                      <em>CompÃ©tences validÃ©es<br>au niveau requis ou supÃ©rieur</em>
                     </div>
                     <div class="sb-collab-metric sb-collab-metric--green">
                       <span aria-hidden="true">${collabIcon("certs")}</span>
                       <strong>${otherItems.length}</strong>
-                      <em>Autres compétences<br>détenues</em>
+                      <em>Autres compÃ©tences<br>dÃ©tenues</em>
                     </div>
                   </div>
 
-                  ${renderTable("Compétences requises par le poste", requiredItems, "sb-collab-skill-section--required")}
-                  ${renderTable("Autres compétences détenues", otherItems, "sb-collab-skill-section--other")}
+                  ${renderTable("CompÃ©tences requises par le poste", requiredItems, "sb-collab-skill-section--required")}
+                  ${renderTable("Autres compÃ©tences dÃ©tenues", otherItems, "sb-collab-skill-section--other")}
                 `;
 
                 const id_contact = window.portal?.contactId;
@@ -1901,7 +1901,7 @@
                     const item = items.find(x => String(x?.id_comp || "").trim() === compId) || null;
                     const popupWin = window.open("about:blank", "_blank");
                     if (popupWin) {
-                      popupWin.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Génération du PDF…</p>");
+                      popupWin.document.write("<p style='font-family: var(--ns-font-ui);padding:16px;'>GÃ©nÃ©ration du PDFâ€¦</p>");
                     }
 
                     try {
@@ -1909,7 +1909,7 @@
                       await openCollaborateurCompetencePdf(id_contact, id_effectif, item, popupWin);
                     } catch (err) {
                       try { if (popupWin && !popupWin.closed) popupWin.close(); } catch (_) {}
-                      window.portal?.showAlert?.("error", "Erreur PDF compétence : " + (err?.message || err));
+                      window.portal?.showAlert?.("error", "Erreur PDF compÃ©tence : " + (err?.message || err));
                     } finally {
                       btn.disabled = false;
                     }
@@ -1922,7 +1922,7 @@
                 _skillsLoaded = true;
 
                 const host = body.querySelector("#collabSkillsPanel");
-                if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+                if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargementâ€¦</div>`;
 
                 const id_contact = window.portal?.contactId;
                 if (!id_contact || !it?.id_effectif) {
@@ -1933,12 +1933,12 @@
                 loadCompetences(id_contact, it.id_effectif)
                   .then(renderCompetences)
                   .catch(e => {
-                    if (host) host.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement compétences : ${escapeHtml(e.message || String(e))}</div>`;
+                    if (host) host.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement compÃ©tences : ${escapeHtml(e.message || String(e))}</div>`;
                     console.error(e);
                   });
               };
 
-              // Hook: au clic onglet "Compétences"
+              // Hook: au clic onglet "CompÃ©tences"
               tabs.forEach(btn => {
                 if (btn.getAttribute("data-tab") === "skills") {
                   btn.addEventListener("click", loadSkillsIfNeeded);
@@ -1955,25 +1955,25 @@
                 const items = Array.isArray(data?.items) ? data.items : [];
 
                 const fmtValidite = (n) => {
-                  if (n == null) return "–";
+                  if (n == null) return "â€“";
                   const v = Number(n);
-                  if (!Number.isFinite(v)) return "–";
+                  if (!Number.isFinite(v)) return "â€“";
                   if (v <= 0) return "Permanent";
                   return `${v} mois`;
                 };
 
-                const fmtDelai = (n) => (n == null ? "–" : `${n} j`);
-                const fmtObt = (x) => (x?.is_acquired ? formatDateFR(x.date_obtention) : "–");
+                const fmtDelai = (n) => (n == null ? "â€“" : `${n} j`);
+                const fmtObt = (x) => (x?.is_acquired ? formatDateFR(x.date_obtention) : "â€“");
                 const getExpIso = (x) => x?.date_expiration || x?.date_expiration_calculee || null;
-                const fmtExp = (x) => (x?.is_acquired ? formatDateFR(getExpIso(x)) : "–");
+                const fmtExp = (x) => (x?.is_acquired ? formatDateFR(getExpIso(x)) : "â€“");
 
                 const statutInfo = (x) => {
                   if (!x?.is_acquired) return { label: "Non acquis", cls: "sb-collab-cert-status--neutral" };
                   const s = (x?.statut_validite || "").toString().toLowerCase();
                   if (s === "valide") return { label: "Valide", cls: "sb-collab-cert-status--ok" };
-                  if (s === "a_renouveler") return { label: "À renouveler", cls: "sb-collab-cert-status--warn" };
-                  if (s === "expiree") return { label: "Expirée", cls: "sb-collab-cert-status--danger" };
-                  return { label: "–", cls: "sb-collab-cert-status--neutral" };
+                  if (s === "a_renouveler") return { label: "Ã€ renouveler", cls: "sb-collab-cert-status--warn" };
+                  if (s === "expiree") return { label: "ExpirÃ©e", cls: "sb-collab-cert-status--danger" };
+                  return { label: "â€“", cls: "sb-collab-cert-status--neutral" };
                 };
 
                 const requiredCount = items.filter(x => !!x?.is_required).length;
@@ -1983,9 +1983,9 @@
                 if (items.length === 0) {
                   host.innerHTML = `
                     <div class="card-sub sb-collab-tab-context">
-                      Poste actuel : <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                      Poste actuel : <strong>${escapeHtml(data.intitule_poste || "â€“")}</strong>
                     </div>
-                    <div class="sb-collab-empty-card">Aucune certification trouvée.</div>
+                    <div class="sb-collab-empty-card">Aucune certification trouvÃ©e.</div>
                   `;
                   return;
                 }
@@ -1993,13 +1993,13 @@
                 const renderRequirementBadge = (x) => {
                   if (!x?.is_required) return `<span class="sb-badge sb-collab-cert-badge">Hors poste</span>`;
                   const ne = (x.niveau_exigence || "requis").toString().toLowerCase();
-                  const label = ne.includes("souhait") ? "Souhaité" : "Requis";
+                  const label = ne.includes("souhait") ? "SouhaitÃ©" : "Requis";
                   return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--required">${escapeHtml(label)}</span>`;
                 };
 
                 const rows = items.map(x => {
                   const statut = statutInfo(x);
-                  const jr = x?.jours_restants != null ? `${x.jours_restants} j` : "–";
+                  const jr = x?.jours_restants != null ? `${x.jours_restants} j` : "â€“";
                   const categorie = (x.categorie || "").toString().trim();
 
                   return `
@@ -2032,14 +2032,14 @@
 
                 host.innerHTML = `
                   <div class="card-sub sb-collab-tab-context">
-                    Poste actuel : <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                    Poste actuel : <strong>${escapeHtml(data.intitule_poste || "â€“")}</strong>
                   </div>
 
                   <div class="sb-collab-metrics">
                     <div class="sb-collab-metric sb-collab-metric--red">
                       <span aria-hidden="true">${collabIcon("medal")}</span>
                       <strong>${requiredCount}</strong>
-                      <em>Certifications<br>requises / souhaitées</em>
+                      <em>Certifications<br>requises / souhaitÃ©es</em>
                     </div>
                     <div class="sb-collab-metric sb-collab-metric--green">
                       <span aria-hidden="true">${collabIcon("certs")}</span>
@@ -2049,7 +2049,7 @@
                     <div class="sb-collab-metric sb-collab-metric--blue">
                       <span aria-hidden="true">${collabIcon("calendar")}</span>
                       <strong>${renewCount}</strong>
-                      <em>À surveiller<br>ou renouveler</em>
+                      <em>Ã€ surveiller<br>ou renouveler</em>
                     </div>
                   </div>
 
@@ -2064,8 +2064,8 @@
                         <thead>
                           <tr>
                             <th>Certification</th>
-                            <th class="col-center" style="width:160px;">Validité</th>
-                            <th class="col-center" style="width:160px;">État</th>
+                            <th class="col-center" style="width:160px;">ValiditÃ©</th>
+                            <th class="col-center" style="width:160px;">Ã‰tat</th>
                             <th class="col-center" style="width:180px;">Dates</th>
                           </tr>
                         </thead>
@@ -2081,7 +2081,7 @@
                 _certsLoaded = true;
 
                 const host = body.querySelector("#collabCertsPanel");
-                if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+                if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargementâ€¦</div>`;
 
                 const id_contact = window.portal?.contactId;
                 if (!id_contact || !it?.id_effectif) {
@@ -2132,16 +2132,16 @@
 
       updateKpiScopeLabel();
 
-      // KPIs filtrés uniquement sur service (le reste c’est des filtres “liste”)
+      // KPIs filtrÃ©s uniquement sur service (le reste câ€™est des filtres â€œlisteâ€)
       const kpis = await loadKpis(id_contact, filters.id_service);
       renderKpis(kpis);
 
       const items = await loadList(id_contact, filters);
 
-      // Base pour KPI + filtre “focus”
+      // Base pour KPI + filtre â€œfocusâ€
       _lastListItems = Array.isArray(items) ? items : [];
 
-      // KPI indispos (si fonctions présentes)
+      // KPI indispos (si fonctions prÃ©sentes)
       try {
         if (typeof refreshIndispoKpis === "function") {
           await refreshIndispoKpis(id_contact, filters, _lastListItems);
@@ -2188,10 +2188,10 @@
       const btnPreviewPlan = byId("btnCollabPreviewPlan");
       const tableSearchMirror = byId("collabTableSearchMirror");
 
-      // Filtre service: appliquer immédiatement au changement
+      // Filtre service: appliquer immÃ©diatement au changement
       if (selService) {
         selService.addEventListener("change", () => {
-          _breakFocus = null; // on reset le focus indispo si on change de périmètre
+          _breakFocus = null; // on reset le focus indispo si on change de pÃ©rimÃ¨tre
           refreshAll(id_contact);
         });
       }
@@ -2223,8 +2223,8 @@
           const card = btnFiltersToggle.closest(".collab-filter-card");
           const isCollapsed = card ? card.classList.toggle("is-collapsed") : false;
           btnFiltersToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
-          btnFiltersToggle.title = isCollapsed ? "Déplier les filtres" : "Replier les filtres";
-          btnFiltersToggle.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+          btnFiltersToggle.title = isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres";
+          btnFiltersToggle.setAttribute("aria-label", isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres");
         });
       }
 
@@ -2291,7 +2291,7 @@
       const toggleFocus = async (mode) => {
         _breakFocus = (_breakFocus === mode) ? null : mode;
 
-        // Re-render immédiat depuis la dernière liste chargée
+        // Re-render immÃ©diat depuis la derniÃ¨re liste chargÃ©e
         const listToRender = (typeof applyIndispoFocus === "function")
           ? applyIndispoFocus(_lastListItems)
           : _lastListItems;
@@ -2329,7 +2329,7 @@
         selectId: "collabServiceSelect",
         storageKey: "sb_collab_service",
         labelAll: "Tous les services",
-        labelNonLie: "Non lié",
+        labelNonLie: "Non liÃ©",
         includeAll: true,
         includeNonLie: true,
         allowIndent: true

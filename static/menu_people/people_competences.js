@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const P = window.PeoplePortal;
   if (!P) return;
   let selectedComp = "";
@@ -7,7 +7,7 @@
 
   function compRow(r, required) {
     return `<div class="pp-list-row">
-      <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · ${P.escapeHtml(r.domaine || "Domaine non renseigné")}</div></div>
+      <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} Â· ${P.escapeHtml(r.domaine || "Domaine non renseignÃ©")}</div></div>
       <div class="pp-row-badges">
         ${required ? P.levelBadge(r.niveau_requis) : ""}
         ${P.levelBadge(r.niveau_actuel)}
@@ -26,8 +26,8 @@
     }
     const poste = byId("ppPosteComps");
     const autres = byId("ppOtherComps");
-    if (poste) poste.innerHTML = (data.poste || []).length ? data.poste.map(r => compRow(r, true)).join("") : P.itemEmpty("Aucune compétence rattachée au poste.");
-    if (autres) autres.innerHTML = (data.autres || []).length ? data.autres.map(r => compRow(r, false)).join("") : P.itemEmpty("Aucune compétence complémentaire déclarée.");
+    if (poste) poste.innerHTML = (data.poste || []).length ? data.poste.map(r => compRow(r, true)).join("") : P.itemEmpty("Aucune compÃ©tence rattachÃ©e au poste.");
+    if (autres) autres.innerHTML = (data.autres || []).length ? data.autres.map(r => compRow(r, false)).join("") : P.itemEmpty("Aucune compÃ©tence complÃ©mentaire dÃ©clarÃ©e.");
   }
 
   function openModal() {
@@ -57,10 +57,10 @@
     }
     const rows = data.items || [];
     if (!rows.length) {
-      el.innerHTML = P.itemEmpty("Aucune compétence disponible avec ces critères.");
+      el.innerHTML = P.itemEmpty("Aucune compÃ©tence disponible avec ces critÃ¨res.");
       return;
     }
-    el.innerHTML = rows.map(r => `<button type="button" class="pp-select-row" data-id="${P.escapeHtml(r.id_comp)}"><span><strong>${P.escapeHtml(r.intitule)}</strong><small>${P.escapeHtml(r.code || "")} · ${P.escapeHtml(r.domaine || "Domaine non renseigné")}</small></span></button>`).join("");
+    el.innerHTML = rows.map(r => `<button type="button" class="pp-select-row" data-id="${P.escapeHtml(r.id_comp)}"><span><strong>${P.escapeHtml(r.intitule)}</strong><small>${P.escapeHtml(r.code || "")} Â· ${P.escapeHtml(r.domaine || "Domaine non renseignÃ©")}</small></span></button>`).join("");
     el.querySelectorAll("[data-id]").forEach(btn => {
       btn.onclick = () => {
         selectedComp = btn.getAttribute("data-id") || "";
@@ -75,7 +75,7 @@
     if (!selectedComp) return;
     const id = P.getEffectifId();
     const msg = byId("ppCompMsg");
-    if (msg) msg.textContent = "Ajout en cours…";
+    if (msg) msg.textContent = "Ajout en coursâ€¦";
     const res = await P.api(`/people/demo/competences/${encodeURIComponent(id)}/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,9 +1,9 @@
-<section id="view-catalogue_formation" data-view="catalogue_formation">
+﻿<section id="view-catalogue_formation" data-view="catalogue_formation">
   <div class="card">
     <div class="sb-card-head">
       <div>
         <div class="card-title">Catalogue de formations</div>
-        <div class="card-sub">Créer, modifier, archiver les fiches formation du référentiel Learn.</div>
+        <div class="card-sub">CrÃ©er, modifier, archiver les fiches formation du rÃ©fÃ©rentiel Learn.</div>
       </div>
       <div class="sb-actions">
         <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormNew">Ajouter une formation</button>
@@ -15,16 +15,16 @@
     <div class="sb-toolbar">
       <div class="sb-search">
         <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
-        <input type="text" id="catFormsSearch" placeholder="Code, titre, domaine, fournisseur…" />
+        <input type="text" id="catFormsSearch" placeholder="Code, titre, domaine, fournisseurâ€¦" />
       </div>
 
       <div class="info-item" style="min-width:220px;">
         <div class="label">Afficher</div>
         <select id="catFormsShow">
           <option value="active">Actives</option>
-          <option value="validation">À valider</option>
+          <option value="validation">Ã€ valider</option>
           <option value="all">Toutes</option>
-          <option value="archived">Archivées</option>
+          <option value="archived">ArchivÃ©es</option>
         </select>
       </div>
 
@@ -46,58 +46,58 @@
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <span class="sb-badge sb-badge--lms-only" id="lmsPreviewBadge">LMS</span>
             <div class="card-title" id="lmsPreviewTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-              Prévisualisation d’import LMS
+              PrÃ©visualisation dâ€™import LMS
             </div>
           </div>
           <div class="card-sub" id="lmsPreviewSub" style="margin:4px 0 0 0;">
-            Vérifiez les données récupérées avant création dans Novoskill.
+            VÃ©rifiez les donnÃ©es rÃ©cupÃ©rÃ©es avant crÃ©ation dans Novoskill.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnLmsPreviewX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnLmsPreviewX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="lf-lms-preview-grid">
           <div class="lf-lms-preview-card">
-            <div class="lf-lms-preview-card-title">Données récupérées depuis Lära</div>
+            <div class="lf-lms-preview-card-title">DonnÃ©es rÃ©cupÃ©rÃ©es depuis LÃ¤ra</div>
             <div class="lf-lms-preview-kv" id="lmsPreviewRemoteMeta"></div>
 
             <div class="lf-lms-preview-section-title">Description LMS</div>
             <div class="lf-lms-preview-text" id="lmsPreviewRemoteDescription">
-              Chargement…
+              Chargementâ€¦
             </div>
 
-            <div class="lf-lms-preview-section-title">Champs personnalisés</div>
+            <div class="lf-lms-preview-section-title">Champs personnalisÃ©s</div>
             <div class="lf-lms-preview-fields" id="lmsPreviewCustomFields"></div>
           </div>
 
           <div class="lf-lms-preview-card lf-lms-preview-card--draft">
-            <div class="lf-lms-preview-card-title">Fiche Novoskill préparée</div>
+            <div class="lf-lms-preview-card-title">Fiche Novoskill prÃ©parÃ©e</div>
 
             <div class="lf-lms-preview-draft">
               <div class="info-item">
                 <div class="label">Titre</div>
-                <div class="lf-lms-preview-value" id="lmsPreviewDraftTitle">—</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftTitle">â€”</div>
               </div>
 
               <div class="info-item">
-                <div class="label">État prévu</div>
-                <div class="lf-lms-preview-value" id="lmsPreviewDraftEtat">—</div>
+                <div class="label">Ã‰tat prÃ©vu</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftEtat">â€”</div>
               </div>
 
               <div class="info-item">
-                <div class="label">Type prévu</div>
-                <div class="lf-lms-preview-value" id="lmsPreviewDraftType">—</div>
+                <div class="label">Type prÃ©vu</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftType">â€”</div>
               </div>
 
               <div class="info-item">
-                <div class="label">Code détecté</div>
-                <div class="lf-lms-preview-value" id="lmsPreviewDraftCode">—</div>
+                <div class="label">Code dÃ©tectÃ©</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftCode">â€”</div>
               </div>
 
               <div class="info-item">
-                <div class="label">Présentation proposée</div>
-                <div class="lf-lms-preview-text" id="lmsPreviewDraftPresentation">—</div>
+                <div class="label">PrÃ©sentation proposÃ©e</div>
+                <div class="lf-lms-preview-text" id="lmsPreviewDraftPresentation">â€”</div>
               </div>
             </div>
 
@@ -110,7 +110,7 @@
         <span class="sb-local-status" id="lmsPreviewStatus" style="display:none;"></span>
 
         <button type="button" class="sb-btn sb-btn--accent" id="btnLmsPreviewCreate" disabled>
-          Créer la fiche Novoskill
+          CrÃ©er la fiche Novoskill
         </button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnLmsPreviewCancel">Annuler</button>
       </div>
@@ -127,22 +127,22 @@
           </div>
           <div class="card-sub" id="formModalSub" style="margin:4px 0 0 0; display:none;"></div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-form-tabs" id="formTabs">
         <button type="button" class="sb-form-tab is-active" data-tab="identite">1. Identifier</button>
-        <button type="button" class="sb-form-tab" data-tab="modalites">2. Modalités</button>
-        <button type="button" class="sb-form-tab" data-tab="competences">3. Compétences</button>
+        <button type="button" class="sb-form-tab" data-tab="modalites">2. ModalitÃ©s</button>
+        <button type="button" class="sb-form-tab" data-tab="competences">3. CompÃ©tences</button>
         <button type="button" class="sb-form-tab" data-tab="contenu">4. Contenu</button>
-        <button type="button" class="sb-form-tab" data-tab="plans">5. Plans pédagogiques</button>
+        <button type="button" class="sb-form-tab" data-tab="plans">5. Plans pÃ©dagogiques</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="sb-form-panel is-active" data-panel="identite">
           <div class="row">
             <div class="info-item" style="flex:1; min-width:320px;">
-              <div class="label">Titre de la formation <span class="lf-label-muted lf-char-counter" data-counter-for="formTitre">0/90 caractères</span></div>
+              <div class="label">Titre de la formation <span class="lf-label-muted lf-char-counter" data-counter-for="formTitre">0/90 caractÃ¨res</span></div>
               <input type="text" id="formTitre" maxlength="90" />
             </div>
           </div>
@@ -151,7 +151,7 @@
             <div class="info-item" style="flex:1; min-width:240px;">
               <div class="label">Domaine</div>
               <select id="formDomaine">
-                <option value="">—</option>
+                <option value="">â€”</option>
               </select>
             </div>
 
@@ -165,10 +165,10 @@
                 </div>
 
             <div class="info-item" style="flex:1; min-width:200px;">
-              <div class="label">État</div>
+              <div class="label">Ã‰tat</div>
               <select id="formEtat">
                 <option value="active">active</option>
-                <option value="à valider">à valider</option>
+                <option value="Ã  valider">Ã  valider</option>
               </select>
             </div>
           </div>
@@ -177,31 +177,31 @@
             <div class="info-item" style="flex:1; min-width:260px;">
               <div class="label">Fournisseur</div>
               <select id="formFournisseur">
-                <option value="">—</option>
+                <option value="">â€”</option>
               </select>
             </div>
 
             <div class="info-item" style="flex:1; min-width:180px;">
-              <div class="label">Tarif mini HT (€)</div>
+              <div class="label">Tarif mini HT (â‚¬)</div>
               <input type="number" id="formTarif" min="0" step="1" />
             </div>
 
             <div class="info-item" style="flex:1; min-width:180px;">
-              <div class="label">Durée (heures)</div>
+              <div class="label">DurÃ©e (heures)</div>
               <input type="number" id="formDuree" min="0" step="1" />
             </div>
           </div>
 
           <div class="row" id="formObsTypeRow" style="display:none;">
             <div class="info-item" style="flex:1; min-width:260px;">
-              <div class="label" id="formObsTypeLabel">Précision</div>
+              <div class="label" id="formObsTypeLabel">PrÃ©cision</div>
               <input type="text" id="formObsType" />
             </div>
           </div>
 
           <div class="row">
             <div class="info-item" style="flex:1; min-width:260px;">
-              <div class="label">Présentation <span class="lf-label-muted lf-char-counter" data-counter-for="formPresentation">0/625 caractères</span></div>
+              <div class="label">PrÃ©sentation <span class="lf-label-muted lf-char-counter" data-counter-for="formPresentation">0/625 caractÃ¨res</span></div>
               <textarea id="formPresentation" rows="5" maxlength="625"></textarea>
             </div>
           </div>
@@ -213,39 +213,39 @@
             </div>
 
             <div class="info-item" style="flex:1; min-width:260px;">
-              <div class="label">Objectifs de la formation <span class="lf-label-muted lf-char-counter" data-counter-for="formObjectifs">0/550 caractères</span></div>
+              <div class="label">Objectifs de la formation <span class="lf-label-muted lf-char-counter" data-counter-for="formObjectifs">0/550 caractÃ¨res</span></div>
               <textarea id="formObjectifs" rows="6" class="lf-textarea--tall" maxlength="550"></textarea>
             </div>
           </div>
         </div>
 
         <div class="sb-form-panel" data-panel="modalites">
-          
+
           <div class="lf-check-grid-wrap">
             <div>
-              <div class="label">Modalités possibles</div>
+              <div class="label">ModalitÃ©s possibles</div>
               <div class="lf-check-grid" id="formModalitesList"></div>
             </div>
 
             <div>
-              <div class="label">Méthodes pédagogiques</div>
+              <div class="label">MÃ©thodes pÃ©dagogiques</div>
               <div class="lf-check-grid" id="formPedaList"></div>
             </div>
 
             <div>
-              <div class="label">Méthodes d’évaluation</div>
+              <div class="label">MÃ©thodes dâ€™Ã©valuation</div>
               <div class="lf-check-grid" id="formEvalList"></div>
             </div>
           </div>
 
           <div class="lf-prereq-head">
             <div>
-              <div class="label" style="margin:0;">Prérequis évaluables</div>
+              <div class="label" style="margin:0;">PrÃ©requis Ã©valuables</div>
               <div class="card-sub" style="margin:3px 0 0 0;">
-                Chaque prérequis est associé à trois réponses d’auto-positionnement.
+                Chaque prÃ©requis est associÃ© Ã  trois rÃ©ponses dâ€™auto-positionnement.
               </div>
             </div>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormPrereqAdd">Ajouter un prérequis</button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormPrereqAdd">Ajouter un prÃ©requis</button>
           </div>
 
           <div class="sb-stack sb-stack--xs" id="formPrereqList"></div>
@@ -262,13 +262,13 @@
           <div class="lf-comp-zone">
             <div class="lf-comp-zone-head">
               <div>
-                <div class="label lf-comp-zone-title" style="margin:0;">Compétences visées pour les stagiaires</div>
+                <div class="label lf-comp-zone-title" style="margin:0;">CompÃ©tences visÃ©es pour les stagiaires</div>
                 <div class="card-sub" style="margin:3px 0 0 0;">
-                  Compétences que la formation doit permettre d’acquérir ou de renforcer.
+                  CompÃ©tences que la formation doit permettre dâ€™acquÃ©rir ou de renforcer.
                 </div>
               </div>
               <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormCompStagAdd">
-                Ajouter des compétences
+                Ajouter des compÃ©tences
               </button>
             </div>
 
@@ -278,13 +278,13 @@
           <div class="lf-comp-zone">
             <div class="lf-comp-zone-head">
               <div>
-                <div class="label lf-comp-zone-title" style="margin:0;">Compétences requises pour le formateur</div>
+                <div class="label lf-comp-zone-title" style="margin:0;">CompÃ©tences requises pour le formateur</div>
                 <div class="card-sub" style="margin:3px 0 0 0;">
-                  Compétences attendues pour animer correctement cette formation.
+                  CompÃ©tences attendues pour animer correctement cette formation.
                 </div>
               </div>
               <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormCompFormAdd">
-                Ajouter des compétences
+                Ajouter des compÃ©tences
               </button>
             </div>
 
@@ -295,9 +295,9 @@
         <div class="sb-form-panel" data-panel="contenu">
           <div class="lf-content-head">
             <div>
-              <div class="label lf-comp-zone-title" style="margin:0;">Contenu structuré de la formation</div>
+              <div class="label lf-comp-zone-title" style="margin:0;">Contenu structurÃ© de la formation</div>
               <div class="card-sub" style="margin:3px 0 0 0;">
-                Organisez les séquences, objectifs, détails et compétences visées liées à chaque contenu.
+                Organisez les sÃ©quences, objectifs, dÃ©tails et compÃ©tences visÃ©es liÃ©es Ã  chaque contenu.
               </div>
             </div>
 
@@ -314,10 +314,10 @@
         </div>
 
         <div class="sb-form-panel" data-panel="plans">
-          
+
           <div class="sb-actions" style="justify-content:flex-end; margin-bottom:10px;">
-            <span class="sb-local-status" id="formPlanHeadStatus" style="display:none;"></span>            
-            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormPlanNew">Créer un plan pédagogique</button>
+            <span class="sb-local-status" id="formPlanHeadStatus" style="display:none;"></span>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormPlanNew">CrÃ©er un plan pÃ©dagogique</button>
           </div>
 
           <div id="formPlansList" class="sb-stack sb-stack--sm"></div>
@@ -327,8 +327,8 @@
       <div class="sb-modal-foot">
         <span class="sb-save-success sb-save-success--modal" id="formModalSuccess" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--doc" id="btnFormImport">Importer</button>
-        <button type="button" class="sb-btn sb-btn--ai" id="btnFormGenerateAi">Générer avec l’IA</button>
-        <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiReview">Revoir avec l’IA</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormGenerateAi">GÃ©nÃ©rer avec lâ€™IA</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiReview">Revoir avec lâ€™IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCancel">Annuler</button>
       </div>
@@ -341,13 +341,13 @@
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <span id="planModalBadge" class="sb-badge sb-badge--plan" style="display:none;"></span>
-            <div class="card-title" id="planModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Plan pédagogique</div>
+            <div class="card-title" id="planModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Plan pÃ©dagogique</div>
           </div>
           <div class="card-sub" id="planModalSub" style="margin:4px 0 0 0;">
-            Construisez le déroulé pédagogique à partir des contenus de la formation.
+            Construisez le dÃ©roulÃ© pÃ©dagogique Ã  partir des contenus de la formation.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormPlanX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormPlanX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
@@ -359,27 +359,27 @@
             </div>
 
             <div class="info-item" style="flex:1; min-width:220px;">
-              <div class="label">Modalité générale</div>
+              <div class="label">ModalitÃ© gÃ©nÃ©rale</div>
               <select id="planModaliteGenerale">
-                <option value="">—</option>
+                <option value="">â€”</option>
               </select>
             </div>
           </div>
 
           <div class="lf-plan-duration-row">
             <div class="lf-plan-duration-card">
-              <div class="label">Durée formation</div>
-              <div class="lf-plan-duration-value" id="planDureeFormation">—</div>
+              <div class="label">DurÃ©e formation</div>
+              <div class="lf-plan-duration-value" id="planDureeFormation">â€”</div>
             </div>
 
             <div class="lf-plan-duration-card">
-              <div class="label">Durée plan calculée</div>
-              <div class="lf-plan-duration-value" id="planDureeCalculee">—</div>
+              <div class="label">DurÃ©e plan calculÃ©e</div>
+              <div class="lf-plan-duration-value" id="planDureeCalculee">â€”</div>
             </div>
 
             <div class="lf-plan-duration-card" id="planDureeEtatCard">
-              <div class="label">Écart</div>
-              <div class="lf-plan-duration-value" id="planDureeEcart">—</div>
+              <div class="label">Ã‰cart</div>
+              <div class="lf-plan-duration-value" id="planDureeEcart">â€”</div>
             </div>
           </div>
 
@@ -397,12 +397,12 @@
               <div>
                 <div class="label lf-comp-zone-title" style="margin:0;">Briques de contenu</div>
                 <div class="card-sub" style="margin:3px 0 0 0;">
-                  Glissez un contenu dans une séquence. Une même brique peut être utilisée plusieurs fois.
+                  Glissez un contenu dans une sÃ©quence. Une mÃªme brique peut Ãªtre utilisÃ©e plusieurs fois.
                 </div>
               </div>
             </div>
 
-            <input type="text" id="planContentSearch" placeholder="Filtrer les contenus…" />
+            <input type="text" id="planContentSearch" placeholder="Filtrer les contenusâ€¦" />
 
             <div class="lf-plan-content-library-list" id="planContentLibrary"></div>
           </div>
@@ -410,14 +410,14 @@
           <div class="lf-plan-sequences">
             <div class="lf-plan-sequences-head">
               <div>
-                <div class="label lf-comp-zone-title" style="margin:0;">Séquences pédagogiques</div>
+                <div class="label lf-comp-zone-title" style="margin:0;">SÃ©quences pÃ©dagogiques</div>
                 <div class="card-sub" style="margin:3px 0 0 0;">
-                  Définissez les journées, demi-journées ou séquences du déroulé.
+                  DÃ©finissez les journÃ©es, demi-journÃ©es ou sÃ©quences du dÃ©roulÃ©.
                 </div>
               </div>
 
               <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPlanBlockAdd">
-                Ajouter une séquence
+                Ajouter une sÃ©quence
               </button>
             </div>
 
@@ -438,31 +438,31 @@
     <div class="sb-modal-card sb-modal-card--wide">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin:0;">Cadrer la génération IA</div>
+          <div class="card-title" style="margin:0;">Cadrer la gÃ©nÃ©ration IA</div>
           <div class="card-sub" style="margin:4px 0 0 0;">
-            Renseignez ce que vous savez. Les champs restent optionnels pour laisser l’IA compléter les manques.
+            Renseignez ce que vous savez. Les champs restent optionnels pour laisser lâ€™IA complÃ©ter les manques.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormAiCadrageX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormAiCadrageX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="lf-ai-cadrage-grid">
           <div class="lf-ai-cadrage-section">
             <div class="lf-import-title">Besoin de formation</div>
-            <div class="card-sub">Au moins un objectif, un besoin ou un document est nécessaire pour lancer la génération.</div>
+            <div class="card-sub">Au moins un objectif, un besoin ou un document est nÃ©cessaire pour lancer la gÃ©nÃ©ration.</div>
 
             <div class="row">
               <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Objectif général <span class="lf-label-muted">(optionnel)</span></div>
-                <textarea id="aiFormObjectif" rows="3" placeholder="Ex : Permettre aux participants de structurer une démarche compétences dans leur organisation."></textarea>
+                <div class="label">Objectif gÃ©nÃ©ral <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormObjectif" rows="3" placeholder="Ex : Permettre aux participants de structurer une dÃ©marche compÃ©tences dans leur organisation."></textarea>
               </div>
             </div>
 
             <div class="row">
               <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Situation ou besoin à traiter <span class="lf-label-muted">(optionnel)</span></div>
-                <textarea id="aiFormSituation" rows="3" placeholder="Ex : L’entreprise souhaite mieux identifier les compétences clés, anticiper les départs et orienter ses actions de formation."></textarea>
+                <div class="label">Situation ou besoin Ã  traiter <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormSituation" rows="3" placeholder="Ex : Lâ€™entreprise souhaite mieux identifier les compÃ©tences clÃ©s, anticiper les dÃ©parts et orienter ses actions de formation."></textarea>
               </div>
             </div>
           </div>
@@ -471,35 +471,35 @@
             <div class="lf-import-title">Public et niveau</div>
             <div class="row">
               <div class="info-item" style="flex:1; min-width:240px;">
-                <div class="label">Public visé <span class="lf-label-muted">(optionnel)</span></div>
+                <div class="label">Public visÃ© <span class="lf-label-muted">(optionnel)</span></div>
                 <input type="text" id="aiFormPublic" placeholder="Ex : RH, managers, responsables formation..." />
               </div>
 
               <div class="info-item" style="flex:0 0 220px; max-width:220px;">
-                <div class="label">Niveau initial estimé</div>
+                <div class="label">Niveau initial estimÃ©</div>
                 <select id="aiFormNiveauInitial">
-                  <option value="auto">À déterminer par l’IA</option>
-                  <option value="debutant">Débutant</option>
-                  <option value="intermediaire">Intermédiaire</option>
-                  <option value="avance">Avancé</option>
+                  <option value="auto">Ã€ dÃ©terminer par lâ€™IA</option>
+                  <option value="debutant">DÃ©butant</option>
+                  <option value="intermediaire">IntermÃ©diaire</option>
+                  <option value="avance">AvancÃ©</option>
                   <option value="expert">Expert</option>
-                  <option value="heterogene">Hétérogène</option>
+                  <option value="heterogene">HÃ©tÃ©rogÃ¨ne</option>
                 </select>
               </div>
             </div>
           </div>
 
           <div class="lf-ai-cadrage-section">
-            <div class="lf-import-title">Ambition opérationnelle</div>
+            <div class="lf-import-title">Ambition opÃ©rationnelle</div>
             <div class="row">
               <div class="info-item" style="flex:0 0 260px; max-width:260px;">
-                <div class="label">Niveau d’ambition attendu</div>
+                <div class="label">Niveau dâ€™ambition attendu</div>
                 <select id="aiFormAmbition">
-                  <option value="auto">À déterminer par l’IA</option>
+                  <option value="auto">Ã€ dÃ©terminer par lâ€™IA</option>
                   <option value="sensibiliser">Sensibiliser</option>
-                  <option value="bases">Acquérir les bases</option>
+                  <option value="bases">AcquÃ©rir les bases</option>
                   <option value="pratique">Mettre en pratique</option>
-                  <option value="demarche">Structurer une démarche</option>
+                  <option value="demarche">Structurer une dÃ©marche</option>
                   <option value="livrable">Produire un livrable</option>
                   <option value="prise_fonction">Accompagner une prise de fonction</option>
                   <option value="perfectionner">Perfectionner une pratique existante</option>
@@ -508,66 +508,66 @@
 
               <div class="info-item" style="flex:1; min-width:260px;">
                 <div class="label">Production attendue en fin de formation <span class="lf-label-muted">(optionnel)</span></div>
-                <input type="text" id="aiFormProduction" placeholder="Ex : Une première trame de cartographie compétences et un plan d’action." />
+                <input type="text" id="aiFormProduction" placeholder="Ex : Une premiÃ¨re trame de cartographie compÃ©tences et un plan dâ€™action." />
               </div>
             </div>
 
             <div class="row">
               <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Situations de travail à maîtriser <span class="lf-label-muted">(optionnel)</span></div>
-                <textarea id="aiFormSituationsTravail" rows="4" placeholder="Ex : Identifier les compétences nécessaires à un poste, repérer les compétences critiques, prioriser les actions RH..."></textarea>
-                <div class="card-sub" style="margin-top:6px;">Ces éléments servent d’analyse. L’IA les reformule en compétences observables, sans copier-coller.</div>
+                <div class="label">Situations de travail Ã  maÃ®triser <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormSituationsTravail" rows="4" placeholder="Ex : Identifier les compÃ©tences nÃ©cessaires Ã  un poste, repÃ©rer les compÃ©tences critiques, prioriser les actions RH..."></textarea>
+                <div class="card-sub" style="margin-top:6px;">Ces Ã©lÃ©ments servent dâ€™analyse. Lâ€™IA les reformule en compÃ©tences observables, sans copier-coller.</div>
               </div>
             </div>
           </div>
 
           <div class="lf-ai-cadrage-section">
-            <div class="lf-import-title">Durée et contraintes</div>
+            <div class="lf-import-title">DurÃ©e et contraintes</div>
             <div class="row">
               <div class="info-item" style="flex:0 0 160px; max-width:160px;">
-                <div class="label">Durée souhaitée</div>
+                <div class="label">DurÃ©e souhaitÃ©e</div>
                 <input type="number" id="aiFormDuree" min="0" step="1" placeholder="heures" />
               </div>
 
               <div class="info-item" style="flex:0 0 220px; max-width:220px;">
-                <div class="label">Gestion de la durée</div>
+                <div class="label">Gestion de la durÃ©e</div>
                 <select id="aiFormDureeMode">
-                  <option value="indicative">Durée indicative</option>
-                  <option value="fixed">Durée imposée</option>
-                  <option value="ai">Laisser l’IA proposer</option>
+                  <option value="indicative">DurÃ©e indicative</option>
+                  <option value="fixed">DurÃ©e imposÃ©e</option>
+                  <option value="ai">Laisser lâ€™IA proposer</option>
                 </select>
               </div>
             </div>
 
             <div class="row">
               <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Contraintes métier, réglementaires ou organisationnelles <span class="lf-label-muted">(optionnel)</span></div>
-                <textarea id="aiFormContraintes" rows="3" placeholder="Ex : Public non RH, exemples PME, vocabulaire accessible, contraintes réglementaires à prendre en compte..."></textarea>
+                <div class="label">Contraintes mÃ©tier, rÃ©glementaires ou organisationnelles <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormContraintes" rows="3" placeholder="Ex : Public non RH, exemples PME, vocabulaire accessible, contraintes rÃ©glementaires Ã  prendre en compte..."></textarea>
               </div>
             </div>
           </div>
 
           <div class="lf-ai-cadrage-section lf-ai-cadrage-section--docs">
-            <div class="lf-import-title">Documents de référence</div>
-            <div class="card-sub">Formats acceptés : PDF, DOC, DOCX, TXT. Plusieurs fichiers possibles.</div>
+            <div class="lf-import-title">Documents de rÃ©fÃ©rence</div>
+            <div class="card-sub">Formats acceptÃ©s : PDF, DOC, DOCX, TXT. Plusieurs fichiers possibles.</div>
 
             <label class="lf-ai-doc-drop" id="aiFormDocsDrop" for="aiFormDocs">
               <input type="file" id="aiFormDocs" class="lf-ai-doc-input" multiple
                      accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" />
-              <span class="lf-ai-doc-icon">⇧</span>
-              <span class="lf-ai-doc-main">Glissez vos documents ici ou cliquez pour les sélectionner</span>
-              <span class="lf-ai-doc-sub">Les documents enrichissent la génération, sans remplacer le cadrage métier.</span>
+              <span class="lf-ai-doc-icon">â‡§</span>
+              <span class="lf-ai-doc-main">Glissez vos documents ici ou cliquez pour les sÃ©lectionner</span>
+              <span class="lf-ai-doc-sub">Les documents enrichissent la gÃ©nÃ©ration, sans remplacer le cadrage mÃ©tier.</span>
             </label>
 
             <div class="lf-ai-doc-list" id="aiFormDocsList"></div>
-            <div class="card-sub" id="aiFormDocsLabel" style="margin-top:8px;">Aucun document sélectionné.</div>
+            <div class="card-sub" id="aiFormDocsLabel" style="margin-top:8px;">Aucun document sÃ©lectionnÃ©.</div>
           </div>
         </div>
       </div>
 
       <div class="sb-modal-foot">
         <span class="sb-local-status" id="aiCadrageStatus" style="display:none;"></span>
-        <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiCadrageRun">Générer</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiCadrageRun">GÃ©nÃ©rer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormAiCadrageCancel">Annuler</button>
       </div>
     </div>
@@ -577,38 +577,38 @@
     <div class="sb-modal-card sb-modal-card--wide">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin:0;">Résultat IA proposé</div>
+          <div class="card-title" style="margin:0;">RÃ©sultat IA proposÃ©</div>
           <div class="card-sub" style="margin:4px 0 0 0;">
-            Vérifiez la fiche, les compétences et les contenus avant de remplir la formation.
+            VÃ©rifiez la fiche, les compÃ©tences et les contenus avant de remplir la formation.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormGenerateX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormGenerateX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="lf-ai-preview" id="aiFormPreview">
           <div class="lf-import-preview-head">
             <div>
-              <div class="lf-import-title">Fiche proposée</div>
-              <div class="card-sub">Les contenus restent génériques : méthode pédagogique, séquençage et évaluation seront définis ensuite.</div>
+              <div class="lf-import-title">Fiche proposÃ©e</div>
+              <div class="card-sub">Les contenus restent gÃ©nÃ©riques : mÃ©thode pÃ©dagogique, sÃ©quenÃ§age et Ã©valuation seront dÃ©finis ensuite.</div>
             </div>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnAiReportDownload">Télécharger le rapport IA</button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnAiReportDownload">TÃ©lÃ©charger le rapport IA</button>
           </div>
 
           <div class="lf-import-summary" id="aiFormSummary"></div>
 
           <div class="lf-import-section">
-            <div class="lf-import-section-title">Compétences visées stagiaires</div>
+            <div class="lf-import-section-title">CompÃ©tences visÃ©es stagiaires</div>
             <div id="aiFormCompStag" class="lf-import-comp-list"></div>
           </div>
 
           <div class="lf-import-section">
-            <div class="lf-import-section-title">Compétences requises formateur</div>
+            <div class="lf-import-section-title">CompÃ©tences requises formateur</div>
             <div id="aiFormCompForm" class="lf-import-comp-list"></div>
           </div>
 
           <div class="lf-import-section">
-            <div class="lf-import-section-title">Contenus proposés</div>
+            <div class="lf-import-section-title">Contenus proposÃ©s</div>
             <div id="aiFormContents" class="lf-import-content-list"></div>
           </div>
 
@@ -632,9 +632,9 @@
     <div class="sb-modal-card sb-modal-card--small">
       <div class="lf-ai-wait">
         <div class="lf-ai-spinner"></div>
-        <div class="card-title" style="margin:0;">Génération IA en cours</div>
-        <div class="card-sub" id="aiWaitMessage">Cette opération peut prendre quelques minutes.</div>
-        <div class="card-sub">Appuyez sur Échap pour annuler.</div>
+        <div class="card-title" style="margin:0;">GÃ©nÃ©ration IA en cours</div>
+        <div class="card-sub" id="aiWaitMessage">Cette opÃ©ration peut prendre quelques minutes.</div>
+        <div class="card-sub">Appuyez sur Ã‰chap pour annuler.</div>
       </div>
     </div>
   </div>
@@ -645,25 +645,25 @@
         <div>
           <div class="card-title" style="margin:0;">Importer une fiche formation</div>
           <div class="card-sub" style="margin:4px 0 0 0;">
-            Importez un document PDF ou Word. Novoskill extrait les informations exploitables et les prépare dans la fiche.
+            Importez un document PDF ou Word. Novoskill extrait les informations exploitables et les prÃ©pare dans la fiche.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormImportX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormImportX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="lf-import-shell">
           <div class="lf-import-card">
-            <div class="lf-import-icon">⬆</div>
+            <div class="lf-import-icon">â¬†</div>
             <div class="lf-import-title">Document source</div>
             <div class="card-sub">
-              Formats acceptés : PDF ou DOCX. Le document est analysé pour préremplir la fiche formation.
+              Formats acceptÃ©s : PDF ou DOCX. Le document est analysÃ© pour prÃ©remplir la fiche formation.
             </div>
 
             <input type="file" id="formImportFile" class="lf-import-input"
                   accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
 
-            <div class="lf-import-file" id="formImportFileName">Aucun fichier sélectionné</div>
+            <div class="lf-import-file" id="formImportFileName">Aucun fichier sÃ©lectionnÃ©</div>
 
             <button type="button" class="sb-btn sb-btn--accent" id="btnFormImportAnalyse">
               Analyser le document
@@ -675,25 +675,25 @@
           <div class="lf-import-preview" id="formImportPreview" style="display:none;">
             <div class="lf-import-preview-head">
               <div>
-                <div class="lf-import-title">Prévisualisation de l’analyse</div>
-                <div class="card-sub">Les données seront injectées dans le modal formation après validation.</div>
+                <div class="lf-import-title">PrÃ©visualisation de lâ€™analyse</div>
+                <div class="card-sub">Les donnÃ©es seront injectÃ©es dans le modal formation aprÃ¨s validation.</div>
               </div>
             </div>
 
             <div class="lf-import-summary" id="formImportSummary"></div>
 
             <div class="lf-import-section">
-              <div class="lf-import-section-title">Compétences visées stagiaires</div>
+              <div class="lf-import-section-title">CompÃ©tences visÃ©es stagiaires</div>
               <div id="formImportCompStag" class="lf-import-comp-list"></div>
             </div>
 
             <div class="lf-import-section">
-              <div class="lf-import-section-title">Compétences requises formateur</div>
+              <div class="lf-import-section-title">CompÃ©tences requises formateur</div>
               <div id="formImportCompForm" class="lf-import-comp-list"></div>
             </div>
 
             <div class="lf-import-section">
-              <div class="lf-import-section-title">Contenus détectés</div>
+              <div class="lf-import-section-title">Contenus dÃ©tectÃ©s</div>
               <div id="formImportContents" class="lf-import-content-list"></div>
             </div>
           </div>
@@ -713,10 +713,10 @@
         <div>
           <div class="card-title" id="formContentModalTitle" style="margin:0;">Contenu</div>
           <div class="card-sub" style="margin:4px 0 0 0;">
-            Structurez une ligne de contenu et rattachez-la aux compétences visées.
+            Structurez une ligne de contenu et rattachez-la aux compÃ©tences visÃ©es.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormContentX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormContentX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
@@ -736,14 +736,14 @@
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Sujets abordés</div>
+            <div class="label">Sujets abordÃ©s</div>
             <textarea id="formContentDetail" rows="7"></textarea>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Compétences visées liées à ce contenu</div>
+            <div class="label">CompÃ©tences visÃ©es liÃ©es Ã  ce contenu</div>
             <div class="lf-content-comp-list" id="formContentCompList"></div>
           </div>
         </div>
@@ -762,17 +762,17 @@
     <div class="sb-modal-card sb-modal-card--wide">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" id="formCompPickerTitle" style="margin:0;">Sélectionner des compétences</div>
+          <div class="card-title" id="formCompPickerTitle" style="margin:0;">SÃ©lectionner des compÃ©tences</div>
           <div class="card-sub" id="formCompPickerSub" style="margin:4px 0 0 0;"></div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormCompPickerX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormCompPickerX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="sb-toolbar">
           <div class="sb-search">
             <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
-            <input type="text" id="formCompPickerSearch" placeholder="Code, intitulé, domaine…" />
+            <input type="text" id="formCompPickerSearch" placeholder="Code, intitulÃ©, domaineâ€¦" />
           </div>
 
           <div class="info-item" style="min-width:240px;">
@@ -787,7 +787,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompPickerApply">Ajouter la sélection</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompPickerApply">Ajouter la sÃ©lection</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompPickerCancel">Annuler</button>
       </div>
     </div>
@@ -799,16 +799,16 @@
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <span id="formCompModalBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
-            <div class="card-title" id="formCompModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
+            <div class="card-title" id="formCompModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">CompÃ©tence</div>
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormCompX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormCompX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="row">
           <div class="info-item" style="flex:2; min-width:260px;">
-            <div class="label">Intitulé</div>
+            <div class="label">IntitulÃ©</div>
             <input type="text" id="formCompIntitule" />
           </div>
         </div>
@@ -817,14 +817,14 @@
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">Domaine</div>
             <select id="formCompDomaine">
-              <option value="">—</option>
+              <option value="">â€”</option>
             </select>
           </div>
           <div class="info-item" style="flex:1; min-width:240px;">
-            <div class="label">État</div>
+            <div class="label">Ã‰tat</div>
             <select id="formCompEtat">
               <option value="active">active</option>
-              <option value="à valider">à valider</option>
+              <option value="Ã  valider">Ã  valider</option>
               <option value="valide">valide</option>
             </select>
           </div>
@@ -838,44 +838,44 @@
         </div>
 
         <div class="lf-comp-section-card lf-comp-levels-editor">
-          <div class="lf-comp-section-title">Niveaux de maîtrise</div>
+          <div class="lf-comp-section-title">Niveaux de maÃ®trise</div>
           <div class="card-sub" style="margin:3px 0 12px 0;">
-            Décrivez la progression observable de Débutant à Expert.
+            DÃ©crivez la progression observable de DÃ©butant Ã  Expert.
           </div>
 
           <div class="lf-comp-level-row">
-            <div class="sb-badge sb-badge-niv sb-badge-niv-a lf-comp-level-badge">Débutant</div>
-            <textarea id="formCompNivA" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Identifie les repères essentiels avec un accompagnement."></textarea>
+            <div class="sb-badge sb-badge-niv sb-badge-niv-a lf-comp-level-badge">DÃ©butant</div>
+            <textarea id="formCompNivA" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Identifie les repÃ¨res essentiels avec un accompagnement."></textarea>
           </div>
           <div class="lf-comp-level-row">
-            <div class="sb-badge sb-badge-niv sb-badge-niv-b lf-comp-level-badge">Intermédiaire</div>
-            <textarea id="formCompNivB" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Applique la méthode de manière autonome dans une situation simple."></textarea>
+            <div class="sb-badge sb-badge-niv sb-badge-niv-b lf-comp-level-badge">IntermÃ©diaire</div>
+            <textarea id="formCompNivB" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Applique la mÃ©thode de maniÃ¨re autonome dans une situation simple."></textarea>
           </div>
           <div class="lf-comp-level-row">
-            <div class="sb-badge sb-badge-niv sb-badge-niv-c lf-comp-level-badge">Avancé</div>
-            <textarea id="formCompNivC" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Adapte la pratique au contexte et fiabilise les résultats."></textarea>
+            <div class="sb-badge sb-badge-niv sb-badge-niv-c lf-comp-level-badge">AvancÃ©</div>
+            <textarea id="formCompNivC" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Adapte la pratique au contexte et fiabilise les rÃ©sultats."></textarea>
           </div>
           <div class="lf-comp-level-row">
             <div class="sb-badge sb-badge-niv sb-badge-niv-d lf-comp-level-badge">Expert</div>
-            <textarea id="formCompNivD" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Optimise la démarche et transmet les bonnes pratiques."></textarea>
+            <textarea id="formCompNivD" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Optimise la dÃ©marche et transmet les bonnes pratiques."></textarea>
           </div>
         </div>
 
         <div class="lf-comp-section-card lf-comp-criteria-editor">
           <div class="sb-field-head">
             <div>
-              <div class="lf-comp-section-title">Grille d’évaluation</div>
-              <div class="card-sub" style="margin:3px 0 0 0;">Critères et niveaux d’évaluation.</div>
+              <div class="lf-comp-section-title">Grille dâ€™Ã©valuation</div>
+              <div class="card-sub" style="margin:3px 0 0 0;">CritÃ¨res et niveaux dâ€™Ã©valuation.</div>
             </div>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompAddCrit">Ajouter un critère</button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompAddCrit">Ajouter un critÃ¨re</button>
           </div>
 
             <div class="sb-crit-editor" id="formCompCritEditor" style="display:none;">
-              <div class="card-sub" id="formCompCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
+              <div class="card-sub" id="formCompCritEditorTitle" style="margin:0 0 10px 0;">CritÃ¨re</div>
 
               <div class="row">
                 <div class="info-item" style="flex:1; min-width:260px;">
-                  <div class="label">Nom du critère</div>
+                  <div class="label">Nom du critÃ¨re</div>
                   <input type="text" id="formCompCritNom" />
                 </div>
               </div>
@@ -908,14 +908,14 @@
           <div class="sb-stack sb-stack--xs lf-comp-crit-list" id="formCompCritList"></div>
 
           <div class="card-sub" style="margin:8px 0 0 0;">
-            1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
+            1 Ã  4 critÃ¨res. Chaque critÃ¨re doit contenir 4 niveaux dâ€™Ã©valuation.
           </div>
         </div>
       </div>
 
       <div class="sb-modal-foot">
         <span class="sb-local-status" id="formCompModalStatus" style="display:none;"></span>
-        <button type="button" class="sb-btn sb-btn--ai" id="btnFormCompAi">Concevoir avec l’IA</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormCompAi">Concevoir avec lâ€™IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompCancel">Annuler</button>
       </div>
@@ -926,26 +926,26 @@
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin:0;">Concevoir avec l’IA</div>
+          <div class="card-title" style="margin:0;">Concevoir avec lâ€™IA</div>
           <div class="card-sub" style="margin:4px 0 0 0;">
-            L’IA propose un brouillon. Vous validez et ajustez avant d’enregistrer.
+            Lâ€™IA propose un brouillon. Vous validez et ajustez avant dâ€™enregistrer.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormCompAiX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormCompAiX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Objectif de la compétence</div>
-            <textarea id="formCompAiObjectif" rows="3" placeholder="Ex : Analyser et structurer des données avec une aide IA"></textarea>
+            <div class="label">Objectif de la compÃ©tence</div>
+            <textarea id="formCompAiObjectif" rows="3" placeholder="Ex : Analyser et structurer des donnÃ©es avec une aide IA"></textarea>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Contexte</div>
-            <textarea id="formCompAiContexte" rows="3" placeholder="Contexte métier, public visé, outils, contraintes…"></textarea>
+            <textarea id="formCompAiContexte" rows="3" placeholder="Contexte mÃ©tier, public visÃ©, outils, contraintesâ€¦"></textarea>
           </div>
         </div>
 
@@ -953,34 +953,34 @@
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">Domaine</div>
             <select id="formCompAiDomaine">
-              <option value="">—</option>
+              <option value="">â€”</option>
             </select>
-            <div class="card-sub" style="margin:6px 0 0 0;">Si vous choisissez un domaine, l’IA sera contrainte de le respecter.</div>
+            <div class="card-sub" style="margin:6px 0 0 0;">Si vous choisissez un domaine, lâ€™IA sera contrainte de le respecter.</div>
           </div>
 
           <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Nombre de critères</div>
+            <div class="label">Nombre de critÃ¨res</div>
             <select id="formCompAiNbCrit">
-              <option value="1">1 critère</option>
-              <option value="2">2 critères</option>
-              <option value="3" selected>3 critères</option>
-              <option value="4">4 critères</option>
+              <option value="1">1 critÃ¨re</option>
+              <option value="2">2 critÃ¨res</option>
+              <option value="3" selected>3 critÃ¨res</option>
+              <option value="4">4 critÃ¨res</option>
             </select>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Document à analyser</div>
+            <div class="label">Document Ã  analyser</div>
             <input type="file" id="formCompAiDocument" accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" />
-            <div class="card-sub" style="margin:6px 0 0 0;">Formats acceptés : PDF, DOCX, TXT, MD, CSV. Le document sert uniquement de contexte de génération.</div>
+            <div class="card-sub" style="margin:6px 0 0 0;">Formats acceptÃ©s : PDF, DOCX, TXT, MD, CSV. Le document sert uniquement de contexte de gÃ©nÃ©ration.</div>
           </div>
         </div>
       </div>
 
       <div class="sb-modal-foot">
         <span class="sb-local-status" id="formCompAiStatus" style="display:none;"></span>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompAiGenerate">Générer</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompAiGenerate">GÃ©nÃ©rer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompAiCancel">Annuler</button>
       </div>
     </div>
@@ -991,9 +991,9 @@
       <div class="sb-modal-head">
         <div>
           <div class="card-title" style="margin-bottom:2px;">Archiver la formation</div>
-          <div class="card-sub" id="formArchiveMsg" style="margin:0;">—</div>
+          <div class="card-sub" id="formArchiveMsg" style="margin:0;">â€”</div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnFormArchiveX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormArchiveX" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="sb-modal-foot">

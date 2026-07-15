@@ -1,14 +1,14 @@
-/* studio_portal_theme.css
-   - Override minimal du thème Skills
+﻿/* studio_portal_theme.css
+   - Override minimal du thÃ¨me Skills
    - Accent Studio : #E6E421
-   - Sidebar : #333333 (inchangé)
+   - Sidebar : #333333 (inchangÃ©)
 */
 
 :root{
   --accent:#E6E421;
   --sidebar-bg:#333333;
 
-  /* Accent RGB (pour rings / rgba cohérents) */
+  /* Accent RGB (pour rings / rgba cohÃ©rents) */
   --sb-accent-rgb: 230,228,33;
 
   --sb-violet: #7c3aed;
@@ -34,16 +34,16 @@
 
 .menu-section-title{
   margin: 12px 10px 4px;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: var(--ns-letter-label);
   color: rgba(255,255,255,.58);
   cursor: default;
   user-select: none;
 }
 
-/* Header Studio aligné sur le bandeau Insights */
+/* Header Studio alignÃ© sur le bandeau Insights */
 .studio-topbar .topbar-left{
   min-width:0;
 }
@@ -102,8 +102,8 @@
   color:#111827;
   padding:9px 10px;
   text-align:left;
-  font-size:13px;
-  font-weight:600;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 
@@ -118,7 +118,7 @@
 }
 
 /* ======================================================
-   Studio CORE – composants réutilisables (pas “par vue”)
+   Studio CORE â€“ composants rÃ©utilisables (pas â€œpar vueâ€)
    ====================================================== */
 
 /* Layout */
@@ -157,9 +157,9 @@
 .sb-save-success{
   display:none;
   align-items:center;
-  font-size:11px;
-  font-weight:600;
-  line-height:1.2;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-tight);
   color:#15803d;
   white-space:nowrap;
 }
@@ -289,7 +289,7 @@
   align-items:flex-start;
   gap:10px;
   color:#111827;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-data .info-subsection-icon{
@@ -310,8 +310,8 @@
 }
 
 #view-data .info-subsection-title{
-  font-size:13px;
-  font-weight:700;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
 }
 
@@ -371,7 +371,7 @@
 
 #view-data .info-role-note{
   margin-top:4px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
@@ -382,8 +382,8 @@
 
 #view-data .sb-connexion-technical{
   min-height:112px;
-  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size:12px;
+  font-family: var(--ns-font-mono);
+  font-size: var(--ns-text-xs);
 }
 
 #view-data .info-logo-panel{
@@ -455,8 +455,8 @@
   min-height:32px;
   max-width:360px;
   white-space:normal;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-data input:disabled,
@@ -575,10 +575,10 @@
 .sb-list-item.is-active{ background: rgba(var(--sb-accent-rgb), .18); }
 
 .sb-list-title{
-  font-weight:600;
-  font-size:13px;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-sm);
 }
-.sb-list-meta{ opacity:.75; font-size:12px; }
+.sb-list-meta{ opacity:.75; font-size: var(--ns-text-xs); }
 
 /* Row cards */
 .sb-row-card{
@@ -623,8 +623,8 @@
 }
 .sb-row-left{ display:flex; align-items:center; gap:10px; min-width:0; }
 .sb-row-title{
-  font-weight:600;
-  font-size: 13px ;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-sm);
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -632,7 +632,7 @@
 }
 
 /* =========================
-   CORE — Niveau requis (cards radios)
+   CORE â€” Niveau requis (cards radios)
    ========================= */
 
 .sb-level-grid{
@@ -660,7 +660,7 @@
   box-shadow: 0 0 0 3px rgba(var(--sb-violet-rgb), .18);
 }
 .sb-level-name{
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
   color:#111827;
 }
 .sb-level-radio{
@@ -670,9 +670,9 @@
   gap:8px;
 }
 .sb-level-text{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#374151;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
   background: rgba(17,24,39,.03);
   border: 1px solid rgba(17,24,39,.08);
   border-radius:8px;
@@ -681,7 +681,7 @@
 }
 
 /* =========================
-   CORE — Criticité (sliders + ring)
+   CORE â€” CriticitÃ© (sliders + ring)
    ========================= */
 
 .sb-crit-grid{
@@ -710,16 +710,16 @@
   margin:0;
 }
 .sb-crit-val{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
-/* Réduire légèrement la longueur des sliders (sans toucher au layout) */
+/* RÃ©duire lÃ©gÃ¨rement la longueur des sliders (sans toucher au layout) */
 .sb-crit-row input[type="range"]{
   width: 92%;
 }
 
 /* =========================
-   CORE — Stepper (numeric up/down moderne)
+   CORE â€” Stepper (numeric up/down moderne)
    ========================= */
 
 .sb-stepper{
@@ -739,8 +739,8 @@
   background:transparent !important;
   padding:8px 10px;
   text-align:center;
-  font-family:inherit;
-  font-size:14px;
+  font-family: inherit;
+  font-size: var(--ns-text-md);
   outline:none;
   box-shadow:none;
   min-width:0;
@@ -751,7 +751,7 @@
   border:0;
   background:#eef2f7;
   color:#111827;
-  font-weight:800;
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -775,7 +775,7 @@
   -moz-appearance:textfield;
 }
 /* =========================
-   CORE — Ring (style Insights, violet)
+   CORE â€” Ring (style Insights, violet)
    ========================= */
 
 .sb-ring{
@@ -801,16 +801,16 @@
   pointer-events:none;
 }
 .sb-ring-pct{
-  font-size:22px;
-  font-weight:800;
+  font-size: var(--ns-title-md);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
-  line-height:1.05;
+  line-height: var(--ns-leading-tight);
 }
 .sb-ring-sub{
   margin-top:2px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
 }
 .sb-ring-bg{
   stroke: rgba(0,0,0,.10);
@@ -845,8 +845,8 @@
   align-items:center;
   padding:3px 10px;
   border-radius:999px;
-  font-weight:700;
-  font-size:12px;
+  font-weight: var(--ns-weight-bold);
+  font-size: var(--ns-text-xs);
   white-space:nowrap;
 }
 .sb-badge--accent-soft{
@@ -877,7 +877,7 @@
   color:#fff;
 }
 
-/* Badge Domaine (Compétences) – standard réutilisable */
+/* Badge Domaine (CompÃ©tences) â€“ standard rÃ©utilisable */
 .sb-badge--comp-domain{
   --sb-domain-rgb: 17,24,39;          /* fallback */
   background: rgba(var(--sb-domain-rgb), .12);
@@ -895,7 +895,7 @@
 }
 
 .sb-badge--ai-match{
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 .sb-badge--ai-match-recommended{
@@ -925,8 +925,8 @@
 .sb-ai-match-score{
   display:inline-flex;
   align-items:center;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   color:#64748b;
   white-space:nowrap;
 }
@@ -988,7 +988,7 @@
   }
 }
 
-/* Compétences poste : table synthétique */
+/* CompÃ©tences poste : table synthÃ©tique */
 .sb-comp-cell{
   display:flex;
   align-items:center;
@@ -1009,23 +1009,23 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size:14px;
-  font-weight:600;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
 }
 
 /* ======================================================
-   Badges Niveau requis / Criticité
+   Badges Niveau requis / CriticitÃ©
    Alignement visuel sur Insights
    - Niveau requis : pill contour orange, fond transparent
-   - Criticité : rond violet, fond transparent
+   - CriticitÃ© : rond violet, fond transparent
    ====================================================== */
 
 /* Base commune niveau requis
    Compat :
    - classes Studio actuelles : .sb-badge--niv / -a / -b / -c
-   - alias éventuels Insights : .sb-badge-niv / -a / -b / -c
+   - alias Ã©ventuels Insights : .sb-badge-niv / -a / -b / -c
 */
 .sb-badge.sb-badge--niv,
 .sb-badge.sb-badge-niv{
@@ -1037,9 +1037,9 @@
   align-items:center;
   justify-content:center;
   background:transparent;
-  font-weight:600;
-  font-size:12px;
-  line-height:1;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-tight);
   box-sizing:border-box;
 }
 
@@ -1062,10 +1062,10 @@
   color: rgb(226, 114, 9);
 }
 
-/* Base commune criticité
+/* Base commune criticitÃ©
    Compat :
    - classes Studio actuelles : .sb-crit-badge + --low / --mid / --high
-   - alias éventuels Insights : .sb-crit-l1 à .sb-crit-l5
+   - alias Ã©ventuels Insights : .sb-crit-l1 Ã  .sb-crit-l5
 */
 .sb-badge.sb-crit-badge,
 .sb-crit-badge{
@@ -1078,9 +1078,9 @@
   height:28px;
   padding:0;
   border-radius:999px;
-  font-size:12px;
-  font-weight:700;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   background:transparent;
   border:2px solid rgba(var(--crit-violet), 0.45);
   color:rgba(var(--crit-violet), 0.85);
@@ -1192,14 +1192,14 @@
 }
 
 /* ======================================================
-   Tables métier Studio – Organisation / Collaborateurs
-   Gabarits propres et homogènes
+   Tables mÃ©tier Studio â€“ Organisation / Collaborateurs
+   Gabarits propres et homogÃ¨nes
    ====================================================== */
 
 .sb-table-th-2l{
   display:block;
   width:100%;
-  line-height:1.1;
+  line-height: var(--ns-leading-tight);
   text-align:center;
   white-space:normal;
 }
@@ -1217,7 +1217,7 @@
 }
 
 /* Badges niveau requis / niveau actuel
-   Version compacte, sans lettre affichée */
+   Version compacte, sans lettre affichÃ©e */
 .sb-badge.sb-badge--niv,
 .sb-badge.sb-badge-niv{
   min-width:72px;
@@ -1228,9 +1228,9 @@
   align-items:center;
   justify-content:center;
   background:transparent;
-  font-weight:600;
-  font-size:11px;
-  line-height:1;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-tight);
   box-sizing:border-box;
   white-space:nowrap;
 }
@@ -1302,8 +1302,8 @@
 }
 
 #posteCertTable td:nth-child(2){
-  font-size:12px;
-  line-height:1.25;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-title);
   color:#64748b;
 }
 
@@ -1357,9 +1357,9 @@
   background:#fff7ed;
   border:1px solid #fed7aa;
   color:#c2410c;
-  font-size:10.5px;
-  font-weight:800;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   cursor:help;
 }
 
@@ -1421,7 +1421,7 @@
 }
 
 /* Bouton contexte poste (CORE)
-   Pour les actions liées à un poste ou à ses éléments dérivés */
+   Pour les actions liÃ©es Ã  un poste ou Ã  ses Ã©lÃ©ments dÃ©rivÃ©s */
 .sb-btn--poste-soft{
   background:#fff;
   color:rgb(209, 51, 188);
@@ -1441,7 +1441,7 @@
 }
 
 /* Bouton sensible (CORE)
-   Pour les actions d’archivage / retrait logique */
+   Pour les actions dâ€™archivage / retrait logique */
 .sb-btn--danger-soft{
   background:#fff5f5;
   color:#b42318;
@@ -1513,34 +1513,34 @@
 }
 
 .sb-ia-overlay__title{
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--ns-title-sm);
+  font-weight: var(--ns-weight-bold);
   color: #111827;
   margin-bottom: 6px;
 }
 
 .sb-ia-overlay__text{
-  font-size: 14px;
+  font-size: var(--ns-text-md);
   color: #4b5563;
-  line-height: 1.45;
+  line-height: var(--ns-leading-body);
   margin-bottom: 12px;
 }
 
 .sb-ia-overlay__timer{
-  font-size: 13px;
+  font-size: var(--ns-text-sm);
   color: #6b7280;
 }
 
 .sb-ia-overlay__hint{
   margin-top: 8px;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-body);
   color: #6b7280;
 }
 
 .sb-ia-overlay__hint.is-warning{
   color: #b45309;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold);
 }
 
 /* Import documentaire (CORE) */
@@ -1568,14 +1568,14 @@
 }
 
 .sb-dropzone__title{
-  font-size:15px;
-  font-weight:700;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
 }
 
 .sb-dropzone__sub{
   margin-top:6px;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#6b7280;
 }
 
@@ -1598,7 +1598,7 @@
 }
 
 .sb-file-card__name{
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
   color:#111827;
   white-space:nowrap;
   overflow:hidden;
@@ -1606,7 +1606,7 @@
 }
 
 .sb-file-card__meta{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
@@ -1657,7 +1657,7 @@
   to { transform: rotate(360deg); }
 }
 
-/* Accordéon (CORE) */
+/* AccordÃ©on (CORE) */
 .sb-acc{
   border:1px solid rgba(17,24,39,.14);
   border-radius:10px;
@@ -1677,7 +1677,7 @@
   font: inherit;
 }
 .sb-acc-title{
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
   text-align:left;
   min-width:0;
   overflow:hidden;
@@ -1685,7 +1685,7 @@
   white-space:nowrap;
 }
 .sb-acc-meta{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   opacity:.7;
   white-space:nowrap;
 }
@@ -1702,7 +1702,7 @@
   margin-top:10px;
 }
 
-/* Titre de champ + action à droite */
+/* Titre de champ + action Ã  droite */
 .sb-field-head{
   display:flex;
   align-items:center;
@@ -1711,7 +1711,7 @@
   margin:0 0 6px 0;
 }
 
-/* Grille d’évaluation (Compétences) – standard */
+/* Grille dâ€™Ã©valuation (CompÃ©tences) â€“ standard */
 .sb-crit-editor{
   border:1px solid rgba(17,24,39,.14);
   border-radius:10px;
@@ -1768,12 +1768,12 @@
 
 .sb-richtext-help{
   margin:4px 0 8px 0;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
 .sb-richtext-struct-btn{
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
 }
 
 .sb-richtext-editor ol > li{
@@ -1796,7 +1796,7 @@
   margin: 0 0 0 18px;
 }
 
-/* Modal (générique Studio) */
+/* Modal (gÃ©nÃ©rique Studio) */
 .sb-modal{
   position:fixed;
   inset:0;
@@ -1848,25 +1848,25 @@
 .sb-modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:12px; }
 .sb-modal-foot .sb-modal-actions{ margin-top:0; }
 
-/* Form controls: textarea doit hériter la même police que input/select */
+/* Form controls: textarea doit hÃ©riter la mÃªme police que input/select */
 .sb-modal textarea{
   font-family: inherit;
   font-size: inherit;
 }
 
-/* Textarea un peu plus haut (standard réutilisable) */
+/* Textarea un peu plus haut (standard rÃ©utilisable) */
 .sb-textarea--md{
   min-height: 78px;
 }
 
-/* Textarea niveaux A/B/C (Compétences) */
+/* Textarea niveaux A/B/C (CompÃ©tences) */
 .sb-textarea--niv{
   min-height: 110px;
 }
 
 .sb-textarea--compact{
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-body);
 }
 
 /* Studio > Votre organisation > modal poste : alignement visuel Insights */
@@ -1899,9 +1899,9 @@
 
 #modalPoste .sb-title-text{
   color:#111827;
-  font-size:16px;
-  line-height:1.2;
-  font-weight:600;
+  font-size: var(--ns-text-lg);
+  line-height: var(--ns-leading-tight);
+  font-weight: var(--ns-weight-semibold);
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -1911,7 +1911,7 @@
   margin:5px 0 0 0;
   min-height:0;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste .studio-poste-modal-nav{
@@ -1935,8 +1935,8 @@
   background:transparent;
   color:#334155;
   font:inherit;
-  font-size:13px;
-  font-weight:750;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -2089,16 +2089,16 @@
 #modalPoste .studio-rh-panel-title{
   margin:0;
   color:#111827;
-  font-size:15px;
-  font-weight:750;
-  line-height:1.25;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-title);
 }
 
 #modalPoste .studio-rh-panel-sub{
   margin:4px 0 0;
   color:#64748b;
-  font-size:12px;
-  line-height:1.35;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-ui);
 }
 
 #modalPoste .studio-rh-main-grid,
@@ -2143,8 +2143,8 @@
   max-height:360px;
   overflow:auto;
   padding:14px 16px;
-  font-size:13px;
-  line-height:1.55;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-body);
 }
 
 #modalPoste .studio-poste-richtext .sb-richtext-editor > ol{
@@ -2159,8 +2159,8 @@
   counter-increment:poste-main-activity;
   margin:10px 0 12px;
   padding-left:34px;
-  font-size:13px;
-  font-weight:800;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-richtext .sb-richtext-editor > ol > li::before{
@@ -2177,17 +2177,17 @@
   border-radius:999px;
   background:var(--accent);
   color:#111827;
-  font-size:13px;
-  font-weight:800;
-  line-height:1;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #modalPoste .studio-poste-richtext .sb-richtext-editor > ol > li > ul{
   margin:6px 0 0;
   padding-left:18px;
   list-style:circle;
-  font-size:13px;
-  font-weight:400;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-regular);
 }
 
 #modalPoste .studio-poste-richtext .sb-richtext-editor > ol > li > ul > li{
@@ -2227,7 +2227,7 @@
 }
 
 #modalPoste .studio-exi-table-wrap .sb-table th{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#334155;
   background:#fbfcfe;
 }
@@ -2253,9 +2253,9 @@
   border-top:1px solid #e5e7eb;
   background:#fff;
   color:#111827;
-  font-family:inherit;
-  font-size:12.5px;
-  font-weight:700;
+  font-family: inherit;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -2264,8 +2264,8 @@
 }
 
 #modalPoste .studio-exi-more__chev{
-  font-size:15px;
-  line-height:1;
+  font-size: var(--ns-text-lg);
+  line-height: var(--ns-leading-tight);
   transition:transform .12s ease;
 }
 
@@ -2283,8 +2283,8 @@
   border-radius:12px;
   color:#64748b;
   background:#f8fafc;
-  font-size:13px;
-  font-weight:600;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalPoste .studio-exi-empty__icon{
@@ -2431,9 +2431,9 @@
   border-radius:10px;
   background:#fff;
   color:#111827;
-  font-family:inherit;
-  font-size:13px;
-  line-height:1.35;
+  font-family: inherit;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-ui);
   box-sizing:border-box;
   resize:vertical;
 }
@@ -2449,8 +2449,8 @@
   background:transparent;
   color:#111827;
   cursor:pointer;
-  font-size:22px;
-  line-height:1;
+  font-size: var(--ns-title-md);
+  line-height: var(--ns-leading-tight);
   padding:4px 8px;
   border-radius:10px;
   opacity:.7;
@@ -2458,7 +2458,7 @@
 .sb-modal-x:hover{ background: rgba(17,24,39,.06); opacity:1; }
 
 /* ======================================================
-   Studio CORE – cartes KPI / filtres / rangées / modal
+   Studio CORE â€“ cartes KPI / filtres / rangÃ©es / modal
    ====================================================== */
 
 .sb-kpi-grid{
@@ -2480,13 +2480,13 @@
   background:#fff;
 }
 .sb-kpi-label{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 .sb-kpi-value{
   margin-top:4px;
-  font-size:16px;
-  font-weight:600;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
 }
 
@@ -2494,28 +2494,28 @@
   width:100%;
   margin-top:8px;
   min-height:38px;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 /* ======================================================
-   Studio CORE – Assistant cotation conventionnelle
+   Studio CORE â€“ Assistant cotation conventionnelle
    ====================================================== */
 
 .sb-ccn-topval{
-  font-size:14px;
-  font-weight:600;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
 }
 
 .sb-ccn-text{
-  font-size:13px !important;
-  line-height:1.5;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-body);
 }
 
 .sb-ccn-table th,
 .sb-ccn-table td{
-  font-size:13px;
-  line-height:1.45;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-body);
 }
 
 .sb-badge--ccn-level{
@@ -2523,8 +2523,8 @@
   justify-content:center;
   padding:3px 8px;
   border-radius:999px;
-  font-weight:700;
-  font-size:12px;
+  font-weight: var(--ns-weight-bold);
+  font-size: var(--ns-text-xs);
   background: var(--sb-violet);
   border:1px solid var(--sb-violet);
   color:#fff;
@@ -2564,7 +2564,7 @@
   gap:10px;
   flex-wrap:wrap;
   color:#6b7280;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 .sb-row-meta span{
   white-space:nowrap;
@@ -2585,15 +2585,15 @@
 
 .sb-save-inline-msg{
   display:inline-block;
-  font-size:10px;
-  font-weight:400;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-regular);
   color:#0a7a2f;
-  line-height:1.2;
+  line-height: var(--ns-leading-tight);
   white-space:nowrap;
 }
 
 /* ======================================================
-   Studio CORE – Formulaires structurés / dates / badges statut / onglets actifs
+   Studio CORE â€“ Formulaires structurÃ©s / dates / badges statut / onglets actifs
    ====================================================== */
 
 .sb-collab-modal-card{
@@ -2644,9 +2644,9 @@
   background:rgba(var(--sb-accent-rgb), .22);
   border:1px solid rgba(var(--sb-accent-rgb), .34);
   color:#111827;
-  font-size:16px;
-  font-weight:650;
-  letter-spacing:.02em;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-semibold);
+  letter-spacing: var(--ns-letter-label);
 }
 
 .sb-collab-profile-text{
@@ -2662,17 +2662,17 @@
 }
 
 .sb-collab-profile-titleline .card-title{
-  font-size:22px;
-  line-height:1.15;
-  font-weight:650;
+  font-size: var(--ns-title-md);
+  line-height: var(--ns-leading-tight);
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
 }
 
 .sb-collab-profile-sub{
   margin-top:5px;
   color:#64748b;
-  font-size:13px;
-  font-weight:500;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-medium);
 }
 
 .sb-collab-modal-body{
@@ -2721,8 +2721,8 @@
   background:transparent;
   color:#0f172a;
   font:inherit;
-  font-size:13px;
-  font-weight:650;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
   white-space:nowrap;
   cursor:pointer;
 }
@@ -2787,8 +2787,8 @@
   padding-bottom:8px;
   border-bottom:1px solid rgba(17,24,39,.06);
   color:#111827;
-  font-size:15px;
-  font-weight:650;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalCollaborateur .sb-collab-block-title > span[aria-hidden="true"],
@@ -2830,8 +2830,8 @@
   gap:9px;
   margin:0;
   color:#64748b;
-  font-size:12px;
-  font-weight:500;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-medium);
 }
 
 .sb-collab-status-toggle input{
@@ -2842,8 +2842,8 @@
 
 .sb-collab-status-toggle strong{
   color:#334155;
-  font-size:13px;
-  font-weight:600;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalCollaborateur .sb-collab-grid{
@@ -2914,8 +2914,8 @@
 #modalCollaborateur .sb-collab-grid .label{
   margin-bottom:4px;
   color:#64748b;
-  font-size:12px;
-  font-weight:500;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-medium);
 }
 
 #modalCollaborateur .sb-span-3{
@@ -2933,8 +2933,8 @@
 #modalCollaborateur .sb-collab-role-title{
   margin-bottom:9px;
   color:#111827;
-  font-size:13px;
-  font-weight:650;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalCollaborateur .sb-collab-role-grid{
@@ -2954,8 +2954,8 @@
   border:1px solid #d8dee8;
   background:#fff;
   color:#334155;
-  font-size:13px;
-  font-weight:500;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-medium);
   cursor:pointer;
 }
 
@@ -3036,9 +3036,9 @@
   min-height:38px;
   margin:0;
   color:#334155;
-  font-size:13px;
-  font-weight:500;
-  line-height:1.2;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-medium);
+  line-height: var(--ns-leading-tight);
 }
 
 #modalCollaborateur .sb-collab-projection-field--exit-check input[type="checkbox"]{
@@ -3096,7 +3096,7 @@
   display:none !important;
 }
 
-/* Grille formulaire standard réutilisable */
+/* Grille formulaire standard rÃ©utilisable */
 .sb-grid-12{
   display:grid;
   grid-template-columns:repeat(12, minmax(0, 1fr));
@@ -3178,9 +3178,9 @@
   background:#f8fafc;
   color:#111827;
   font:inherit;
-  font-size:13px;
-  line-height:1.1;
-  letter-spacing:0;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-tight);
+  letter-spacing: var(--ns-letter-normal);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
 }
 
@@ -3227,7 +3227,7 @@
   .sb-form-inline-main-date,
   .sb-form-inline-checks,
 
-  /* Alias conservés pour compatibilité */
+  /* Alias conservÃ©s pour compatibilitÃ© */
   .sb-collab-ident-inline,
   .sb-form-row-zip,
   .sb-form-row-2,
@@ -3264,7 +3264,7 @@
 }
 
 /* ======================================================
-   Studio COLLABORATEURS – Droits consoles / icônes accès
+   Studio COLLABORATEURS â€“ Droits consoles / icÃ´nes accÃ¨s
    ====================================================== */
 
 .sb-console-inline{
@@ -3301,7 +3301,7 @@
 
 .sb-console-dash{
   color:#9ca3af;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 .sb-access-grid{
@@ -3359,25 +3359,25 @@
   display:block;
 }
 .sb-access-console-title{
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
   color:#111827;
 }
 
 .sb-access-console-sub{
   margin-top:2px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
 .sb-access-console-license{
   margin-top:3px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#475569;
 }
 
 .sb-license-kpi-sub{
   margin-top:4px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
@@ -3386,9 +3386,9 @@
 }
 
 .sb-access-state{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#4b5563;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
 }
 
 .sb-access-state strong{
@@ -3400,11 +3400,11 @@
   border-radius:12px;
   padding:10px 12px;
   background:rgba(17,24,39,.03);
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#374151;
 }
 
-/* États vides / lecture guidée (CORE) */
+/* Ã‰tats vides / lecture guidÃ©e (CORE) */
 .sb-empty-state{
   border:1px dashed rgba(17,24,39,.14);
   border-radius:14px;
@@ -3413,15 +3413,15 @@
 }
 
 .sb-empty-state__title{
-  font-size:15px;
-  font-weight:700;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
 }
 
 .sb-empty-state__text{
   margin-top:6px;
-  font-size:13px;
-  line-height:1.45;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-body);
   color:#6b7280;
 }
 
@@ -3443,7 +3443,7 @@
 }
 
 /* ======================================================
-   Studio CLIENTS – table portefeuille
+   Studio CLIENTS â€“ table portefeuille
    ====================================================== */
 
 .sb-client-head-actions{
@@ -3475,15 +3475,15 @@
 }
 
 .sb-client-table-name{
-  font-size:13px;
-  font-weight:600;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
 }
 
 .sb-client-table td{
-  font-size:13px;
-  line-height:1.35;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-ui);
 }
 
 .sb-client-actions{
@@ -3540,12 +3540,12 @@
   gap:14px;
   flex-wrap:wrap;
   margin-top:10px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
 .sb-client-legend__label{
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
   color:#475569;
 }
 
@@ -3583,12 +3583,12 @@
   background:#f8fafc;
   border:1px solid #cbd5e1;
   color:#94a3b8;
-  font-size:12px;
-  font-weight:700;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 /* ======================================================
-   Studio CLIENTS – modal fiche client / site
+   Studio CLIENTS â€“ modal fiche client / site
    ====================================================== */
 
 .sb-client-modal-card{
@@ -3643,7 +3643,7 @@
 
 .sb-client-modal-section .card-title{
   margin:0;
-  font-size:15px;
+  font-size: var(--ns-text-lg);
 }
 
 .sb-client-read-value{
@@ -3656,12 +3656,12 @@
   background:#f8fafc;
   box-sizing:border-box;
   color:#475569;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 .sb-client-inline-link{
   color:#111827;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
   text-decoration:none;
 }
 
@@ -3680,16 +3680,16 @@
   border-radius:12px;
   background:rgba(var(--sb-accent-rgb), .12);
   color:#475569;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 .sb-client-contact-table td,
 .sb-client-contact-select-table td{
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 .sb-client-contact-name{
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
   color:#111827;
 }
 
@@ -3798,8 +3798,8 @@
 
 #view-dashboard.studio-dash .studio-dash-hero .card-title{
   margin:0;
-  font-size:15px;
-  font-weight:700;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-bold);
   color:var(--studio-text);
 }
 
@@ -3830,14 +3830,14 @@
 }
 
 #view-dashboard.studio-dash .studio-dash-filter-field label{
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   color:#334155;
 }
 
 #view-dashboard.studio-dash .studio-dash-filter-field label strong{
   color:#0f172a;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-dashboard.studio-dash .studio-dash-service-select{
@@ -3849,8 +3849,8 @@
   background:#fff;
   color:#111827;
   padding:0 10px;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   outline:none;
 }
 
@@ -3889,7 +3889,7 @@
   border:1px solid #e5e7eb;
   background:#fff;
   color:#475569;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   margin-bottom:12px;
 }
 
@@ -3947,16 +3947,16 @@
 
 #view-dashboard.studio-dash .studio-dash-kpi-main h2{
   margin:0 0 8px 0;
-  font-size:13px;
-  line-height:1.2;
-  font-weight:700;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-tight);
+  font-weight: var(--ns-weight-bold);
   color:var(--studio-text);
 }
 
 #view-dashboard.studio-dash .studio-dash-kpi-value{
-  font-size:28px;
-  line-height:1;
-  font-weight:800;
+  font-size: var(--ns-kpi);
+  line-height: var(--ns-leading-tight);
+  font-weight: var(--ns-weight-bold);
   color:var(--studio-text);
 }
 
@@ -3967,7 +3967,7 @@
 
 #view-dashboard.studio-dash .studio-dash-kpi-sub{
   margin-top:6px;
-  font-size:11px;
+  font-size: var(--ns-text-xs);
   color:var(--studio-muted);
   white-space:nowrap;
   overflow:hidden;
@@ -4033,9 +4033,9 @@
 
 #view-dashboard.studio-dash .studio-dash-panel-head h2{
   margin:0;
-  font-size:15px;
-  line-height:1.2;
-  font-weight:750;
+  font-size: var(--ns-text-lg);
+  line-height: var(--ns-leading-tight);
+  font-weight: var(--ns-weight-bold);
   color:var(--studio-text);
 }
 
@@ -4075,15 +4075,15 @@
 }
 
 #view-dashboard.studio-dash .studio-dash-donut span{
-  font-size:30px;
-  font-weight:800;
-  line-height:1;
+  font-size: var(--ns-kpi);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-dashboard.studio-dash .studio-dash-donut small{
   margin-top:4px;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   color:#334155;
 }
 
@@ -4099,7 +4099,7 @@
   gap:10px;
   padding:8px 0;
   border-bottom:1px solid #edf2f7;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#334155;
 }
 
@@ -4110,14 +4110,14 @@
 #view-dashboard.studio-dash .studio-dash-status-row strong{
   text-align:right;
   color:var(--studio-text);
-  font-weight:750;
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-dashboard.studio-dash .studio-dash-status-row em{
   text-align:right;
   font-style:normal;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-dashboard.studio-dash .studio-dash-dot{
@@ -4160,8 +4160,8 @@
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:15px;
-  font-weight:800;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-bold);
   background:#f1f5f9;
   color:#64748b;
 }
@@ -4174,16 +4174,16 @@
 #view-dashboard.studio-dash .studio-dash-alert-row strong,
 #view-dashboard.studio-dash .studio-dash-activity-row strong{
   display:block;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#111827;
-  line-height:1.2;
+  line-height: var(--ns-leading-tight);
 }
 
 #view-dashboard.studio-dash .studio-dash-alert-row small,
 #view-dashboard.studio-dash .studio-dash-activity-row small{
   display:block;
   margin-top:3px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#64748b;
   white-space:nowrap;
   overflow:hidden;
@@ -4193,7 +4193,7 @@
 #view-dashboard.studio-dash .studio-dash-alert-row em{
   font-style:normal;
   color:#64748b;
-  font-size:20px;
+  font-size: var(--ns-title-md);
 }
 
 #view-dashboard.studio-dash .studio-dash-link{
@@ -4207,8 +4207,8 @@
   display:flex;
   align-items:center;
   justify-content:space-between;
-  font-size:13px;
-  font-weight:750;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -4219,7 +4219,7 @@
   gap:10px;
   padding:8px 0;
   border-bottom:1px solid #edf2f7;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#334155;
 }
 
@@ -4236,8 +4236,8 @@
 }
 
 #view-dashboard.studio-dash .studio-dash-console-state{
-  font-size:12px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   border-radius:999px;
   padding:3px 8px;
 }
@@ -4255,7 +4255,7 @@
 }
 
 #view-dashboard.studio-dash .studio-dash-activity-row em{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#64748b;
   font-style:normal;
   white-space:nowrap;
@@ -4294,8 +4294,8 @@
   align-items:center;
   gap:10px;
   text-align:left;
-  font-size:13px;
-  font-weight:750;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -4326,8 +4326,8 @@
   border-radius:999px;
   background:#f1f5f9;
   color:#0f172a;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-dashboard.studio-dash .studio-dash-mini-list{
@@ -4351,8 +4351,8 @@
 #view-dashboard.studio-dash .studio-dash-mini-row--click{ cursor:pointer; }
 #view-dashboard.studio-dash .studio-dash-mini-row--click:hover{ background:#f8fafc; }
 #view-dashboard.studio-dash .studio-dash-mini-row>div{ display:flex; flex-direction:column; gap:3px; min-width:0; }
-#view-dashboard.studio-dash .studio-dash-mini-row strong{ font-size:13px; color:#0f172a; }
-#view-dashboard.studio-dash .studio-dash-mini-row span:not(.studio-dash-badge){ font-size:12px; color:#64748b; }
+#view-dashboard.studio-dash .studio-dash-mini-row strong{ font-size: var(--ns-text-sm); color:#0f172a; }
+#view-dashboard.studio-dash .studio-dash-mini-row span:not(.studio-dash-badge){ font-size: var(--ns-text-xs); color:#64748b; }
 
 #view-dashboard.studio-dash .studio-dash-badge{
   display:inline-flex;
@@ -4360,8 +4360,8 @@
   width:max-content;
   padding:3px 8px;
   border-radius:999px;
-  font-size:11px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   border:1px solid #e5e7eb;
   color:#334155;
   background:#f8fafc;
@@ -4373,7 +4373,7 @@
 
 #view-dashboard.studio-dash .studio-dash-empty{
   color:#64748b;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   padding:9px 0;
 }
 
@@ -4384,8 +4384,8 @@
 
 #view-dashboard.studio-dash .studio-dash-modal.show{ display:flex !important; }
 #view-dashboard.studio-dash .studio-dash-modal-card{ width:min(520px,94vw); }
-#view-dashboard.studio-dash .studio-dash-modal-card h3{ margin:0; font-size:15px; color:#0f172a; font-weight:650; }
-#view-dashboard.studio-dash .studio-dash-modal-card p{ margin:0; color:#334155; line-height:1.45; font-size:14px; }
+#view-dashboard.studio-dash .studio-dash-modal-card h3{ margin:0; font-size: var(--ns-text-lg); color:#0f172a; font-weight: var(--ns-weight-semibold); }
+#view-dashboard.studio-dash .studio-dash-modal-card p{ margin:0; color:#334155; line-height: var(--ns-leading-body); font-size: var(--ns-text-md); }
 
 @media (max-width:1280px){
   #view-dashboard.studio-dash .studio-dash-kpi-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -4417,9 +4417,9 @@
 }
 
 /* ======================================================
-   Novoskill - badges niveaux de maîtrise
-   Règle transverse : libellé seul, fond transparent, orange progressif.
-   A Débutant | B Intermédiaire | C Avancé | D Expert
+   Novoskill - badges niveaux de maÃ®trise
+   RÃ¨gle transverse : libellÃ© seul, fond transparent, orange progressif.
+   A DÃ©butant | B IntermÃ©diaire | C AvancÃ© | D Expert
    ====================================================== */
 .sb-badge.sb-badge-niv,
 .sb-badge.sb-badge--niv,
@@ -4435,9 +4435,9 @@
   border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:12px;
-  font-weight:700;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   white-space:nowrap;
   box-sizing:border-box;
 }
@@ -4470,13 +4470,13 @@
   background:transparent !important;
 }
 
-/* Patch 4 niveaux maîtrise : badge libellé seul, fond transparent, orange progressif */
+/* Patch 4 niveaux maÃ®trise : badge libellÃ© seul, fond transparent, orange progressif */
 .sb-badge.sb-badge-niv,
 .sb-badge.sb-badge--niv,
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: 600;
+  font-weight: var(--ns-weight-semibold);
   white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
@@ -4496,7 +4496,7 @@
   color: rgb(226, 114, 9) !important;
 }
 
-/* Patch Studio 4 niveaux - badges maîtrise : libellé seul, fond transparent, orange progressif */
+/* Patch Studio 4 niveaux - badges maÃ®trise : libellÃ© seul, fond transparent, orange progressif */
 .sb-badge.sb-badge--niv,
 .sb-badge.sb-badge-niv{
   background: transparent !important;
@@ -4583,7 +4583,7 @@
   border-radius:10px;
   padding:0 10px;
   background:#fff;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   box-sizing:border-box;
 }
 
@@ -4595,9 +4595,9 @@
 
 .sd-sirh-secret-hint{
   margin-top:6px;
-  font-size:11.5px;
-  line-height:1.3;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-title);
+  font-weight: var(--ns-weight-semibold);
 }
 
 .sd-sirh-secret-hint.is-ok{
@@ -4612,8 +4612,8 @@
   border:1px solid rgba(17,24,39,.10);
   border-radius:12px;
   padding:10px 12px;
-  font-size:12px;
-  line-height:1.45;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-body);
   background:#f8fafc;
   color:#334155;
 }
@@ -4665,17 +4665,17 @@
 
 .sb-commercial-option-card strong{
   display:block;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#111827;
-  line-height:1.25;
+  line-height: var(--ns-leading-title);
 }
 
 .sb-commercial-option-card small{
   display:block;
   margin-top:3px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
 }
 
 .sb-commercial-summary-grid{
@@ -4697,14 +4697,14 @@
 }
 
 .sb-commercial-summary-card__label{
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
 }
 
 .sb-commercial-summary-card__value{
   margin-top:4px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
 }
 
@@ -4726,18 +4726,18 @@
 }
 
 .sb-commercial-extension-title{
-  font-size:13px;
-  font-weight:700;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
-  line-height:1.25;
+  line-height: var(--ns-leading-title);
 }
 
 .sb-commercial-extension-sub,
 .sb-commercial-extension-total,
 .sb-commercial-empty{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#6b7280;
-  line-height:1.35;
+  line-height: var(--ns-leading-ui);
 }
 
 .sb-commercial-extension-actions{
@@ -4783,13 +4783,13 @@
 
 #view-catalog_postes .card-title,
 #view-catalog_competences .card-title{
-  font-size:15px;
-  font-weight:650;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-catalog_postes .card-sub,
 #view-catalog_competences .card-sub{
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-catalog_postes .sb-toolbar,
@@ -4819,8 +4819,8 @@
 #view-catalog_postes .sb-row-title,
 #view-catalog_competences .sb-row-title{
   max-width:none;
-  font-size:13px;
-  font-weight:600;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
 }
 
 .studio-catalog-actions{
@@ -4886,7 +4886,7 @@
 }
 
 /* ======================================================
-   Studio > Votre organisation – alignement visuel Insights
+   Studio > Votre organisation â€“ alignement visuel Insights
    ====================================================== */
 #view-organisation.studio-org-page{
   display:flex;
@@ -5043,8 +5043,8 @@
 #view-organisation .org-service-chevron{
   margin-left:12px;
   color:#94a3b8;
-  font-size:20px;
-  line-height:1;
+  font-size: var(--ns-title-md);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-organisation .org-summary-card{
@@ -5091,16 +5091,16 @@
 
 #view-organisation .org-stat-value{
   color:#111827;
-  font-size:20px;
-  line-height:1;
-  font-weight:800;
+  font-size: var(--ns-title-md);
+  line-height: var(--ns-leading-tight);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-organisation .org-stat-label{
   margin-top:4px;
   color:#64748b;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-organisation .org-postes-head{
@@ -5172,8 +5172,8 @@
 
 #view-organisation .org-poste-list .sb-row-title{
   max-width:none;
-  font-size:13px;
-  font-weight:700;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-organisation .org-empty-state{
@@ -5182,8 +5182,8 @@
   border-radius:12px;
   color:#64748b;
   background:#f8fafc;
-  font-size:13px;
-  font-weight:600;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
 }
 
 @media (max-width: 1250px){
@@ -5229,7 +5229,7 @@
 
 
 /* ======================================================
-   Studio - modal préévaluation compétence poste
+   Studio - modal prÃ©Ã©valuation compÃ©tence poste
    ====================================================== */
 #modalPosteCompEdit .studio-poste-comp-edit-card{
   width:min(980px, calc(100vw - 32px));
@@ -5281,7 +5281,7 @@
 }
 
 #modalPosteCompEdit .sb-crit-row .label{
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
   color:#1f2937;
 }
 
@@ -5373,7 +5373,7 @@
 }
 
 /* ======================================================
-   Studio > Vos collaborateurs – entête Insights
+   Studio > Vos collaborateurs â€“ entÃªte Insights
    ====================================================== */
 #view-collaborateurs.studio-collab-page{
   display:flex;
@@ -5505,7 +5505,7 @@
 
 #view-collaborateurs .collab-kpi-card .sb-kpi-value{
   margin-top:3px;
-  font-size:18px;
+  font-size: var(--ns-title-sm);
 }
 
 #view-collaborateurs .collab-list-card{
@@ -5533,7 +5533,7 @@
 }
 
 #view-collaborateurs .collab-list-titleline .card-title{
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-collaborateurs .collab-list-titleline .card-sub{
@@ -5702,14 +5702,14 @@
   min-height:40px;
   background:#f8fafc;
   color:#475569;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-collaborateurs .collab-table-cell{
   min-width:0;
   padding:9px 12px;
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
   color:#334155;
 }
 
@@ -5735,8 +5735,8 @@
   height:30px;
   border-radius:999px;
   flex:0 0 auto;
-  font-size:11px;
-  font-weight:800;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
 }
 
@@ -5758,7 +5758,7 @@
 
 #view-collaborateurs .collab-identity-name{
   color:#111827;
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -5782,15 +5782,15 @@
 #view-collaborateurs .collab-poste-code{
   flex:0 0 auto;
   padding:2px 8px;
-  font-size:11px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-collaborateurs .collab-poste-title{
   min-width:0;
   white-space:normal;
-  line-height:1.25;
+  line-height: var(--ns-leading-title);
   color:#334155;
-  font-weight:520;
+  font-weight: var(--ns-weight-medium);
 }
 
 #view-collaborateurs .collab-status-stack{
@@ -5805,8 +5805,8 @@
   align-items:center;
   gap:6px;
   color:#334155;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-collaborateurs .collab-status-dot::before{
@@ -5834,8 +5834,8 @@
   min-height:20px;
   padding:2px 7px;
   border-radius:7px;
-  font-size:11px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-collaborateurs .collab-role-badge--manager{
@@ -5877,7 +5877,7 @@
   align-items:center;
   gap:6px;
   font:inherit;
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 
@@ -5893,8 +5893,8 @@
   display:inline-flex;
   flex-direction:column;
   gap:0;
-  line-height:1;
-  font-size:8px;
+  line-height: var(--ns-leading-tight);
+  font-size: var(--ns-text-xs);
   color:#cbd5e1;
   opacity:0;
 }
@@ -5920,7 +5920,7 @@
   gap:12px;
   padding:12px 0 0 0;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-collaborateurs .collab-page-size-wrap{
@@ -5955,8 +5955,8 @@
   border-radius:7px;
   background:transparent;
   color:#0f172a;
-  font-size:12px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 
@@ -5968,7 +5968,7 @@
   background:var(--accent);
   color:#111827;
   box-shadow:none;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-collaborateurs .collab-page-ellipsis{
@@ -5978,8 +5978,8 @@
   align-items:center;
   justify-content:center;
   color:#94a3b8;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-collaborateurs .collab-page-nav{
@@ -6002,7 +6002,7 @@
   justify-self:end;
   margin:0;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-collaborateurs .collab-empty{
@@ -6074,7 +6074,7 @@
   margin:0 0 12px 0;
   padding:0;
   color:#64748b;
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalCollaborateur .sb-collab-metrics{
@@ -6132,17 +6132,17 @@
 
 #modalCollaborateur .sb-collab-metric strong{
   color:#111827;
-  font-size:21px;
-  font-weight:750;
-  line-height:1;
+  font-size: var(--ns-title-md);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #modalCollaborateur .sb-collab-metric em{
   color:#334155;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   font-style:normal;
-  font-weight:550;
-  line-height:1.25;
+  font-weight: var(--ns-weight-medium);
+  line-height: var(--ns-leading-title);
 }
 
 #modalCollaborateur .sb-collab-dynamic-panel{
@@ -6177,16 +6177,16 @@
 
 #modalCollaborateur .sb-collab-skill-section-title{
   color:#111827;
-  font-size:14px;
-  font-weight:650;
-  line-height:1.2;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-tight);
 }
 
 #modalCollaborateur .sb-collab-skills-table thead th,
 #modalCollaborateur .sb-collab-certs-table thead th,
 #modalCollaborateur .sb-collab-history-table thead th{
-  font-weight:600;
-  font-size:12px;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-xs);
   background:#fff;
 }
 
@@ -6212,8 +6212,8 @@
 
 #modalCollaborateur .sb-collab-sort-indicator{
   color:#94a3b8;
-  font-size:10px;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-tight);
 }
 
 #modalCollaborateur .sb-collab-sort-head.is-active .sb-collab-sort-indicator{
@@ -6237,7 +6237,7 @@
 #modalCollaborateur .sb-collab-skills-table tbody td,
 #modalCollaborateur .sb-collab-certs-table tbody td,
 #modalCollaborateur .sb-collab-history-table tbody td{
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   vertical-align:middle;
 }
 
@@ -6251,9 +6251,9 @@
 #modalCollaborateur .sb-collab-skill-title{
   min-width:0;
   color:#111827;
-  font-size:13px;
-  font-weight:600;
-  line-height:1.25;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-title);
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -6263,7 +6263,7 @@
   padding:18px 16px;
   color:#64748b;
   text-align:center;
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalCollaborateur .sb-collab-empty-card{
@@ -6274,7 +6274,7 @@
   background:#fafafa;
   color:#64748b;
   text-align:center;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 #modalCollaborateur .sb-collab-required-badge{
@@ -6291,8 +6291,8 @@
 
 #modalCollaborateur .sb-collab-cert-title{
   color:#111827;
-  font-weight:600;
-  line-height:1.25;
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-title);
 }
 
 #modalCollaborateur .sb-collab-cert-badges{
@@ -6325,8 +6325,8 @@
   display:block;
   margin-top:5px;
   color:#64748b;
-  font-size:12px;
-  font-weight:500;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-medium);
 }
 
 #modalCollaborateur .sb-collab-cert-status--ok{
@@ -6377,7 +6377,7 @@
   border:0;
   background:#fff;
   padding:12px 14px;
-  font-family:inherit;
+  font-family: inherit;
   cursor:pointer;
 }
 
@@ -6387,8 +6387,8 @@
   gap:10px;
   min-width:0;
   color:#111827;
-  font-size:14px;
-  font-weight:650;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalCollaborateur .sb-history-acc-icon{
@@ -6416,21 +6416,21 @@
   border-radius:7px;
   background:#f1f5f9;
   color:#111827;
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
   white-space:nowrap;
 }
 
 #modalCollaborateur .sb-collab-history-formation{
   color:#111827;
-  font-weight:600;
-  line-height:1.35;
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-ui);
 }
 
 #modalCollaborateur .sb-collab-history-code{
   margin-top:4px;
   color:#64748b;
-  font-size:12px;
-  font-weight:500;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-medium);
 }
 
 #modalCollaborateur .sb-collab-history-status--blue{
@@ -6452,7 +6452,7 @@
 }
 
 /* ======================================================
-   Studio > Vos collaborateurs – aperçu latéral
+   Studio > Vos collaborateurs â€“ aperÃ§u latÃ©ral
    ====================================================== */
 .collab-drawer-backdrop{
   position:fixed;
@@ -6559,8 +6559,8 @@
   height:48px;
   border-radius:999px;
   flex:0 0 48px;
-  font-size:14px;
-  font-weight:800;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-bold);
   color:#111827;
   box-shadow:0 0 0 1px rgba(17,24,39,.08) inset;
 }
@@ -6576,9 +6576,9 @@
 
 .collab-side-drawer__name{
   color:#111827;
-  font-size:15px;
-  font-weight:800;
-  line-height:1.25;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-title);
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -6590,8 +6590,8 @@
   gap:6px;
   margin-top:4px;
   color:#475569;
-  font-size:12px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 .collab-drawer-status::before{
@@ -6618,19 +6618,19 @@
   gap:10px;
   align-items:start;
   color:#0f172a;
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
 }
 
 .collab-side-drawer__fact > span{
   color:#111827;
-  font-weight:750;
+  font-weight: var(--ns-weight-bold);
 }
 
 .collab-side-drawer__fact > strong{
   min-width:0;
   color:#334155;
-  font-weight:520;
-  line-height:1.35;
+  font-weight: var(--ns-weight-medium);
+  line-height: var(--ns-leading-ui);
   overflow-wrap:anywhere;
 }
 
@@ -6660,8 +6660,8 @@
   background:#fff;
   color:#111827;
   font:inherit;
-  font-size:13px;
-  font-weight:750;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
   transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
@@ -6691,7 +6691,7 @@
 }
 
 /* ======================================================
-   Studio – Planification RH / Calendrier RH
+   Studio â€“ Planification RH / Calendrier RH
    ====================================================== */
 .studio-calendar-btn{
   width:34px;
@@ -6745,9 +6745,9 @@
 .studio-rh-eyebrow{
   margin:0 0 6px;
   color:#6b7280;
-  font-size:12px;
-  font-weight:700;
-  letter-spacing:.08em;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  letter-spacing: var(--ns-letter-label);
   text-transform:uppercase;
 }
 .studio-rh-hero-actions,
@@ -6761,8 +6761,8 @@
   min-height:72px;
 }
 .studio-rh-kpi-card .sb-kpi-value{
-  font-size:22px;
-  font-weight:750;
+  font-size: var(--ns-title-md);
+  font-weight: var(--ns-weight-bold);
 }
 .studio-rh-inline-msg{
   border:1px solid rgba(17,24,39,.10);
@@ -6770,8 +6770,8 @@
   padding:10px 12px;
   background:#f8fafc;
   color:#334155;
-  font-size:13px;
-  line-height:1.4;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-ui);
 }
 .studio-rh-inline-msg--ok{
   background:#ecfdf5;
@@ -6812,14 +6812,14 @@
 .studio-rh-entry-card strong{
   display:block;
   color:#111827;
-  font-size:14px;
+  font-size: var(--ns-text-md);
 }
 .studio-rh-entry-card small{
   display:block;
   margin-top:4px;
   color:#64748b;
-  font-size:12px;
-  line-height:1.35;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-ui);
 }
 .studio-rh-entry-icon{
   width:38px;
@@ -6870,7 +6870,7 @@
   box-sizing:border-box;
 }
 .studio-rh-form textarea{
-  font-family:inherit;
+  font-family: inherit;
   resize:vertical;
 }
 .studio-rh-type-tabs{
@@ -6885,7 +6885,7 @@
   color:#334155;
   border-radius:999px;
   padding:8px 12px;
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 .studio-rh-type-tab.is-active{
@@ -6915,8 +6915,8 @@
 }
 .studio-rh-row-title{
   color:#111827;
-  font-weight:700;
-  font-size:14px;
+  font-weight: var(--ns-weight-bold);
+  font-size: var(--ns-text-md);
 }
 .studio-rh-row-meta{
   display:flex;
@@ -6924,7 +6924,7 @@
   gap:6px 10px;
   margin-top:4px;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 .studio-rh-row-side{
   display:flex;
@@ -6937,9 +6937,9 @@
 .studio-rh-status{
   border-radius:999px;
   padding:4px 8px;
-  font-size:12px;
-  font-weight:700;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   white-space:nowrap;
 }
 .studio-rh-status{
@@ -6975,7 +6975,7 @@
   padding:18px;
   color:#64748b;
   background:#f8fafc;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   text-align:center;
 }
 .studio-rh-calendar-layout{
@@ -7005,13 +7005,13 @@
   display:block;
 }
 .studio-rh-todo-item strong{
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#111827;
 }
 .studio-rh-todo-item span,
 .studio-rh-todo-item small{
   margin-top:3px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#64748b;
 }
 .studio-rh-calendar-head{
@@ -7035,8 +7035,8 @@
   gap:6px;
   margin-bottom:6px;
   color:#64748b;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   text-align:center;
 }
 .studio-rh-calendar-grid{
@@ -7059,8 +7059,8 @@
   background:rgba(var(--sb-accent-rgb), .10);
 }
 .studio-rh-day-number{
-  font-size:12px;
-  font-weight:800;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   color:#334155;
   margin-bottom:6px;
 }
@@ -7087,13 +7087,13 @@
   white-space:nowrap;
 }
 .studio-rh-event-chip span{
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 .studio-rh-event-chip small{
   margin-top:2px;
   color:#64748b;
-  font-size:11px;
+  font-size: var(--ns-text-xs);
 }
 .studio-rh-detail-box{
   border:1px solid #e2e8f0;
@@ -7109,14 +7109,14 @@
   display:block;
 }
 .studio-rh-detail-box strong{
-  font-size:11px;
+  font-size: var(--ns-text-xs);
   color:#64748b;
   text-transform:uppercase;
-  letter-spacing:.04em;
+  letter-spacing: var(--ns-letter-label);
 }
 .studio-rh-detail-box span{
   margin-top:3px;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   color:#111827;
 }
 @media (max-width: 1020px){
@@ -7150,12 +7150,12 @@
     padding:6px;
   }
   .studio-rh-event-chip span{
-    font-size:11px;
+    font-size: var(--ns-text-xs);
   }
 }
 
 /* ======================================================
-   Studio – Planification RH : alignement visuel collaborateur
+   Studio â€“ Planification RH : alignement visuel collaborateur
    ====================================================== */
 #view-planification_rh.studio-rh-plan-page{
   display:flex;
@@ -7282,7 +7282,7 @@
 
 #view-planification_rh .studio-rh-kpi-card .sb-kpi-value{
   margin-top:3px;
-  font-size:18px;
+  font-size: var(--ns-title-sm);
 }
 
 #view-planification_rh .studio-rh-entry-card{
@@ -7364,7 +7364,7 @@
 }
 
 #view-planification_rh .studio-rh-list-titleline .card-title{
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-planification_rh .studio-rh-list-titleline .card-sub{
@@ -7496,14 +7496,14 @@
   min-height:40px;
   background:#f8fafc;
   color:#475569;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-planification_rh .studio-rh-table-cell{
   min-width:0;
   padding:9px 12px;
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
   color:#334155;
 }
 
@@ -7515,7 +7515,7 @@
 
 #view-planification_rh .studio-rh-table-title{
   color:#111827;
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -7540,7 +7540,7 @@
 #view-planification_rh .sb-btn--xs{
   min-height:28px;
   padding:5px 10px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   border-radius:9px;
 }
 
@@ -7570,7 +7570,7 @@
   gap:12px;
   padding:12px 0 0 0;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-planification_rh .studio-rh-page-size-wrap{
@@ -7605,8 +7605,8 @@
   border-radius:7px;
   background:transparent;
   color:#0f172a;
-  font-size:12px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 
@@ -7618,7 +7618,7 @@
   background:var(--accent);
   color:#111827;
   box-shadow:none;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-planification_rh .studio-rh-page-ellipsis{
@@ -7628,8 +7628,8 @@
   align-items:center;
   justify-content:center;
   color:#94a3b8;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-planification_rh .studio-rh-page-nav{
@@ -7652,7 +7652,7 @@
   justify-self:end;
   margin:0;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-planification_rh .studio-rh-empty-text{
@@ -7696,7 +7696,7 @@
 }
 
 /* ======================================================
-   Studio – Planification RH : modals de création
+   Studio â€“ Planification RH : modals de crÃ©ation
    ====================================================== */
 .studio-rh-modal svg,
 .studio-rh-modal .sb-btn-icon svg,
@@ -7780,8 +7780,8 @@
 .studio-rh-lines-head strong{
   display:block;
   color:#111827;
-  font-size:13px;
-  font-weight:750;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
 }
 
 .studio-rh-block-head small,
@@ -7790,8 +7790,8 @@
   display:block;
   margin-top:3px;
   color:#64748b;
-  font-size:12px;
-  line-height:1.35;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-ui);
 }
 
 .studio-rh-form-grid--filters{
@@ -7810,7 +7810,7 @@
   background:#fff;
   color:#0f172a;
   font:inherit;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
   outline:none;
   box-shadow:none;
 }
@@ -7875,8 +7875,8 @@
   background:#f8fafc;
   color:#111827;
   font:inherit;
-  font-size:13px;
-  line-height:1.1;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-tight);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
 }
 
@@ -7917,9 +7917,9 @@
   padding:7px 12px;
   background:#f8fafc;
   color:#111827;
-  font-size:12px;
-  font-weight:750;
-  line-height:1.2;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   text-align:center;
 }
 
@@ -7957,8 +7957,8 @@
   background:#fff;
   border:1px solid #e2e8f0;
   color:#64748b;
-  font-size:11px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 .studio-rh-check-panel > input[type="search"],
@@ -8017,14 +8017,14 @@
 
 .studio-rh-check-item strong{
   color:#111827;
-  font-size:12.5px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 .studio-rh-check-item small{
   margin-top:2px;
   color:#64748b;
-  font-size:11.5px;
+  font-size: var(--ns-text-xs);
 }
 
 .studio-rh-check-empty{
@@ -8033,7 +8033,7 @@
   padding:12px;
   background:#fff;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   text-align:center;
 }
 
@@ -8061,22 +8061,22 @@
 
 .studio-rh-check-details summary strong{
   color:#111827;
-  font-size:13px;
-  font-weight:750;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
 }
 
 .studio-rh-check-details summary small{
   margin-top:3px;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 .studio-rh-check-details summary em{
   flex:0 0 auto;
   font-style:normal;
   color:#64748b;
-  font-size:11px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   border:1px solid #e2e8f0;
   background:#fff;
   border-radius:999px;
@@ -8124,7 +8124,7 @@
 }
 
 /* ======================================================
-   Studio – Planification RH – Ajustements modal indisponibilité V5
+   Studio â€“ Planification RH â€“ Ajustements modal indisponibilitÃ© V5
    ====================================================== */
 #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-modal-card{
   width:min(900px, 94vw);
@@ -8163,7 +8163,7 @@
   display:block;
   margin:0 0 5px;
   min-height:15px;
-  line-height:15px;
+  line-height: var(--ns-leading-body);
 }
 
 #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-form-grid--collab-picker input:not([type="checkbox"]):not([type="radio"]):not(.sb-date),
@@ -8233,14 +8233,14 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size:12.5px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 .studio-rh-suggest-item small,
 .studio-rh-suggest-empty{
   color:#64748b;
-  font-size:11.5px;
+  font-size: var(--ns-text-xs);
   white-space:nowrap;
 }
 
@@ -8268,7 +8268,7 @@
   padding:6px 10px;
   border-radius:10px;
   background:#fff;
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-lines-table{
@@ -8304,8 +8304,8 @@
   display:block;
   margin-bottom:5px;
   color:#64748b;
-  font-size:11.5px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalPlanRhEvent.studio-rh-modal--indisponibilite .studio-rh-indispo-line .sb-date{
@@ -8349,7 +8349,7 @@
 }
 
 /* ======================================================
-   Studio – Planification RH – Ajustements modal compétence V7
+   Studio â€“ Planification RH â€“ Ajustements modal compÃ©tence V7
    ====================================================== */
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-modal-card{
   width:min(920px, 94vw);
@@ -8391,7 +8391,7 @@
   display:block;
   margin:0 0 5px;
   min-height:15px;
-  line-height:15px;
+  line-height: var(--ns-leading-body);
 }
 
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--collab-picker input:not([type="checkbox"]):not([type="radio"]):not(.sb-date),
@@ -8448,8 +8448,8 @@
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-label{
   margin-bottom:7px;
   color:#64748b;
-  font-size:11.5px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-list{
@@ -8469,8 +8469,8 @@
   max-width:100%;
   padding:5px 8px 5px 10px;
   font:inherit;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -8510,11 +8510,11 @@
 }
 
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-check-item--competence strong{
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-check-item--competence small{
-  font-size:11px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-form-grid--planning{
@@ -8562,7 +8562,7 @@
 }
 
 /* ======================================================
-   Studio – Calendrier RH : finition visuelle
+   Studio â€“ Calendrier RH : finition visuelle
    ====================================================== */
 #view-calendrier_rh.studio-rh-cal-page{
   gap:14px;
@@ -8677,7 +8677,7 @@
 
 #view-calendrier_rh .studio-rh-kpi-card .sb-kpi-value{
   margin-top:3px;
-  font-size:18px;
+  font-size: var(--ns-title-sm);
 }
 
 #view-calendrier_rh .studio-rh-list-card,
@@ -8707,7 +8707,7 @@
 }
 
 #view-calendrier_rh .studio-rh-list-titleline .card-title{
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-calendrier_rh .studio-rh-list-titleline .card-sub{
@@ -8858,9 +8858,9 @@
   padding:3px 7px;
   background:#f1f5f9;
   color:#475569;
-  font-size:10.5px !important;
-  font-weight:750;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-todo-item strong,
@@ -8871,17 +8871,17 @@
 
 #view-calendrier_rh .studio-rh-todo-item strong{
   color:#111827;
-  font-size:13px;
-  font-weight:750;
-  line-height:1.25;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-title);
 }
 
 #view-calendrier_rh .studio-rh-todo-item span:not(.studio-rh-todo-type),
 #view-calendrier_rh .studio-rh-todo-item small{
   margin-top:3px;
   color:#64748b;
-  font-size:12px;
-  line-height:1.25;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-title);
 }
 
 #view-calendrier_rh .studio-rh-calendar-empty{
@@ -8894,12 +8894,12 @@
 
 #view-calendrier_rh .studio-rh-calendar-empty strong{
   color:#334155;
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 #view-calendrier_rh .studio-rh-calendar-empty span{
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh .studio-rh-calendar-head{
@@ -8938,8 +8938,8 @@
   height:34px;
   padding:0;
   border-radius:11px;
-  font-size:20px;
-  line-height:1;
+  font-size: var(--ns-title-md);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-calendar-today{
@@ -8983,8 +8983,8 @@
   padding:3px 9px;
   background:#f8fafc;
   color:#475569;
-  font-size:11px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-legend-item::before{
@@ -9003,8 +9003,8 @@
   gap:6px;
   margin-bottom:6px;
   color:#64748b;
-  font-size:12px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   text-align:center;
 }
 
@@ -9056,8 +9056,8 @@
   height:22px;
   border-radius:8px;
   color:#334155;
-  font-size:12px;
-  font-weight:800;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   margin:0 0 5px;
 }
 
@@ -9138,9 +9138,9 @@
 
 #view-calendrier_rh .studio-rh-event-title{
   color:#111827;
-  font-size:12px;
-  font-weight:780;
-  line-height:1.18;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-event-segment{
@@ -9150,19 +9150,19 @@
   padding:2px 6px;
   background:rgba(255,255,255,.72);
   color:#475569;
-  font-size:9.5px;
-  font-weight:800;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   text-transform:uppercase;
-  letter-spacing:.03em;
+  letter-spacing: var(--ns-letter-label);
 }
 
 #view-calendrier_rh .studio-rh-event-meta{
   margin-top:3px;
   color:#475569;
-  font-size:11px;
-  font-weight:620;
-  line-height:1.2;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-row--indisponibilite.studio-rh-event-chip,
@@ -9228,9 +9228,9 @@
   min-height:23px;
   border-radius:999px;
   padding:3px 8px;
-  font-size:11px;
-  font-weight:750;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-popover-type{
@@ -9263,9 +9263,9 @@
   display:block;
   margin-bottom:11px;
   color:#111827;
-  font-size:14px;
-  font-weight:800;
-  line-height:1.25;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-title);
 }
 
 #view-calendrier_rh .studio-rh-popover-grid{
@@ -9277,18 +9277,18 @@
 
 #view-calendrier_rh .studio-rh-popover-grid span{
   color:#64748b;
-  font-size:11px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   text-transform:uppercase;
-  letter-spacing:.035em;
+  letter-spacing: var(--ns-letter-label);
 }
 
 #view-calendrier_rh .studio-rh-popover-grid strong{
   min-width:0;
   color:#334155;
-  font-size:12.5px;
-  font-weight:620;
-  line-height:1.25;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-title);
 }
 
 #view-calendrier_rh .studio-rh-popover-foot{
@@ -9296,8 +9296,8 @@
   padding-top:10px;
   border-top:1px solid #eef2f7;
   color:#64748b;
-  font-size:12px;
-  font-weight:620;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-calendrier_rh .studio-rh-calendar-expand-backdrop{
@@ -9390,12 +9390,12 @@ body.studio-rh-calendar-expanded{
   }
 
   #view-calendrier_rh .studio-rh-event-title{
-    font-size:11px;
+    font-size: var(--ns-text-xs);
   }
 }
 
 /* ======================================================
-   Studio – Calendrier RH : barres continues multi-jours
+   Studio â€“ Calendrier RH : barres continues multi-jours
    ====================================================== */
 #view-calendrier_rh .studio-rh-calendar-grid{
   display:grid;
@@ -9505,21 +9505,21 @@ body.studio-rh-calendar-expanded{
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  line-height:1.1;
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-range-title{
   flex:1 1 auto;
   color:#111827;
-  font-size:11.5px;
-  font-weight:820;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-range-meta{
   flex:0 2 auto;
   color:#334155;
-  font-size:10.5px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   opacity:.82;
 }
 
@@ -9562,7 +9562,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Calendrier RH : lisibilité barres + filtres visuels
+   Studio â€“ Calendrier RH : lisibilitÃ© barres + filtres visuels
    ====================================================== */
 #view-calendrier_rh .studio-rh-calendar-legend{
   gap:7px;
@@ -9647,9 +9647,9 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-range-title{
   flex:1 1 auto;
   color:#172033;
-  font-size:11px;
-  font-weight:650;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-tight);
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -9676,14 +9676,14 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-event-title{
-  font-size:11px;
-  font-weight:680;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-event-meta{
   margin-top:2px;
-  font-size:10.5px;
-  font-weight:560;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-calendrier_rh.is-calendar-expanded .studio-rh-day{
@@ -9702,12 +9702,12 @@ body.studio-rh-calendar-expanded{
   }
 
   #view-calendrier_rh .studio-rh-range-title{
-    font-size:10px;
+    font-size: var(--ns-text-xs);
   }
 }
 
 /* ======================================================
-   Studio – Calendrier RH : correction empilement barres continues
+   Studio â€“ Calendrier RH : correction empilement barres continues
    ====================================================== */
 #view-calendrier_rh .studio-rh-week-row{
   position:relative;
@@ -9768,10 +9768,10 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-range-title{
-  font-size:10.5px;
-  font-weight:600;
-  letter-spacing:0;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  letter-spacing: var(--ns-letter-normal);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-row--indisponibilite.studio-rh-range-bar{
@@ -9824,12 +9824,12 @@ body.studio-rh-calendar-expanded{
   }
 
   #view-calendrier_rh .studio-rh-range-title{
-    font-size:10px;
+    font-size: var(--ns-text-xs);
   }
 }
 
 /* ======================================================
-   Studio – Calendrier RH V14 : pilotage synthèse + filtres verticaux
+   Studio â€“ Calendrier RH V14 : pilotage synthÃ¨se + filtres verticaux
    ====================================================== */
 #view-calendrier_rh .studio-rh-btn-count{
   display:inline-flex;
@@ -9842,8 +9842,8 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:rgba(var(--sb-accent-rgb), .18);
   color:#111827;
-  font-size:11px;
-  font-weight:800;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-calendar-layout--pilotage{
@@ -9894,9 +9894,9 @@ body.studio-rh-calendar-expanded{
 
 #view-calendrier_rh .studio-rh-filter-section-title{
   color:#334155;
-  font-size:11px;
-  font-weight:850;
-  letter-spacing:.035em;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  letter-spacing: var(--ns-letter-label);
   text-transform:uppercase;
 }
 
@@ -9943,8 +9943,8 @@ body.studio-rh-calendar-expanded{
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size:12px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-check-item small{
@@ -9954,7 +9954,7 @@ body.studio-rh-calendar-expanded{
   text-overflow:ellipsis;
   white-space:nowrap;
   color:#64748b;
-  font-size:10.5px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh .studio-rh-filter-searchbox{
@@ -9963,15 +9963,15 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-filter-searchbox input{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh .studio-rh-filter-empty,
 #view-calendrier_rh .studio-rh-filter-help{
   margin:0;
   color:#64748b;
-  font-size:11.5px;
-  line-height:1.35;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-ui);
 }
 
 #view-calendrier_rh .studio-rh-mode-list{
@@ -9996,13 +9996,13 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-mode-list span{
-  font-size:12px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-calendar-mode-hint{
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh .studio-rh-week-row,
@@ -10052,8 +10052,8 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:#eef2ff;
   color:#334155;
-  font-size:11px;
-  font-weight:850;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -10077,14 +10077,14 @@ body.studio-rh-calendar-expanded{
   height:24px;
   border-radius:9px;
   padding:0 8px;
-  font-size:11px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   white-space:nowrap;
 }
 
 #view-calendrier_rh .studio-rh-day-summary-line strong{
-  font-size:12px;
-  font-weight:850;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-day-summary-line--indisponibilite{
@@ -10104,7 +10104,7 @@ body.studio-rh-calendar-expanded{
 
 #view-calendrier_rh .studio-rh-day-empty-dot{
   color:#cbd5e1;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh.is-calendar-detail-mode .studio-rh-day{
@@ -10118,8 +10118,8 @@ body.studio-rh-calendar-expanded{
   border-radius:9px;
   background:#fff;
   color:#475569;
-  font-size:11px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -10144,18 +10144,18 @@ body.studio-rh-calendar-expanded{
 
 #view-calendrier_rh .studio-rh-day-detail-item strong{
   color:#111827;
-  font-size:12px;
-  font-weight:800;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-day-detail-item span{
   color:#64748b;
-  font-size:11px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh .studio-rh-empty-line{
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh .studio-rh-drawer-backdrop{
@@ -10214,8 +10214,8 @@ body.studio-rh-calendar-expanded{
   background:#fff;
   color:#475569;
   padding:0 10px;
-  font-size:11px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -10262,12 +10262,12 @@ body.studio-rh-calendar-expanded{
     height:auto;
     min-height:22px;
     padding:3px 6px;
-    font-size:10px;
+    font-size: var(--ns-text-xs);
   }
 }
 
 /* ======================================================
-   Studio – Calendrier RH V15 : filtres accordéon + KPI action
+   Studio â€“ Calendrier RH V15 : filtres accordÃ©on + KPI action
    ====================================================== */
 #view-calendrier_rh .studio-rh-kpi-card--action{
   appearance:none;
@@ -10342,7 +10342,7 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-filter-section-head .studio-rh-filter-section-title{
-  line-height:1;
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-filter-section-chevron{
@@ -10355,9 +10355,9 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:#f1f5f9;
   color:#64748b;
-  font-size:15px;
-  font-weight:900;
-  line-height:1;
+  font-size: var(--ns-text-lg);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   transform:rotate(-90deg);
   transition:transform .16s ease, background-color .16s ease, color .16s ease;
 }
@@ -10421,7 +10421,7 @@ body.studio-rh-calendar-expanded{
   background:transparent;
   box-shadow:none;
   color:#111827;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-calendrier_rh #calRhCollabChecks{
@@ -10439,7 +10439,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Calendrier RH V16 : filtres en cartes indépendantes
+   Studio â€“ Calendrier RH V16 : filtres en cartes indÃ©pendantes
    ====================================================== */
 #view-calendrier_rh .studio-rh-cal-filter-panel{
   display:grid;
@@ -10494,10 +10494,10 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-filter-section-head .studio-rh-filter-section-title,
 #view-calendrier_rh .studio-rh-filter-section-title{
   color:#111827;
-  font-size:13px;
-  font-weight:700;
-  letter-spacing:0;
-  line-height:1.15;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
+  letter-spacing: var(--ns-letter-normal);
+  line-height: var(--ns-leading-tight);
   text-transform:none;
 }
 
@@ -10507,9 +10507,9 @@ body.studio-rh-calendar-expanded{
   text-overflow:ellipsis;
   white-space:nowrap;
   color:#64748b;
-  font-size:11.5px;
-  font-weight:500;
-  line-height:1.2;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-medium);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-filter-section-toggle{
@@ -10574,13 +10574,13 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-check-item span{
-  font-size:12.5px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-calendrier_rh .studio-rh-check-item small{
-  font-size:10.5px;
-  font-weight:500;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-medium);
 }
 
 #view-calendrier_rh #calRhCollabFilterSection,
@@ -10602,8 +10602,8 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-mode-list span{
-  font-size:12.5px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 @media (max-width:1080px){
@@ -10614,7 +10614,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Calendrier RH V17 : cohérence filtres + compteurs
+   Studio â€“ Calendrier RH V17 : cohÃ©rence filtres + compteurs
    ====================================================== */
 #view-calendrier_rh .studio-rh-filter-section-actions{
   flex:0 0 auto;
@@ -10634,9 +10634,9 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:rgba(var(--sb-accent-rgb), .16);
   color:#111827;
-  font-size:11px;
-  font-weight:700;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   white-space:nowrap;
 }
 
@@ -10672,15 +10672,15 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Calendrier RH : aperçu + panneau détail
+   Studio â€“ Calendrier RH : aperÃ§u + panneau dÃ©tail
    ====================================================== */
 #view-calendrier_rh .studio-rh-popover-summary{
   display:grid;
   gap:5px;
   color:#475569;
-  font-size:12px;
-  font-weight:560;
-  line-height:1.3;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-title);
 }
 
 #view-calendrier_rh .studio-rh-popover-summary span{
@@ -10706,8 +10706,8 @@ body.studio-rh-calendar-expanded{
   gap:10px;
   margin-bottom:14px;
   color:#64748b;
-  font-size:12px;
-  font-weight:620;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-calendrier_rh .studio-rh-detail-date-pill{
@@ -10718,8 +10718,8 @@ body.studio-rh-calendar-expanded{
   background:#f8fafc;
   color:#334155;
   padding:0 10px;
-  font-size:12px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-detail-group{
@@ -10731,8 +10731,8 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-detail-group h3{
   margin:0;
   color:#111827;
-  font-size:13px;
-  font-weight:760;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-detail-event-list{
@@ -10763,23 +10763,23 @@ body.studio-rh-calendar-expanded{
 
 #view-calendrier_rh .studio-rh-detail-event-type{
   color:#64748b;
-  font-size:10.5px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-detail-event-row strong{
   color:#111827;
-  font-size:13px;
-  font-weight:720;
-  line-height:1.2;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-detail-event-row span:not(.studio-rh-detail-event-type),
 #view-calendrier_rh .studio-rh-detail-event-row small{
   color:#64748b;
-  font-size:11.5px;
-  font-weight:560;
-  line-height:1.25;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-title);
 }
 
 #view-calendrier_rh .studio-rh-detail-event-card{
@@ -10802,17 +10802,17 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-detail-event-card h3{
   margin:0;
   color:#111827;
-  font-size:17px;
-  font-weight:760;
-  line-height:1.2;
+  font-size: var(--ns-title-sm);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-calendrier_rh .studio-rh-detail-event-card p{
   margin:0;
   color:#64748b;
-  font-size:12.5px;
-  font-weight:560;
-  line-height:1.35;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-ui);
 }
 
 #view-calendrier_rh .studio-rh-detail-facts{
@@ -10836,16 +10836,16 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-detail-facts span,
 #view-calendrier_rh .studio-rh-detail-note span{
   color:#64748b;
-  font-size:11px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-calendrier_rh .studio-rh-detail-facts strong{
   min-width:0;
   color:#111827;
-  font-size:12.5px;
-  font-weight:650;
-  line-height:1.25;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
+  line-height: var(--ns-leading-title);
 }
 
 #view-calendrier_rh .studio-rh-detail-note{
@@ -10861,8 +10861,8 @@ body.studio-rh-calendar-expanded{
 #view-calendrier_rh .studio-rh-detail-note p{
   margin:0;
   color:#334155;
-  font-size:12.5px;
-  line-height:1.4;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-ui);
 }
 
 #view-calendrier_rh .studio-rh-detail-actions{
@@ -10894,7 +10894,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Calendrier RH V19 : ajustements popup et détails jour
+   Studio â€“ Calendrier RH V19 : ajustements popup et dÃ©tails jour
    ====================================================== */
 #view-calendrier_rh .studio-rh-kpi-card--action{
   border:1px solid #e7eaf0;
@@ -10983,7 +10983,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Calendrier RH : panneau détail au-dessus calendrier agrandi
+   Studio â€“ Calendrier RH : panneau dÃ©tail au-dessus calendrier agrandi
    ====================================================== */
 #view-calendrier_rh.is-calendar-expanded .studio-rh-drawer-backdrop,
 #view-calendrier_rh.is-calendar-expanded #calRhDetailBackdrop{
@@ -11000,7 +11000,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Référentiel de compétences : harmonisation UI
+   Studio â€“ RÃ©fÃ©rentiel de compÃ©tences : harmonisation UI
    ====================================================== */
 #view-catalog_competences.studio-catalog-comp-page{
   display:flex;
@@ -11152,7 +11152,7 @@ body.studio-rh-calendar-expanded{
 
 #view-catalog_competences .studio-catalog-comp-kpi-card .sb-kpi-value{
   margin-top:3px;
-  font-size:18px;
+  font-size: var(--ns-title-sm);
 }
 
 #view-catalog_competences .studio-catalog-comp-kpi-action-icon{
@@ -11244,9 +11244,9 @@ body.studio-rh-calendar-expanded{
 
 #view-catalog_competences .studio-catalog-comp-filter-section-title{
   color:#111827;
-  font-size:13px;
-  font-weight:700;
-  line-height:1.15;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-catalog_competences .studio-catalog-comp-filter-section-sub{
@@ -11255,9 +11255,9 @@ body.studio-rh-calendar-expanded{
   text-overflow:ellipsis;
   white-space:nowrap;
   color:#64748b;
-  font-size:11.5px;
-  font-weight:500;
-  line-height:1.2;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-medium);
+  line-height: var(--ns-leading-tight);
 }
 
 #view-catalog_competences .studio-catalog-comp-filter-section-actions{
@@ -11278,9 +11278,9 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:rgba(var(--sb-accent-rgb), .16);
   color:#111827;
-  font-size:11px;
-  font-weight:700;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
   white-space:nowrap;
 }
 
@@ -11353,7 +11353,7 @@ body.studio-rh-calendar-expanded{
   background:transparent;
   box-shadow:none;
   color:#111827;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-catalog_competences .studio-catalog-comp-status-field{
@@ -11400,8 +11400,8 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-catalog_competences .studio-catalog-comp-check-item span{
-  font-size:12.5px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-catalog_competences .studio-catalog-comp-check-item--status{
@@ -11427,8 +11427,8 @@ body.studio-rh-calendar-expanded{
 
 #view-catalog_competences .studio-catalog-comp-filter-empty{
   color:#64748b;
-  font-size:12px;
-  line-height:1.3;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-title);
 }
 
 #view-catalog_competences .studio-catalog-comp-list-card{
@@ -11457,7 +11457,7 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-catalog_competences .studio-catalog-comp-list-titleline .card-title{
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-catalog_competences .studio-catalog-comp-list-titleline .card-sub{
@@ -11558,8 +11558,8 @@ body.studio-rh-calendar-expanded{
   min-height:40px;
   background:#f8fafc;
   color:#475569;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-catalog_competences .studio-catalog-comp-sort-head{
@@ -11573,7 +11573,7 @@ body.studio-rh-calendar-expanded{
   align-items:center;
   gap:6px;
   font:inherit;
-  font-weight:600;
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 
@@ -11589,8 +11589,8 @@ body.studio-rh-calendar-expanded{
   display:inline-flex;
   flex-direction:column;
   gap:0;
-  line-height:1;
-  font-size:8px;
+  line-height: var(--ns-leading-tight);
+  font-size: var(--ns-text-xs);
   color:#cbd5e1;
   opacity:0;
 }
@@ -11612,7 +11612,7 @@ body.studio-rh-calendar-expanded{
 #view-catalog_competences .studio-catalog-comp-table-cell{
   min-width:0;
   padding:9px 12px;
-  font-size:12.5px;
+  font-size: var(--ns-text-xs);
   color:#334155;
 }
 
@@ -11625,7 +11625,7 @@ body.studio-rh-calendar-expanded{
 #view-catalog_competences .studio-catalog-comp-code{
   flex:0 0 auto;
   padding:2px 8px;
-  font-size:11px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-catalog_competences .studio-catalog-comp-title-wrap{
@@ -11640,13 +11640,13 @@ body.studio-rh-calendar-expanded{
   text-overflow:ellipsis;
   white-space:nowrap;
   color:#111827;
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-catalog_competences .studio-catalog-comp-meta{
   color:#64748b;
-  font-size:11.5px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-catalog_competences .studio-catalog-comp-table-cell--domain{
@@ -11689,7 +11689,7 @@ body.studio-rh-calendar-expanded{
   gap:12px;
   padding:12px 0 0 0;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-catalog_competences .studio-catalog-comp-page-size-wrap{
@@ -11724,8 +11724,8 @@ body.studio-rh-calendar-expanded{
   border-radius:7px;
   background:transparent;
   color:#0f172a;
-  font-size:12px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 
@@ -11737,7 +11737,7 @@ body.studio-rh-calendar-expanded{
   background:var(--accent);
   color:#111827;
   box-shadow:none;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-catalog_competences .studio-catalog-comp-page-ellipsis{
@@ -11747,8 +11747,8 @@ body.studio-rh-calendar-expanded{
   align-items:center;
   justify-content:center;
   color:#94a3b8;
-  font-size:12px;
-  font-weight:600;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #view-catalog_competences .studio-catalog-comp-page-nav{
@@ -11771,7 +11771,7 @@ body.studio-rh-calendar-expanded{
   justify-self:end;
   margin:0;
   color:#64748b;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #view-catalog_competences .studio-catalog-comp-empty{
@@ -11815,7 +11815,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio – Référentiel de compétences : onglets + cartographie
+   Studio â€“ RÃ©fÃ©rentiel de compÃ©tences : onglets + cartographie
    ====================================================== */
 #view-catalog_competences .studio-catalog-comp-hero-top{
   align-items:center;
@@ -11851,8 +11851,8 @@ body.studio-rh-calendar-expanded{
   border-radius:0;
   background:transparent;
   color:#64748b;
-  font-size:13px;
-  font-weight:700;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -11964,8 +11964,8 @@ body.studio-rh-calendar-expanded{
   text-overflow:ellipsis;
   white-space:nowrap;
   color:#111827;
-  font-size:12.5px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #view-catalog_competences .studio-catalog-comp-map-detail-side{
@@ -12014,7 +12014,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio > Fiche poste dédiée
+   Studio > Fiche poste dÃ©diÃ©e
    ====================================================== */
 #view-organisation.is-poste-page > .org-hero-card,
 #view-organisation.is-poste-page > .org-shell{
@@ -12099,8 +12099,8 @@ body.studio-rh-calendar-expanded{
   color:#111827;
   text-align:left;
   font:inherit;
-  font-size:13px;
-  font-weight:650;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
   cursor:pointer;
 }
 
@@ -12136,16 +12136,16 @@ body.studio-rh-calendar-expanded{
 #modalPoste .studio-poste-kpi span{
   display:block;
   color:#64748b;
-  font-size:12px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalPoste .studio-poste-kpi strong{
   display:block;
   margin-top:8px;
   color:#111827;
-  font-size:24px;
-  line-height:1;
+  font-size: var(--ns-title-lg);
+  line-height: var(--ns-leading-tight);
 }
 
 #modalPoste .studio-poste-overview-grid{
@@ -12170,8 +12170,8 @@ body.studio-rh-calendar-expanded{
 #modalPoste .studio-poste-overview-text{
   margin-top:10px;
   color:#334155;
-  font-size:13px;
-  line-height:1.55;
+  font-size: var(--ns-text-sm);
+  line-height: var(--ns-leading-body);
   white-space:pre-wrap;
 }
 
@@ -12181,8 +12181,8 @@ body.studio-rh-calendar-expanded{
   margin:10px 0 0;
   padding-left:28px;
   color:#111827;
-  font-size:13px;
-  font-weight:650;
+  font-size: var(--ns-text-sm);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalPoste .studio-poste-overview-list{
@@ -12197,12 +12197,12 @@ body.studio-rh-calendar-expanded{
   padding:7px 0;
   border-bottom:1px solid #eef2f7;
   color:#334155;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste .studio-poste-overview-list strong{
   color:#111827;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste .studio-poste-overview-link{
@@ -12212,8 +12212,8 @@ body.studio-rh-calendar-expanded{
   background:transparent;
   color:var(--accent);
   font:inherit;
-  font-size:12px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
   cursor:pointer;
 }
 
@@ -12222,7 +12222,7 @@ body.studio-rh-calendar-expanded{
   grid-template-columns:minmax(130px, 1fr) minmax(120px, 1fr);
   gap:7px 12px;
   margin:10px 0 0;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste .studio-poste-overview dt{
@@ -12232,7 +12232,7 @@ body.studio-rh-calendar-expanded{
 #modalPoste .studio-poste-overview dd{
   margin:0;
   color:#111827;
-  font-weight:700;
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste [data-panel="ccn"]{
@@ -12257,7 +12257,7 @@ body.studio-rh-calendar-expanded{
 
 
 /* ======================================================
-   Studio > Fiche poste dédiée V02
+   Studio > Fiche poste dÃ©diÃ©e V02
    ====================================================== */
 #modalPoste.is-poste-page .studio-poste-modal-head{
   position:sticky;
@@ -12276,14 +12276,14 @@ body.studio-rh-calendar-expanded{
 }
 
 #modalPoste.is-poste-page .studio-poste-titleline .sb-title-text{
-  font-size:19px;
-  font-weight:800;
-  letter-spacing:-.01em;
+  font-size: var(--ns-title-md);
+  font-weight: var(--ns-weight-bold);
+  letter-spacing: var(--ns-letter-label);
 }
 
 #modalPoste.is-poste-page #posteModalSub{
   margin-top:6px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste.is-poste-page .studio-poste-kpis{
@@ -12334,22 +12334,22 @@ body.studio-rh-calendar-expanded{
 
 #modalPoste .studio-poste-kpi__label{
   color:#475569;
-  font-size:12px;
-  font-weight:750;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-kpi__content strong{
   margin-top:5px;
-  font-size:23px;
-  font-weight:850;
+  font-size: var(--ns-title-lg);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-kpi__content small{
   display:block;
   margin-top:5px;
   color:#64748b;
-  font-size:11px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalPoste .studio-poste-kpi--competences small{ color:#c2410c; }
@@ -12389,8 +12389,8 @@ body.studio-rh-calendar-expanded{
   border-radius:9px;
   background:#fff0f0;
   color:#dc2626;
-  font-size:14px;
-  font-weight:850;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-overview-card__icon--violet{ background:#f1eafe; color:#7c3aed; }
@@ -12398,14 +12398,14 @@ body.studio-rh-calendar-expanded{
 #modalPoste .studio-poste-overview-card__icon--orange{ background:#fff1e6; color:#ea580c; }
 
 #modalPoste .studio-poste-overview-card .studio-rh-panel-title{
-  font-size:14px;
-  font-weight:800;
+  font-size: var(--ns-text-md);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-overview-text{
   margin-top:0;
-  font-size:12.5px;
-  line-height:1.6;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-long);
 }
 
 #modalPoste .studio-poste-activities{
@@ -12436,8 +12436,8 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:#fff0f0;
   color:#dc2626;
-  font-size:11px;
-  font-weight:850;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-overview-list > div{
@@ -12452,8 +12452,8 @@ body.studio-rh-calendar-expanded{
   min-width:76px;
   padding:3px 8px;
   border-radius:999px;
-  font-size:10px !important;
-  font-weight:800;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 #modalPoste .studio-poste-overview-badge--a{ background:#fff1e6; color:#c2410c; }
 #modalPoste .studio-poste-overview-badge--b{ background:#ffedd5; color:#c2410c; }
@@ -12477,8 +12477,8 @@ body.studio-rh-calendar-expanded{
   border-radius:10px;
   background:#f8fafc;
   color:#64748b;
-  font-size:11px;
-  line-height:1.45;
+  font-size: var(--ns-text-xs);
+  line-height: var(--ns-leading-body);
 }
 
 #modalPoste .studio-poste-overview-link--block{
@@ -12499,18 +12499,18 @@ body.studio-rh-calendar-expanded{
   #modalPoste.is-poste-page .studio-poste-modal-head{ position:relative; margin:0; padding:4px 0 12px; }
 }
 
-/* Studio > Fiche poste dédiée V04 : raccord direct sous la topbar */
+/* Studio > Fiche poste dÃ©diÃ©e V04 : raccord direct sous la topbar */
 .content.is-poste-page{
   padding-top:0;
 }
 
 /* ======================================================
-   Studio > Fiche poste dédiée V05
+   Studio > Fiche poste dÃ©diÃ©e V05
    ====================================================== */
 #modalPoste.is-poste-page .studio-poste-titleline .sb-title-text{
-  font-size:18px;
-  font-weight:650;
-  letter-spacing:0;
+  font-size: var(--ns-title-sm);
+  font-weight: var(--ns-weight-semibold);
+  letter-spacing: var(--ns-letter-normal);
 }
 
 #modalPoste.is-poste-page .studio-poste-page-actions .sb-btn{
@@ -12611,9 +12611,9 @@ body.studio-rh-calendar-expanded{
   background:transparent;
   color:#64748b;
   font:inherit;
-  font-size:12px;
-  font-weight:800;
-  letter-spacing:1px;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  letter-spacing: var(--ns-letter-label);
   cursor:pointer;
 }
 
@@ -12624,8 +12624,8 @@ body.studio-rh-calendar-expanded{
 }
 
 #modalPoste .studio-poste-activities li{
-  font-weight:500;
-  line-height:1.45;
+  font-weight: var(--ns-weight-medium);
+  line-height: var(--ns-leading-body);
 }
 
 #modalPoste .studio-poste-overview-skill{
@@ -12650,9 +12650,9 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:#f3e8ff;
   color:#7c3aed;
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.02em;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  letter-spacing: var(--ns-letter-label);
 }
 
 #modalPoste .studio-poste-status-badge,
@@ -12666,9 +12666,9 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:#fff;
   color:#334155;
-  font-size:10.5px;
-  font-weight:750;
-  line-height:1;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
+  line-height: var(--ns-leading-tight);
 }
 
 #modalPoste .studio-poste-status-badge.is-success{
@@ -12733,16 +12733,16 @@ body.studio-rh-calendar-expanded{
   border-radius:999px;
   background:linear-gradient(145deg, #fef3c7, #fde68a);
   color:#713f12;
-  font-size:10px;
-  font-weight:850;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-collaborator-name{
   min-width:0;
   overflow:hidden;
   color:#111827;
-  font-size:12px;
-  font-weight:650;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-semibold);
   text-overflow:ellipsis;
   white-space:nowrap;
 }
@@ -12752,8 +12752,8 @@ body.studio-rh-calendar-expanded{
   align-items:center;
   gap:6px;
   color:#475569;
-  font-size:10.5px;
-  font-weight:700;
+  font-size: var(--ns-text-xs);
+  font-weight: var(--ns-weight-bold);
 }
 
 #modalPoste .studio-poste-collaborator-status__dot{
@@ -12770,7 +12770,7 @@ body.studio-rh-calendar-expanded{
 #modalPoste .studio-poste-collaborators__empty{
   padding:8px 0 2px;
   color:#64748b;
-  font-size:11.5px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste .studio-section-titleline--split{
@@ -12798,7 +12798,7 @@ body.studio-rh-calendar-expanded{
 }
 
 /* ======================================================
-   Studio > Fiche poste dédiée V07 : correctifs ciblés
+   Studio > Fiche poste dÃ©diÃ©e V07 : correctifs ciblÃ©s
    ====================================================== */
 body.studio-poste-page-open{
   overflow:hidden;
@@ -12851,7 +12851,7 @@ body.studio-poste-page-open .content{
 }
 
 #modalPoste .studio-poste-kpi__icon{
-  line-height:0;
+  line-height: var(--ns-leading-tight);
 }
 
 #modalPoste .studio-poste-kpi__icon svg{
@@ -12875,7 +12875,7 @@ body.studio-poste-page-open .content{
 }
 
 #modalPoste .studio-poste-overview-card .studio-rh-panel-title{
-  font-weight:650;
+  font-weight: var(--ns-weight-semibold);
 }
 
 #modalPoste .studio-poste-overview-list > div{
@@ -12903,7 +12903,7 @@ body.studio-poste-page-open .content{
 }
 
 /* ======================================================
-   Studio > Fiche poste dédiée V08 : lisibilité et centrage KPI
+   Studio > Fiche poste dÃ©diÃ©e V08 : lisibilitÃ© et centrage KPI
    ====================================================== */
 #modalPoste.is-poste-page .studio-poste-kpi > .studio-poste-kpi__icon{
   display:inline-flex;
@@ -12911,7 +12911,7 @@ body.studio-poste-page-open .content{
   justify-content:center;
   box-sizing:border-box;
   padding:0;
-  line-height:1;
+  line-height: var(--ns-leading-tight);
 }
 
 #modalPoste.is-poste-page .studio-poste-kpi > .studio-poste-kpi__icon > svg{
@@ -12923,41 +12923,41 @@ body.studio-poste-page-open .content{
 }
 
 #modalPoste.is-poste-page .studio-poste-kpi__label{
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 #modalPoste.is-poste-page .studio-poste-kpi__content strong{
-  font-size:24px;
+  font-size: var(--ns-title-lg);
 }
 
 #modalPoste.is-poste-page .studio-poste-kpi__content small{
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste.is-poste-page .studio-poste-overview-card .studio-rh-panel-title{
-  font-size:15px;
+  font-size: var(--ns-text-lg);
 }
 
 #modalPoste.is-poste-page .studio-poste-overview-text,
 #modalPoste.is-poste-page .studio-poste-activities,
 #modalPoste.is-poste-page .studio-poste-overview-list > div,
 #modalPoste.is-poste-page .studio-poste-overview dl{
-  font-size:13.5px;
+  font-size: var(--ns-text-sm);
 }
 
 #modalPoste.is-poste-page .studio-poste-overview-list strong,
 #modalPoste.is-poste-page .studio-poste-collaborator-name{
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }
 
 #modalPoste.is-poste-page .studio-poste-overview-badge,
 #modalPoste.is-poste-page .studio-poste-status-badge,
 #modalPoste.is-poste-page .studio-poste-constraint-badge,
 #modalPoste.is-poste-page .studio-poste-collaborator-status{
-  font-size:11.5px !important;
+  font-size: var(--ns-text-xs);
 }
 
 #modalPoste.is-poste-page .studio-poste-overview-link,
 #modalPoste.is-poste-page .studio-poste-collaborators__empty{
-  font-size:13px;
+  font-size: var(--ns-text-sm);
 }

@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const P = window.PeoplePortal;
   if (!P) return;
   function byId(id){ return document.getElementById(id); }
@@ -13,7 +13,7 @@
     }
     el.innerHTML = rows.map(r => `<div class="pp-timeline-item">
       <div class="pp-dot"></div>
-      <div><div class="pp-row-title">${P.escapeHtml(r.intitule_poste)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut)} → ${r.date_fin ? P.fmtDate(r.date_fin) : "Aujourd’hui"}</div><div class="pp-row-sub">${P.escapeHtml(r.commentaire || "")}</div></div>
+      <div><div class="pp-row-title">${P.escapeHtml(r.intitule_poste)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut)} â†’ ${r.date_fin ? P.fmtDate(r.date_fin) : "Aujourdâ€™hui"}</div><div class="pp-row-sub">${P.escapeHtml(r.commentaire || "")}</div></div>
     </div>`).join("");
   }
 
@@ -21,17 +21,17 @@
     const el = byId("ppFormationHistory");
     if (!el) return;
     if (!rows.length) {
-      el.innerHTML = P.itemEmpty("Aucune formation réalisée dans l’historique.");
+      el.innerHTML = P.itemEmpty("Aucune formation rÃ©alisÃ©e dans lâ€™historique.");
       return;
     }
-    el.innerHTML = rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("");
+    el.innerHTML = rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} Â· ${P.escapeHtml(r.organisme || "Organisme non renseignÃ©")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("");
   }
 
   function renderChart(rows) {
     const el = byId("ppSkillChart");
     if (!el) return;
     if (!rows.length) {
-      el.innerHTML = P.itemEmpty("Aucune évaluation historisée pour générer une courbe.");
+      el.innerHTML = P.itemEmpty("Aucune Ã©valuation historisÃ©e pour gÃ©nÃ©rer une courbe.");
       return;
     }
 

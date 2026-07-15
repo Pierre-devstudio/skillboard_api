@@ -1,11 +1,11 @@
-(function () {
+﻿(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id) { return document.getElementById(id); }
 
   function textOrDash(value) {
     const v = (value ?? "").toString().trim();
-    return v || "—";
+    return v || "â€”";
   }
 
   function setText(id, value) {
@@ -56,7 +56,7 @@
     const loc = [p?.code_postal, p?.ville, p?.position_geographique]
       .map(x => (x || "").toString().trim())
       .filter(Boolean)
-      .join(" • ");
+      .join(" â€¢ ");
 
     setText("partnerInfoLocalisation", loc);
     setText("partnerInfoCode", p?.code_consultant);

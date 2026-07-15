@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
   const DEFAULT_CRITICITE = 70;
   let _bound = false;
@@ -8,23 +8,23 @@
   const HELP = {
     demandes: {
       title: "Demandes RH par statut",
-      body: "Lecture consolidée des demandes remontées au Studio. Les volumes affichés viennent des données Studio / Insights, sans recalcul local des risques."
+      body: "Lecture consolidÃ©e des demandes remontÃ©es au Studio. Les volumes affichÃ©s viennent des donnÃ©es Studio / Insights, sans recalcul local des risques."
     },
     alertes: {
       title: "Alertes principales",
-      body: "Points d’attention à traiter côté RH : postes critiques, compétences à sécuriser, demandes à arbitrer ou données incomplètes."
+      body: "Points dâ€™attention Ã  traiter cÃ´tÃ© RH : postes critiques, compÃ©tences Ã  sÃ©curiser, demandes Ã  arbitrer ou donnÃ©es incomplÃ¨tes."
     },
     consoles: {
-      title: "État des consoles",
-      body: "Vue de supervision des consoles Novoskill. Cette carte indique l’état opérationnel visible depuis les données disponibles dans Studio."
+      title: "Ã‰tat des consoles",
+      body: "Vue de supervision des consoles Novoskill. Cette carte indique lâ€™Ã©tat opÃ©rationnel visible depuis les donnÃ©es disponibles dans Studio."
     },
     activite: {
-      title: "Activité récente",
-      body: "Synthèse courte des dernières priorités et demandes détectées sur le périmètre courant."
+      title: "ActivitÃ© rÃ©cente",
+      body: "SynthÃ¨se courte des derniÃ¨res prioritÃ©s et demandes dÃ©tectÃ©es sur le pÃ©rimÃ¨tre courant."
     },
     raccourcis: {
-      title: "Accès rapides",
-      body: "Raccourcis vers les espaces de pilotage et d’action. Les pages non encore finalisées restent branchées sur l’espace en construction."
+      title: "AccÃ¨s rapides",
+      body: "Raccourcis vers les espaces de pilotage et dâ€™action. Les pages non encore finalisÃ©es restent branchÃ©es sur lâ€™espace en construction."
     }
   };
 
@@ -32,7 +32,7 @@
   function esc(v){ return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;"); }
   function n(v){ const x = Number(v || 0); return Number.isFinite(x) ? x : 0; }
   function clamp(v, min, max){ const x = Number(v); return Number.isFinite(x) ? Math.max(min, Math.min(max, x)) : min; }
-  function setText(id, value){ const el = byId(id); if (el) el.textContent = value == null || value === "" ? "—" : String(value); }
+  function setText(id, value){ const el = byId(id); if (el) el.textContent = value == null || value === "" ? "â€”" : String(value); }
   function getOwnerId(){ return new URL(window.location.href).searchParams.get("id") || window.portal?.contactId || ""; }
 
   async function getToken(){
@@ -126,13 +126,13 @@
       { label:"Nouvelles", value:aInstruire, color:"#e6e421" },
       { label:"En cours", value:prises, color:"#f59e0b" },
       { label:"Autres ouvertes", value:autres, color:"#3b82f6" },
-      { label:"Signalées urgentes", value:urgentes, color:"#ef4444", note:"peut recouper les autres statuts" }
+      { label:"SignalÃ©es urgentes", value:urgentes, color:"#ef4444", note:"peut recouper les autres statuts" }
     ];
     const list = byId("studioDashDemandesStatusList");
     if (list){
       const totalBase = Math.max(ouvertes, 1);
       list.innerHTML = rows.map(r => {
-        const percent = r.label === "Signalées urgentes" ? Math.round(n(r.value) / totalBase * 100) : (ouvertes ? Math.round(n(r.value) / ouvertes * 100) : 0);
+        const percent = r.label === "SignalÃ©es urgentes" ? Math.round(n(r.value) / totalBase * 100) : (ouvertes ? Math.round(n(r.value) / ouvertes * 100) : 0);
         return `<div class="studio-dash-status-row" title="${esc(r.note || "")}">
           <span class="studio-dash-dot" style="background:${esc(r.color)}"></span>
           <span>${esc(r.label)}</span>
@@ -146,8 +146,8 @@
 
   function alertIcon(type){
     if (type === "danger") return "!";
-    if (type === "watch") return "△";
-    if (type === "time") return "◷";
+    if (type === "watch") return "â–³";
+    if (type === "time") return "â—·";
     return "i";
   }
 
@@ -162,20 +162,20 @@
       alerts.push({ type:"danger", title:`${n(p.postes_critiques_danger)} poste(s) critique(s) en danger`, sub:"Analyse issue du moteur Insights" });
     }
     if (n(tr.competences_risque) > 0) {
-      alerts.push({ type:"watch", title:`${n(tr.competences_risque)} compétence(s) à sécuriser`, sub:"Capacité de transmission insuffisante" });
+      alerts.push({ type:"watch", title:`${n(tr.competences_risque)} compÃ©tence(s) Ã  sÃ©curiser`, sub:"CapacitÃ© de transmission insuffisante" });
     }
     if (n(demandes.a_instruire) > 0) {
-      alerts.push({ type:"time", title:`${n(demandes.a_instruire)} demande(s) RH en attente d’arbitrage`, sub:"À qualifier côté Studio" });
+      alerts.push({ type:"time", title:`${n(demandes.a_instruire)} demande(s) RH en attente dâ€™arbitrage`, sub:"Ã€ qualifier cÃ´tÃ© Studio" });
     }
     if (n(ref.collaborateurs_sans_poste) > 0) {
-      alerts.push({ type:"info", title:`${n(ref.collaborateurs_sans_poste)} collaborateur(s) sans poste`, sub:"Donnée structurante à compléter" });
+      alerts.push({ type:"info", title:`${n(ref.collaborateurs_sans_poste)} collaborateur(s) sans poste`, sub:"DonnÃ©e structurante Ã  complÃ©ter" });
     }
     const refIssues = n(ref.postes_sans_competence) + n(ref.competences_sans_domaine);
     if (refIssues > 0) {
-      alerts.push({ type:"info", title:"Mise à jour des référentiels recommandée", sub:`${refIssues} élément(s) à compléter` });
+      alerts.push({ type:"info", title:"Mise Ã  jour des rÃ©fÃ©rentiels recommandÃ©e", sub:`${refIssues} Ã©lÃ©ment(s) Ã  complÃ©ter` });
     }
     if (!alerts.length) {
-      alerts.push({ type:"ok", title:"Aucune alerte majeure détectée", sub:"Le socle disponible est exploitable sur ce périmètre" });
+      alerts.push({ type:"ok", title:"Aucune alerte majeure dÃ©tectÃ©e", sub:"Le socle disponible est exploitable sur ce pÃ©rimÃ¨tre" });
     }
 
     const el = byId("studioDashAlertList");
@@ -183,7 +183,7 @@
     el.innerHTML = alerts.slice(0, 4).map(a => `<button type="button" class="studio-dash-alert-row studio-dash-alert-row--${esc(a.type)}" data-dash-view="analyse_rh">
       <span class="studio-dash-alert-icon" aria-hidden="true">${esc(alertIcon(a.type))}</span>
       <span><strong>${esc(a.title)}</strong><small>${esc(a.sub)}</small></span>
-      <em aria-hidden="true">›</em>
+      <em aria-hidden="true">â€º</em>
     </button>`).join("");
   }
 
@@ -205,10 +205,10 @@
     const el = byId("studioDashConsoleList");
     if (!el) return;
     el.innerHTML = [
-      consoleState("Insights", insightsOk ? "Actif" : "À compléter", insightsOk ? "ok" : "watch"),
-      consoleState("People", peopleOk ? "Actif" : "À compléter", peopleOk ? "ok" : "watch"),
+      consoleState("Insights", insightsOk ? "Actif" : "Ã€ complÃ©ter", insightsOk ? "ok" : "watch"),
+      consoleState("People", peopleOk ? "Actif" : "Ã€ complÃ©ter", peopleOk ? "ok" : "watch"),
       consoleState("Learn", learnHasFlow ? "Flux ouvert" : "Disponible", learnHasFlow ? "watch" : "ok"),
-      consoleState("Partner", "Non activé", "muted")
+      consoleState("Partner", "Non activÃ©", "muted")
     ].join("");
   }
 
@@ -217,7 +217,7 @@
     if (!raw || Number.isNaN(raw.getTime())) return "";
     const diff = Math.max(0, Date.now() - raw.getTime());
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return "À l’instant";
+    if (minutes < 1) return "Ã€ lâ€™instant";
     if (minutes < 60) return `Il y a ${minutes} min`;
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `Il y a ${hours} h`;
@@ -232,13 +232,13 @@
 
     demandes.slice(0, 2).forEach(d => {
       const comp = d.intitule_competence || d.intitule_poste || "demande RH";
-      items.push({ icon:"doc", title:"Nouvelle demande RH créée", sub:comp, when:whenLabel(d.created_at) });
+      items.push({ icon:"doc", title:"Nouvelle demande RH crÃ©Ã©e", sub:comp, when:whenLabel(d.created_at) });
     });
     actions.slice(0, 4).forEach(a => {
-      items.push({ icon:a.type_action || "act", title:a.title || "Action RH", sub:a.subtitle || "Priorité Studio", when:"" });
+      items.push({ icon:a.type_action || "act", title:a.title || "Action RH", sub:a.subtitle || "PrioritÃ© Studio", when:"" });
     });
     if (!items.length) {
-      items.push({ icon:"ok", title:"Aucune activité prioritaire", sub:"Le dashboard est à jour sur ce périmètre", when:"" });
+      items.push({ icon:"ok", title:"Aucune activitÃ© prioritaire", sub:"Le dashboard est Ã  jour sur ce pÃ©rimÃ¨tre", when:"" });
     }
 
     const el = byId("studioDashActivityList");
@@ -267,7 +267,7 @@
     }
     el.innerHTML = rows.map(r => {
       const label = esc(r.nom_ent || "Structure");
-      const sub = `${Math.round(n(r.risk_pct))}% risque · ${n(r.postes_danger)} poste(s) en danger`;
+      const sub = `${Math.round(n(r.risk_pct))}% risque Â· ${n(r.postes_danger)} poste(s) en danger`;
       return `<div class="studio-dash-mini-row studio-dash-mini-row--click" data-client="${esc(r.id_ent)}"><div><strong>${label}</strong><span>${esc(sub)}</span></div><span class="studio-dash-badge ${badgeClass(r.priority)}">${esc(r.priority_label || "")}</span></div>`;
     }).join("");
     el.querySelectorAll("[data-client]").forEach(row => row.addEventListener("click", () => {
@@ -294,7 +294,7 @@
     setText("studioDashCompetencesRisk", compRisk || n(healthObj.competences_fragilite_moyenne) || 0);
     setText("studioDashDemandesPending", n(demandes.a_instruire));
     setText("studioDashActionsCount", actions.length);
-    setText("studioDashCriticiteLabel", `≥ ${filters.criticite_min}`);
+    setText("studioDashCriticiteLabel", `â‰¥ ${filters.criticite_min}`);
 
     renderSpark("studioDashPostesSpark", "postes");
     renderSpark("studioDashSkillsSpark", "skills");
@@ -319,15 +319,15 @@
 
   async function load(){
     const ownerId = getOwnerId();
-    if (!ownerId){ setStatus("Accès Studio introuvable.", true); return; }
+    if (!ownerId){ setStatus("AccÃ¨s Studio introuvable.", true); return; }
     const token = await getToken();
-    if (!token){ setStatus("Session expirée.", true); return; }
+    if (!token){ setStatus("Session expirÃ©e.", true); return; }
 
     await loadContext(ownerId, token);
 
     const f = getFilters();
-    setText("studioDashCriticiteLabel", `≥ ${f.criticite_min}`);
-    setStatus("Chargement…");
+    setText("studioDashCriticiteLabel", `â‰¥ ${f.criticite_min}`);
+    setStatus("Chargementâ€¦");
 
     const url = new URL(`${API_BASE}/studio/dashboard/overview/${encodeURIComponent(ownerId)}`);
     if (f.id_service) url.searchParams.set("id_service", f.id_service);
@@ -362,7 +362,7 @@
     if (_bound) return;
     _bound = true;
     byId("studioDashService")?.addEventListener("change", () => load().catch(e => setStatus(e.message || String(e), true)));
-    byId("studioDashCriticite")?.addEventListener("input", () => setText("studioDashCriticiteLabel", `≥ ${getFilters().criticite_min}`));
+    byId("studioDashCriticite")?.addEventListener("input", () => setText("studioDashCriticiteLabel", `â‰¥ ${getFilters().criticite_min}`));
     byId("studioDashCriticite")?.addEventListener("change", () => load().catch(e => setStatus(e.message || String(e), true)));
     byId("studioDashRefresh")?.addEventListener("click", () => load().catch(e => setStatus(e.message || String(e), true)));
     document.addEventListener("click", async (ev) => {

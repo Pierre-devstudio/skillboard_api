@@ -1,8 +1,8 @@
-/* ======================================================
+﻿/* ======================================================
    portal_auth_common.js
    - Wrapper Supabase Auth (multi-portails)
    - Stocke un "contactId" (id_effectif) pour alimenter le portail
-   - Support "mot de passe oublié" (reset email + update password)
+   - Support "mot de passe oubliÃ©" (reset email + update password)
    ====================================================== */
 
 (function () {
@@ -43,10 +43,10 @@
 
   function _requireSupabaseLoaded() {
     // Tu chargeras supabase-js dans la page login/reset (pas dans le portail)
-    // Ici on vérifie juste qu'on a bien la factory.
+    // Ici on vÃ©rifie juste qu'on a bien la factory.
     const supa = g.supabase;
     if (!supa || typeof supa.createClient !== "function") {
-      throw new Error("Supabase JS non chargé (window.supabase.createClient introuvable).");
+      throw new Error("Supabase JS non chargÃ© (window.supabase.createClient introuvable).");
     }
     return supa;
   }
@@ -65,15 +65,15 @@
     }
 
     if (!_cfg.supabaseUrl || !_cfg.supabaseAnonKey) {
-      // On n'explose pas au init si tu n'as pas encore injecté les clés,
-      // mais toute action Auth lèvera une erreur claire.
+      // On n'explose pas au init si tu n'as pas encore injectÃ© les clÃ©s,
+      // mais toute action Auth lÃ¨vera une erreur claire.
       _client = null;
       return null;
     }
 
     const supa = _requireSupabaseLoaded();
 
-    // storageKey dédié par portail
+    // storageKey dÃ©diÃ© par portail
     const storageKey = _storageKey("auth");
 
     _client = supa.createClient(_cfg.supabaseUrl, _cfg.supabaseAnonKey, {
@@ -91,13 +91,13 @@
 
   function getClient() {
     if (_client) return _client;
-    // si init pas fait / pas de clés -> erreur explicite
+    // si init pas fait / pas de clÃ©s -> erreur explicite
     if (!_cfg.supabaseUrl || !_cfg.supabaseAnonKey) {
-      throw new Error("Supabase non initialisé: supabaseUrl / supabaseAnonKey manquants.");
+      throw new Error("Supabase non initialisÃ©: supabaseUrl / supabaseAnonKey manquants.");
     }
-    // si supabase-js pas chargé
+    // si supabase-js pas chargÃ©
     _requireSupabaseLoaded();
-    throw new Error("Supabase non initialisé: appelle PortalAuthCommon.init({...}) avant.");
+    throw new Error("Supabase non initialisÃ©: appelle PortalAuthCommon.init({...}) avant.");
   }
 
   function _extractContactIdFromUser(user) {
@@ -109,7 +109,7 @@
       if (v !== null && v !== undefined && String(v).trim() !== "") return String(v).trim();
     }
 
-    // fallback optionnel: si tu décides plus tard de le mettre dans app_metadata
+    // fallback optionnel: si tu dÃ©cides plus tard de le mettre dans app_metadata
     const appMeta = user.app_metadata || {};
     for (const k of _cfg.contactIdMetaKeys) {
       const v = appMeta[k];
@@ -177,7 +177,7 @@
       return { user, session: data?.session || null, contactId };
     }
 
-    // Pas de metadata: on demande le contexte à l'API Skillboard
+    // Pas de metadata: on demande le contexte Ã  l'API Skillboard
     const token = data?.session?.access_token || "";
     const ctx = await _fetchPortalContextFromApi(token);
 
@@ -206,7 +206,7 @@
     const payload = {};
     if (providerId) payload.providerId = providerId;
     else if (domain) payload.domain = domain;
-    else throw new Error("Configuration SSO incomplète: domaine ou providerId obligatoire.");
+    else throw new Error("Configuration SSO incomplÃ¨te: domaine ou providerId obligatoire.");
 
     if (redirectTo) payload.options = { redirectTo };
 
@@ -241,7 +241,7 @@
       return contactId;
     }
 
-    // Pas de metadata: on demande le contexte à l'API Skillboard
+    // Pas de metadata: on demande le contexte Ã  l'API Skillboard
     const session = await getSession().catch(() => null);
     const token = session?.access_token || "";
     const ctx = await _fetchPortalContextFromApi(token);
@@ -279,7 +279,7 @@
     if (!p) throw new Error("Mot de passe obligatoire.");
 
     const { data, error } = await client.auth.updateUser({ password: p });
-    if (error) throw new Error(error.message || "Mise à jour du mot de passe impossible.");
+    if (error) throw new Error(error.message || "Mise Ã  jour du mot de passe impossible.");
     return data || {};
   }
 

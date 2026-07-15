@@ -1,32 +1,32 @@
-# Studio – Structure des droits (admin / editor / user)
+﻿# Studio â€“ Structure des droits (admin / editor / user)
 
-## 1) Objectif et périmètre
-Cette note décrit la structure de droits **effectivement mise en place** dans Skillboard Studio.
+## 1) Objectif et pÃ©rimÃ¨tre
+Cette note dÃ©crit la structure de droits **effectivement mise en place** dans Skillboard Studio.
 
-- Les droits servent à **filtrer l’UI (menu)** et à **sécuriser l’API (403)**.
-- Le rôle est **un droit d’accès**, pas une donnée RH : il est porté par **tbl_studio_user_access**.
-- Principe : **masquer ≠ sécuriser**. La sécurité est appliquée côté API.
+- Les droits servent Ã  **filtrer lâ€™UI (menu)** et Ã  **sÃ©curiser lâ€™API (403)**.
+- Le rÃ´le est **un droit dâ€™accÃ¨s**, pas une donnÃ©e RH : il est portÃ© par **tbl_studio_user_access**.
+- Principe : **masquer â‰  sÃ©curiser**. La sÃ©curitÃ© est appliquÃ©e cÃ´tÃ© API.
 
 ---
 
-## 2) Source de vérité
+## 2) Source de vÃ©ritÃ©
 ### Table
 **`public.tbl_studio_user_access`**
-- `email` (clé logique utilisateur)
-- `id_owner` (périmètre / tenant Studio)
+- `email` (clÃ© logique utilisateur)
+- `id_owner` (pÃ©rimÃ¨tre / tenant Studio)
 - `archive` (filtre implicite : `COALESCE(archive,FALSE)=FALSE`)
 - `role_code` (droit)
 
-### Valeurs autorisées
-`role_code` ∈ **`admin`**, **`editor`**, **`user`**
-- Contrôle en base via contrainte `CHECK`.
+### Valeurs autorisÃ©es
+`role_code` âˆˆ **`admin`**, **`editor`**, **`user`**
+- ContrÃ´le en base via contrainte `CHECK`.
 - Normalisation : `lower(trim(role_code))`.
-- Valeurs inconnues → forcées à `user`.
+- Valeurs inconnues â†’ forcÃ©es Ã  `user`.
 
-### Libellés affichés (UI)
-- `admin` → **Administrateur**
-- `editor` → **Éditeur**
-- `user` → **Utilisateur**
+### LibellÃ©s affichÃ©s (UI)
+- `admin` â†’ **Administrateur**
+- `editor` â†’ **Ã‰diteur**
+- `user` â†’ **Utilisateur**
 
 ### Rangs (comparaison)
 - `admin` = 3
@@ -35,44 +35,44 @@ Cette note décrit la structure de droits **effectivement mise en place** dans S
 
 ---
 
-## 3) Récupération du rôle côté API
-### Endpoints impactés
+## 3) RÃ©cupÃ©ration du rÃ´le cÃ´tÃ© API
+### Endpoints impactÃ©s
 - **`GET /studio/me/scope`** : renvoie `owners[]` enrichi avec `role_code` + `role_label`.
 - **`GET /studio/context/{id_owner}`** : renvoie aussi `role_code` + `role_label` (utile dashboard/topbar).
-- **`GET /studio/data/{id_owner}`** : renvoie `organisation` + `contact` ; le `contact.role` est dérivé de `role_code`.
+- **`GET /studio/data/{id_owner}`** : renvoie `organisation` + `contact` ; le `contact.role` est dÃ©rivÃ© de `role_code`.
 
 ### Super-admin
-Si `is_super_admin` est vrai, le rôle est traité comme **admin**.
+Si `is_super_admin` est vrai, le rÃ´le est traitÃ© comme **admin**.
 
 ---
 
 ## 4) Gating UI (menu)
 ### Principe
-Le menu porte un attribut `data-min-role` sur chaque entrée.
+Le menu porte un attribut `data-min-role` sur chaque entrÃ©e.
 
 - `user` : visible pour tout le monde
 - `editor` : visible pour `editor` + `admin`
 - `admin` : visible uniquement pour `admin`
 
-### Mécanisme
+### MÃ©canisme
 - Le front lit **`/studio/me/scope`** au chargement.
-- `window.__studioRoleCode` est défini à partir de `owners[0].role_code` (ou de l’owner courant si `?id=` est présent).
+- `window.__studioRoleCode` est dÃ©fini Ã  partir de `owners[0].role_code` (ou de lâ€™owner courant si `?id=` est prÃ©sent).
 - `applyMenuGating(roleCode)` masque/affiche `.menu-item[data-min-role]`.
-- Nettoyage UX : les séparateurs `.menu-sep` sont masqués si inutiles (pas de séparateur isolé ou doublonné).
+- Nettoyage UX : les sÃ©parateurs `.menu-sep` sont masquÃ©s si inutiles (pas de sÃ©parateur isolÃ© ou doublonnÃ©).
 
 ### Menu Studio (V1)
 - **Dashboard** (min: user)
-- **Vos données** (min: user)
+- **Vos donnÃ©es** (min: user)
 
 Administration (admin only)
 - **Votre organisation** (admin)
 - **Vos collaborateurs** (admin)
-- **Droits d’accès** (admin)
+- **Droits dâ€™accÃ¨s** (admin)
 - **Vos partenaires** (admin)
 
 Catalogues
 - **Catalogue fiches de poste** (editor)
-- **Catalogue compétences** (editor)
+- **Catalogue compÃ©tences** (editor)
 - **Catalogue formation (option)** (admin)
 
 Clients
@@ -82,66 +82,66 @@ Clients
 Support
 - **Vos factures** (admin)
 - **Vos documents** (admin)
-- **Proposer une évolution** (user)
+- **Proposer une Ã©volution** (user)
 
-### Pages non développées
-Les vues non implémentées pointent vers un placeholder commun :
+### Pages non dÃ©veloppÃ©es
+Les vues non implÃ©mentÃ©es pointent vers un placeholder commun :
 - `menu_studio/studio_coming_soon.html`
 - `menu_studio/studio_coming_soon.js` (titre auto = menu actif)
 
 ---
 
-## 5) Sécurité API (vraie règle)
+## 5) SÃ©curitÃ© API (vraie rÃ¨gle)
 ### Helper commun (backend)
 Dans `studio_portal_common.py` :
 - `studio_fetch_role_code(cur, email, id_owner, is_super_admin)`
 - `studio_role_rank(role_code)`
-- `studio_require_min_role(cur, u, id_owner, min_role)` → lève **HTTP 403** si droits insuffisants
+- `studio_require_min_role(cur, u, id_owner, min_role)` â†’ lÃ¨ve **HTTP 403** si droits insuffisants
 
-### Règles appliquées
+### RÃ¨gles appliquÃ©es
 - **Modification entreprise : admin only**
-  - `POST /studio/data/entreprise/{id_owner}` → vérifie `studio_require_min_role(..., "admin")`
-  - Résultat attendu sinon : **403 Accès refusé (droits insuffisants)**
+  - `POST /studio/data/entreprise/{id_owner}` â†’ vÃ©rifie `studio_require_min_role(..., "admin")`
+  - RÃ©sultat attendu sinon : **403 AccÃ¨s refusÃ© (droits insuffisants)**
 
-- **Modification contact : autorisée (user+)**
-  - `POST /studio/data/contact/{id_owner}` → autorisée pour `user/editor/admin`
-  - Le champ “Rôle” n’est **pas modifiable** ici (lecture seule).
+- **Modification contact : autorisÃ©e (user+)**
+  - `POST /studio/data/contact/{id_owner}` â†’ autorisÃ©e pour `user/editor/admin`
+  - Le champ â€œRÃ´leâ€ nâ€™est **pas modifiable** ici (lecture seule).
 
-- **Lecture data : autorisée (user+)**
-  - `GET /studio/data/{id_owner}` → lecture autorisée si accès owner OK.
+- **Lecture data : autorisÃ©e (user+)**
+  - `GET /studio/data/{id_owner}` â†’ lecture autorisÃ©e si accÃ¨s owner OK.
 
 ---
 
-## 6) UX “Vos données” (rôle et édition)
-### Rôle
-- Affiché dans le champ **Rôle** (input disabled).
-- Valeur issue de `tbl_studio_user_access.role_code` via `GET /studio/data/{id_owner}` → `contact.role`.
-- **Non modifiable** depuis cette page (gestion future prévue ailleurs côté admin).
+## 6) UX â€œVos donnÃ©esâ€ (rÃ´le et Ã©dition)
+### RÃ´le
+- AffichÃ© dans le champ **RÃ´le** (input disabled).
+- Valeur issue de `tbl_studio_user_access.role_code` via `GET /studio/data/{id_owner}` â†’ `contact.role`.
+- **Non modifiable** depuis cette page (gestion future prÃ©vue ailleurs cÃ´tÃ© admin).
 
-### Entreprise (édition)
-- Côté API : admin only (403 sinon).
-- Côté UI : si `window.__studioRoleCode != 'admin'` :
-  - bouton **Modifier les informations** entreprise masqué
-  - boutons save/cancel entreprise masqués
+### Entreprise (Ã©dition)
+- CÃ´tÃ© API : admin only (403 sinon).
+- CÃ´tÃ© UI : si `window.__studioRoleCode != 'admin'` :
+  - bouton **Modifier les informations** entreprise masquÃ©
+  - boutons save/cancel entreprise masquÃ©s
   - inputs entreprise restent disabled
 
 ### Confirmations
-- Les confirmations “vertes” de succès ont été supprimées.
-- Les erreurs sont conservées (message rouge) pour visibilité des échecs.
+- Les confirmations â€œvertesâ€ de succÃ¨s ont Ã©tÃ© supprimÃ©es.
+- Les erreurs sont conservÃ©es (message rouge) pour visibilitÃ© des Ã©checs.
 
 ---
 
 ## 7) Ce que cette structure garantit
-- Un cabinet peut donner à ses consultants un rôle **Éditeur** pour produire (catalogues/clients) sans exposer :
+- Un cabinet peut donner Ã  ses consultants un rÃ´le **Ã‰diteur** pour produire (catalogues/clients) sans exposer :
   - organisation interne
-  - droits d’accès
+  - droits dâ€™accÃ¨s
   - factures/documents
-- Un utilisateur standard ne voit que le nécessaire.
-- L’API est protégée : l’UI ne suffit jamais.
+- Un utilisateur standard ne voit que le nÃ©cessaire.
+- Lâ€™API est protÃ©gÃ©e : lâ€™UI ne suffit jamais.
 
 ---
 
-## 8) Points prévus (non implémentés à ce stade)
-- Mode **Cabinet vs Entreprise (Lite)** (filtrage de menus “Vos clients / Pilotage clients” en fonction d’un champ owner).
-- Page “Droits d’accès” (admin) permettant de modifier `role_code` et les accès Studio/Insights/People.
+## 8) Points prÃ©vus (non implÃ©mentÃ©s Ã  ce stade)
+- Mode **Cabinet vs Entreprise (Lite)** (filtrage de menus â€œVos clients / Pilotage clientsâ€ en fonction dâ€™un champ owner).
+- Page â€œDroits dâ€™accÃ¨sâ€ (admin) permettant de modifier `role_code` et les accÃ¨s Studio/Insights/People.
 

@@ -1,4 +1,4 @@
-<section id="view-referentiel-competences" style="display:none;">
+﻿<section id="view-referentiel-competences" style="display:none;">
   <div class="card ref-page-hero">
     <div class="ref-page-hero__main">
       <div class="ref-page-hero__icon" aria-hidden="true">
@@ -10,9 +10,9 @@
         </svg>
       </div>
       <div>
-        <div class="card-title ref-page-hero__title">Référentiel de compétences</div>
+        <div class="card-title ref-page-hero__title">RÃ©fÃ©rentiel de compÃ©tences</div>
         <div class="card-sub ref-page-hero__sub">
-          Consultez les compétences et certifications requises, filtrées par service.
+          Consultez les compÃ©tences et certifications requises, filtrÃ©es par service.
         </div>
       </div>
     </div>
@@ -23,8 +23,8 @@
           <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
         <div>
-          <div class="ref-kpi-card__label">Postes concernés</div>
-          <div class="ref-kpi-card__value" id="kpiRefPostes">–</div>
+          <div class="ref-kpi-card__label">Postes concernÃ©s</div>
+          <div class="ref-kpi-card__value" id="kpiRefPostes">â€“</div>
         </div>
       </div>
 
@@ -33,8 +33,8 @@
           <svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>
         </div>
         <div>
-          <div class="ref-kpi-card__label">Compétences requises</div>
-          <div class="ref-kpi-card__value" id="kpiRefCompetences">–</div>
+          <div class="ref-kpi-card__label">CompÃ©tences requises</div>
+          <div class="ref-kpi-card__value" id="kpiRefCompetences">â€“</div>
         </div>
       </div>
 
@@ -44,21 +44,21 @@
         </div>
         <div>
           <div class="ref-kpi-card__label">Certifications requises</div>
-          <div class="ref-kpi-card__value" id="kpiRefCertifs">–</div>
+          <div class="ref-kpi-card__value" id="kpiRefCertifs">â€“</div>
         </div>
       </div>
 
       <button type="button"
               class="ref-kpi-card ref-kpi-card--pareto"
               id="kpiRefParetoCard"
-              title="Cliquez pour afficher les compétences comprises dans le Pareto"
-              aria-label="Afficher le Pareto des compétences">
+              title="Cliquez pour afficher les compÃ©tences comprises dans le Pareto"
+              aria-label="Afficher le Pareto des compÃ©tences">
         <div class="ref-kpi-card__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 12 2v10Z"/><path d="M22 12A10 10 0 0 0 12 2"/></svg>
         </div>
         <div class="ref-kpi-card__body">
           <div class="ref-kpi-card__label" id="kpiRefParetoLabel">Pareto (Top 20 %)</div>
-          <div class="ref-kpi-card__value" id="kpiRefPareto">–</div>
+          <div class="ref-kpi-card__value" id="kpiRefPareto">â€“</div>
           <div class="ref-kpi-card__hint">Cliquer pour voir</div>
         </div>
         <span class="ref-kpi-card__cta" aria-hidden="true">
@@ -81,8 +81,8 @@
                   id="btnRefFiltersToggle"
                   aria-expanded="false"
                   aria-controls="refFilterBody"
-                  title="Déplier les filtres"
-                  aria-label="Déplier les filtres">
+                  title="DÃ©plier les filtres"
+                  aria-label="DÃ©plier les filtres">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
           </button>
         </div>
@@ -96,7 +96,7 @@
           </div>
 
           <div class="info-item">
-            <label class="sb-label" for="refDomaineSelect">Domaine de compétences</label>
+            <label class="sb-label" for="refDomaineSelect">Domaine de compÃ©tences</label>
             <select id="refDomaineSelect" class="sb-select">
               <option value="">Tous les domaines</option>
             </select>
@@ -105,7 +105,7 @@
           <div class="info-item">
             <label class="sb-label" for="refSearch">Recherche</label>
             <div class="ref-search-wrap">
-              <input type="text" id="refSearch" class="sb-ctrl" placeholder="Code, intitulé, mots-clés..." />
+              <input type="text" id="refSearch" class="sb-ctrl" placeholder="Code, intitulÃ©, mots-clÃ©s..." />
               <span class="ref-search-wrap__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               </span>
@@ -113,17 +113,17 @@
           </div>
 
           <div class="info-item">
-            <label class="sb-label" for="refEtatSelect">État</label>
+            <label class="sb-label" for="refEtatSelect">Ã‰tat</label>
             <select id="refEtatSelect" class="sb-select">
-              <option value="active" selected>Validée</option>
+              <option value="active" selected>ValidÃ©e</option>
               <option value="">Tous</option>
-              <option value="a_valider">À valider</option>
+              <option value="a_valider">Ã€ valider</option>
               <option value="inactive">Inactive</option>
             </select>
           </div>
 
           <div class="ref-filter-actions">
-            <button type="button" class="sb-btn sb-btn--soft" id="btnRefReset">Réinitialiser</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnRefReset">RÃ©initialiser</button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnRefApply">Appliquer</button>
           </div>
         </div>
@@ -133,7 +133,7 @@
     <main class="card ref-list-card">
       <div class="ref-list-head">
         <div>
-          <div class="card-title" id="refScopeTitle" style="margin-bottom:4px;">Référentiel de l’entreprise</div>
+          <div class="card-title" id="refScopeTitle" style="margin-bottom:4px;">RÃ©fÃ©rentiel de lâ€™entreprise</div>
           <div class="card-sub" id="refScopeLabel" style="display:none; margin:0;"></div>
         </div>
 
@@ -142,7 +142,7 @@
             <span class="ref-btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>
             </span>
-            <span>Compétences</span>
+            <span>CompÃ©tences</span>
           </button>
           <button type="button" class="sb-btn sb-btn--soft" id="tabRefCertifs">
             <span class="ref-btn-icon" aria-hidden="true">
@@ -158,7 +158,7 @@
           <table class="sb-table sb-table--airy sb-table--hover" id="tblRefCompetences">
             <thead>
               <tr>
-                <th class="col-title">Compétence</th>
+                <th class="col-title">CompÃ©tence</th>
                 <th class="col-domain">Domaine</th>
                 <th class="col-center col-postes">Postes</th>
                 <th class="col-center ref-action-head" aria-label="Actions"></th>
@@ -175,11 +175,11 @@
             <thead>
               <tr>
                 <th>Certification</th>
-                <th>Catégorie</th>
-                <th>Validité</th>
+                <th>CatÃ©gorie</th>
+                <th>ValiditÃ©</th>
                 <th class="col-center">Exigence</th>
                 <th class="col-center col-postes">Requis</th>
-                <th class="col-center col-possedes">Possédé</th>
+                <th class="col-center col-possedes">PossÃ©dÃ©</th>
                 <th class="col-center ref-action-head" aria-label="Actions"></th>
               </tr>
             </thead>
@@ -190,7 +190,7 @@
 
       <div class="ref-table-footer" id="refTableFooter">
         <div class="ref-page-size-wrap">
-          <select id="refPageSizeSelect" class="sb-select ref-page-size-select" aria-label="Nombre d'éléments par page">
+          <select id="refPageSizeSelect" class="sb-select ref-page-size-select" aria-label="Nombre d'Ã©lÃ©ments par page">
             <option value="10" selected>10 par page</option>
             <option value="25">25 par page</option>
             <option value="50">50 par page</option>
@@ -198,11 +198,11 @@
           </select>
         </div>
         <div class="ref-pagination" id="refPagination"></div>
-        <div class="card-sub" id="refRangeLabel" style="margin:0;">—</div>
+        <div class="card-sub" id="refRangeLabel" style="margin:0;">â€”</div>
       </div>
 
       <div class="card-sub" id="refEmpty" style="display:none; margin-top:10px;">
-        Aucun élément pour les filtres sélectionnés.
+        Aucun Ã©lÃ©ment pour les filtres sÃ©lectionnÃ©s.
       </div>
     </main>
   </div>
@@ -210,8 +210,8 @@
   <div class="modal" id="modalRefDetail" aria-hidden="true">
     <div class="modal-card modal-card--xl">
       <div class="modal-header">
-        <div id="refModalTitle" class="sb-modal-titleline">Détail</div>
-        <button type="button" class="modal-x" id="btnCloseRefModal" aria-label="Fermer">×</button>
+        <div id="refModalTitle" class="sb-modal-titleline">DÃ©tail</div>
+        <button type="button" class="modal-x" id="btnCloseRefModal" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="modal-body">

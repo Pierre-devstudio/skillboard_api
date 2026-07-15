@@ -1,7 +1,7 @@
-/* ======================================================
+﻿/* ======================================================
    static/menus/skills_besoins_formations.js
    Demandes RH Insights
-   Centre d'émission, qualification et transmission des demandes RH
+   Centre d'Ã©mission, qualification et transmission des demandes RH
    ====================================================== */
 (function () {
   let _bound = false;
@@ -46,7 +46,7 @@
     return isNaN(n) ? 0 : n;
   }
 
-  function setText(id, value, fallback = "—") {
+  function setText(id, value, fallback = "â€”") {
     const el = byId(id);
     if (!el) return;
     el.textContent = (value === null || value === undefined || value === "") ? fallback : String(value);
@@ -90,14 +90,14 @@
   function objectTitle(item) {
     const objet = String(item?.objet || "").trim();
     if (objet) return objet;
-    if (isAnalyseProposal(item)) return "Renforcer l’autonomie sur une compétence clé";
-    if (item?.intitule_competence) return "Renforcer une compétence";
+    if (isAnalyseProposal(item)) return "Renforcer lâ€™autonomie sur une compÃ©tence clÃ©";
+    if (item?.intitule_competence) return "Renforcer une compÃ©tence";
     return "Demande RH";
   }
 
   function objectSub(item) {
     if (isAnalyseProposal(item) && item?.intitule_competence) return item.intitule_competence;
-    return item?.intitule_competence || item?.description || "À qualifier";
+    return item?.intitule_competence || item?.description || "Ã€ qualifier";
   }
 
   function getRawService() {
@@ -155,7 +155,7 @@
       selectId: "bfServiceSelect",
       storageKey: STORE_SERVICE,
       labelAll: "Tous les services",
-      labelNonLie: "Non lié",
+      labelNonLie: "Non liÃ©",
       includeAll: true,
       includeNonLie: true,
       allowIndent: true
@@ -173,7 +173,7 @@
     const el = byId("bfDestinationText");
     if (!el) return;
     const dbBadge = tableReady === false
-      ? `<span class="sb-badge sb-badge--warning">Migration SQL à appliquer</span>`
+      ? `<span class="sb-badge sb-badge--warning">Migration SQL Ã  appliquer</span>`
       : "";
     if (dest && dest.can_send) {
       el.innerHTML = `
@@ -186,18 +186,18 @@
     }
     el.innerHTML = `
       <span class="bf-destination-label">Destination</span>
-      <span class="sb-badge sb-badge--danger">Envoi bloqué</span>
-      <span>${escapeHtml(dest?.reason || "Aucun Studio destinataire configuré.")}</span>
+      <span class="sb-badge sb-badge--danger">Envoi bloquÃ©</span>
+      <span>${escapeHtml(dest?.reason || "Aucun Studio destinataire configurÃ©.")}</span>
       ${dbBadge}
     `;
   }
 
   function renderKpis(kpis) {
     const values = [
-      ["À traiter", kpis?.a_traiter ?? 0, "bf-kpi-icon--red", "?"],
-      ["Prêtes à transmettre", kpis?.validee ?? 0, "bf-kpi-icon--green", "✓"],
-      ["Transmises au Studio", kpis?.transmise_studio ?? 0, "bf-kpi-icon--violet", "↗"],
-      ["Reportées", kpis?.reportee ?? 0, "bf-kpi-icon--orange", "⏸"],
+      ["Ã€ traiter", kpis?.a_traiter ?? 0, "bf-kpi-icon--red", "?"],
+      ["PrÃªtes Ã  transmettre", kpis?.validee ?? 0, "bf-kpi-icon--green", "âœ“"],
+      ["Transmises au Studio", kpis?.transmise_studio ?? 0, "bf-kpi-icon--violet", "â†—"],
+      ["ReportÃ©es", kpis?.reportee ?? 0, "bf-kpi-icon--orange", "â¸"],
     ];
     const el = byId("bfKpiGrid");
     if (!el) return;
@@ -236,13 +236,13 @@
   function finalityLabel(item) {
     if (item?.finalite_label) return item.finalite_label;
     return {
-      monter_competence: "Monter en compétence",
-      securiser_poste: "Sécuriser un poste",
-      preparer_evolution: "Préparer une évolution",
-      renforcer_equipe: "Renforcer une équipe",
-      anticiper_depart: "Anticiper un départ",
+      monter_competence: "Monter en compÃ©tence",
+      securiser_poste: "SÃ©curiser un poste",
+      preparer_evolution: "PrÃ©parer une Ã©volution",
+      renforcer_equipe: "Renforcer une Ã©quipe",
+      anticiper_depart: "Anticiper un dÃ©part",
       capitaliser_savoir: "Capitaliser un savoir-faire",
-      traiter_demande_salarie: "Traiter une demande salarié",
+      traiter_demande_salarie: "Traiter une demande salariÃ©",
       besoin_rh: "Besoin RH"
     }[finalityValue(item)] || "Besoin RH";
   }
@@ -254,12 +254,12 @@
   function whyProposalText(item) {
     if (item?.pourquoi_proposition) return item.pourquoi_proposition;
     if (isAnalyseProposal(item)) {
-      const comp = item.intitule_competence || "cette compétence";
-      const actuel = item.niveau_actuel_label || item.niveau_actuel || "non évalué";
+      const comp = item.intitule_competence || "cette compÃ©tence";
+      const actuel = item.niveau_actuel_label || item.niveau_actuel || "non Ã©valuÃ©";
       const attendu = item.niveau_attendu_label || item.niveau_attendu || "attendu";
-      return `Novoskill propose cette demande car le niveau actuel sur ${comp} (${actuel}) est inférieur au niveau attendu (${attendu}) pour le poste occupé.`;
+      return `Novoskill propose cette demande car le niveau actuel sur ${comp} (${actuel}) est infÃ©rieur au niveau attendu (${attendu}) pour le poste occupÃ©.`;
     }
-    return item?.description || "Aucune justification détaillée pour le moment.";
+    return item?.description || "Aucune justification dÃ©taillÃ©e pour le moment.";
   }
 
   function originLabel(v) {
@@ -267,7 +267,7 @@
       analyse: "Analyse",
       simulation: "Simulation",
       manager: "Manager",
-      salarie: "Salarié",
+      salarie: "SalariÃ©",
       entretien: "Entretien"
     }[v] || "Manager";
   }
@@ -325,14 +325,14 @@
 
   function dateLabel(value) {
     const s = (value || "").toString().slice(0, 10);
-    if (!s) return "—";
+    if (!s) return "â€”";
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return s;
     return `${m[3]}/${m[2]}/${m[1]}`;
   }
 
   function echeanceLabel(item) {
-    return item.echeance_souhaitee ? dateLabel(item.echeance_souhaitee) : (item.delai_souhaite || item.delai_recommande || "—");
+    return item.echeance_souhaitee ? dateLabel(item.echeance_souhaitee) : (item.delai_souhaite || item.delai_recommande || "â€”");
   }
 
   function renderTabs(kpis) {
@@ -372,7 +372,7 @@
       return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-edit="${escapeHtml(id)}"${idxAttr}>Modifier</button>`;
     }
     if (item.statut === "reportee" && id) {
-      return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-status="validee" data-id="${escapeHtml(id)}">Réactiver</button>`;
+      return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-status="validee" data-id="${escapeHtml(id)}">RÃ©activer</button>`;
     }
     if (isTransmittedStatus(item.statut)) {
       return `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-bf-follow="1">Voir le suivi</button>`;
@@ -419,8 +419,8 @@
         map.set(key, {
           key,
           name: item.collaborateur_nom_complet || "Demande collective",
-          poste: item.intitule_poste || "Poste non précisé",
-          service: item.nom_service || "Service non précisé",
+          poste: item.intitule_poste || "Poste non prÃ©cisÃ©",
+          service: item.nom_service || "Service non prÃ©cisÃ©",
           items: []
         });
       }
@@ -441,7 +441,7 @@
 
   function groupMainStatusLabel(group) {
     const first = [...group.items].sort((a, b) => statusOrder(a.item.statut) - statusOrder(b.item.statut))[0]?.item || {};
-    return first.statut_label || { a_qualifier: "À qualifier", a_valider: "À qualifier", validee: "Prête à transmettre", transmise_studio: "Transmise", prise_en_charge: "Prise en charge", action_creee: "Action créée", reportee: "Reportée", refusee: "Refusée", classee: "Classée" }[first.statut] || "À qualifier";
+    return first.statut_label || { a_qualifier: "Ã€ qualifier", a_valider: "Ã€ qualifier", validee: "PrÃªte Ã  transmettre", transmise_studio: "Transmise", prise_en_charge: "Prise en charge", action_creee: "Action crÃ©Ã©e", reportee: "ReportÃ©e", refusee: "RefusÃ©e", classee: "ClassÃ©e" }[first.statut] || "Ã€ qualifier";
   }
 
   function groupMainEcheance(group) {
@@ -456,7 +456,7 @@
     const text = byId("bfViewToggleText");
     const ico = byId("bfViewToggleIcon");
     const btn = byId("btnBfViewToggle");
-    if (text) text.textContent = _viewMode === "grouped" ? "Vue liste" : "Vue groupée";
+    if (text) text.textContent = _viewMode === "grouped" ? "Vue liste" : "Vue groupÃ©e";
     if (ico) ico.innerHTML = _viewMode === "grouped" ? icon("list", 15) : icon("group", 15);
     if (btn) btn.setAttribute("aria-pressed", _viewMode === "grouped" ? "true" : "false");
   }
@@ -468,10 +468,10 @@
         <div class="bf-table-row bf-table-row--head">
           <div>Collaborateur</div>
           <div class="bf-cell--center">Origine</div>
-          <div class="bf-cell--center">Finalité</div>
+          <div class="bf-cell--center">FinalitÃ©</div>
           <div>Objet</div>
           <div class="bf-cell--center">Statut</div>
-          <div class="bf-cell--center">Échéance</div>
+          <div class="bf-cell--center">Ã‰chÃ©ance</div>
           <div class="bf-cell--center">Actions</div>
         </div>
         ${visible.map((item, idx) => `
@@ -480,7 +480,7 @@
               <span class="bf-avatar">${escapeHtml(initials(item.collaborateur_nom_complet))}</span>
               <div>
                 <strong>${escapeHtml(item.collaborateur_nom_complet || "Demande collective")}</strong>
-                <small>${escapeHtml(item.intitule_poste || "Poste non précisé")} · ${escapeHtml(item.nom_service || "Service non précisé")}</small>
+                <small>${escapeHtml(item.intitule_poste || "Poste non prÃ©cisÃ©")} Â· ${escapeHtml(item.nom_service || "Service non prÃ©cisÃ©")}</small>
               </div>
             </div>
             <div class="bf-cell--center"><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
@@ -489,10 +489,10 @@
               <strong>${escapeHtml(objectTitle(item))}</strong>
               <small>${escapeHtml(objectSub(item))}</small>
             </div>
-            <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
+            <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "Ã€ qualifier")}</span></div>
             <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
             <div class="bf-row-actions">
-              <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${idx}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
+              <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${idx}" title="Voir le dÃ©tail" aria-label="Voir le dÃ©tail">${icon("eye")}</button>
               ${actionButtonHtml(item, idx)}
             </div>
           </div>
@@ -517,7 +517,7 @@
                   <span class="bf-avatar">${escapeHtml(initials(group.name))}</span>
                   <div>
                     <strong>${escapeHtml(group.name)}</strong>
-                    <small>${escapeHtml(group.poste)} · ${escapeHtml(group.service)}</small>
+                    <small>${escapeHtml(group.poste)} Â· ${escapeHtml(group.service)}</small>
                   </div>
                 </div>
                 <div class="bf-group-count">
@@ -532,10 +532,10 @@
                 <div class="bf-group-panel">
                   <div class="bf-group-demand-row bf-group-demand-row--head">
                     <div class="bf-cell--center">Origine</div>
-                    <div class="bf-cell--center">Finalité</div>
+                    <div class="bf-cell--center">FinalitÃ©</div>
                     <div>Objet</div>
                     <div class="bf-cell--center">Statut</div>
-                    <div class="bf-cell--center">Échéance</div>
+                    <div class="bf-cell--center">Ã‰chÃ©ance</div>
                     <div class="bf-cell--center">Actions</div>
                   </div>
                   ${group.items.map(({ item, index }) => `
@@ -546,10 +546,10 @@
                         <strong>${escapeHtml(objectTitle(item))}</strong>
                         <small>${escapeHtml(objectSub(item))}</small>
                       </div>
-                      <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
+                      <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "Ã€ qualifier")}</span></div>
                       <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
                       <div class="bf-row-actions">
-                        <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${index}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
+                        <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${index}" title="Voir le dÃ©tail" aria-label="Voir le dÃ©tail">${icon("eye")}</button>
                         ${actionButtonHtml(item, index)}
                       </div>
                     </div>
@@ -634,7 +634,7 @@
       btn.addEventListener("click", () => transmitDemand(btn.getAttribute("data-bf-transmit")));
     });
     wrap.querySelectorAll("[data-bf-follow]").forEach(btn => {
-      btn.addEventListener("click", () => setMsg("Le suivi détaillé remontera dans Plan d’actions quand le retour Studio sera câblé.", "info"));
+      btn.addEventListener("click", () => setMsg("Le suivi dÃ©taillÃ© remontera dans Plan dâ€™actions quand le retour Studio sera cÃ¢blÃ©.", "info"));
     });
   }
 
@@ -650,12 +650,12 @@
     if (!panel || !body) return;
     if (!item) {
       panel.classList.remove("is-open");
-      setText("bfDetailSub", "Sélectionnez une demande.");
-      body.innerHTML = `<div class="bf-empty">Aucune demande sélectionnée.</div>`;
+      setText("bfDetailSub", "SÃ©lectionnez une demande.");
+      body.innerHTML = `<div class="bf-empty">Aucune demande sÃ©lectionnÃ©e.</div>`;
       return;
     }
     panel.classList.add("is-open");
-    setText("bfDetailSub", `${item.collaborateur_nom_complet || "Demande collective"} · ${finalityLabel(item)}`);
+    setText("bfDetailSub", `${item.collaborateur_nom_complet || "Demande collective"} Â· ${finalityLabel(item)}`);
     const canEdit = item.id_demande_rh && !isTransmittedStatus(item.statut);
     const canQualify = isToQualify(item);
     const canReactivate = item.id_demande_rh && item.statut === "reportee";
@@ -663,7 +663,7 @@
     body.innerHTML = `
       <div class="bf-detail-section">
         <div class="bf-detail-topline">
-          <span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span>
+          <span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "Ã€ qualifier")}</span>
           <span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span>
           <span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span>
         </div>
@@ -675,39 +675,39 @@
         <h4>Collaborateur</h4>
         <div class="bf-detail-person">
           <span class="bf-avatar">${escapeHtml(initials(item.collaborateur_nom_complet))}</span>
-          <div><strong>${escapeHtml(item.collaborateur_nom_complet || "Demande collective")}</strong><small>${escapeHtml(item.intitule_poste || "Poste non précisé")} · ${escapeHtml(item.nom_service || "Service non précisé")}</small></div>
+          <div><strong>${escapeHtml(item.collaborateur_nom_complet || "Demande collective")}</strong><small>${escapeHtml(item.intitule_poste || "Poste non prÃ©cisÃ©")} Â· ${escapeHtml(item.nom_service || "Service non prÃ©cisÃ©")}</small></div>
         </div>
       </div>
 
       <div class="bf-detail-section bf-detail-section--why">
         <h4>${escapeHtml(whyTitle(item))}</h4>
         <p>${escapeHtml(whyProposalText(item))}</p>
-        ${isAnalyseProposal(item) ? `<div class="bf-detail-note">Cette proposition sert à confirmer le besoin terrain avant transmission au Studio. Les actions lancées seront suivies dans Plan d’actions.</div>` : ""}
+        ${isAnalyseProposal(item) ? `<div class="bf-detail-note">Cette proposition sert Ã  confirmer le besoin terrain avant transmission au Studio. Les actions lancÃ©es seront suivies dans Plan dâ€™actions.</div>` : ""}
       </div>
 
       <div class="bf-detail-section">
-        <h4>Compétence ou sujet concerné</h4>
+        <h4>CompÃ©tence ou sujet concernÃ©</h4>
         <div class="bf-detail-chips">
           ${item.code_competence ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(item.code_competence)}</span>` : ""}
-          <span>${escapeHtml(item.intitule_competence || "Aucune compétence directement rattachée")}</span>
+          <span>${escapeHtml(item.intitule_competence || "Aucune compÃ©tence directement rattachÃ©e")}</span>
         </div>
       </div>
 
       <div class="bf-detail-grid">
-        <div><span>Priorité</span><strong>${escapeHtml(priorityLabel(item.priorite))}</strong></div>
-        <div><span>Échéance</span><strong>${escapeHtml(echeanceLabel(item))}</strong></div>
-        <div><span>Niveau actuel</span><strong>${escapeHtml(item.niveau_actuel_label || item.niveau_actuel || "—")}</strong></div>
-        <div><span>Niveau attendu</span><strong>${escapeHtml(item.niveau_attendu_label || item.niveau_attendu || "—")}</strong></div>
+        <div><span>PrioritÃ©</span><strong>${escapeHtml(priorityLabel(item.priorite))}</strong></div>
+        <div><span>Ã‰chÃ©ance</span><strong>${escapeHtml(echeanceLabel(item))}</strong></div>
+        <div><span>Niveau actuel</span><strong>${escapeHtml(item.niveau_actuel_label || item.niveau_actuel || "â€”")}</strong></div>
+        <div><span>Niveau attendu</span><strong>${escapeHtml(item.niveau_attendu_label || item.niveau_attendu || "â€”")}</strong></div>
       </div>
 
       <div class="bf-detail-section">
         <h4>Commentaires</h4>
-        <p>${escapeHtml(item.commentaire_manager || item.commentaire_salarie || item.commentaire_client || "Aucun commentaire renseigné.")}</p>
+        <p>${escapeHtml(item.commentaire_manager || item.commentaire_salarie || item.commentaire_client || "Aucun commentaire renseignÃ©.")}</p>
       </div>
 
       <div class="bf-detail-actions">
         ${canEdit || canQualify ? `<button type="button" class="sb-btn sb-btn--soft" id="btnBfDetailEdit">${icon("edit", 15)}<span>${canQualify ? "Qualifier" : "Modifier"}</span></button>` : ""}
-        ${canReactivate ? `<button type="button" class="sb-btn sb-btn--soft" id="btnBfDetailReactivate">${icon("check", 15)}<span>Réactiver</span></button>` : ""}
+        ${canReactivate ? `<button type="button" class="sb-btn sb-btn--soft" id="btnBfDetailReactivate">${icon("check", 15)}<span>RÃ©activer</span></button>` : ""}
         ${canTransmit ? `<button type="button" class="sb-btn sb-btn--accent" id="btnBfDetailTransmit">${icon("send", 15)}<span>Transmettre</span></button>` : ""}
       </div>
     `;
@@ -720,15 +720,15 @@
     const eff = byId("bfDemandEffectif");
     const comp = byId("bfDemandCompetence");
     if (eff) {
-      eff.innerHTML = `<option value="">Demande collective / non rattachée</option>` + (_refs.effectifs || []).map(e => {
+      eff.innerHTML = `<option value="">Demande collective / non rattachÃ©e</option>` + (_refs.effectifs || []).map(e => {
         const name = [e.prenom_effectif, e.nom_effectif].filter(Boolean).join(" ").trim() || "Collaborateur";
-        const sub = [e.intitule_poste, e.nom_service].filter(Boolean).join(" · ");
-        return `<option value="${escapeHtml(e.id_effectif)}">${escapeHtml(name)}${sub ? " — " + escapeHtml(sub) : ""}</option>`;
+        const sub = [e.intitule_poste, e.nom_service].filter(Boolean).join(" Â· ");
+        return `<option value="${escapeHtml(e.id_effectif)}">${escapeHtml(name)}${sub ? " â€” " + escapeHtml(sub) : ""}</option>`;
       }).join("");
     }
     if (comp) {
-      comp.innerHTML = `<option value="">Aucune compétence directe</option>` + (_refs.competences || []).map(c => {
-        return `<option value="${escapeHtml(c.id_comp)}">${escapeHtml(c.code || "")}${c.code ? " · " : ""}${escapeHtml(c.intitule || "Compétence")}</option>`;
+      comp.innerHTML = `<option value="">Aucune compÃ©tence directe</option>` + (_refs.competences || []).map(c => {
+        return `<option value="${escapeHtml(c.id_comp)}">${escapeHtml(c.code || "")}${c.code ? " Â· " : ""}${escapeHtml(c.intitule || "CompÃ©tence")}</option>`;
       }).join("");
     }
   }
@@ -764,10 +764,10 @@
 
     const isCreate = !_modalItem;
     const isQualify = shouldShowDecision(_modalItem);
-    setText("bfDemandModalTitle", isCreate ? "Créer une demande RH" : (isQualify ? "Qualifier la demande RH" : "Modifier la demande RH"));
+    setText("bfDemandModalTitle", isCreate ? "CrÃ©er une demande RH" : (isQualify ? "Qualifier la demande RH" : "Modifier la demande RH"));
     setText("bfDemandModalSub", isCreate
-      ? "Décrivez le besoin terrain. La demande sera directement prête à transmettre."
-      : `${_modalItem.collaborateur_nom_complet || "Demande collective"} · ${originLabel(_modalItem.origine)}`);
+      ? "DÃ©crivez le besoin terrain. La demande sera directement prÃªte Ã  transmettre."
+      : `${_modalItem.collaborateur_nom_complet || "Demande collective"} Â· ${originLabel(_modalItem.origine)}`);
 
     const eff = byId("bfDemandEffectif");
     if (eff) eff.value = _modalItem?.id_effectif_concerne || "";
@@ -816,7 +816,7 @@
       source_type: isSignal ? (_modalItem.source_type || "analyse_competences") : (_modalItem?.source_type || "manager"),
       source_ref: _modalItem?.source_ref || _modalItem?.id_demande_rh || null,
       type_demande: "autre",
-      objet: byId("bfDemandObjet")?.value || _modalItem?.objet || "Demande RH à qualifier",
+      objet: byId("bfDemandObjet")?.value || _modalItem?.objet || "Demande RH Ã  qualifier",
       description: byId("bfDemandDescription")?.value || _modalItem?.description || "",
       statut,
       priorite: byId("bfDemandPriority")?.value || "normale",
@@ -840,7 +840,7 @@
       setMsg("Objet de demande obligatoire.", "warning", "bfDemandModalMsg");
       return;
     }
-    setMsg("Enregistrement…", "info", "bfDemandModalMsg");
+    setMsg("Enregistrementâ€¦", "info", "bfDemandModalMsg");
     try {
       const existingId = _modalItem?.id_demande_rh || "";
       const url = existingId
@@ -853,7 +853,7 @@
       });
       closeDemandModal();
       await refresh();
-      setMsg(data?.message || "Demande RH enregistrée.", "success");
+      setMsg(data?.message || "Demande RH enregistrÃ©e.", "success");
     } catch (e) {
       setMsg(errMsg(e), "error", "bfDemandModalMsg");
       console.error(e);
@@ -862,7 +862,7 @@
 
   async function changeStatus(id, statut) {
     if (!_portal || !id || !statut) return;
-    setMsg("Mise à jour du statut…", "info");
+    setMsg("Mise Ã  jour du statutâ€¦", "info");
     try {
       const data = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/statut`), {
         method: "POST",
@@ -870,7 +870,7 @@
         body: JSON.stringify({ statut })
       });
       await refresh();
-      setMsg(data?.message || "Statut mis à jour.", "success");
+      setMsg(data?.message || "Statut mis Ã  jour.", "success");
     } catch (e) {
       setMsg(errMsg(e), "error");
       console.error(e);
@@ -879,7 +879,7 @@
 
   async function transmitDemand(id) {
     if (!_portal || !id) return;
-    setMsg("Transmission au Studio…", "info");
+    setMsg("Transmission au Studioâ€¦", "info");
     try {
       const data = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/transmettre-studio`), { method: "POST" });
       await refresh();
@@ -899,7 +899,7 @@
       _refs = await _portal.apiJson(apiUrl(`/skills/demandes-rh/${encodeURIComponent(_portal.contactId)}/refs`, params));
       populateDemandRefs();
     } catch (e) {
-      console.warn("Référentiels Demandes RH indisponibles", e);
+      console.warn("RÃ©fÃ©rentiels Demandes RH indisponibles", e);
       _refs = { effectifs: [], competences: [] };
     }
   }
@@ -911,7 +911,7 @@
     renderTabs(_lastData.kpis || {});
     const count = Array.isArray(_lastData.items) ? _lastData.items.length : 0;
     const scope = _lastData.scope?.nom_service || "Tous les services";
-    setText("bfMeta", `${count} demande(s) affichée(s) · ${scope}`);
+    setText("bfMeta", `${count} demande(s) affichÃ©e(s) Â· ${scope}`);
     renderRows();
   }
 
@@ -920,7 +920,7 @@
     _loading = true;
     _visibleCount = 8;
     saveFilters();
-    setMsg("Chargement…", "info");
+    setMsg("Chargementâ€¦", "info");
     try {
       const f = getFilters();
       const params = {
@@ -936,7 +936,7 @@
       render(data);
       setMsg("", "");
     } catch (e) {
-      setMsg("Erreur système, impossible de charger les demandes RH.", "error");
+      setMsg("Erreur systÃ¨me, impossible de charger les demandes RH.", "error");
       const wrap = byId("bfListWrap");
       if (wrap) wrap.innerHTML = `<div class="bf-empty">${escapeHtml(errMsg(e))}</div>`;
       console.error(e);

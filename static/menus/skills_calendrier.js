@@ -1,6 +1,6 @@
-/* ======================================================
+﻿/* ======================================================
    static/menus/skills_calendrier.js
-   Calendrier RH Insights : événements planifiés + propositions intelligentes
+   Calendrier RH Insights : Ã©vÃ©nements planifiÃ©s + propositions intelligentes
    ====================================================== */
 (function () {
   "use strict";
@@ -103,14 +103,14 @@
 
   function formatDateFr(value) {
     const d = parseDateLike(value);
-    if (!d) return "—";
+    if (!d) return "â€”";
     return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
   }
 
   function formatDateTimeFr(value) {
     const d = parseDateLike(value);
-    if (!d) return "—";
-    return `${formatDateFr(value)} · ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    if (!d) return "â€”";
+    return `${formatDateFr(value)} Â· ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
 
   function buildQuery(params) {
@@ -166,19 +166,19 @@
   function normalizePriority(p) {
     const v = String(p || "").toLowerCase();
     if (v.includes("urgent")) return { label: "Urgente", cls: "is-urgent" };
-    if (v.includes("haut") || v.includes("élev") || v.includes("elev")) return { label: "Haute", cls: "is-high" };
+    if (v.includes("haut") || v.includes("Ã©lev") || v.includes("elev")) return { label: "Haute", cls: "is-high" };
     if (v.includes("basse")) return { label: "Basse", cls: "is-low" };
     return { label: "Normale", cls: "is-normal" };
   }
 
   function eventTypeIcon(type) {
     const t = String(type || "").trim();
-    if (t === "signature") return "✓";
+    if (t === "signature") return "âœ“";
     if (t === "evaluation_competence") return "%";
-    if (t === "preparation_entretien") return "…";
+    if (t === "preparation_entretien") return "â€¦";
     if (t === "entretien_annuel") return "1:1";
     if (t === "campagne_rh") return "RH";
-    return "•";
+    return "â€¢";
   }
 
   function typeClass(x) {
@@ -213,7 +213,7 @@
   }
 
   function typeLabel(x) {
-    return x?.type_label || x?.type || x?.type_evenement || x?.type_suggestion || "Événement RH";
+    return x?.type_label || x?.type || x?.type_evenement || x?.type_suggestion || "Ã‰vÃ©nement RH";
   }
 
   function suggestionGroupKey(s) {
@@ -224,15 +224,15 @@
     if (sample) return typeLabel(sample);
     const labels = {
       entretien_annuel: "Entretien annuel",
-      preparation_entretien: "Préparation entretien",
-      evaluation_competence: "Évaluation compétence",
+      preparation_entretien: "PrÃ©paration entretien",
+      evaluation_competence: "Ã‰valuation compÃ©tence",
       signature: "Signature / validation",
       suivi_post_formation: "Suivi post-formation",
       campagne_rh: "Campagne RH",
       action_rh: "Action RH",
-      evenement_rh: "Événement RH"
+      evenement_rh: "Ã‰vÃ©nement RH"
     };
-    return labels[key] || "Événement RH";
+    return labels[key] || "Ã‰vÃ©nement RH";
   }
 
   function suggestionGroupRank(key) {
@@ -270,7 +270,7 @@
           selectId: "calServiceSelect",
           storageKey: STORE_SERVICE,
           labelAll: "Tous les services",
-          labelNonLie: "Non lié",
+          labelNonLie: "Non liÃ©",
           includeAll: true,
           includeNonLie: true,
           allowIndent: true
@@ -283,10 +283,10 @@
 
     const scope = state.bootstrap?.access?.scope_label || getSelectedServiceLabel() || "Tous les services";
     const scopeEl = byId("calScopeLabel");
-    if (scopeEl) scopeEl.textContent = `Périmètre : ${scope}`;
+    if (scopeEl) scopeEl.textContent = `PÃ©rimÃ¨tre : ${scope}`;
 
     if (state.bootstrap && state.bootstrap.sql_ready === false) {
-      showMsg("Calendrier lisible, mais tables RH absentes : exécute le script SQL fourni pour activer création, planification et ignore.", "info");
+      showMsg("Calendrier lisible, mais tables RH absentes : exÃ©cute le script SQL fourni pour activer crÃ©ation, planification et ignore.", "info");
     }
   }
 
@@ -315,7 +315,7 @@
   async function reloadAll() {
     if (!_portal || !_portal.contactId || state.loading) return;
     state.loading = true;
-    showMsg("Chargement du calendrier…", "info");
+    showMsg("Chargement du calendrierâ€¦", "info");
     try {
       await loadBootstrap();
       await Promise.all([loadEvents(), loadSuggestions()]);
@@ -365,16 +365,16 @@
           <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
           <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
         </div>
-        <div class="cal-suggestion-title">${escapeHtml(s.titre || "Action à planifier")}</div>
+        <div class="cal-suggestion-title">${escapeHtml(s.titre || "Action Ã  planifier")}</div>
         ${comp}
         <div class="cal-suggestion-meta">
-          <span>${escapeHtml(s.collaborateur || "Périmètre")}</span>
-          <span>Échéance : ${escapeHtml(formatDateFr(s.date_echeance))}</span>
+          <span>${escapeHtml(s.collaborateur || "PÃ©rimÃ¨tre")}</span>
+          <span>Ã‰chÃ©ance : ${escapeHtml(formatDateFr(s.date_echeance))}</span>
           <span>Source : ${escapeHtml(s.source || "moteur")}</span>
         </div>
         <div class="cal-suggestion-actions">
           <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-cal-plan="${escapeHtml(s.id_suggestion || "")}">${calIcon("calendar")}<span>Planifier</span></button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-detail-suggestion="${escapeHtml(s.id_suggestion || "")}">${calIcon("eye")}<span>Voir détail</span></button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-detail-suggestion="${escapeHtml(s.id_suggestion || "")}">${calIcon("eye")}<span>Voir dÃ©tail</span></button>
           <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cal-ignore="${escapeHtml(s.id_suggestion || "")}">${calIcon("ignore")}<span>Ignorer</span></button>
         </div>
       </div>
@@ -386,10 +386,10 @@
     const sub = byId("calSuggestionsSub");
     if (!host) return;
     const list = state.suggestions || [];
-    if (sub) sub.textContent = `${list.length} évènement(s) RH proposé(s) mais non planifié(s).`;
+    if (sub) sub.textContent = `${list.length} Ã©vÃ¨nement(s) RH proposÃ©(s) mais non planifiÃ©(s).`;
 
     if (!list.length) {
-      host.innerHTML = `<div class="cal-empty-state">Aucun évènement proposé pour ces filtres.</div>`;
+      host.innerHTML = `<div class="cal-empty-state">Aucun Ã©vÃ¨nement proposÃ© pour ces filtres.</div>`;
       return;
     }
 
@@ -416,7 +416,7 @@
                   data-cal-suggestion-group-toggle="${escapeHtml(key)}"
                   aria-expanded="${open ? "true" : "false"}">
             <span class="cal-suggestion-group__label">${escapeHtml(label)} <strong>(${items.length})</strong></span>
-            <span class="cal-suggestion-group__chevron" aria-hidden="true">›</span>
+            <span class="cal-suggestion-group__chevron" aria-hidden="true">â€º</span>
           </button>
           <div class="cal-suggestion-group__body">
             ${items.map(renderSuggestionCard).join("")}
@@ -508,9 +508,9 @@
         <button type="button"
                 class="cal-event-chip ${cls}"
                 style="grid-column:${seg.startCol + 1} / ${seg.endCol + 2}; grid-row:${seg.weekIndex + 1}; --lane:${seg.lane};"
-                data-event-id="${escapeHtml(seg.event.id_evenement || "")}" title="${escapeHtml(seg.event.titre || "Événement")}">
+                data-event-id="${escapeHtml(seg.event.id_evenement || "")}" title="${escapeHtml(seg.event.titre || "Ã‰vÃ©nement")}">
           <span>${escapeHtml(eventTypeIcon(seg.event.type_evenement))}</span>
-          <strong>${escapeHtml(seg.event.titre || "Événement")}</strong>
+          <strong>${escapeHtml(seg.event.titre || "Ã‰vÃ©nement")}</strong>
         </button>
       `;
     }).join("");
@@ -534,21 +534,21 @@
     if (!host || !event) return;
     const isAnnualInterview = String(event.type_evenement || "") === "entretien_annuel";
     const doneAction = isAnnualInterview
-      ? `<button type="button" class="sb-btn sb-btn--accent" data-cal-open-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>Réaliser l’entretien</span></button>`
-      : `<button type="button" class="sb-btn sb-btn--accent" data-cal-done-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>Marquer réalisé</span></button>`;
+      ? `<button type="button" class="sb-btn sb-btn--accent" data-cal-open-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>RÃ©aliser lâ€™entretien</span></button>`
+      : `<button type="button" class="sb-btn sb-btn--accent" data-cal-done-event="${escapeHtml(event.id_evenement || "")}">${calIcon("done")}<span>Marquer rÃ©alisÃ©</span></button>`;
 
-    if (sub) sub.textContent = isAnnualInterview ? "Entretien annuel planifié." : "Événement planifié.";
+    if (sub) sub.textContent = isAnnualInterview ? "Entretien annuel planifiÃ©." : "Ã‰vÃ©nement planifiÃ©.";
     host.innerHTML = `
-      <div class="cal-detail-title">${escapeHtml(event.titre || "Événement RH")}</div>
+      <div class="cal-detail-title">${escapeHtml(event.titre || "Ã‰vÃ©nement RH")}</div>
       <div class="cal-detail-badges">
         <span class="cal-type-pill ${typeClass(event)}">${escapeHtml(typeLabel(event))}</span>
         <span class="cal-status-pill">${escapeHtml(event.statut || "planifie")}</span>
       </div>
       <div class="cal-detail-list">
-        <div><span>Début</span><strong>${escapeHtml(formatDateTimeFr(event.date_debut))}</strong></div>
+        <div><span>DÃ©but</span><strong>${escapeHtml(formatDateTimeFr(event.date_debut))}</strong></div>
         <div><span>Fin</span><strong>${escapeHtml(formatDateTimeFr(event.date_fin))}</strong></div>
-        <div><span>Collaborateur</span><strong>${escapeHtml(event.collaborateur || "—")}</strong></div>
-        <div><span>Service</span><strong>${escapeHtml(event.nom_service || "—")}</strong></div>
+        <div><span>Collaborateur</span><strong>${escapeHtml(event.collaborateur || "â€”")}</strong></div>
+        <div><span>Service</span><strong>${escapeHtml(event.nom_service || "â€”")}</strong></div>
         <div><span>Source</span><strong>${escapeHtml(event.source || "manuel")}</strong></div>
       </div>
       <div class="cal-detail-actions">
@@ -567,17 +567,17 @@
     const sub = byId("calDetailSub");
     if (!host || !s) return;
     const pr = normalizePriority(s.priorite);
-    if (sub) sub.textContent = "Évènement proposé par Novoskill.";
+    if (sub) sub.textContent = "Ã‰vÃ¨nement proposÃ© par Novoskill.";
     host.innerHTML = `
-      <div class="cal-detail-title">${escapeHtml(s.titre || "Action RH à planifier")}</div>
+      <div class="cal-detail-title">${escapeHtml(s.titre || "Action RH Ã  planifier")}</div>
       <div class="cal-detail-badges">
         <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
         <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
       </div>
       <div class="cal-detail-list">
-        <div><span>Échéance</span><strong>${escapeHtml(formatDateFr(s.date_echeance))}</strong></div>
-        <div><span>Collaborateur</span><strong>${escapeHtml(s.collaborateur || "—")}</strong></div>
-        <div><span>Service</span><strong>${escapeHtml(s.nom_service || "—")}</strong></div>
+        <div><span>Ã‰chÃ©ance</span><strong>${escapeHtml(formatDateFr(s.date_echeance))}</strong></div>
+        <div><span>Collaborateur</span><strong>${escapeHtml(s.collaborateur || "â€”")}</strong></div>
+        <div><span>Service</span><strong>${escapeHtml(s.nom_service || "â€”")}</strong></div>
         <div><span>Source</span><strong>${escapeHtml(s.source || "moteur")}</strong></div>
       </div>
       ${renderSuggestionPayload(s)}
@@ -592,9 +592,9 @@
   function renderSuggestionPayload(s) {
     const p = s?.payload_json || {};
     const rows = [];
-    if (p.intitule_competence) rows.push(["Compétence", p.intitule_competence]);
+    if (p.intitule_competence) rows.push(["CompÃ©tence", p.intitule_competence]);
     if (p.intitule_poste) rows.push(["Poste", p.intitule_poste]);
-    if (p.criticite !== undefined && p.criticite !== null) rows.push(["Criticité", `${p.criticite}%`]);
+    if (p.criticite !== undefined && p.criticite !== null) rows.push(["CriticitÃ©", `${p.criticite}%`]);
     if (p.last_entretien_date) rows.push(["Dernier entretien", formatDateFr(p.last_entretien_date)]);
     if (!rows.length) return "";
     return `<div class="cal-detail-list cal-detail-list--payload">${rows.map(r => `<div><span>${escapeHtml(r[0])}</span><strong>${escapeHtml(r[1])}</strong></div>`).join("")}</div>`;
@@ -622,8 +622,8 @@
     }
     const sub = byId("calDetailSub");
     const host = byId("calDetailContent");
-    if (sub) sub.textContent = "Sélectionnez un évènement proposé ou planifié.";
-    if (host) host.innerHTML = `<div class="cal-empty-state">Aucun élément sélectionné.</div>`;
+    if (sub) sub.textContent = "SÃ©lectionnez un Ã©vÃ¨nement proposÃ© ou planifiÃ©.";
+    if (host) host.innerHTML = `<div class="cal-empty-state">Aucun Ã©lÃ©ment sÃ©lectionnÃ©.</div>`;
     syncDetailDrawer(false);
   }
 
@@ -640,8 +640,8 @@
     backdrop?.setAttribute("aria-hidden", state.calendarExpanded ? "false" : "true");
 
     if (btn) {
-      btn.setAttribute("title", state.calendarExpanded ? "Réduire le calendrier" : "Agrandir le calendrier");
-      btn.setAttribute("aria-label", state.calendarExpanded ? "Réduire le calendrier" : "Agrandir le calendrier");
+      btn.setAttribute("title", state.calendarExpanded ? "RÃ©duire le calendrier" : "Agrandir le calendrier");
+      btn.setAttribute("aria-label", state.calendarExpanded ? "RÃ©duire le calendrier" : "Agrandir le calendrier");
       btn.classList.toggle("is-active", state.calendarExpanded);
       btn.innerHTML = calIcon(state.calendarExpanded ? "reduce" : "expand");
     }
@@ -700,8 +700,8 @@
     state.modalDropDate = ymd || "";
     const start = defaultStartForDate(ymd);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
-    byId("calEventModalTitle").textContent = "Nouvel événement";
-    byId("calModalIntro").textContent = "Créez un événement RH planifié dans le calendrier.";
+    byId("calEventModalTitle").textContent = "Nouvel Ã©vÃ©nement";
+    byId("calModalIntro").textContent = "CrÃ©ez un Ã©vÃ©nement RH planifiÃ© dans le calendrier.";
     byId("calEventTitle").value = "";
     byId("calEventType").value = "evenement_rh";
     byId("calEventStatus").value = "planifie";
@@ -719,7 +719,7 @@
     state.modalDropDate = ymd || "";
     const start = defaultStartForDate(ymd || suggestion.date_echeance);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
-    byId("calEventModalTitle").textContent = "Planifier un évènement";
+    byId("calEventModalTitle").textContent = "Planifier un Ã©vÃ¨nement";
     byId("calModalIntro").textContent = suggestion.titre || "Planifiez cette action dans le calendrier.";
     byId("calEventTitle").value = suggestion.titre || "";
     byId("calEventType").value = suggestion.type_suggestion || "evenement_rh";
@@ -735,11 +735,11 @@
     state.modalMode = "edit";
     state.modalSuggestion = null;
     state.modalEvent = event;
-    byId("calEventModalTitle").textContent = forceReport ? "Reporter l’événement" : "Modifier l’événement";
-    byId("calModalIntro").textContent = forceReport ? "Choisissez une nouvelle date pour cet événement." : "Modifiez les informations de l’événement.";
+    byId("calEventModalTitle").textContent = forceReport ? "Reporter lâ€™Ã©vÃ©nement" : "Modifier lâ€™Ã©vÃ©nement";
+    byId("calModalIntro").textContent = forceReport ? "Choisissez une nouvelle date pour cet Ã©vÃ©nement." : "Modifiez les informations de lâ€™Ã©vÃ©nement.";
     byId("calEventTitle").value = event.titre || "";
     byId("calEventType").value = event.type_evenement || "evenement_rh";
-    byId("calEventStatus").value = forceReport ? "reporté" : (event.statut || "planifie");
+    byId("calEventStatus").value = forceReport ? "reportÃ©" : (event.statut || "planifie");
     byId("calEventStart").value = toDatetimeLocal(parseDateLike(event.date_debut));
     byId("calEventEnd").value = toDatetimeLocal(parseDateLike(event.date_fin));
     setModalMsg("", "");
@@ -768,11 +768,11 @@
     const end = (byId("calEventEnd")?.value || "").trim();
 
     if (!start) {
-      setModalMsg("Date de début obligatoire.", "error");
+      setModalMsg("Date de dÃ©but obligatoire.", "error");
       return;
     }
 
-    setModalMsg("Enregistrement…", "info");
+    setModalMsg("Enregistrementâ€¦", "info");
 
     try {
       if (state.modalMode === "suggestion" && state.modalSuggestion) {
@@ -815,10 +815,10 @@
       }
 
       closeModal();
-      showMsg("Calendrier mis à jour.", "success");
+      showMsg("Calendrier mis Ã  jour.", "success");
       await reloadAll();
     } catch (e) {
-      setModalMsg(e?.message || "Erreur d’enregistrement.", "error");
+      setModalMsg(e?.message || "Erreur dâ€™enregistrement.", "error");
     }
   }
 
@@ -831,12 +831,12 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({})
       });
-      showMsg("Évènement ignoré.", "success");
+      showMsg("Ã‰vÃ¨nement ignorÃ©.", "success");
       state.selectedKind = "";
       state.selectedId = "";
       await reloadAll();
     } catch (e) {
-      showMsg(e?.message || "Impossible d’ignorer cet évènement.", "error");
+      showMsg(e?.message || "Impossible dâ€™ignorer cet Ã©vÃ¨nement.", "error");
     }
   }
 
@@ -847,11 +847,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statut })
       });
-      showMsg("Événement mis à jour.", "success");
+      showMsg("Ã‰vÃ©nement mis Ã  jour.", "success");
       await reloadAll();
       setSelected("event", id);
     } catch (e) {
-      showMsg(e?.message || "Impossible de modifier l’événement.", "error");
+      showMsg(e?.message || "Impossible de modifier lâ€™Ã©vÃ©nement.", "error");
     }
   }
 
@@ -876,7 +876,7 @@
       }));
       return;
     }
-    showMsg("Aucun écran métier direct n’est encore relié à cet événement.", "info");
+    showMsg("Aucun Ã©cran mÃ©tier direct nâ€™est encore reliÃ© Ã  cet Ã©vÃ©nement.", "info");
   }
 
   function toggleFilters(open) {
@@ -886,8 +886,8 @@
     if (card) card.classList.toggle("is-collapsed", !isOpen);
     if (btn) {
       btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
-      btn.setAttribute("title", isOpen ? "Replier les filtres" : "Déplier les filtres");
-      btn.setAttribute("aria-label", isOpen ? "Replier les filtres" : "Déplier les filtres");
+      btn.setAttribute("title", isOpen ? "Replier les filtres" : "DÃ©plier les filtres");
+      btn.setAttribute("aria-label", isOpen ? "Replier les filtres" : "DÃ©plier les filtres");
     }
     try { localStorage.setItem(STORE_FILTERS_OPEN, isOpen ? "1" : "0"); } catch (_) {}
   }
@@ -1005,7 +1005,7 @@
 
       const doneId = target.getAttribute("data-cal-done-event");
       if (doneId) {
-        await patchEventStatus(doneId, "réalisé");
+        await patchEventStatus(doneId, "rÃ©alisÃ©");
         return;
       }
 
@@ -1017,7 +1017,7 @@
 
       const cancelId = target.getAttribute("data-cal-cancel-event");
       if (cancelId) {
-        await patchEventStatus(cancelId, "annulé");
+        await patchEventStatus(cancelId, "annulÃ©");
         return;
       }
 

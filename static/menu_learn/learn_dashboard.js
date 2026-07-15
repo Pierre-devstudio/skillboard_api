@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id) { return document.getElementById(id); }
@@ -55,9 +55,9 @@
 
     if (introEl) {
       if (ent) {
-        introEl.textContent = `Cet espace vous permet d’accéder à votre espace Learn pour ${ent}.`;
+        introEl.textContent = `Cet espace vous permet dâ€™accÃ©der Ã  votre espace Learn pour ${ent}.`;
       } else {
-        introEl.textContent = "Cet espace vous permet d’accéder à votre espace Learn.";
+        introEl.textContent = "Cet espace vous permet dâ€™accÃ©der Ã  votre espace Learn.";
       }
     }
   }

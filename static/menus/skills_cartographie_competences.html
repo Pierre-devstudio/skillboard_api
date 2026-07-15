@@ -1,4 +1,4 @@
-<section id="view-cartographie-competences" style="display:none;">
+﻿<section id="view-cartographie-competences" style="display:none;">
   <div class="card map-page-hero">
     <div class="map-page-hero__main">
       <div class="map-page-hero__icon" aria-hidden="true">
@@ -9,9 +9,9 @@
         </svg>
       </div>
       <div>
-        <div class="card-title map-page-hero__title">Cartographie des compétences</div>
+        <div class="card-title map-page-hero__title">Cartographie des compÃ©tences</div>
         <div class="card-sub map-page-hero__sub">
-          Visualisez la répartition des compétences requises par poste et par domaine, filtrée par service.
+          Visualisez la rÃ©partition des compÃ©tences requises par poste et par domaine, filtrÃ©e par service.
         </div>
       </div>
     </div>
@@ -22,7 +22,7 @@
           <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>
         </div>
         <div>
-          <div class="map-kpi-card__value" id="kpiMapPostes">–</div>
+          <div class="map-kpi-card__value" id="kpiMapPostes">â€“</div>
           <div class="map-kpi-card__label">postes</div>
         </div>
       </div>
@@ -32,7 +32,7 @@
           <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h6v6h-6z"/></svg>
         </div>
         <div>
-          <div class="map-kpi-card__value" id="kpiMapDomaines">–</div>
+          <div class="map-kpi-card__value" id="kpiMapDomaines">â€“</div>
           <div class="map-kpi-card__label">domaines</div>
         </div>
       </div>
@@ -42,23 +42,23 @@
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/></svg>
         </div>
         <div>
-          <div class="map-kpi-card__value" id="kpiMapCompetences">–</div>
-          <div class="map-kpi-card__label">compétences</div>
+          <div class="map-kpi-card__value" id="kpiMapCompetences">â€“</div>
+          <div class="map-kpi-card__label">compÃ©tences</div>
         </div>
       </div>
 
       <button type="button"
               class="map-kpi-card map-kpi-card--search"
               id="btnMapAdvancedSearch"
-              title="Recherche avancée"
-              aria-label="Ouvrir la recherche avancée">
+              title="Recherche avancÃ©e"
+              aria-label="Ouvrir la recherche avancÃ©e">
         <div class="map-kpi-card__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </div>
         <div>
-          <div class="map-kpi-card__value">Recherche avancée</div>
-          <div class="map-kpi-card__label">Qui détient quoi ?</div>
-          <div class="map-kpi-card__hint">Compétence ou personne</div>
+          <div class="map-kpi-card__value">Recherche avancÃ©e</div>
+          <div class="map-kpi-card__label">Qui dÃ©tient quoi ?</div>
+          <div class="map-kpi-card__hint">CompÃ©tence ou personne</div>
         </div>
       </button>
     </div>
@@ -70,7 +70,7 @@
         <div class="map-card-head">
           <div>
             <div class="card-title" style="margin-bottom:4px;">Filtres</div>
-            <div class="card-sub" style="margin:0;">Filtrez le périmètre affiché.</div>
+            <div class="card-sub" style="margin:0;">Filtrez le pÃ©rimÃ¨tre affichÃ©.</div>
           </div>
           <button type="button"
                   class="map-card-head__icon map-card-toggle"
@@ -94,7 +94,7 @@
           <div class="info-item">
             <label class="sb-label" for="mapSearch">Recherche</label>
             <div class="map-search-wrap">
-              <input type="text" id="mapSearch" class="sb-ctrl" placeholder="Code poste, intitulé..." />
+              <input type="text" id="mapSearch" class="sb-ctrl" placeholder="Code poste, intitulÃ©..." />
               <span class="map-search-wrap__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               </span>
@@ -102,7 +102,7 @@
           </div>
 
           <div class="map-filter-actions">
-            <button type="button" class="sb-btn sb-btn--soft" id="btnMapReset">Réinitialiser</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnMapReset">RÃ©initialiser</button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnMapApply">Appliquer</button>
           </div>
         </div>
@@ -133,9 +133,9 @@
     <main class="card map-matrix-card">
       <div class="map-matrix-head">
         <div>
-          <div class="card-title" style="margin-bottom:6px;">Matrice des compétences par poste</div>
+          <div class="card-title" style="margin-bottom:6px;">Matrice des compÃ©tences par poste</div>
           <div class="card-sub" id="hmStatus" style="margin:0;">
-            Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.
+            Visualisez les domaines mobilisÃ©s par chaque poste. Cliquez sur une cellule pour voir le dÃ©tail.
           </div>
         </div>
       </div>
@@ -147,17 +147,17 @@
       </div>
 
       <div class="card-sub" id="mapEmpty" style="display:none; margin-top:10px;">
-        Aucun poste/compétence trouvé pour les filtres sélectionnés.
+        Aucun poste/compÃ©tence trouvÃ© pour les filtres sÃ©lectionnÃ©s.
       </div>
     </main>
   </div>
 
-  <!-- Modal détail (cellule ou poste/domaine) -->
+  <!-- Modal dÃ©tail (cellule ou poste/domaine) -->
   <div class="modal" id="modalMapDetail" aria-hidden="true">
     <div class="modal-card modal-card--wide">
       <div class="modal-header">
-        <div class="card-title" id="mapModalTitle">Détail</div>
-        <button type="button" class="modal-x" id="btnCloseMapModal" aria-label="Fermer">×</button>
+        <div class="card-title" id="mapModalTitle">DÃ©tail</div>
+        <button type="button" class="modal-x" id="btnCloseMapModal" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="modal-body">
@@ -171,16 +171,16 @@
     </div>
   </div>
 
-  <!-- Modal recherche avancée -->
+  <!-- Modal recherche avancÃ©e -->
   <div class="modal" id="modalMapAdvancedSearch" aria-hidden="true">
     <div class="modal-card modal-card--xl map-advanced-modal-card">
       <div class="modal-header modal-header--top">
         <div class="map-advanced-headstack">
-          <div class="card-title" id="mapAdvancedTitle">Recherche avancée</div>
+          <div class="card-title" id="mapAdvancedTitle">Recherche avancÃ©e</div>
           <div class="map-advanced-nav" role="tablist" aria-label="Type de recherche">
             <button type="button" class="map-advanced-nav-btn is-active" data-map-advanced-mode="competence" role="tab" aria-selected="true">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M7 12h10"/></svg>
-              <span>Par compétences</span>
+              <span>Par compÃ©tences</span>
             </button>
             <button type="button" class="map-advanced-nav-btn" data-map-advanced-mode="collaborateur" role="tab" aria-selected="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -188,18 +188,18 @@
             </button>
           </div>
         </div>
-        <button type="button" class="modal-x" id="btnCloseMapAdvancedModal" aria-label="Fermer">×</button>
+        <button type="button" class="modal-x" id="btnCloseMapAdvancedModal" aria-label="Fermer">Ã—</button>
       </div>
 
       <div class="modal-body">
         <div class="map-advanced-intro card-sub" id="mapAdvancedIntro">
-          Ajoutez une ou plusieurs compétences, choisissez ET ou OU, puis identifiez les collaborateurs qui couvrent le besoin.
+          Ajoutez une ou plusieurs compÃ©tences, choisissez ET ou OU, puis identifiez les collaborateurs qui couvrent le besoin.
         </div>
 
         <div class="map-advanced-panel">
           <div class="map-advanced-toolbar">
             <div class="map-advanced-search-wrap">
-              <input type="text" id="mapAdvancedSearchInput" class="sb-ctrl" placeholder="Code, intitulé, mot-clé de compétence..." autocomplete="off" />
+              <input type="text" id="mapAdvancedSearchInput" class="sb-ctrl" placeholder="Code, intitulÃ©, mot-clÃ© de compÃ©tence..." autocomplete="off" />
               <span class="map-advanced-search-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               </span>
@@ -214,19 +214,19 @@
           <div class="map-advanced-operator" id="mapAdvancedOperatorBox" style="display:none;">
             <span>Correspondance</span>
             <div class="map-advanced-op-switch" aria-label="Logique de recherche">
-              <button type="button" class="map-advanced-op-btn is-active" data-map-advanced-op="and">ET · toutes</button>
-              <button type="button" class="map-advanced-op-btn" data-map-advanced-op="or">OU · au moins une</button>
+              <button type="button" class="map-advanced-op-btn is-active" data-map-advanced-op="and">ET Â· toutes</button>
+              <button type="button" class="map-advanced-op-btn" data-map-advanced-op="or">OU Â· au moins une</button>
             </div>
           </div>
         </div>
 
         <div class="map-advanced-results-head">
-          <div class="card-sub map-advanced-status" id="mapAdvancedStatus">Recherchez puis ajoutez une ou plusieurs compétences.</div>
+          <div class="card-sub map-advanced-status" id="mapAdvancedStatus">Recherchez puis ajoutez une ou plusieurs compÃ©tences.</div>
           <button type="button"
                   class="sb-icon-btn map-advanced-print-btn"
                   id="btnMapAdvancedPrint"
-                  title="Générer le PDF"
-                  aria-label="Générer le PDF"
+                  title="GÃ©nÃ©rer le PDF"
+                  aria-label="GÃ©nÃ©rer le PDF"
                   disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 9V2h12v7"/>

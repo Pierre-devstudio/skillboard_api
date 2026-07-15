@@ -1,17 +1,19 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Novoskill Studio — Connexion</title>
+  <title>Novoskill Studio â€” Connexion</title>
 
-  <link rel="icon" href="/favicon-studio.ico" sizes="any">
+
+  <link rel="stylesheet" href="novoskill_typography.css">
+<link rel="icon" href="/favicon-studio.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-studio-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-studio-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-studio.png">
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- CSS commun + thème Skills + override Studio -->
+  <!-- CSS commun + thÃ¨me Skills + override Studio -->
   <link rel="stylesheet" href="/portal_common.css" />
   <link rel="stylesheet" href="/skills_portal_theme.css" />
   <link rel="stylesheet" href="/studio_portal_theme.css" />
@@ -80,14 +82,14 @@
       box-shadow:0 6px 20px rgba(0,0,0,.06);
     }
     .login-title{
-      font-size:18px;
-      font-weight:700;
+      font-size: var(--ns-title-sm);
+      font-weight: var(--ns-weight-bold);
       margin:0 0 6px 0;
     }
     .login-sub{
       margin:0 0 14px 0;
       color:#4b5563;
-      font-size:13px;
+      font-size: var(--ns-text-sm);
     }
     .login-row{
       display:flex;
@@ -96,15 +98,15 @@
       margin-bottom:12px;
     }
     .login-row label{
-      font-size:12px;
+      font-size: var(--ns-text-xs);
       color:#374151;
-      font-weight:600;
+      font-weight: var(--ns-weight-semibold);
     }
     .login-row input{
       border:1px solid #d1d5db;
       border-radius:10px;
       padding:10px 12px;
-      font-size:14px;
+      font-size: var(--ns-text-md);
       outline:none;
       background:#fff;
     }
@@ -125,9 +127,9 @@
       color:#111827; /* Studio = jaune, donc texte sombre */
       padding:10px 14px;
       border-radius:10px;
-      font-weight:800;
+      font-weight: var(--ns-weight-bold);
       cursor:pointer;
-      font-size:14px;
+      font-size: var(--ns-text-md);
     }
     .btn-primary:disabled{
       opacity:.6;
@@ -136,22 +138,22 @@
     .link{
       color: var(--accent, #E6E421);
       text-decoration:none;
-      font-weight:700;
-      font-size:13px;
+      font-weight: var(--ns-weight-bold);
+      font-size: var(--ns-text-sm);
       cursor:pointer;
       user-select:none;
     }
     .hint{
-      font-size:12px;
+      font-size: var(--ns-text-xs);
       color:#6b7280;
       margin-top:10px;
-      line-height:1.35;
+      line-height: var(--ns-leading-ui);
     }
     .panel{ display:none; }
     .panel.active{ display:block; }
     .msg{
       margin: 10px 0 0 0;
-      font-size: 13px;
+      font-size: var(--ns-text-sm);
       color:#111827;
     }
     .msg.error{ color:#b91c1c; }
@@ -163,10 +165,10 @@
       margin-bottom:12px;
     }
     .brand-name{
-      font-size:13px;
-      font-weight:800;
+      font-size: var(--ns-text-sm);
+      font-weight: var(--ns-weight-bold);
       color:#111827;
-      letter-spacing:.2px;
+      letter-spacing: var(--ns-letter-label);
     }
     .brand-module{
       display:inline-flex;
@@ -175,9 +177,9 @@
       border-radius:999px;
       background: var(--accent, #E6E421);
       color:#111827;
-      font-size:12px;
-      font-weight:900;
-      letter-spacing:.2px;
+      font-size: var(--ns-text-xs);
+      font-weight: var(--ns-weight-bold);
+      letter-spacing: var(--ns-letter-label);
       box-shadow: 0 4px 12px rgba(var(--sb-accent-rgb), 0.18);
     }
   </style>
@@ -202,22 +204,22 @@
 
           <div class="login-row">
             <label for="loginPassword">Mot de passe</label>
-            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
           </div>
 
           <div class="login-actions">
             <button class="btn-primary" id="btnLogin">Se connecter</button>
-            <span class="link" id="lnkForgot">Mot de passe oublié</span>
+            <span class="link" id="lnkForgot">Mot de passe oubliÃ©</span>
           </div>
 
           <p class="hint">
-            Novoskill est une solution propriétaire JMBCONSULTANT.
+            Novoskill est une solution propriÃ©taire JMBCONSULTANT.
           </p>
         </div>
 
         <div class="panel" id="panelForgot">
-          <h1 class="login-title">Mot de passe oublié</h1>
-          <p class="login-sub">On t’envoie un lien de réinitialisation par email.</p>
+          <h1 class="login-title">Mot de passe oubliÃ©</h1>
+          <p class="login-sub">On tâ€™envoie un lien de rÃ©initialisation par email.</p>
 
           <div class="login-row">
             <label for="resetEmail">Email</label>
@@ -230,7 +232,7 @@
           </div>
 
           <p class="hint">
-            Le lien ouvre une page Studio dédiée pour choisir un nouveau mot de passe.
+            Le lien ouvre une page Studio dÃ©diÃ©e pour choisir un nouveau mot de passe.
           </p>
         </div>
 

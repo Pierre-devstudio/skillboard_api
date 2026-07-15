@@ -1,11 +1,13 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Portail consultant — Skillboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portail consultant â€” Skillboard</title>
+
+  <link rel="stylesheet" href="novoskill_typography.css">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    :root { font-family: var(--ns-font-ui); }
     body {
       margin: 0;
       background:#f3f4f6;
@@ -27,13 +29,13 @@
       z-index:50;
     }
     .sidebar-header {
-      font-weight:600;
-      font-size:18px;
+      font-weight: var(--ns-weight-semibold);
+      font-size: var(--ns-title-sm);
       margin-bottom:16px;
       text-align:center;
     }
     .sidebar-sub {
-      font-size:12px;
+      font-size: var(--ns-text-xs);
       color:#9ca3af;
       text-align:center;
       margin-bottom:16px;
@@ -47,7 +49,7 @@
     .menu-item {
       padding:8px 10px;
       border-radius:6px;
-      font-size:14px;
+      font-size: var(--ns-text-md);
       cursor:pointer;
       color:#e5e7eb;
     }
@@ -90,14 +92,14 @@
       gap:12px;
     }
     .topbar-left {
-      font-size:14px;
+      font-size: var(--ns-text-md);
       color:#4b5563;
       display:flex;
       align-items:center;
       gap:10px;
     }
     .topbar-right {
-      font-size:13px;
+      font-size: var(--ns-text-sm);
       color:#6b7280;
       text-align:right;
       flex-shrink:0;
@@ -107,7 +109,7 @@
       display:none;
       border:none;
       background:transparent;
-      font-size:20px;
+      font-size: var(--ns-title-md);
       cursor:pointer;
       color:#111827;
       padding:4px 8px;
@@ -127,12 +129,12 @@
       margin-bottom:16px;
     }
     .card-title {
-      font-size:16px;
-      font-weight:600;
+      font-size: var(--ns-text-lg);
+      font-weight: var(--ns-weight-semibold);
       margin-bottom:8px;
     }
     .card-sub {
-      font-size:13px;
+      font-size: var(--ns-text-sm);
       color:#6b7280;
       margin-bottom:10px;
     }
@@ -144,23 +146,23 @@
     }
     .info-item {
       min-width:180px;
-      font-size:14px;
+      font-size: var(--ns-text-md);
     }
     .label {
-      font-size:12px;
+      font-size: var(--ns-text-xs);
       color:#6b7280;
       margin-bottom:2px;
     }
     .value {
-      font-size:14px;
-      font-weight:500;
+      font-size: var(--ns-text-md);
+      font-weight: var(--ns-weight-medium);
       color:#111827;
     }
 
     .alert {
       padding:10px 12px;
       border-radius:8px;
-      font-size:13px;
+      font-size: var(--ns-text-sm);
       margin-bottom:12px;
     }
     .alert.error {
@@ -189,7 +191,7 @@
       padding:6px 8px;
       border-radius:6px;
       border:1px solid #d1d5db;
-      font-size:14px;
+      font-size: var(--ns-text-md);
       background:#ffffff;
     }
 
@@ -209,8 +211,8 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      font-weight:600;
-      font-size:22px;
+      font-weight: var(--ns-weight-semibold);
+      font-size: var(--ns-title-md);
       color:#4b5563;
       overflow:hidden;
       flex-shrink:0;
@@ -229,7 +231,7 @@
       cursor:pointer;
     }
 
-    /* Plus d’espace entre le formulaire et le bloc admin */
+    /* Plus dâ€™espace entre le formulaire et le bloc admin */
     #view-vos-donnees .card:first-of-type {
       margin-bottom:32px !important;
     }
@@ -241,7 +243,7 @@
       border:0;
       background:#1d4ed8;
       color:#fff;
-      font-size:14px;
+      font-size: var(--ns-text-md);
       cursor:pointer;
     }
     .btn-secondary {
@@ -250,7 +252,7 @@
       border:1px solid #d1d5db;
       background:#ffffff;
       color:#374151;
-      font-size:14px;
+      font-size: var(--ns-text-md);
       cursor:pointer;
       margin-left:8px;
     }
@@ -298,9 +300,9 @@
     }
     .sb-table th {
       text-align:left;
-      font-size:12px;
+      font-size: var(--ns-text-xs);
       color:#6b7280;
-      font-weight:600;
+      font-weight: var(--ns-weight-semibold);
       padding:8px 10px;
       border-bottom:1px solid #e5e7eb;
       white-space:nowrap;
@@ -308,7 +310,7 @@
     .sb-table td {
       padding:8px 10px;
       border-bottom:1px solid #f3f4f6;
-      font-size:14px;
+      font-size: var(--ns-text-md);
       vertical-align:middle;
     }
     .sb-table tr:hover td { background:#f9fafb; }
@@ -329,7 +331,7 @@
     .level-dot.active { background:#1d4ed8; }
 
     /* =========================
-       MODAL AJOUT COMPÉTENCE
+       MODAL AJOUT COMPÃ‰TENCE
        ========================= */
     .modal {
       position:fixed;
@@ -370,7 +372,7 @@
     .modal-x {
       border:0;
       background:transparent;
-      font-size:20px;
+      font-size: var(--ns-title-md);
       cursor:pointer;
       padding:0 8px;
       color:#6b7280;
@@ -386,23 +388,23 @@
       padding:8px 10px;
       cursor:pointer;
       border-bottom:1px solid #f3f4f6;
-      font-size:14px;
+      font-size: var(--ns-text-md);
     }
     .result-item:last-child { border-bottom:0; }
     .result-item:hover { background:#f9fafb; }
 
     .result-code {
-      font-weight:600;
+      font-weight: var(--ns-weight-semibold);
       color:#111827;
     }
     .result-title {
       color:#6b7280;
-      font-size:13px;
+      font-size: var(--ns-text-sm);
     }
 
     /* =========================
    EXPERTISES - MOBILE FIX
-   (Lisible sur téléphone)
+   (Lisible sur tÃ©lÃ©phone)
    ========================= */
 .mobile-meta {
   display:none;
@@ -417,18 +419,18 @@
   padding:2px 8px;
   border:1px solid #d1d5db;
   border-radius:999px;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
   color:#374151;
   background:#ffffff;
 }
 
 .muted {
   color:#6b7280;
-  font-size:12px;
+  font-size: var(--ns-text-xs);
 }
 
 @media (max-width: 640px) {
-  /* On masque les colonnes "Débutant / Intermédiaire / Avancé / Expert / Dernier audit" */
+  /* On masque les colonnes "DÃ©butant / IntermÃ©diaire / AvancÃ© / Expert / Dernier audit" */
   .sb-table th:nth-child(3),
   .sb-table th:nth-child(4),
   .sb-table th:nth-child(5),
@@ -440,7 +442,7 @@
     display:none;
   }
 
-  /* On affiche le niveau + audit sous l'intitulé */
+  /* On affiche le niveau + audit sous l'intitulÃ© */
   .mobile-meta {
     display:flex;
   }
@@ -461,8 +463,8 @@
   list-style: none;
   cursor: pointer;
   padding: 10px 12px;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-sm);
   color: #111827;
   background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -476,8 +478,8 @@
 }
 
 .domain-count {
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-xs);
   color: #6b7280;
 }
 
@@ -533,17 +535,17 @@
 }
 
 .domaines-title {
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: var(--ns-weight-semibold);
+  font-size: var(--ns-text-md);
   color: #111827;
-  line-height: 1.2;
+  line-height: var(--ns-leading-tight);
 }
 
 .domaines-desc {
-  font-size: 12px;
+  font-size: var(--ns-text-xs);
   color: #6b7280;
   margin-top: 4px;
-  line-height: 1.25;
+  line-height: var(--ns-leading-title);
   white-space: normal;
 }
 
@@ -558,7 +560,7 @@
 }
 
 .domaines-hint {
-  font-size: 12px;
+  font-size: var(--ns-text-xs);
   color: #6b7280;
 }
 
@@ -581,14 +583,14 @@
   <aside class="sidebar" id="sidebar">
     <div>
       <div class="sidebar-header">Espace consultant</div>
-      <div class="sidebar-sub">JMB CONSULTANT · Skillboard</div>
+      <div class="sidebar-sub">JMB CONSULTANT Â· Skillboard</div>
     </div>
     <nav class="menu">
       <div class="menu-item active" data-view="dashboard">Dashboard</div>
-      <div class="menu-item" data-view="vos-donnees">Vos données</div>
+      <div class="menu-item" data-view="vos-donnees">Vos donnÃ©es</div>
       <div class="menu-item" data-view="vos-expertises">Vos expertises</div>
       <div class="menu-item disabled" data-view="actions">Actions de formation</div>
-      <div class="menu-item disabled" data-view="adaptations">Fiches d’adaptation</div>
+      <div class="menu-item disabled" data-view="adaptations">Fiches dâ€™adaptation</div>
       <div class="menu-item disabled" data-view="ressources">Ressources</div>
       <div class="menu-item disabled" data-view="factures">Vos factures</div>
     </nav>
@@ -602,7 +604,7 @@
         </button>
         <span id="topbarName">Consultant</span>
       </div>
-      <div class="topbar-right" id="topbarInfo">Chargement…</div>
+      <div class="topbar-right" id="topbarInfo">Chargementâ€¦</div>
     </header>
 
     <main class="content">
@@ -618,20 +620,20 @@
           <div class="card-title" id="welcomeTitle">Bienvenue</div>
           <div class="card-sub" id="welcomeIntro">
             Cet espace vous permet de suivre vos interventions, formaliser vos adaptations
-            et accéder, à terme, à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.
+            et accÃ©der, Ã  terme, Ã  lâ€™ensemble des informations liÃ©es Ã  vos missions avec JMB CONSULTANT.
           </div>
         </div>
       </section>
 
-      <!-- VOS DONNÉES -->
+      <!-- VOS DONNÃ‰ES -->
       <section id="view-vos-donnees" style="display:none;">
         <div class="card">
-          <div class="card-title">Vos données</div>
+          <div class="card-title">Vos donnÃ©es</div>
           <div class="card-sub">
-            Consultez et mettez à jour vos informations de contact. Les informations administratives
-            (type de consultant, entreprise, coûts) sont affichées à titre indicatif.
+            Consultez et mettez Ã  jour vos informations de contact. Les informations administratives
+            (type de consultant, entreprise, coÃ»ts) sont affichÃ©es Ã  titre indicatif.
             Pour tout changement, veuillez contacter
-            <a href="mailto:pierre@jmbconsultant.fr">l’administrateur</a>.
+            <a href="mailto:pierre@jmbconsultant.fr">lâ€™administrateur</a>.
           </div>
 
           <!-- Avatar + info -->
@@ -645,19 +647,19 @@
           <form id="profileForm">
             <div class="row" style="flex-direction:column; gap:16px;">
 
-              <!-- Bloc identité -->
+              <!-- Bloc identitÃ© -->
               <div class="row">
                 <div class="info-item" style="min-width:160px;">
-                  <div class="label">Civilité</div>
+                  <div class="label">CivilitÃ©</div>
                   <select id="civilite" name="civilite" data-editable="1">
-                    <option value="">(Non précisé)</option>
+                    <option value="">(Non prÃ©cisÃ©)</option>
                     <option value="M">M.</option>
                     <option value="Mme">Mme</option>
                     <option value="Autre">Autre</option>
                   </select>
                 </div>
                 <div class="info-item">
-                  <div class="label">Prénom *</div>
+                  <div class="label">PrÃ©nom *</div>
                   <input type="text" id="prenom" name="prenom" required data-editable="1" />
                 </div>
                 <div class="info-item">
@@ -666,14 +668,14 @@
                 </div>
               </div>
 
-              <!-- Coordonnées -->
+              <!-- CoordonnÃ©es -->
               <div class="row">
                 <div class="info-item" style="flex:1;">
                   <div class="label">Adresse (ligne 1)</div>
                   <input type="text" id="adresse_1" name="adresse_1" data-editable="1" />
                 </div>
                 <div class="info-item" style="flex:1;">
-                  <div class="label">Adresse (complément)</div>
+                  <div class="label">Adresse (complÃ©ment)</div>
                   <input type="text" id="adresse_2" name="adresse_2" data-editable="1" />
                 </div>
               </div>
@@ -700,7 +702,7 @@
 
               <div class="row">
                 <div class="info-item" style="min-width:150px;">
-                  <div class="label">Téléphone</div>
+                  <div class="label">TÃ©lÃ©phone</div>
                   <input type="tel" id="telephone" name="telephone" data-editable="1" />
                 </div>
                 <div class="info-item" style="min-width:150px;">
@@ -715,10 +717,10 @@
 
               <div style="margin-top:16px;" id="profileButtons">
                 <button type="button" class="btn-primary" id="btnEditProfile">
-                  Modifier vos données
+                  Modifier vos donnÃ©es
                 </button>
                 <button type="submit" class="btn-primary" id="btnSaveProfile" style="display:none;">
-                  Enregistrer vos données
+                  Enregistrer vos donnÃ©es
                 </button>
                 <button type="button" class="btn-secondary" id="btnCancelEdit" style="display:none;">
                   Annuler
@@ -734,35 +736,35 @@
           <div class="row">
             <div class="info-item">
               <div class="label">Nom complet</div>
-              <div class="value" id="infoNomComplet">–</div>
+              <div class="value" id="infoNomComplet">â€“</div>
             </div>
             <div class="info-item">
               <div class="label">Identifiant consultant</div>
-              <div class="value" id="infoIdConsultant">–</div>
+              <div class="value" id="infoIdConsultant">â€“</div>
             </div>
           </div>
           <div class="row" style="margin-top:8px;">
             <div class="info-item">
               <div class="label">Type de consultant</div>
-              <div class="value" id="infoTypeConsultant">–</div>
+              <div class="value" id="infoTypeConsultant">â€“</div>
             </div>
             <div class="info-item">
               <div class="label">Entreprise</div>
-              <div class="value" id="infoEntreprise">–</div>
+              <div class="value" id="infoEntreprise">â€“</div>
             </div>
           </div>
           <div class="row" style="margin-top:8px;">
             <div class="info-item">
-              <div class="label">Coût horaire</div>
-              <div class="value" id="infoCoutHoraire">–</div>
+              <div class="label">CoÃ»t horaire</div>
+              <div class="value" id="infoCoutHoraire">â€“</div>
             </div>
             <div class="info-item">
-              <div class="label">Supplément déplacement</div>
-              <div class="value" id="infoCoutDeplacement">–</div>
+              <div class="label">SupplÃ©ment dÃ©placement</div>
+              <div class="value" id="infoCoutDeplacement">â€“</div>
             </div>
             <div class="info-item">
-              <div class="label">Autre supplément</div>
-              <div class="value" id="infoCoutSupp">–</div>
+              <div class="label">Autre supplÃ©ment</div>
+              <div class="value" id="infoCoutSupp">â€“</div>
             </div>
           </div>
         </div>
@@ -773,33 +775,33 @@
         <div class="card">
           <div class="card-title">Vos expertises</div>
           <div class="card-sub">
-            Déclarez vos compétences (puis certifications et diplômes). Les compétences ajoutées ici seront ensuite auditables dans Skillboard (version bureau).
+            DÃ©clarez vos compÃ©tences (puis certifications et diplÃ´mes). Les compÃ©tences ajoutÃ©es ici seront ensuite auditables dans Skillboard (version bureau).
           </div>
         </div>
 
         <div class="card" id="cardDomainesFormation">
-          <div class="card-title" style="margin-bottom:2px;">Domaines de formation de prédilection</div>
+          <div class="card-title" style="margin-bottom:2px;">Domaines de formation de prÃ©dilection</div>
           <div class="card-sub" style="margin:0;">
-            Sélectionnez les domaines sur lesquels vous intervenez le plus. Cela sert au pilotage (missions, matching, catalogue).
+            SÃ©lectionnez les domaines sur lesquels vous intervenez le plus. Cela sert au pilotage (missions, matching, catalogue).
           </div>
 
           <div class="domaines-wrap">
             <div class="domaines-actions">
-              <button type="button" class="btn-secondary" id="btnClearDomainesFormation">Tout décocher</button>
+              <button type="button" class="btn-secondary" id="btnClearDomainesFormation">Tout dÃ©cocher</button>
               <button type="button" class="btn-primary" id="btnSaveDomainesFormation">Enregistrer</button>
             </div>
 
             <div class="domaines-list" id="domainesFormationList">
               <div class="domaines-item" style="cursor:default;">
                 <div class="domaines-text">
-                  <div class="domaines-title">Chargement…</div>
-                  <div class="domaines-desc">Récupération du référentiel des domaines.</div>
+                  <div class="domaines-title">Chargementâ€¦</div>
+                  <div class="domaines-desc">RÃ©cupÃ©ration du rÃ©fÃ©rentiel des domaines.</div>
                 </div>
               </div>
             </div>
 
             <div class="domaines-hint" id="domainesFormationHint" style="display:none;">
-              Aucun domaine disponible (ou tous masqués).
+              Aucun domaine disponible (ou tous masquÃ©s).
             </div>
           </div>
         </div>
@@ -808,9 +810,9 @@
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
             <div>
-              <div class="card-title" style="margin-bottom:2px;">Compétences</div>
+              <div class="card-title" style="margin-bottom:2px;">CompÃ©tences</div>
               <div class="card-sub" style="margin:0;">
-                Niveau affiché selon votre déclaration. La date d’audit apparaît si une évaluation a déjà été réalisée.
+                Niveau affichÃ© selon votre dÃ©claration. La date dâ€™audit apparaÃ®t si une Ã©valuation a dÃ©jÃ  Ã©tÃ© rÃ©alisÃ©e.
               </div>
             </div>
             <button type="button" class="btn-primary" id="btnAddCompetence">+ Ajouter</button>
@@ -821,10 +823,10 @@
               <thead>
                 <tr>
                   <th>Code</th>
-                  <th>Intitulé</th>
-                  <th class="col-level">Débutant</th>
-                  <th class="col-level">Intermédiaire</th>
-                  <th class="col-level">Avancé</th>
+                  <th>IntitulÃ©</th>
+                  <th class="col-level">DÃ©butant</th>
+                  <th class="col-level">IntermÃ©diaire</th>
+                  <th class="col-level">AvancÃ©</th>
                   <th class="col-level">Expert</th>
                   <th class="col-date">Dernier audit</th>
                 </tr>
@@ -834,42 +836,42 @@
           </div>
 
           <div class="card-sub" id="competencesEmpty" style="display:none; margin-top:10px;">
-            Aucune compétence enregistrée pour le moment.
+            Aucune compÃ©tence enregistrÃ©e pour le moment.
           </div>
         </div>
       </section>
 
-      <!-- Modal: Ajouter une compétence -->
+      <!-- Modal: Ajouter une compÃ©tence -->
       <div class="modal" id="modalAddCompetence" aria-hidden="true">
         <div class="modal-card">
           <div class="modal-header">
-            <div style="font-weight:600;">Ajouter une compétence</div>
-            <button type="button" class="modal-x" id="btnCloseAddCompetence" aria-label="Fermer">×</button>
+            <div style="font-weight: var(--ns-weight-semibold);">Ajouter une compÃ©tence</div>
+            <button type="button" class="modal-x" id="btnCloseAddCompetence" aria-label="Fermer">Ã—</button>
           </div>
 
           <div class="modal-body">
             <div class="row" style="flex-direction:column; gap:10px;">
               <div class="info-item" style="min-width:0;">
-                <div class="label">Rechercher une compétence</div>
-                <input type="text" id="competenceSearch" placeholder="Code ou intitulé..." />
+                <div class="label">Rechercher une compÃ©tence</div>
+                <input type="text" id="competenceSearch" placeholder="Code ou intitulÃ©..." />
               </div>
 
               <div class="info-item" style="min-width:0;">
-                <div class="label">Résultats</div>
+                <div class="label">RÃ©sultats</div>
                 <div id="competenceResults" class="results"></div>
               </div>
 
               <div class="info-item" style="min-width:0;">
-                <div class="label">Compétence sélectionnée</div>
-                <div class="value" id="competenceSelected">–</div>
+                <div class="label">CompÃ©tence sÃ©lectionnÃ©e</div>
+                <div class="value" id="competenceSelected">â€“</div>
               </div>
 
               <div class="info-item" style="min-width:0;">
                 <div class="label">Niveau actuel</div>
                 <select id="competenceLevel">
-                  <option value="A">Débutant</option>
-                  <option value="B">Intermédiaire</option>
-                  <option value="C">Avancé</option>
+                  <option value="A">DÃ©butant</option>
+                  <option value="B">IntermÃ©diaire</option>
+                  <option value="C">AvancÃ©</option>
                   <option value="D">Expert</option>
                 </select>
               </div>
@@ -888,16 +890,16 @@
         <div class="card">
           <div class="card-title">Actions de formation</div>
           <div class="card-sub">
-            Cette section affichera vos actions de formation (à venir, en cours, passées).
+            Cette section affichera vos actions de formation (Ã  venir, en cours, passÃ©es).
           </div>
         </div>
       </section>
 
       <section id="view-adaptations" style="display:none;">
         <div class="card">
-          <div class="card-title">Fiches d’adaptation</div>
+          <div class="card-title">Fiches dâ€™adaptation</div>
           <div class="card-sub">
-            Cette section affichera vos adaptations déclarées et permettra d’en créer de nouvelles.
+            Cette section affichera vos adaptations dÃ©clarÃ©es et permettra dâ€™en crÃ©er de nouvelles.
           </div>
         </div>
       </section>
@@ -906,7 +908,7 @@
         <div class="card">
           <div class="card-title">Ressources</div>
           <div class="card-sub">
-            Cette section listera les documents mis à votre disposition (guides, modèles, supports).
+            Cette section listera les documents mis Ã  votre disposition (guides, modÃ¨les, supports).
           </div>
         </div>
       </section>
@@ -915,7 +917,7 @@
         <div class="card">
           <div class="card-title">Vos factures</div>
           <div class="card-sub">
-            Cette section vous permettra de consulter vos factures et d’en déposer de nouvelles.
+            Cette section vous permettra de consulter vos factures et dâ€™en dÃ©poser de nouvelles.
           </div>
         </div>
       </section>
@@ -972,7 +974,7 @@
     function setTextOrDash(id, value) {
       const el = document.getElementById(id);
       if (!el) return;
-      el.textContent = value != null && value !== "" ? value : "–";
+      el.textContent = value != null && value !== "" ? value : "â€“";
     }
 
     function setProfileEditMode(isEdit) {
@@ -1150,7 +1152,7 @@ function getSelectedDomainesFromUI() {
   list.querySelectorAll("input[type='checkbox'][data-id]").forEach(cb => {
     if (cb.checked) ids.push(cb.getAttribute("data-id"));
   });
-  // dédoublonnage
+  // dÃ©doublonnage
   return Array.from(new Set(ids));
 }
 
@@ -1171,7 +1173,7 @@ async function saveConsultantDomainesFormation(id_consultant) {
     throw new Error(detail);
   }
 
-  // Met à jour le set local
+  // Met Ã  jour le set local
   DOMAINES_FORMATION_SELECTED = new Set(ids);
 }
 
@@ -1190,7 +1192,7 @@ async function initDomainesFormationUI(id_consultant) {
         try {
           showAlert("", "");
           await saveConsultantDomainesFormation(id_consultant);
-          showAlert("success", "Domaines de formation enregistrés.");
+          showAlert("success", "Domaines de formation enregistrÃ©s.");
         } catch (e) {
           showAlert("error", "Erreur enregistrement domaines : " + e.message);
         }
@@ -1212,7 +1214,7 @@ async function initDomainesFormationUI(id_consultant) {
       DOMAINES_FORMATION_CATALOGUE = await loadDomainesFormationCatalogue();
     }
 
-    // Sélection du consultant
+    // SÃ©lection du consultant
     const selectedItems = await loadConsultantDomainesFormation(id_consultant);
     DOMAINES_FORMATION_SELECTED = new Set(
       (selectedItems || [])
@@ -1223,7 +1225,7 @@ async function initDomainesFormationUI(id_consultant) {
     renderDomainesFormation(DOMAINES_FORMATION_CATALOGUE, DOMAINES_FORMATION_SELECTED);
 
   } catch (e) {
-    // On affiche un bloc d’erreur dans la liste sans casser la page
+    // On affiche un bloc dâ€™erreur dans la liste sans casser la page
     const list = document.getElementById("domainesFormationList");
     if (list) {
       list.innerHTML = `
@@ -1261,7 +1263,7 @@ async function initDomainesFormationUI(id_consultant) {
           : `${body.prenom} ${body.nom}`;
 
         document.getElementById("topbarName").textContent = nomComplet;
-        document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
+        document.getElementById("topbarInfo").textContent = "Portail consultant â€” JMB CONSULTANT";
         document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
 
         updateAvatar(nomComplet, body.photo_url);
@@ -1291,15 +1293,15 @@ async function initDomainesFormationUI(id_consultant) {
         setTextOrDash("infoTypeConsultant", body.type_consultant);
         setTextOrDash("infoEntreprise", body.entreprise_nom);
 
-        const fmt = (v) => v != null ? `${v.toFixed(2)} €` : "–";
-        setTextOrDash("infoCoutHoraire", body.cout_horaire != null ? fmt(body.cout_horaire) : "–");
-        setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "–");
-        setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "–");
+        const fmt = (v) => v != null ? `${v.toFixed(2)} â‚¬` : "â€“";
+        setTextOrDash("infoCoutHoraire", body.cout_horaire != null ? fmt(body.cout_horaire) : "â€“");
+        setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "â€“");
+        setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "â€“");
 
         setProfileEditMode(false);
 
       } catch (err) {
-        showAlert("error", "Erreur de chargement de vos données : " + err.message);
+        showAlert("error", "Erreur de chargement de vos donnÃ©es : " + err.message);
       }
     }
 
@@ -1316,7 +1318,7 @@ async function initDomainesFormationUI(id_consultant) {
       const ville = document.getElementById("ville")?.value || "";
 
       if (!prenom.trim() || !nom.trim()) {
-        showAlert("error", "Merci de renseigner au minimum votre prénom et votre nom.");
+        showAlert("error", "Merci de renseigner au minimum votre prÃ©nom et votre nom.");
         return;
       }
 
@@ -1349,10 +1351,10 @@ async function initDomainesFormationUI(id_consultant) {
           throw new Error(detail);
         }
 
-        showAlert("success", "Vos données ont été enregistrées.");
+        showAlert("success", "Vos donnÃ©es ont Ã©tÃ© enregistrÃ©es.");
         await loadConsultantProfile(id_consultant);
       } catch (err) {
-        showAlert("error", "Erreur lors de l’enregistrement : " + err.message);
+        showAlert("error", "Erreur lors de lâ€™enregistrement : " + err.message);
       }
     }
 
@@ -1378,9 +1380,9 @@ async function initDomainesFormationUI(id_consultant) {
         }
 
         await loadConsultantProfile(id_consultant);
-        showAlert("success", "Votre photo a été mise à jour.");
+        showAlert("success", "Votre photo a Ã©tÃ© mise Ã  jour.");
       } catch (err) {
-        showAlert("error", "Erreur lors de l’envoi de la photo : " + err.message);
+        showAlert("error", "Erreur lors de lâ€™envoi de la photo : " + err.message);
       }
     }
 
@@ -1399,12 +1401,12 @@ async function initDomainesFormationUI(id_consultant) {
     }
 
     /* ======================================================
-       EXPERTISES - COMPÉTENCES
+       EXPERTISES - COMPÃ‰TENCES
        ====================================================== */
     function formatDateFR(iso) {
-      if (!iso) return "–";
+      if (!iso) return "â€“";
       const d = new Date(iso);
-      if (isNaN(d.getTime())) return "–";
+      if (isNaN(d.getTime())) return "â€“";
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const yyyy = d.getFullYear();
@@ -1444,11 +1446,11 @@ async function initDomainesFormationUI(id_consultant) {
 
         const badge = document.createElement("span");
         badge.className = "badge";
-        badge.textContent = window.NovoskillLevels ? window.NovoskillLevels.label(it.niveau_actuel) : (it.niveau_actuel || "–");
+        badge.textContent = window.NovoskillLevels ? window.NovoskillLevels.label(it.niveau_actuel) : (it.niveau_actuel || "â€“");
 
         const audit = document.createElement("span");
         audit.className = "muted";
-        audit.textContent = it.date_dernier_audit ? `Audit : ${formatDateFR(it.date_dernier_audit)}` : "Audit : –";
+        audit.textContent = it.date_dernier_audit ? `Audit : ${formatDateFR(it.date_dernier_audit)}` : "Audit : â€“";
 
         meta.appendChild(badge);
         meta.appendChild(audit);
@@ -1473,7 +1475,7 @@ async function initDomainesFormationUI(id_consultant) {
 
         const tdDate = document.createElement("td");
         tdDate.className = "col-date";
-        tdDate.textContent = it.date_dernier_audit ? formatDateFR(it.date_dernier_audit) : "–";
+        tdDate.textContent = it.date_dernier_audit ? formatDateFR(it.date_dernier_audit) : "â€“";
         tr.appendChild(tdDate);
 
         body.appendChild(tr);
@@ -1494,7 +1496,7 @@ async function initDomainesFormationUI(id_consultant) {
 
         renderCompetencesTable(body);
       } catch (e) {
-        showAlert("error", "Erreur de chargement des compétences : " + e.message);
+        showAlert("error", "Erreur de chargement des compÃ©tences : " + e.message);
       }
     }
 
@@ -1509,7 +1511,7 @@ async function initDomainesFormationUI(id_consultant) {
       const level = document.getElementById("competenceLevel");
 
       _selectedCompetence = null;
-      if (selected) selected.textContent = "–";
+      if (selected) selected.textContent = "â€“";
       if (level) level.value = "A";
       if (results) results.innerHTML = "";
 
@@ -1540,7 +1542,7 @@ async function initDomainesFormationUI(id_consultant) {
       results.innerHTML = "";
 
       if (!list || list.length === 0) {
-        results.innerHTML = `<div class="result-item" style="cursor:default; color:#6b7280;">Aucun résultat</div>`;
+        results.innerHTML = `<div class="result-item" style="cursor:default; color:#6b7280;">Aucun rÃ©sultat</div>`;
         return;
       }
 
@@ -1595,7 +1597,7 @@ async function initDomainesFormationUI(id_consultant) {
           div.addEventListener("click", () => {
             _selectedCompetence = it;
             const selected = document.getElementById("competenceSelected");
-            if (selected) selected.textContent = `${it.code} — ${it.intitule}`;
+            if (selected) selected.textContent = `${it.code} â€” ${it.intitule}`;
           });
 
           wrap.appendChild(div);
@@ -1617,7 +1619,7 @@ async function initDomainesFormationUI(id_consultant) {
         if (!resp.ok) return;
         renderCompetenceResults(body);
       } catch (e) {
-        console.warn("Erreur recherche compétences:", e);
+        console.warn("Erreur recherche compÃ©tences:", e);
       }
     }
 
@@ -1625,7 +1627,7 @@ async function initDomainesFormationUI(id_consultant) {
       if (!CONSULTANT_ID) return;
 
       if (!_selectedCompetence || !_selectedCompetence.id_competence) {
-        showAlert("error", "Merci de sélectionner une compétence dans la liste.");
+        showAlert("error", "Merci de sÃ©lectionner une compÃ©tence dans la liste.");
         return;
       }
 
@@ -1651,19 +1653,19 @@ async function initDomainesFormationUI(id_consultant) {
         }
 
         closeAddCompetenceModal();
-        showAlert("success", "Compétence ajoutée (ou mise à jour).");
+        showAlert("success", "CompÃ©tence ajoutÃ©e (ou mise Ã  jour).");
         loadConsultantCompetences(CONSULTANT_ID);
 
       } catch (e) {
-        showAlert("error", "Erreur lors de l’ajout : " + e.message);
+        showAlert("error", "Erreur lors de lâ€™ajout : " + e.message);
       }
     }
 
     window.addEventListener("DOMContentLoaded", () => {
       const id = getQueryParam("id");
-      
+
       if (!id) {
-        showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
+        showAlert("error", "Identifiant consultant manquant dans lâ€™URL. Le lien utilisÃ© nâ€™est pas valide.");
         return;
       }
 
@@ -1682,7 +1684,7 @@ async function initDomainesFormationUI(id_consultant) {
         mob.addEventListener("blur", () => formatPhoneInput(mob));
       }
 
-      // Vue par défaut : dashboard
+      // Vue par dÃ©faut : dashboard
       switchView("dashboard");
 
       // Menu

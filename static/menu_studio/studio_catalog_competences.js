@@ -1,12 +1,12 @@
-(function () {
+﻿(function () {
   let _bound = false;
   let _items = [];
   let _q = "";
   let _qTimer = null;
   let _show = "active";
-  let _dom = new Set();   // id_domaine_competence sélectionnés
+  let _dom = new Set();   // id_domaine_competence sÃ©lectionnÃ©s
   let _onlyPending = false;
-  let _itemsAll = [];     // liste brute reçue de l’API (avant filtres UI)
+  let _itemsAll = [];     // liste brute reÃ§ue de lâ€™API (avant filtres UI)
   let _domainsLoaded = false;
   let _domainItems = [];
   let _metricsLoaded = false;
@@ -41,7 +41,7 @@
         sel.innerHTML = "";
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "—";
+        opt0.textContent = "â€”";
         sel.appendChild(opt0);
 
         (_domainItems || []).forEach(d => {
@@ -58,7 +58,7 @@
 
         sel.value = keep || "";
     }
-    
+
     function fillAiDomainSelect(selectedId){
         const sel = byId("compAiDomaine");
         if (!sel) return;
@@ -68,7 +68,7 @@
         sel.innerHTML = "";
         const opt0 = document.createElement("option");
         opt0.value = "";
-        opt0.textContent = "—";
+        opt0.textContent = "â€”";
         sel.appendChild(opt0);
 
         (_domainItems || []).forEach(d => {
@@ -92,7 +92,7 @@
 
   let _archiveId = null;
 
-  // -------------------- Grille d'évaluation (Critères) --------------------
+  // -------------------- Grille d'Ã©valuation (CritÃ¨res) --------------------
     let _crit = null;               // Array[4] : { Nom, Eval[4] }
     let _critEditIdx = null;        // 0..3
 
@@ -187,7 +187,7 @@
     if (!ed) return;
 
     const title = byId("compCritEditorTitle");
-    if (title) title.textContent = `Critère ${idx+1}`;
+    if (title) title.textContent = `CritÃ¨re ${idx+1}`;
 
     const c = _crit[idx] || emptyCrit();
 
@@ -219,10 +219,10 @@
     if (btnAdd){
         btnAdd.disabled = used >= 4;
         btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
-        btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
+        btnAdd.title = btnAdd.disabled ? "Maximum 4 critÃ¨res." : "";
     }
 
-    // Affiche uniquement les critères renseignés
+    // Affiche uniquement les critÃ¨res renseignÃ©s
     for (let i=0;i<4;i++){
         const c = _crit[i];
         const nom = (c?.Nom || "").trim();
@@ -240,7 +240,7 @@
 
         const t = document.createElement("div");
         t.className = "sb-acc-title";
-        t.textContent = `Critère ${i+1} – ${nom}`;
+        t.textContent = `CritÃ¨re ${i+1} â€“ ${nom}`;
 
         head.appendChild(t);
 
@@ -296,7 +296,7 @@
     if (!host.children.length){
         const empty = document.createElement("div");
         empty.className = "card-sub";
-        empty.textContent = "Aucun critère. Ajoute au moins 1 critère.";
+        empty.textContent = "Aucun critÃ¨re. Ajoute au moins 1 critÃ¨re.";
         host.appendChild(empty);
     }
     }
@@ -311,11 +311,11 @@
     const e4 = (byId("compCritEval4").value || "").trim();
 
     if (!nom){
-        portal.showAlert("error", "Nom du critère obligatoire.");
+        portal.showAlert("error", "Nom du critÃ¨re obligatoire.");
         return;
     }
     if (!e1 || !e2 || !e3 || !e4){
-        portal.showAlert("error", "Les 4 niveaux d’évaluation sont obligatoires.");
+        portal.showAlert("error", "Les 4 niveaux dâ€™Ã©valuation sont obligatoires.");
         return;
     }
 
@@ -327,28 +327,28 @@
   function validateCritBeforeSave(portal){
     if (!_crit) _crit = [emptyCrit(), emptyCrit(), emptyCrit(), emptyCrit()];
 
-    // Au moins 1 critère
+    // Au moins 1 critÃ¨re
     if (usedCritCount() < 1){
-        portal.showAlert("error", "Ajoute au moins 1 critère d’évaluation.");
+        portal.showAlert("error", "Ajoute au moins 1 critÃ¨re dâ€™Ã©valuation.");
         return false;
     }
 
-    // Pas de critères partiels
+    // Pas de critÃ¨res partiels
     for (let i=0;i<4;i++){
         const c = _crit[i];
         const nom = (c?.Nom || "").trim();
         const ev = c?.Eval || ["","","",""];
         const anyEval = ev.some(x => (x || "").trim().length > 0);
 
-        if (!nom && !anyEval) continue; // critère vide autorisé
+        if (!nom && !anyEval) continue; // critÃ¨re vide autorisÃ©
 
         if (!nom){
-        portal.showAlert("error", `Critère ${i+1} : nom obligatoire.`);
+        portal.showAlert("error", `CritÃ¨re ${i+1} : nom obligatoire.`);
         return false;
         }
         for (let k=0;k<4;k++){
         if (!(ev[k] || "").trim()){
-            portal.showAlert("error", `Critère ${i+1} : niveau ${k+1} obligatoire.`);
+            portal.showAlert("error", `CritÃ¨re ${i+1} : niveau ${k+1} obligatoire.`);
             return false;
         }
         }
@@ -413,7 +413,7 @@
 
   function setStatus(msg){
     const el = byId("catCompsStatus");
-    if (el) el.textContent = msg || "—";
+    if (el) el.textContent = msg || "â€”";
   }
 
   function htmlEsc(v){
@@ -462,7 +462,7 @@
   function openPdfLoadingWindow(title){
     const safeTitle = htmlEsc(title || "Document PDF");
     const win = window.open("", "_blank");
-    if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
+    if (!win) throw new Error("Le navigateur a bloquÃ© lâ€™ouverture du PDF.");
 
     win.document.open();
     win.document.write(`<!doctype html>
@@ -471,16 +471,16 @@
 <meta charset="utf-8">
 <title>${safeTitle}</title>
 <style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;}
+html,body{height:100%;margin:0;background:#f3f4f6;font-family: var(--ns-font-ui);color:#111827;}
 .pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
 .pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.12);border-top-color:#355caa;animation:pdfSpin .8s linear infinite;}
-.pdf-loading__text{font-size:14px;color:#475467;}
+.pdf-loading__text{font-size: var(--ns-text-md);color:#475467;}
 iframe{width:100%;height:100%;border:0;background:#fff;}
 @keyframes pdfSpin{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
-<div class="pdf-loading"><div class="pdf-loading__spinner"></div><div class="pdf-loading__text">Génération du PDF…</div></div>
+<div class="pdf-loading"><div class="pdf-loading__spinner"></div><div class="pdf-loading__text">GÃ©nÃ©ration du PDFâ€¦</div></div>
 </body>
 </html>`);
     win.document.close();
@@ -548,9 +548,9 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     if (!ownerId) throw new Error("Owner introuvable.");
 
     const compId = String(item?.id_comp || item?.id_competence || "").trim();
-    if (!compId) throw new Error("Compétence introuvable.");
+    if (!compId) throw new Error("CompÃ©tence introuvable.");
 
-    const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+    const title = `Fiche compÃ©tence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "CompÃ©tence"}`;
     const url = `${portal.apiBase}/studio/org/competences/fiche_pdf/${encodeURIComponent(ownerId)}/${encodeURIComponent(compId)}`;
     const blob = await fetchPdfBlob(url);
     renderPdfBlobInWindow(popupWin, blob, title);
@@ -696,7 +696,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     if (rgb) dom.style.setProperty("--sb-domain-rgb", rgb.css);
 
     dom.appendChild(dot);
-    dom.appendChild(document.createTextNode(domLabel || "—"));
+    dom.appendChild(document.createTextNode(domLabel || "â€”"));
     return dom;
   }
 
@@ -790,7 +790,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     const arrows = document.createElement("span");
     arrows.className = "studio-catalog-comp-sort-arrows";
     arrows.setAttribute("aria-hidden", "true");
-    arrows.innerHTML = `<span class="studio-catalog-comp-sort-arrow${active && dir === "asc" ? " is-active" : ""}">▲</span><span class="studio-catalog-comp-sort-arrow${active && dir === "desc" ? " is-active" : ""}">▼</span>`;
+    arrows.innerHTML = `<span class="studio-catalog-comp-sort-arrow${active && dir === "asc" ? " is-active" : ""}">â–²</span><span class="studio-catalog-comp-sort-arrow${active && dir === "desc" ? " is-active" : ""}">â–¼</span>`;
 
     btn.appendChild(text);
     btn.appendChild(arrows);
@@ -807,7 +807,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     const sizeWrap = document.createElement("div");
     sizeWrap.className = "studio-catalog-comp-page-size-wrap";
     sizeWrap.innerHTML = `
-      <select class="sb-select studio-catalog-comp-page-size-select" data-cat-comp-page-size aria-label="Nombre d'éléments par page">
+      <select class="sb-select studio-catalog-comp-page-size-select" data-cat-comp-page-size aria-label="Nombre d'Ã©lÃ©ments par page">
         <option value="25"${_pageSize === 25 ? " selected" : ""}>25 par page</option>
         <option value="50"${_pageSize === 50 ? " selected" : ""}>50 par page</option>
         <option value="100"${_pageSize === 100 ? " selected" : ""}>100 par page</option>
@@ -816,14 +816,14 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
 
     const pagination = document.createElement("div");
     pagination.className = "studio-catalog-comp-pagination";
-    pagination.setAttribute("aria-label", "Pagination compétences");
+    pagination.setAttribute("aria-label", "Pagination compÃ©tences");
 
     const prev = document.createElement("button");
     prev.type = "button";
     prev.className = "sb-icon-btn studio-catalog-comp-page-nav";
     prev.setAttribute("data-cat-comp-page-nav", "prev");
-    prev.title = "Page précédente";
-    prev.setAttribute("aria-label", "Page précédente");
+    prev.title = "Page prÃ©cÃ©dente";
+    prev.setAttribute("aria-label", "Page prÃ©cÃ©dente");
     prev.disabled = page <= 1;
     prev.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>`;
     pagination.appendChild(prev);
@@ -833,7 +833,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
         const ellipsis = document.createElement("span");
         ellipsis.className = "studio-catalog-comp-page-ellipsis";
         ellipsis.setAttribute("aria-hidden", "true");
-        ellipsis.textContent = "…";
+        ellipsis.textContent = "â€¦";
         pagination.appendChild(ellipsis);
         return;
       }
@@ -860,7 +860,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
 
     const range = document.createElement("div");
     range.className = "studio-catalog-comp-range-label";
-    range.textContent = total ? `${pageData.start + 1} – ${pageData.end} sur ${total}` : "0 sur 0";
+    range.textContent = total ? `${pageData.start + 1} â€“ ${pageData.end} sur ${total}` : "0 sur 0";
 
     foot.appendChild(sizeWrap);
     foot.appendChild(pagination);
@@ -877,7 +877,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     if (empty) empty.style.display = _items.length ? "none" : "";
 
     if (!_items.length) {
-      setStatus("Aucune compétence trouvée.");
+      setStatus("Aucune compÃ©tence trouvÃ©e.");
       return;
     }
 
@@ -892,7 +892,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
 
     const compHead = document.createElement("div");
     compHead.className = "studio-catalog-comp-table-cell studio-catalog-comp-table-cell--competence";
-    compHead.appendChild(renderSortHead("competence", "Compétence"));
+    compHead.appendChild(renderSortHead("competence", "CompÃ©tence"));
     head.appendChild(compHead);
 
     const domainHead = document.createElement("div");
@@ -918,7 +918,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
 
       const code = document.createElement("span");
       code.className = "sb-badge sb-badge--comp studio-catalog-comp-code";
-      code.textContent = it.code || "—";
+      code.textContent = it.code || "â€”";
 
       const titleWrap = document.createElement("div");
       titleWrap.className = "studio-catalog-comp-title-wrap";
@@ -931,7 +931,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       if (pendingKey(it.etat) || it.masque){
         const meta = document.createElement("div");
         meta.className = "studio-catalog-comp-meta";
-        meta.textContent = it.masque ? "Archivée" : "À valider";
+        meta.textContent = it.masque ? "ArchivÃ©e" : "Ã€ valider";
         titleWrap.appendChild(meta);
       }
 
@@ -953,7 +953,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
         btnEdit.type = "button";
         btnEdit.className = "sb-icon-btn";
         btnEdit.title = "Modifier";
-        btnEdit.setAttribute("aria-label", "Modifier la compétence");
+        btnEdit.setAttribute("aria-label", "Modifier la compÃ©tence");
         btnEdit.innerHTML = iconSvg("edit");
         btnEdit.addEventListener("click", () => openEdit(window.portal, it));
         actions.appendChild(btnEdit);
@@ -962,15 +962,15 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       const btnPdf = document.createElement("button");
       btnPdf.type = "button";
       btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
-      btnPdf.title = "Exporter la fiche compétence";
-      btnPdf.setAttribute("aria-label", "Exporter la fiche compétence");
+      btnPdf.title = "Exporter la fiche compÃ©tence";
+      btnPdf.setAttribute("aria-label", "Exporter la fiche compÃ©tence");
       btnPdf.innerHTML = iconSvg("pdf");
       btnPdf.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
         let popupWin = null;
         try {
-          const title = `Fiche compétence - ${it.code || ""} ${it.intitule || ""}`.trim();
+          const title = `Fiche compÃ©tence - ${it.code || ""} ${it.intitule || ""}`.trim();
           popupWin = openPdfLoadingWindow(title);
           await openSkillSheetPdf(window.portal, it, popupWin);
         } catch (err) {
@@ -986,14 +986,14 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
           btnArch.type = "button";
           btnArch.className = "sb-icon-btn sb-icon-btn--danger";
           btnArch.title = "Archiver";
-          btnArch.setAttribute("aria-label", "Archiver la compétence");
+          btnArch.setAttribute("aria-label", "Archiver la compÃ©tence");
           btnArch.innerHTML = iconSvg("archive");
           btnArch.addEventListener("click", () => openArchive(it));
           actions.appendChild(btnArch);
         } else {
           const arch = document.createElement("span");
           arch.className = "sb-badge sb-badge--poste studio-catalog-archive-badge";
-          arch.textContent = "Archivée";
+          arch.textContent = "ArchivÃ©e";
           actions.appendChild(arch);
         }
       }
@@ -1010,7 +1010,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     host.appendChild(renderPagination(pageData));
 
     const suffix = _items.length > 1 ? "s" : "";
-    setStatus(`${_items.length} compétence${suffix} affichée${suffix}.`);
+    setStatus(`${_items.length} compÃ©tence${suffix} affichÃ©e${suffix}.`);
   }
 
   function normalizeMapColor(raw){
@@ -1026,7 +1026,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     return String(p?.codif_client || p?.codif_poste || "").trim();
   }
 
-  function setMapText(id, value, fallback = "–"){
+  function setMapText(id, value, fallback = "â€“"){
     const el = byId(id);
     if (!el) return;
     const v = value === null || value === undefined || value === "" ? fallback : value;
@@ -1163,24 +1163,24 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     const body = byId("catCompsMapModalBody");
 
     const code = mapPosteCode(poste);
-    if (title) title.textContent = `${code ? code + " — " : ""}${poste?.intitule_poste || "Poste"}`;
-    if (sub) sub.textContent = did ? `Domaine : ${dom?.titre_court || dom?.titre || "—"}` : "Toutes les compétences rattachées au poste.";
+    if (title) title.textContent = `${code ? code + " â€” " : ""}${poste?.intitule_poste || "Poste"}`;
+    if (sub) sub.textContent = did ? `Domaine : ${dom?.titre_court || dom?.titre || "â€”"}` : "Toutes les compÃ©tences rattachÃ©es au poste.";
 
     if (body){
       if (!links.length){
-        body.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compétence rattachée.</div>`;
+        body.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compÃ©tence rattachÃ©e.</div>`;
       } else {
         body.innerHTML = `
           <div class="studio-catalog-comp-map-detail-list">
             ${links.map(l => `
               <div class="studio-catalog-comp-map-detail-row">
                 <div class="studio-catalog-comp-map-detail-main">
-                  <span class="sb-badge sb-badge--comp">${htmlEsc(l.code || "—")}</span>
+                  <span class="sb-badge sb-badge--comp">${htmlEsc(l.code || "â€”")}</span>
                   <div class="studio-catalog-comp-map-detail-title">${htmlEsc(l.intitule || "")}</div>
                 </div>
                 <div class="studio-catalog-comp-map-detail-side">
                   ${l.niveau_requis ? `<span class="sb-badge sb-badge-niv sb-badge-niv-${htmlEsc(String(l.niveau_requis).toLowerCase())}">${htmlEsc(l.niveau_requis)}</span>` : ""}
-                  <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-cat-comp-map-pdf="${htmlEsc(l.id_comp || "")}" title="Exporter la fiche compétence" aria-label="Exporter la fiche compétence">${iconSvg("pdf")}</button>
+                  <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-cat-comp-map-pdf="${htmlEsc(l.id_comp || "")}" title="Exporter la fiche compÃ©tence" aria-label="Exporter la fiche compÃ©tence">${iconSvg("pdf")}</button>
                 </div>
               </div>
             `).join("")}
@@ -1248,7 +1248,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
         const h = barHeight(v);
         const color = normalizeMapColor(d.couleur);
         return `
-          <td class="hb-cell" data-cat-comp-map-poste="${htmlEsc(p.id_poste)}" data-cat-comp-map-domaine="${htmlEsc(d.id_domaine_competence)}" data-value="${v}" title="${htmlEsc((code ? code + " — " : "") + (intitule || "Poste") + " | " + (d.titre_court || d.titre || "Domaine") + " : " + v)}">
+          <td class="hb-cell" data-cat-comp-map-poste="${htmlEsc(p.id_poste)}" data-cat-comp-map-domaine="${htmlEsc(d.id_domaine_competence)}" data-value="${v}" title="${htmlEsc((code ? code + " â€” " : "") + (intitule || "Poste") + " | " + (d.titre_court || d.titre || "Domaine") + " : " + v)}">
             <div class="hb-barbox">${h > 0 ? `<div class="hb-bar" style="height:${h}px; background:${htmlEsc(color)};"></div>` : ""}</div>
           </td>`;
       }).join("");
@@ -1258,11 +1258,11 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
           <td class="hb-rowhead">
             <div class="hb-poste-line">
               ${code ? `<span class="sb-badge sb-badge-ref-poste-code hb-poste-code">${htmlEsc(code)}</span>` : ""}
-              <span class="hb-poste-title">${htmlEsc(intitule || "—")}</span>
+              <span class="hb-poste-title">${htmlEsc(intitule || "â€”")}</span>
             </div>
           </td>
           ${cells}
-          <td class="hb-totalcell hb-totalclick" data-cat-comp-map-poste="${htmlEsc(p.id_poste)}" data-cat-comp-map-domaine="" data-value="${total}" title="Voir toutes les compétences du poste (${total})">${total ? total : ""}</td>
+          <td class="hb-totalcell hb-totalclick" data-cat-comp-map-poste="${htmlEsc(p.id_poste)}" data-cat-comp-map-domaine="" data-value="${total}" title="Voir toutes les compÃ©tences du poste (${total})">${total ? total : ""}</td>
         </tr>`;
     });
 
@@ -1300,7 +1300,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     setMapText("catCompsMapKpiPostes", postesShown.length);
     setMapText("catCompsMapKpiDomaines", domainesShown.length);
     setMapText("catCompsMapKpiCompetences", total);
-    setMapText("catCompsMapStatus", "Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.", "");
+    setMapText("catCompsMapStatus", "Visualisez les domaines mobilisÃ©s par chaque poste. Cliquez sur une cellule pour voir le dÃ©tail.", "");
   }
 
   async function loadCartographie(portal, force){
@@ -1313,7 +1313,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     if (!ownerId) return;
 
     try{
-      setMapText("catCompsMapStatus", "Chargement…", "");
+      setMapText("catCompsMapStatus", "Chargementâ€¦", "");
       const data = await portal.apiJson(`${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/cartographie`);
       _mapRaw = data || {};
       _mapLoaded = true;
@@ -1325,9 +1325,9 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
       if (grid) grid.innerHTML = "";
       const empty = byId("catCompsMapEmpty");
       if (empty) empty.style.display = "";
-      setMapText("catCompsMapKpiPostes", "–");
-      setMapText("catCompsMapKpiDomaines", "–");
-      setMapText("catCompsMapKpiCompetences", "–");
+      setMapText("catCompsMapKpiPostes", "â€“");
+      setMapText("catCompsMapKpiDomaines", "â€“");
+      setMapText("catCompsMapKpiCompetences", "â€“");
       setMapText("catCompsMapStatus", "Erreur de chargement de la cartographie.", "");
       portal.showAlert("error", e?.message || String(e));
     }
@@ -1394,7 +1394,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
         const url = `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/ai_draft`;
 
         const btn = byId("btnCompAiGenerate");
-        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Génération…"; }
+        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "GÃ©nÃ©rationâ€¦"; }
 
         try{
             const draft = await portal.apiJson(url, {
@@ -1421,7 +1421,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
             await ensureDomains(portal);
             fillDomainSelect(draft?.domaine_id || "");
 
-            // Grille d'évaluation
+            // Grille d'Ã©valuation
             if (typeof loadCritFromJson === "function"){
             loadCritFromJson(draft?.grille_evaluation || null);
             }
@@ -1431,7 +1431,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
         } catch(e){
             portal.showAlert("error", e?.message || String(e));
         } finally {
-            if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "Générer"; }
+            if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "GÃ©nÃ©rer"; }
         }
     }
 
@@ -1442,7 +1442,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
         const b = byId("compModalBadge");
         if (b){ b.style.display = "none"; b.textContent = ""; }
 
-        byId("compModalTitle").textContent = "Créer une compétence";
+        byId("compModalTitle").textContent = "CrÃ©er une compÃ©tence";
 
         const aiBtn = byId("btnCompAi");
         if (aiBtn) aiBtn.style.display = "";
@@ -1482,7 +1482,7 @@ async function openEdit(portal, it){
       b.style.display = code ? "" : "none";
     }
 
-    byId("compModalTitle").textContent = (it && it.intitule) ? String(it.intitule) : "Compétence";
+    byId("compModalTitle").textContent = (it && it.intitule) ? String(it.intitule) : "CompÃ©tence";
 
     const sub = byId("compModalSub");
     if (sub){ sub.textContent = ""; sub.style.display = "none"; }
@@ -1533,7 +1533,7 @@ async function save(portal){
     const nivD = (byId("compNivD")?.value || "").trim();
 
     if (!title){
-      portal.showAlert("error", "Intitulé obligatoire.");
+      portal.showAlert("error", "IntitulÃ© obligatoire.");
       return;
     }
 
@@ -1573,7 +1573,7 @@ async function save(portal){
 
 function openArchive(it){
     _archiveId = it.id_comp;
-    byId("compArchiveMsg").textContent = `Archiver "${it.code || "—"} – ${it.intitule || ""}" ?`;
+    byId("compArchiveMsg").textContent = `Archiver "${it.code || "â€”"} â€“ ${it.intitule || ""}" ?`;
     openModal("modalCompArchive");
   }
 
@@ -1605,8 +1605,8 @@ function openArchive(it){
     layout.classList.toggle("is-filters-collapsed", isCollapsed);
     panel.setAttribute("aria-hidden", isCollapsed ? "true" : "false");
     btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
-    btn.setAttribute("title", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
-    btn.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+    btn.setAttribute("title", isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres");
+    btn.setAttribute("aria-label", isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres");
   }
 
   function toggleFilterSection(btn){
@@ -1668,7 +1668,7 @@ function openArchive(it){
       const item = { id_comp: idComp, code: btn.closest(".studio-catalog-comp-map-detail-row")?.querySelector(".sb-badge--comp")?.textContent || "" };
       let popupWin = null;
       try{
-        popupWin = openPdfLoadingWindow("Fiche compétence");
+        popupWin = openPdfLoadingWindow("Fiche compÃ©tence");
         await openSkillSheetPdf(portal, item, popupWin);
       } catch(err){
         try { if (popupWin && !popupWin.closed) popupWin.close(); } catch(_) {}
@@ -1685,7 +1685,7 @@ function openArchive(it){
       catch (e) { portal.showAlert("error", e?.message || String(e)); }
     });
 
-    // IA: ouverture/fermeture/génération
+    // IA: ouverture/fermeture/gÃ©nÃ©ration
     byId("btnCompAi")?.addEventListener("click", async () => {
     try{
         await ensureDomains(portal);
@@ -1718,7 +1718,7 @@ function openArchive(it){
 
     byId("btnCompCritCancel")?.addEventListener("click", () => hideCritEditor());
 
-    // init par défaut (au cas où)
+    // init par dÃ©faut (au cas oÃ¹)
     resetCrit();
 
     function bindMaxLen(id, max){
@@ -1848,12 +1848,12 @@ function openArchive(it){
     await ensureRole(portal);
     bindOnce(portal);
 
-    setStatus("Chargement…");
+    setStatus("Chargementâ€¦");
     await loadList(portal);
   }
 
   init().catch(e => {
-    if (window.portal && window.portal.showAlert) window.portal.showAlert("error", "Erreur catalogue compétences : " + (e?.message || e));
+    if (window.portal && window.portal.showAlert) window.portal.showAlert("error", "Erreur catalogue compÃ©tences : " + (e?.message || e));
     setStatus("Erreur de chargement.");
   });
 })();

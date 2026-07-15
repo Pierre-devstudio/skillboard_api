@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const P = window.PeoplePortal;
   if (!P) return;
 
@@ -14,7 +14,7 @@
       return s ? Math.min(100, Math.round((s / q) * 100)) : 0;
     })();
     return `<div class="pp-list-row">
-      <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · Niveau requis ${P.levelLabel(r.niveau_requis)} · Actuel ${P.levelLabel(r.niveau_actuel)}</div></div>
+      <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} Â· Niveau requis ${P.levelLabel(r.niveau_requis)} Â· Actuel ${P.levelLabel(r.niveau_actuel)}</div></div>
       <div class="pp-progress"><span style="width:${score}%"></span></div>
     </div>`;
   }
@@ -49,13 +49,13 @@
         P.infoRow("Entreprise", p.nom_owner),
         P.infoRow("Service", p.nom_service),
         P.infoRow("Poste", p.intitule_poste),
-        P.infoRow("Dernière évaluation", k.derniere_evaluation ? P.fmtDate(k.derniere_evaluation) : "Non renseignée")
+        P.infoRow("DerniÃ¨re Ã©valuation", k.derniere_evaluation ? P.fmtDate(k.derniere_evaluation) : "Non renseignÃ©e")
       ].join("");
     }
 
     const list = byId("ppDashCompetences");
     const rows = data.competences_prioritaires || [];
-    if (list) list.innerHTML = rows.length ? rows.map(scoreRow).join("") : P.itemEmpty("Aucune compétence prioritaire trouvée sur le poste.");
+    if (list) list.innerHTML = rows.length ? rows.map(scoreRow).join("") : P.itemEmpty("Aucune compÃ©tence prioritaire trouvÃ©e sur le poste.");
   }
 
   load();

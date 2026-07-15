@@ -1,6 +1,6 @@
-/* ======================================================
+﻿/* ======================================================
    static/validation_electronique.js
-   Composant commun : validation électronique Novoskill
+   Composant commun : validation Ã©lectronique Novoskill
    ====================================================== */
 (function () {
   "use strict";
@@ -59,7 +59,7 @@
     if (state.loaded && $("modalValidationElectronique")) return;
 
     const res = await fetch("/validation_electronique.html", { cache: "no-store" });
-    if (!res.ok) throw new Error("Composant de validation électronique indisponible.");
+    if (!res.ok) throw new Error("Composant de validation Ã©lectronique indisponible.");
 
     const html = await res.text();
     const host = document.createElement("div");
@@ -243,10 +243,10 @@
     const opt = state.options || {};
 
     try {
-      setMsg("info", "Enregistrement…");
+      setMsg("info", "Enregistrementâ€¦");
 
       if (typeof opt.saveDocument === "function") {
-        await opt.saveDocument("à signer 2/2");
+        await opt.saveDocument("Ã  signer 2/2");
       }
 
       closeModal();
@@ -267,16 +267,16 @@
     }
 
     try {
-      setMsg("info", "Enregistrement de la validation…");
+      setMsg("info", "Enregistrement de la validationâ€¦");
 
       let documentId = (opt.documentId || "").toString().trim();
       if (typeof opt.saveDocument === "function") {
-        const saved = await opt.saveDocument("à signer 2/2");
+        const saved = await opt.saveDocument("Ã  signer 2/2");
         documentId = (saved?.id_entretien || saved?.id_document_ref || documentId || "").toString().trim();
       }
 
       if (!documentId) {
-        throw new Error("Document introuvable après enregistrement.");
+        throw new Error("Document introuvable aprÃ¨s enregistrement.");
       }
 
       const signatureImage = state.mode === "signature_generee"
@@ -315,7 +315,7 @@
             });
 
             if (!res.ok) {
-              let msg = "Erreur lors de la validation électronique.";
+              let msg = "Erreur lors de la validation Ã©lectronique.";
               try {
                 const data = await res.json();
                 msg = data?.detail || msg;
@@ -342,7 +342,7 @@
 
     setMsg("info", "");
 
-    const title = state.options.title || "Validation électronique";
+    const title = state.options.title || "Validation Ã©lectronique";
     const sub = state.options.subtitle || signatureName();
     const name = signatureName();
 

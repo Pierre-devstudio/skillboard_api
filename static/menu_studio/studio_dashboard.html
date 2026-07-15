@@ -1,4 +1,4 @@
-<section id="view-dashboard" class="studio-dash studio-dash-adaptive">
+﻿<section id="view-dashboard" class="studio-dash studio-dash-adaptive">
   <div class="sb-dashboard-logo-wrap studio-dashboard-logo-wrap">
     <img src="/Logo_NOVOSKILL.png" alt="Novoskill" class="sb-logo">
   </div>
@@ -10,15 +10,15 @@
 
     <div class="sb-dashboard-scope studio-dash-scope" aria-label="Filtres du dashboard">
       <div class="sb-dashboard-scope-field studio-dash-filter-field studio-dash-filter-field--service">
-        <label for="studioDashService">Périmètre</label>
+        <label for="studioDashService">PÃ©rimÃ¨tre</label>
         <select id="studioDashService" class="sb-dashboard-service-select studio-dash-service-select">
           <option value="">Tous les services</option>
         </select>
       </div>
 
       <div class="sb-dashboard-crit-field studio-dash-filter-field studio-dash-filter-field--range">
-        <label for="studioDashCriticite">Criticité minimale <strong id="studioDashCriticiteLabel">≥ 70</strong></label>
-        <input id="studioDashCriticite" class="sb-dashboard-crit-range studio-dash-crit-range" type="range" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
+        <label for="studioDashCriticite">CriticitÃ© minimale <strong id="studioDashCriticiteLabel">â‰¥ 70</strong></label>
+        <input id="studioDashCriticite" class="sb-dashboard-crit-range studio-dash-crit-range" type="range" min="0" max="100" step="5" value="70" aria-label="CriticitÃ© minimale">
       </div>
 
       <button type="button" class="sb-btn sb-btn--init studio-dash-refresh" id="studioDashRefresh">
@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <div id="studioDashStatus" class="studio-dash-status">Chargement…</div>
+  <div id="studioDashStatus" class="studio-dash-status">Chargementâ€¦</div>
 
   <div class="studio-dash-kpi-grid">
     <article class="card studio-dash-kpi-card studio-dash-kpi-card--postes">
@@ -38,8 +38,8 @@
         <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.35-4.35"/></svg>
       </div>
       <div class="studio-dash-kpi-main">
-        <h2>Postes à surveiller</h2>
-        <div class="studio-dash-kpi-value" id="studioDashPostesWatch">—</div>
+        <h2>Postes Ã  surveiller</h2>
+        <div class="studio-dash-kpi-value" id="studioDashPostesWatch">â€”</div>
         <div class="studio-dash-kpi-sub">issus du moteur Insights</div>
       </div>
       <div class="studio-dash-spark" id="studioDashPostesSpark" aria-hidden="true"></div>
@@ -50,9 +50,9 @@
         <svg width="22" height="22" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2 7.5 14 3 9.6l6.2-.9z"/></svg>
       </div>
       <div class="studio-dash-kpi-main">
-        <h2>Compétences sensibles</h2>
-        <div class="studio-dash-kpi-value" id="studioDashCompetencesRisk">—</div>
-        <div class="studio-dash-kpi-sub">à sécuriser / transmettre</div>
+        <h2>CompÃ©tences sensibles</h2>
+        <div class="studio-dash-kpi-value" id="studioDashCompetencesRisk">â€”</div>
+        <div class="studio-dash-kpi-sub">Ã  sÃ©curiser / transmettre</div>
       </div>
       <div class="studio-dash-spark" id="studioDashSkillsSpark" aria-hidden="true"></div>
     </article>
@@ -63,8 +63,8 @@
       </div>
       <div class="studio-dash-kpi-main">
         <h2>Demandes RH en attente</h2>
-        <div class="studio-dash-kpi-value" id="studioDashDemandesPending">—</div>
-        <div class="studio-dash-kpi-sub">à arbitrer côté RH</div>
+        <div class="studio-dash-kpi-value" id="studioDashDemandesPending">â€”</div>
+        <div class="studio-dash-kpi-sub">Ã  arbitrer cÃ´tÃ© RH</div>
       </div>
       <div class="studio-dash-spark" id="studioDashDemandesSpark" aria-hidden="true"></div>
     </article>
@@ -75,8 +75,8 @@
       </div>
       <div class="studio-dash-kpi-main">
         <h2>Actions en cours</h2>
-        <div class="studio-dash-kpi-value" id="studioDashActionsCount">—</div>
-        <div class="studio-dash-kpi-sub">priorités à suivre</div>
+        <div class="studio-dash-kpi-value" id="studioDashActionsCount">â€”</div>
+        <div class="studio-dash-kpi-sub">prioritÃ©s Ã  suivre</div>
       </div>
       <div class="studio-dash-spark" id="studioDashActionsSpark" aria-hidden="true"></div>
     </article>
@@ -89,10 +89,10 @@
         <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="demandes" aria-label="Explication demandes RH">?</button>
       </div>
       <div class="studio-dash-demandes-layout">
-        <div class="studio-dash-donut" id="studioDashDemandesDonut"><span>—</span><small>total</small></div>
+        <div class="studio-dash-donut" id="studioDashDemandesDonut"><span>â€”</span><small>total</small></div>
         <div class="studio-dash-status-list" id="studioDashDemandesStatusList"></div>
       </div>
-      <button type="button" class="studio-dash-link" data-dash-view="demandes_rh">Voir toutes les demandes <span aria-hidden="true">›</span></button>
+      <button type="button" class="studio-dash-link" data-dash-view="demandes_rh">Voir toutes les demandes <span aria-hidden="true">â€º</span></button>
     </article>
 
     <article class="card studio-dash-panel studio-dash-panel--alerts">
@@ -101,38 +101,38 @@
         <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="alertes" aria-label="Explication alertes principales">?</button>
       </div>
       <div class="studio-dash-alert-list" id="studioDashAlertList"></div>
-      <button type="button" class="studio-dash-link" data-dash-view="analyse_rh">Voir toutes les alertes <span aria-hidden="true">›</span></button>
+      <button type="button" class="studio-dash-link" data-dash-view="analyse_rh">Voir toutes les alertes <span aria-hidden="true">â€º</span></button>
     </article>
   </div>
 
   <div class="studio-dash-bottom-grid">
     <article class="card studio-dash-panel studio-dash-panel--console">
       <div class="studio-dash-panel-head">
-        <h2>État des consoles</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="consoles" aria-label="Explication état des consoles">?</button>
+        <h2>Ã‰tat des consoles</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="consoles" aria-label="Explication Ã©tat des consoles">?</button>
       </div>
       <div class="studio-dash-console-list" id="studioDashConsoleList"></div>
-      <button type="button" class="studio-dash-link" data-dash-view="console_status">Voir le détail des consoles <span aria-hidden="true">›</span></button>
+      <button type="button" class="studio-dash-link" data-dash-view="console_status">Voir le dÃ©tail des consoles <span aria-hidden="true">â€º</span></button>
     </article>
 
     <article class="card studio-dash-panel studio-dash-panel--activity">
       <div class="studio-dash-panel-head">
-        <h2>Activité récente</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="activite" aria-label="Explication activité récente">?</button>
+        <h2>ActivitÃ© rÃ©cente</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="activite" aria-label="Explication activitÃ© rÃ©cente">?</button>
       </div>
       <div class="studio-dash-activity-list" id="studioDashActivityList"></div>
-      <button type="button" class="studio-dash-link" data-dash-view="arbitrages_rh">Voir toute l’activité <span aria-hidden="true">›</span></button>
+      <button type="button" class="studio-dash-link" data-dash-view="arbitrages_rh">Voir toute lâ€™activitÃ© <span aria-hidden="true">â€º</span></button>
     </article>
 
     <article class="card studio-dash-panel studio-dash-panel--quick">
       <div class="studio-dash-panel-head">
-        <h2>Accès rapides</h2>
-        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="raccourcis" aria-label="Explication accès rapides">?</button>
+        <h2>AccÃ¨s rapides</h2>
+        <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="raccourcis" aria-label="Explication accÃ¨s rapides">?</button>
       </div>
       <div class="studio-dash-quick-grid">
         <button type="button" class="studio-dash-quick" data-dash-view="demandes_rh">
           <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
-          Créer une demande RH
+          CrÃ©er une demande RH
         </button>
         <button type="button" class="studio-dash-quick" data-dash-view="analyse_rh">
           <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M21 21H3"/><path d="M7 17V9"/><path d="M12 17V5"/><path d="M17 17v-6"/></svg></span>
@@ -140,11 +140,11 @@
         </button>
         <button type="button" class="studio-dash-quick" data-dash-view="simulateur_rh">
           <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 7h4v4H4z"/><path d="M16 13h4v4h-4z"/><path d="M8 9h4a4 4 0 0 1 4 4v2"/></svg></span>
-          Simuler un scénario
+          Simuler un scÃ©nario
         </button>
         <button type="button" class="studio-dash-quick" data-dash-view="plan_actions">
           <span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M20 7 9 18l-5-5"/></svg></span>
-          Consulter le plan d’actions
+          Consulter le plan dâ€™actions
         </button>
       </div>
     </article>
@@ -153,7 +153,7 @@
   <div class="studio-dash-linked" id="studioDashLinkedSection" style="display:none;">
     <article class="card studio-dash-panel studio-dash-panel--linked">
       <div class="studio-dash-panel-head">
-        <h2>Sites / clients à surveiller</h2>
+        <h2>Sites / clients Ã  surveiller</h2>
         <span class="studio-dash-count" id="studioDashLinkedCount">0</span>
       </div>
       <div class="studio-dash-mini-list" id="studioDashLinkedStructureItems"></div>
@@ -164,7 +164,7 @@
     <div class="sb-modal-card studio-dash-modal-card" role="dialog" aria-modal="true" aria-labelledby="studioDashHelpTitle">
       <div class="sb-modal-head">
         <h3 id="studioDashHelpTitle">Indicateur</h3>
-        <button type="button" class="sb-modal-x" id="studioDashHelpClose" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="studioDashHelpClose" aria-label="Fermer">Ã—</button>
       </div>
       <div class="sb-modal-body">
         <p id="studioDashHelpBody"></p>

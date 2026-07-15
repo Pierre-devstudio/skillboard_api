@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   function byId(id){ return document.getElementById(id); }

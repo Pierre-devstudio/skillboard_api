@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
   const COMING_SOON = "/menu_studio/studio_coming_soon.html";
 
@@ -10,7 +10,7 @@
 
   function updateComingSoonTitle(){
     const active = document.querySelector(".menu-item.active");
-    const title = active ? active.textContent.trim() : "Fonctionnalité";
+    const title = active ? active.textContent.trim() : "FonctionnalitÃ©";
     const section = document.querySelector("#viewsMount section[style*='block']") || document.querySelector("section[id^='view-']:not([style*='none'])");
     const el = section ? section.querySelector("#comingSoonTitle") : byId("comingSoonTitle");
     if (el) el.textContent = title;
@@ -162,10 +162,10 @@
     const subtitle = byId("topbarSubtitle");
 
     if (info) info.style.display = "";
-    if (userName) userName.textContent = "Chargement…";
+    if (userName) userName.textContent = "Chargementâ€¦";
     if (userRole) userRole.textContent = "";
     if (name) name.textContent = "Studio";
-    if (subtitle) subtitle.textContent = "Console Studio · Abonnement actif";
+    if (subtitle) subtitle.textContent = "Console Studio Â· Abonnement actif";
 
     try {
       if (!window.PortalAuthCommon) return;
@@ -209,7 +209,7 @@
       }
 
       if (name) name.textContent = ownerName ? `${ownerName} (Studio)` : "Studio";
-      if (subtitle) subtitle.textContent = "Console Studio · Abonnement actif";
+      if (subtitle) subtitle.textContent = "Console Studio Â· Abonnement actif";
       if (userName) userName.textContent = displayName || "Utilisateur";
       if (userRole) userRole.textContent = roleLabel || "Utilisateur";
 

@@ -1,3 +1,3 @@
-(function () {
-  // Placeholder Partner volontairement sans logique métier.
+﻿(function () {
+  // Placeholder Partner volontairement sans logique mÃ©tier.
 })();

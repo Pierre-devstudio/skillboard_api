@@ -1,0 +1,43 @@
+﻿/* ======================================================
+   NOVOSKILL â€” SOCLE TYPOGRAPHIQUE OFFICIEL
+   Toute nouvelle valeur ou famille nÃ©cessite une validation expresse.
+   ====================================================== */
+:root {
+  --ns-font-ui: "Inter", "Segoe UI", Arial, sans-serif;
+  --ns-font-system: "Segoe UI", Arial, sans-serif;
+  --ns-font-mono: "Roboto Mono", Consolas, Monaco, monospace;
+  --ns-font-signature: "Segoe Script", "Brush Script MT", cursive;
+  --ns-text-xs: 0.75rem;
+  --ns-text-sm: 0.8125rem;
+  --ns-text-md: 0.875rem;
+  --ns-text-lg: 0.9375rem;
+  --ns-title-sm: 1.0625rem;
+  --ns-title-md: 1.25rem;
+  --ns-title-lg: 1.5rem;
+  --ns-kpi: 1.75rem;
+  --ns-weight-regular: 400;
+  --ns-weight-medium: 500;
+  --ns-weight-semibold: 600;
+  --ns-weight-bold: 700;
+  --ns-leading-tight: 1.15;
+  --ns-leading-title: 1.25;
+  --ns-leading-ui: 1.35;
+  --ns-leading-body: 1.5;
+  --ns-leading-long: 1.6;
+  --ns-letter-tight: -0.01em;
+  --ns-letter-normal: 0;
+  --ns-letter-label: 0.04em;
+  --ns-text-primary: #172033;
+  --ns-text-secondary: #475569;
+  --ns-text-muted: #64748b;
+  --ns-text-disabled: #7b8494;
+  --ns-text-on-dark: #ffffff;
+  --ns-text-link: #2258a5;
+  --ns-focus-ring: #1d4ed8;
+}
+html { font-family: var(--ns-font-ui); font-size: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body, button, input, select, textarea { font-family: inherit; }
+body { font-size: var(--ns-text-md); font-weight: var(--ns-weight-regular); line-height: var(--ns-leading-body); color: var(--ns-text-primary); }
+.ns-signature, [data-signature], .signature-manuscrite { font-family: var(--ns-font-signature); font-size: var(--ns-title-lg); font-weight: var(--ns-weight-regular); line-height: var(--ns-leading-title); }
+code, pre, kbd, samp, .ns-monospace { font-family: var(--ns-font-mono); }
+:focus-visible { outline: 2px solid var(--ns-focus-ring); outline-offset: 2px; }

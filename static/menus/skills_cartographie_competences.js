@@ -1,9 +1,9 @@
-/* ======================================================
+﻿/* ======================================================
    static/menus/skills_cartographie_competences.js
-   - Menu "Cartographie des compétences"
-   - Heatmap Poste × Domaine (WAOOOUUU)
+   - Menu "Cartographie des compÃ©tences"
+   - Heatmap Poste Ã— Domaine (WAOOOUUU)
    - Filtres: Service + Recherche + Domaines multiples
-   - Modal détail (V1: résumé cellule)
+   - Modal dÃ©tail (V1: rÃ©sumÃ© cellule)
    ====================================================== */
 
 (function () {
@@ -40,7 +40,7 @@
     if (!s) return "";
     if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
 
-    // int ARGB signé WinForms (ex: -256)
+    // int ARGB signÃ© WinForms (ex: -256)
     if (/^-?\d+$/.test(s)) {
       const n = parseInt(s, 10);
       const u = (n >>> 0);
@@ -61,7 +61,7 @@
   function levelKey4(v) {
     const raw = safeTrim(v);
     const norm = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    if (!norm || norm === "-" || norm === "—") return "";
+    if (!norm || norm === "-" || norm === "â€”") return "";
     if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
     if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
     if (norm === "c" || norm.includes("avance")) return "C";
@@ -71,7 +71,7 @@
 
   function levelLabel4(v) {
     const k = levelKey4(v);
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" })[k] || (safeTrim(v) || "—");
+    return ({ A: "DÃ©butant", B: "IntermÃ©diaire", C: "AvancÃ©", D: "Expert" })[k] || (safeTrim(v) || "â€”");
   }
 
   function levelBadgeHtml4(v, title = "Niveau") {
@@ -82,8 +82,8 @@
   }
 
   /**
-   * Code poste affiché :
-   * - on préfère le code interne (si présent)
+   * Code poste affichÃ© :
+   * - on prÃ©fÃ¨re le code interne (si prÃ©sent)
    * - sinon fallback sur le code PT (codif_poste)
    */
   function getPosteCodeDisplay(p) {
@@ -92,7 +92,7 @@
   }
 
 
-  function setText(id, v, fallback = "–") {
+  function setText(id, v, fallback = "â€“") {
     const el = byId(id);
     if (!el) return;
     el.textContent = (v === null || v === undefined || v === "") ? fallback : String(v);
@@ -104,13 +104,13 @@
   }
 
   function setStatus(text) {
-    const st = byId("hmStatus") || byId("mapStatus"); // tolérant
+    const st = byId("hmStatus") || byId("mapStatus"); // tolÃ©rant
     if (st) st.textContent = text || "";
   }
 
   function setCounts(text) {
-    const ct = byId("hmCounts") || byId("mapCount"); // tolérant
-    if (ct) ct.textContent = text || "—";
+    const ct = byId("hmCounts") || byId("mapCount"); // tolÃ©rant
+    if (ct) ct.textContent = text || "â€”";
   }
 
   function parseStoredDomaines() {
@@ -203,7 +203,7 @@
     if (t) {
       if (title && typeof title === "object") {
         const code = safeTrim(title.code);
-        const text = safeTrim(title.text) || "Détail";
+        const text = safeTrim(title.text) || "DÃ©tail";
         t.innerHTML = `
           <div class="map-modal-titleline">
             ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ``}
@@ -211,7 +211,7 @@
           </div>
         `;
       } else {
-        t.textContent = title || "Détail";
+        t.textContent = title || "DÃ©tail";
       }
     }
 
@@ -235,15 +235,15 @@
     modal.setAttribute("aria-hidden", "true");
   }
 
-  
+
   async function loadServices(portal) {
-    // Filtre service : géré UNE SEULE FOIS (portal_common.js)
+    // Filtre service : gÃ©rÃ© UNE SEULE FOIS (portal_common.js)
     await portal.serviceFilter.populateSelect({
       portal,
       selectId: "mapServiceSelect",
       storageKey: STORE_SERVICE,
       labelAll: "Tous les services",
-      labelNonLie: "Non lié",
+      labelNonLie: "Non liÃ©",
       includeAll: true,
       includeNonLie: true,
       allowIndent: true
@@ -286,13 +286,13 @@
 
     if (id_domaine) params.set("id_domaine", id_domaine);
 
-    // cohérent avec le filtre Service en cours
+    // cohÃ©rent avec le filtre Service en cours
     const svc = filters?.id_service;
     if (svc && svc !== window.portal.serviceFilter.ALL_ID) {
       params.set("id_service", svc);
     }
 
-    // NEW: porteurs désactivés par défaut (drill-down éventuel plus tard)
+    // NEW: porteurs dÃ©sactivÃ©s par dÃ©faut (drill-down Ã©ventuel plus tard)
     params.set("include_porteurs", includePorteurs ? "true" : "false");
 
     const url = `${portal.apiBase}/skills/cartographie/cell/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
@@ -356,8 +356,8 @@
     const el = byId("mapAdvancedIntro");
     if (!el) return;
     el.textContent = _advancedMode === "collaborateur"
-      ? "Sélectionnez un collaborateur pour afficher ses compétences détenues dans le périmètre de cartographie. La recherche tolère les saisies partielles et les accents."
-      : "Ajoutez une ou plusieurs compétences, choisissez ET ou OU, puis identifiez les collaborateurs qui couvrent le besoin.";
+      ? "SÃ©lectionnez un collaborateur pour afficher ses compÃ©tences dÃ©tenues dans le pÃ©rimÃ¨tre de cartographie. La recherche tolÃ¨re les saisies partielles et les accents."
+      : "Ajoutez une ou plusieurs compÃ©tences, choisissez ET ou OU, puis identifiez les collaborateurs qui couvrent le besoin.";
   }
 
   function resetAdvancedState() {
@@ -406,8 +406,8 @@
     const input = byId("mapAdvancedSearchInput");
     if (input) {
       input.placeholder = _advancedMode === "collaborateur"
-        ? "Nom, prénom ou service..."
-        : "Code, intitulé, mot-clé de compétence...";
+        ? "Nom, prÃ©nom ou service..."
+        : "Code, intitulÃ©, mot-clÃ© de compÃ©tence...";
       input.value = keepState ? input.value : "";
     }
 
@@ -426,8 +426,8 @@
 
   function getAdvancedEmptyStatus() {
     return _advancedMode === "collaborateur"
-      ? "Recherchez puis sélectionnez un collaborateur."
-      : "Recherchez puis ajoutez une ou plusieurs compétences.";
+      ? "Recherchez puis sÃ©lectionnez un collaborateur."
+      : "Recherchez puis ajoutez une ou plusieurs compÃ©tences.";
   }
 
   function setAdvancedPrintEnabled(enabled) {
@@ -446,18 +446,18 @@
     const head = byId("mapAdvancedTableHead");
     const body = byId("mapAdvancedTableBody");
     if (head) head.innerHTML = "";
-    if (body) body.innerHTML = `<tr><td class="map-advanced-empty">${escapeHtml(message || "Aucune recherche lancée.")}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td class="map-advanced-empty">${escapeHtml(message || "Aucune recherche lancÃ©e.")}</td></tr>`;
     setAdvancedPrintEnabled(false);
   }
 
   function advancedLevelBadge(value) {
     return window.NovoskillLevels
-      ? window.NovoskillLevels.badgeHtml(value || "—", "Niveau détenu")
-      : levelBadgeHtml4(value || "—", "Niveau détenu");
+      ? window.NovoskillLevels.badgeHtml(value || "â€”", "Niveau dÃ©tenu")
+      : levelBadgeHtml4(value || "â€”", "Niveau dÃ©tenu");
   }
 
   function advancedPersonName(it) {
-    return `${safeTrim(it?.prenom_effectif)} ${safeTrim(it?.nom_effectif)}`.trim() || "—";
+    return `${safeTrim(it?.prenom_effectif)} ${safeTrim(it?.nom_effectif)}`.trim() || "â€”";
   }
 
   function advancedPosteParts(it) {
@@ -470,27 +470,27 @@
 
   function advancedPosteLabel(it) {
     const p = advancedPosteParts(it);
-    if (p.code && p.label) return `${p.code} — ${p.label}`;
-    return p.label || p.code || "—";
+    if (p.code && p.label) return `${p.code} â€” ${p.label}`;
+    return p.label || p.code || "â€”";
   }
 
   function advancedPosteHtml(it) {
     const p = advancedPosteParts(it);
-    const title = p.label || "Poste non renseigné";
+    const title = p.label || "Poste non renseignÃ©";
     return `
       <div class="map-advanced-poste-cell">
         <div class="map-advanced-poste-line">
           ${p.code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.code)}</span>` : ``}
           <span>${escapeHtml(title)}</span>
         </div>
-        <div class="map-advanced-poste-service">${escapeHtml(p.service || "Service non renseigné")}</div>
+        <div class="map-advanced-poste-service">${escapeHtml(p.service || "Service non renseignÃ©")}</div>
       </div>
     `;
   }
 
   function advancedCompLabel(it) {
     const code = safeTrim(it?.code);
-    const comp = safeTrim(it?.intitule) || "Compétence";
+    const comp = safeTrim(it?.intitule) || "CompÃ©tence";
     return { code, comp };
   }
 
@@ -505,7 +505,7 @@
   }
 
   function advancedDomainBadgeHtml(it) {
-    const label = safeTrim(it?.domaine_label) || "Domaine non renseigné";
+    const label = safeTrim(it?.domaine_label) || "Domaine non renseignÃ©";
     const color = normalizeColor(it?.domaine_couleur) || "#9ca3af";
     return `<span class="sb-badge-domaine sb-badge-domaine--soft map-advanced-domain-badge" style="--dom-color:${escapeHtml(color)}">${escapeHtml(label)}</span>`;
   }
@@ -522,30 +522,30 @@
           <div class="map-advanced-selected-card">
             <div>
               <div class="map-advanced-selected-title">${escapeHtml(advancedPersonName(_advancedSelectedPerson))}</div>
-              <div class="map-advanced-selected-sub">${escapeHtml(safeTrim(_advancedSelectedPerson.nom_service) || "Service non renseigné")} · ${escapeHtml(advancedPosteLabel(_advancedSelectedPerson))}</div>
+              <div class="map-advanced-selected-sub">${escapeHtml(safeTrim(_advancedSelectedPerson.nom_service) || "Service non renseignÃ©")} Â· ${escapeHtml(advancedPosteLabel(_advancedSelectedPerson))}</div>
             </div>
-            <button type="button" class="map-advanced-chip-x" data-map-advanced-clear-person aria-label="Retirer le collaborateur">×</button>
+            <button type="button" class="map-advanced-chip-x" data-map-advanced-clear-person aria-label="Retirer le collaborateur">Ã—</button>
           </div>
         `;
       } else {
-        host.innerHTML = `<div class="map-advanced-help">Aucun collaborateur sélectionné.</div>`;
+        host.innerHTML = `<div class="map-advanced-help">Aucun collaborateur sÃ©lectionnÃ©.</div>`;
       }
       return;
     }
 
     const chips = _advancedSelectedSkills.map(skill => {
       const code = safeTrim(skill.code);
-      const label = safeTrim(skill.intitule) || "Compétence";
+      const label = safeTrim(skill.intitule) || "CompÃ©tence";
       return `
         <span class="map-advanced-chip" title="${escapeHtml(label)}">
           ${code ? `<strong>${escapeHtml(code)}</strong>` : ``}
           <span>${escapeHtml(label)}</span>
-          <button type="button" data-map-advanced-remove-skill="${escapeHtml(skill.id_comp)}" aria-label="Retirer">×</button>
+          <button type="button" data-map-advanced-remove-skill="${escapeHtml(skill.id_comp)}" aria-label="Retirer">Ã—</button>
         </span>
       `;
     }).join("");
 
-    host.innerHTML = chips || `<div class="map-advanced-help">Aucune compétence sélectionnée. Ajoutez des compétences depuis les suggestions.</div>`;
+    host.innerHTML = chips || `<div class="map-advanced-help">Aucune compÃ©tence sÃ©lectionnÃ©e. Ajoutez des compÃ©tences depuis les suggestions.</div>`;
 
     if (operatorBox) {
       operatorBox.style.display = _advancedSelectedSkills.length >= 2 ? "" : "none";
@@ -580,7 +580,7 @@
         return `
           <button type="button" class="map-advanced-suggest-row" data-map-advanced-suggest-index="${index}">
             <span class="map-advanced-suggest-main">${escapeHtml(advancedPersonName(it))}</span>
-            <span class="map-advanced-suggest-sub">${escapeHtml(safeTrim(it.nom_service) || "Service non renseigné")} · ${escapeHtml(advancedPosteLabel(it))}</span>
+            <span class="map-advanced-suggest-sub">${escapeHtml(safeTrim(it.nom_service) || "Service non renseignÃ©")} Â· ${escapeHtml(advancedPosteLabel(it))}</span>
           </button>
         `;
       }
@@ -592,7 +592,7 @@
             ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
             <span>${escapeHtml(comp)}</span>
           </span>
-          <span class="map-advanced-suggest-sub">${escapeHtml(safeTrim(it.domaine_label) || "Domaine non renseigné")}</span>
+          <span class="map-advanced-suggest-sub">${escapeHtml(safeTrim(it.domaine_label) || "Domaine non renseignÃ©")}</span>
         </button>
       `;
     }).join("");
@@ -619,8 +619,8 @@
     if (input) input.value = _advancedSelectedPerson ? advancedPersonName(_advancedSelectedPerson) : "";
     hideAdvancedSuggestions();
     renderAdvancedSelection();
-    renderAdvancedEmpty("Lancez la recherche pour afficher ses compétences.");
-    setAdvancedStatus("Lancez la recherche pour afficher ses compétences détenues.");
+    renderAdvancedEmpty("Lancez la recherche pour afficher ses compÃ©tences.");
+    setAdvancedStatus("Lancez la recherche pour afficher ses compÃ©tences dÃ©tenues.");
   }
 
   function renderAdvancedCompetenceCrossResults(items) {
@@ -633,21 +633,21 @@
       <tr>
         <th>Collaborateur</th>
         <th>Poste actuel</th>
-        <th>Compétence</th>
+        <th>CompÃ©tence</th>
         <th class="col-center">Niveau atteint</th>
       </tr>
     `;
 
     if (!items.length) {
-      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucun collaborateur ne correspond à cette combinaison.</td></tr>`;
-      setAdvancedStatus("Aucun résultat trouvé.");
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucun collaborateur ne correspond Ã  cette combinaison.</td></tr>`;
+      setAdvancedStatus("Aucun rÃ©sultat trouvÃ©.");
       setAdvancedPrintEnabled(false);
       return;
     }
 
     body.innerHTML = items.map(it => {
       const comps = Array.isArray(it.competences) ? it.competences : [];
-      const rows = comps.length ? comps : [{ code: "", intitule: "—", niveau_actuel: "" }];
+      const rows = comps.length ? comps : [{ code: "", intitule: "â€”", niveau_actuel: "" }];
       const span = rows.length;
       return rows.map((c, index) => `
         <tr class="${index > 0 ? "map-advanced-subrow" : ""}">
@@ -659,7 +659,7 @@
       `).join("");
     }).join("");
     setAdvancedPrintEnabled(true);
-    setAdvancedStatus(`${items.length} collaborateur(s) trouvé(s) · logique ${_advancedOperator === "or" ? "OU" : "ET"}.`);
+    setAdvancedStatus(`${items.length} collaborateur(s) trouvÃ©(s) Â· logique ${_advancedOperator === "or" ? "OU" : "ET"}.`);
   }
 
   function renderAdvancedCompetenceTextResults(items) {
@@ -672,14 +672,14 @@
       <tr>
         <th>Collaborateur</th>
         <th>Poste actuel</th>
-        <th>Compétence</th>
+        <th>CompÃ©tence</th>
         <th class="col-center">Niveau atteint</th>
       </tr>
     `;
 
     if (!items.length) {
-      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucun résultat pour cette recherche.</td></tr>`;
-      setAdvancedStatus("Aucun résultat trouvé.");
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="4">Aucun rÃ©sultat pour cette recherche.</td></tr>`;
+      setAdvancedStatus("Aucun rÃ©sultat trouvÃ©.");
       setAdvancedPrintEnabled(false);
       return;
     }
@@ -688,15 +688,15 @@
       const hasPerson = safeTrim(it.id_effectif) !== "";
       return `
         <tr>
-          <td>${hasPerson ? `<strong>${escapeHtml(advancedPersonName(it))}</strong>` : `<span class="sb-muted">Aucun détenteur identifié</span>`}</td>
-          <td>${hasPerson ? advancedPosteHtml(it) : `<span class="sb-muted">—</span>`}</td>
+          <td>${hasPerson ? `<strong>${escapeHtml(advancedPersonName(it))}</strong>` : `<span class="sb-muted">Aucun dÃ©tenteur identifiÃ©</span>`}</td>
+          <td>${hasPerson ? advancedPosteHtml(it) : `<span class="sb-muted">â€”</span>`}</td>
           <td>${advancedCompHtml(it)}</td>
-          <td class="col-center">${hasPerson ? advancedLevelBadge(it.niveau_actuel) : `<span class="sb-badge">—</span>`}</td>
+          <td class="col-center">${hasPerson ? advancedLevelBadge(it.niveau_actuel) : `<span class="sb-badge">â€”</span>`}</td>
         </tr>
       `;
     }).join("");
     setAdvancedPrintEnabled(true);
-    setAdvancedStatus(`${items.length} résultat(s).`);
+    setAdvancedStatus(`${items.length} rÃ©sultat(s).`);
   }
 
   function renderAdvancedCollaborateurResults(items) {
@@ -707,15 +707,15 @@
 
     head.innerHTML = `
       <tr>
-        <th>Compétence</th>
+        <th>CompÃ©tence</th>
         <th>Domaine</th>
         <th class="col-center">Niveau atteint</th>
       </tr>
     `;
 
     if (!items.length) {
-      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="3">Aucune compétence évaluée dans le périmètre cartographié.</td></tr>`;
-      setAdvancedStatus("Aucun résultat trouvé.");
+      body.innerHTML = `<tr><td class="map-advanced-empty" colspan="3">Aucune compÃ©tence Ã©valuÃ©e dans le pÃ©rimÃ¨tre cartographiÃ©.</td></tr>`;
+      setAdvancedStatus("Aucun rÃ©sultat trouvÃ©.");
       setAdvancedPrintEnabled(false);
       return;
     }
@@ -728,7 +728,7 @@
       </tr>
     `).join("");
     setAdvancedPrintEnabled(true);
-    setAdvancedStatus(`${items.length} compétence(s) détenue(s).`);
+    setAdvancedStatus(`${items.length} compÃ©tence(s) dÃ©tenue(s).`);
   }
 
   function renderAdvancedResults(data, mode) {
@@ -749,43 +749,43 @@
   async function openAdvancedCurrentPdf(portal) {
     const body = byId("mapAdvancedTableBody");
     if (!body || body.querySelector(".map-advanced-empty")) {
-      setAdvancedStatus("Aucun tableau à exporter en PDF.");
+      setAdvancedStatus("Aucun tableau Ã  exporter en PDF.");
       return;
     }
 
     if (_advancedMode === "collaborateur" && !_advancedSelectedPerson?.id_effectif) {
-      setAdvancedStatus("Sélectionnez un collaborateur avant de générer le PDF.");
+      setAdvancedStatus("SÃ©lectionnez un collaborateur avant de gÃ©nÃ©rer le PDF.");
       return;
     }
 
     const popup = window.open("about:blank", "_blank");
     if (!popup) {
-      setAdvancedStatus("Ouverture du PDF bloquée par le navigateur.");
+      setAdvancedStatus("Ouverture du PDF bloquÃ©e par le navigateur.");
       return;
     }
 
     try {
       popup.document.open();
-      popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Génération du PDF</title></head><body style="font-family:Arial,sans-serif;color:#111827;padding:24px;">Génération du PDF…</body></html>`);
+      popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>GÃ©nÃ©ration du PDF</title></head><body style="font-family: var(--ns-font-ui);color:#111827;padding:24px;">GÃ©nÃ©ration du PDFâ€¦</body></html>`);
       popup.document.close();
 
-      setAdvancedStatus("Génération du PDF en cours…");
+      setAdvancedStatus("GÃ©nÃ©ration du PDF en coursâ€¦");
       const input = byId("mapAdvancedSearchInput");
       const q = (input?.value || "").trim();
       const params = buildAdvancedSearchParams(_advancedMode, q, getFilters(), "200");
       const url = `${portal.apiBase}/skills/cartographie/recherche_avancee_pdf/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
       const blob = await mapApiPdfBlob(url);
-      mapRenderPdfBlobInWindow(popup, blob, "Recherche avancée - Cartographie des compétences");
-      setAdvancedStatus("PDF généré.");
+      mapRenderPdfBlobInWindow(popup, blob, "Recherche avancÃ©e - Cartographie des compÃ©tences");
+      setAdvancedStatus("PDF gÃ©nÃ©rÃ©.");
     } catch (e) {
       try { popup.close(); } catch (_) {}
-      setAdvancedStatus(e?.message || "Erreur pendant la génération du PDF.");
+      setAdvancedStatus(e?.message || "Erreur pendant la gÃ©nÃ©ration du PDF.");
     }
   }
 
   function formatDateFr(value) {
     const s = safeTrim(value);
-    if (!s) return "—";
+    if (!s) return "â€”";
     const ymd = s.slice(0, 10);
     const parts = ymd.split("-");
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -814,19 +814,19 @@
 
     if (_advancedMode === "competence" && !_advancedSelectedSkills.length && q.length < 2) {
       renderAdvancedEmpty();
-      setAdvancedStatus("Ajoutez au moins une compétence, ou saisissez au moins 2 caractères.");
+      setAdvancedStatus("Ajoutez au moins une compÃ©tence, ou saisissez au moins 2 caractÃ¨res.");
       return;
     }
 
     if (_advancedMode === "collaborateur" && !_advancedSelectedPerson) {
-      renderAdvancedEmpty("Sélectionnez un collaborateur dans les suggestions.");
-      setAdvancedStatus("La recherche par collaborateur est volontairement unique : sélectionnez une personne dans les suggestions.");
+      renderAdvancedEmpty("SÃ©lectionnez un collaborateur dans les suggestions.");
+      setAdvancedStatus("La recherche par collaborateur est volontairement unique : sÃ©lectionnez une personne dans les suggestions.");
       return;
     }
 
     try {
       hideAdvancedSuggestions();
-      setAdvancedStatus("Recherche en cours…");
+      setAdvancedStatus("Recherche en coursâ€¦");
       const data = await fetchAdvancedSearch(portal, _advancedMode, q, getFilters());
       renderAdvancedResults(data, _advancedMode);
     } catch (e) {
@@ -864,10 +864,10 @@
 
   function mapCritBadgeHtml(raw) {
     const n = Number(raw);
-    if (!Number.isFinite(n)) return `<span class="sb-crit-badge sb-crit-l1">—</span>`;
+    if (!Number.isFinite(n)) return `<span class="sb-crit-badge sb-crit-l1">â€”</span>`;
     const v = Math.max(0, Math.min(100, Math.round(n)));
     const level = v >= 80 ? 5 : (v >= 60 ? 4 : (v >= 40 ? 3 : (v >= 20 ? 2 : 1)));
-    return `<span class="sb-crit-badge sb-crit-l${level}" title="Criticité ${v}">${escapeHtml(String(v))}</span>`;
+    return `<span class="sb-crit-badge sb-crit-l${level}" title="CriticitÃ© ${v}">${escapeHtml(String(v))}</span>`;
   }
 
   function mapCoverageState(comp, cible, pauseActive) {
@@ -891,7 +891,7 @@
       none: "Non couvert",
       paused: "Poste en pause"
     };
-    const title = `${labels[state] || "Couverture"} — Qualifiés: ${nbQual} | Disponibles: ${nbDispo} | Bruts: ${nbBrut} | Cible: ${target}`;
+    const title = `${labels[state] || "Couverture"} â€” QualifiÃ©s: ${nbQual} | Disponibles: ${nbDispo} | Bruts: ${nbBrut} | Cible: ${target}`;
     return `<span class="map-coverage-dot map-coverage-dot--${state}" title="${escapeHtml(title)}" aria-label="${escapeHtml(labels[state] || "Couverture")}"></span>`;
   }
 
@@ -935,10 +935,10 @@
 
   function mapRenderPdfBlobInWindow(popupWin, blob, title) {
     const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
-    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+    if (!win) throw new Error("Ouverture du PDF bloquÃ©e par le navigateur.");
 
     const blobUrl = URL.createObjectURL(blob);
-    const safeTitle = escapeHtml(title || "Fiche compétence");
+    const safeTitle = escapeHtml(title || "Fiche compÃ©tence");
     win.document.open();
     win.document.write(`<!doctype html>
 <html lang="fr">
@@ -958,14 +958,14 @@
 
   async function openMapCompetenceFichePdf(portal, comp, popupWin) {
     const idComp = safeTrim(comp?.id_comp);
-    if (!portal?.contactId || !portal?.apiBase || !idComp) throw new Error("Compétence introuvable.");
+    if (!portal?.contactId || !portal?.apiBase || !idComp) throw new Error("CompÃ©tence introuvable.");
 
     const code = safeTrim(comp?.code);
-    const intitule = safeTrim(comp?.intitule) || "Compétence";
+    const intitule = safeTrim(comp?.intitule) || "CompÃ©tence";
     const title = `${code ? `${code} - ` : ""}${intitule}`;
     const url = `${portal.apiBase}/skills/analyse/competences/fiche_pdf/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(idComp)}?_=${Date.now()}`;
     const blob = await mapApiPdfBlob(url);
-    mapRenderPdfBlobInWindow(popupWin, blob, `Fiche compétence - ${mapSafeFilenamePart(title)}`);
+    mapRenderPdfBlobInWindow(popupWin, blob, `Fiche compÃ©tence - ${mapSafeFilenamePart(title)}`);
   }
 
   function buildMatrix(data) {
@@ -1012,10 +1012,10 @@
   }
 
     // ==============================
-  // V2: Matrice Poste × Domaine
+  // V2: Matrice Poste Ã— Domaine
   // - 1 ligne par poste
   // - 1 barre par domaine visible
-  // - clic sur une barre => on réutilise le modal cellule
+  // - clic sur une barre => on rÃ©utilise le modal cellule
   // ==============================
 
   function renderHistogramBars(containerEl, domaines, postes, matrixMap) {
@@ -1025,14 +1025,14 @@
     const rows = Array.isArray(postes) ? postes : [];
     const map = (matrixMap instanceof Map) ? matrixMap : new Map();
 
-    // Domaines triés alphabétique (clé = titre_court/titre/id)
+    // Domaines triÃ©s alphabÃ©tique (clÃ© = titre_court/titre/id)
     const doms = (Array.isArray(domaines) ? domaines : []).slice().sort((a, b) => {
       const ka = ((a?.titre_court || a?.titre || a?.id_domaine_competence || "") + "").trim().toLowerCase();
       const kb = ((b?.titre_court || b?.titre || b?.id_domaine_competence || "") + "").trim().toLowerCase();
       return ka.localeCompare(kb, "fr", { sensitivity: "base" });
     });
 
-    // Totaux + max (pour échelle barres)
+    // Totaux + max (pour Ã©chelle barres)
     const rowTotal = new Map();
     const colTotal = new Map();
     let maxVal = 0;
@@ -1083,7 +1083,7 @@
         const col = normalizeColor(d.couleur ?? d.domaine_couleur) || "#e5e7eb";
         const h = barHeight(v);
 
-        const title = `${cod ? cod + " — " : ""}${intit || "Poste"} | ${d.titre_court || d.titre || d.id_domaine_competence} : ${v}`;
+        const title = `${cod ? cod + " â€” " : ""}${intit || "Poste"} | ${d.titre_court || d.titre || d.id_domaine_competence} : ${v}`;
 
         tds += `
           <td class="hb-cell"
@@ -1105,7 +1105,7 @@
           <td class="hb-rowhead">
             <div class="hb-poste-line">
               ${cod ? `<span class="sb-badge sb-badge-ref-poste-code hb-poste-code">${escapeHtml(cod)}</span>` : ``}
-              <span class="hb-poste-title">${escapeHtml(intit || "—")}</span>
+              <span class="hb-poste-title">${escapeHtml(intit || "â€”")}</span>
             </div>
           </td>
           ${tds}
@@ -1113,7 +1113,7 @@
               data-id_poste="${escapeHtml(p.id_poste)}"
               data-id_domaine=""
               data-value="${tot}"
-              title="Voir toutes les compétences du poste (${tot})">
+              title="Voir toutes les compÃ©tences du poste (${tot})">
             ${tot ? tot : ""}
           </td>
         </tr>
@@ -1133,7 +1133,7 @@
         <table class="hb-table">
           <thead><tr>${ths}</tr></thead>
           <tbody>
-            ${trs || `<tr><td class="hb-rowhead">—</td><td class="hb-totalcell">—</td></tr>`}
+            ${trs || `<tr><td class="hb-rowhead">â€”</td><td class="hb-totalcell">â€”</td></tr>`}
             <tr class="hb-totalrow">${totalRow}</tr>
           </tbody>
         </table>
@@ -1156,8 +1156,8 @@
 
     try {
       portal.showAlert("", "");
-      setStatus("Chargement…");
-      setCounts("—");
+      setStatus("Chargementâ€¦");
+      setCounts("â€”");
 
       const data = await fetchMatrice(portal, f);
       const rawDomaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
@@ -1181,12 +1181,12 @@
       if (!grid || !postesShown.length || !domainesShown.length) {
         if (grid) grid.innerHTML = "";
         setVisible("mapEmpty", true);
-        setCounts("—");
+        setCounts("â€”");
         setText("kpiMapPostes", postesShown.length);
         setText("kpiMapDomaines", domainesShown.length);
         setText("kpiMapCompetences", 0);
         applyScopeLabels();
-        setStatus("Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.");
+        setStatus("Visualisez les domaines mobilisÃ©s par chaque poste. Cliquez sur une cellule pour voir le dÃ©tail.");
         return;
       }
 
@@ -1207,8 +1207,8 @@
       setText("kpiMapPostes", postesShown.length);
       setText("kpiMapDomaines", domainesShown.length);
       setText("kpiMapCompetences", totalCompetences);
-      setCounts("—");
-      setStatus("Visualisez les domaines mobilisés par chaque poste. Cliquez sur une cellule pour voir le détail.");
+      setCounts("â€”");
+      setStatus("Visualisez les domaines mobilisÃ©s par chaque poste. Cliquez sur une cellule pour voir le dÃ©tail.");
 
     } catch (e) {
       portal.showAlert("error", "Erreur cartographie : " + e.message);
@@ -1218,11 +1218,11 @@
       if (grid) grid.innerHTML = "";
 
       setVisible("mapEmpty", true);
-      setCounts("—");
-      setText("kpiMapPostes", "–");
-      setText("kpiMapDomaines", "–");
-      setText("kpiMapCompetences", "–");
-      setText("kpiMapScope", "–");
+      setCounts("â€”");
+      setText("kpiMapPostes", "â€“");
+      setText("kpiMapDomaines", "â€“");
+      setText("kpiMapCompetences", "â€“");
+      setText("kpiMapScope", "â€“");
       setStatus("Erreur de chargement");
     }
   }
@@ -1234,8 +1234,8 @@
 
     card.classList.toggle("is-collapsed", collapsed);
     btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    btn.setAttribute("title", collapsed ? "Déplier" : "Replier");
-    btn.setAttribute("aria-label", collapsed ? "Déplier" : "Replier");
+    btn.setAttribute("title", collapsed ? "DÃ©plier" : "Replier");
+    btn.setAttribute("aria-label", collapsed ? "DÃ©plier" : "Replier");
     localStorage.setItem(storageKey, collapsed ? "0" : "1");
   }
 
@@ -1291,13 +1291,13 @@
         try {
           popup = window.open("about:blank", "_blank");
           if (popup) {
-            popup.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du PDF…</p>");
+            popup.document.write("<p style='font-family: var(--ns-font-ui);padding:20px;'>GÃ©nÃ©ration du PDFâ€¦</p>");
           }
           await openMapCompetenceFichePdf(portal, comp, popup);
         } catch (e) {
           try {
             if (popup && !popup.closed) {
-              popup.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">${escapeHtml(e.message || "Erreur PDF")}</pre>`;
+              popup.document.body.innerHTML = `<pre style="font-family: var(--ns-font-ui);white-space:pre-wrap;padding:20px;color:#991b1b;">${escapeHtml(e.message || "Erreur PDF")}</pre>`;
             }
           } catch (_) {}
           portal.showAlert("error", (e && e.message) ? e.message : "Action indisponible.");
@@ -1367,7 +1367,7 @@
           const id = removeSkill.getAttribute("data-map-advanced-remove-skill") || "";
           _advancedSelectedSkills = _advancedSelectedSkills.filter(x => safeTrim(x.id_comp) !== id);
           renderAdvancedSelection();
-          renderAdvancedEmpty(_advancedSelectedSkills.length ? "Lancez la recherche pour identifier les porteurs." : "Aucune recherche lancée.");
+          renderAdvancedEmpty(_advancedSelectedSkills.length ? "Lancez la recherche pour identifier les porteurs." : "Aucune recherche lancÃ©e.");
           setAdvancedStatus(getAdvancedEmptyStatus());
           return;
         }
@@ -1426,8 +1426,8 @@
       });
     }
 
-    // Click cellule => modal résumé (V1)
-    // Click cellule => modal drilldown (liste compétences)
+    // Click cellule => modal rÃ©sumÃ© (V1)
+    // Click cellule => modal drilldown (liste compÃ©tences)
     if (grid) {
       grid.addEventListener("click", async (ev) => {
         // Support: rendu WOW (table td.hm-cell) + ancien rendu (div dataset)
@@ -1472,12 +1472,12 @@
         const selS = byId("mapServiceSelect");
         const scope = selS ? (selS.options[selS.selectedIndex]?.textContent || "Tous les services") : "Tous les services";
 
-        // modal "loading" instant (sinon l’utilisateur croit que ça ne fait rien)
+        // modal "loading" instant (sinon lâ€™utilisateur croit que Ã§a ne fait rien)
         openModal(
-          isPosteTotal ? "Détail poste" : "Détail cellule",
+          isPosteTotal ? "DÃ©tail poste" : "DÃ©tail cellule",
           `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`,
           `<div class="card" style="padding:12px; margin:0;">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
+            <div class="card-sub" style="margin:0;">Chargementâ€¦</div>
           </div>`
         );
 
@@ -1500,7 +1500,7 @@
             ? "#e5e7eb"
             : (normalizeColor(dom.couleur) || "#e5e7eb");
 
-          // Tri: criticité décroissante, puis niveau requis décroissant (C > B > A)
+          // Tri: criticitÃ© dÃ©croissante, puis niveau requis dÃ©croissant (C > B > A)
           function toCrit(v) {
             const n = Number(v);
             return Number.isFinite(n) ? n : -1;
@@ -1527,7 +1527,7 @@
             const nb = toNivRank(b?.niveau_requis);
             if (nb !== na) return nb - na;
 
-            // stabilité: code puis intitulé
+            // stabilitÃ©: code puis intitulÃ©
             const coda = (a?.code || "").toString();
             const codb = (b?.code || "").toString();
             const dc = codb.localeCompare(coda, "fr", { sensitivity: "base" });
@@ -1552,27 +1552,27 @@
             <div class="map-detail-modal-body">
               <div class="map-detail-kpi-grid">
                 ${mapModalKpiCard("domain", "domain", "Domaine", domLabel)}
-                ${mapModalKpiCard("postes", "postes", "Postes concernés", String(Number.isFinite(nbPostesConcernes) && nbPostesConcernes > 0 ? nbPostesConcernes : 1))}
-                ${mapModalKpiCard("skills", "skills", "Compétences requises", String(list.length))}
-                ${mapModalKpiCard("users", "users", "Compétences non couvertes", String(Math.max(0, nbNonCouvertes || 0)))}
+                ${mapModalKpiCard("postes", "postes", "Postes concernÃ©s", String(Number.isFinite(nbPostesConcernes) && nbPostesConcernes > 0 ? nbPostesConcernes : 1))}
+                ${mapModalKpiCard("skills", "skills", "CompÃ©tences requises", String(list.length))}
+                ${mapModalKpiCard("users", "users", "CompÃ©tences non couvertes", String(Math.max(0, nbNonCouvertes || 0)))}
               </div>
 
               <div class="card map-detail-table-card">
                 <div class="map-detail-section-titleline">
                   <span class="map-detail-section-icon" aria-hidden="true">${mapIconSvg("section")}</span>
-                  <div class="card-title map-detail-section-title">Compétences requises</div>
+                  <div class="card-title map-detail-section-title">CompÃ©tences requises</div>
                 </div>
 
                 ${!list.length ? `
-                  <div class="card-sub" style="margin:10px 0 0 0;">Aucune compétence trouvée pour cette cellule.</div>
+                  <div class="card-sub" style="margin:10px 0 0 0;">Aucune compÃ©tence trouvÃ©e pour cette cellule.</div>
                 ` : `
                   <div class="table-wrap map-detail-table-wrap">
                     <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover map-detail-table">
                       <thead>
                         <tr>
-                          <th>Compétence</th>
+                          <th>CompÃ©tence</th>
                           <th class="col-center">Niveau requis</th>
-                          <th class="col-center">Criticité</th>
+                          <th class="col-center">CriticitÃ©</th>
                           <th class="col-center">Couverture</th>
                           <th class="col-center" aria-label="Actions"></th>
                         </tr>
@@ -1584,11 +1584,11 @@
                             code: c.code || "",
                             intitule: c.intitule || ""
                           }));
-                          const code = safeTrim(c.code) || "—";
-                          const intit = safeTrim(c.intitule) || "—";
+                          const code = safeTrim(c.code) || "â€”";
+                          const intit = safeTrim(c.intitule) || "â€”";
                           const niv = window.NovoskillLevels
-                            ? window.NovoskillLevels.badgeHtml(c.niveau_requis || "—", "Niveau requis")
-                            : levelBadgeHtml4(c.niveau_requis || "—", "Niveau requis");
+                            ? window.NovoskillLevels.badgeHtml(c.niveau_requis || "â€”", "Niveau requis")
+                            : levelBadgeHtml4(c.niveau_requis || "â€”", "Niveau requis");
 
                           return `
                             <tr>
@@ -1604,8 +1604,8 @@
                                   <button type="button"
                                           class="sb-icon-btn sb-icon-btn--doc"
                                           data-map-comp-pdf="${compJson}"
-                                          title="PDF fiche compétence"
-                                          aria-label="PDF fiche compétence">
+                                          title="PDF fiche compÃ©tence"
+                                          aria-label="PDF fiche compÃ©tence">
                                     ${mapIconSvg("doc")}
                                   </button>
                                 </div>
@@ -1622,13 +1622,13 @@
           `;
 
           const posteTitleOnly = ((poste.intitule_poste || "").toString().trim());
-          const posteModalTitle = posteTitleOnly || posteCode || (isPosteTotal ? "Détail poste" : "Détail cellule");
+          const posteModalTitle = posteTitleOnly || posteCode || (isPosteTotal ? "DÃ©tail poste" : "DÃ©tail cellule");
 
           openModal({ code: posteCode, text: posteModalTitle }, "", body);
 
         } catch (e) {
           openModal(
-            "Détail cellule",
+            "DÃ©tail cellule",
             `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`,
             `<div class="card" style="padding:12px; margin:0;">
               <div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>
@@ -1653,11 +1653,11 @@
     onShow: async (portal) => {
       try {
         bindOnce(portal);
-        
+
         if (!_servicesLoaded) {
           await loadServices(portal);
 
-          // restore service après chargement options
+          // restore service aprÃ¨s chargement options
           const selService = byId("mapServiceSelect");
           const storedService = (localStorage.getItem(STORE_SERVICE) || "").trim();
           if (selService && storedService && Array.from(selService.options).some(o => o.value === storedService)) {

@@ -1,4 +1,4 @@
-INSTALLATION AUDIT FIABILITE INSIGHTS
+﻿INSTALLATION AUDIT FIABILITE INSIGHTS
 =====================================
 
 1) Dezippe le contenu de ce pack directement dans la racine de ton projet skillboard_api.

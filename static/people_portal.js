@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
   window.portal.registerMenu({ view: "dashboard", htmlUrl: "/menu_people/people_dashboard.html" });
@@ -54,7 +54,7 @@
   }
 
   function itemEmpty(text) {
-    return `<div class="pp-empty">${escapeHtml(text || "Aucune donnée disponible.")}</div>`;
+    return `<div class="pp-empty">${escapeHtml(text || "Aucune donnÃ©e disponible.")}</div>`;
   }
 
   async function api(path, options) {
@@ -88,7 +88,7 @@
     const name = byId("topbarName");
     const sel = byId("selPeopleProfile");
 
-    if (info) info.textContent = "Chargement…";
+    if (info) info.textContent = "Chargementâ€¦";
     if (name) name.textContent = "People";
 
     try {
@@ -118,7 +118,7 @@
 
         if (sel) {
           if (scope.profiles.length > 1) {
-            sel.innerHTML = `<option value="">Profil…</option>`;
+            sel.innerHTML = `<option value="">Profilâ€¦</option>`;
             scope.profiles.forEach(p => {
               const opt = document.createElement("option");
               opt.value = p.id_effectif || "";

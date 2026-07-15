@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   let _bound = false;
   let _loaded = false;
 
@@ -56,7 +56,7 @@
 
   function setStatus(msg){
     const el = byId("catPostesStatus");
-    if (el) el.textContent = msg || "—";
+    if (el) el.textContent = msg || "â€”";
   }
 
   function iconSvg(kind){
@@ -96,7 +96,7 @@
     if (!_items.length) {
       const empty = document.createElement("div");
       empty.className = "card-sub";
-      empty.textContent = "Aucune fiche de poste à afficher.";
+      empty.textContent = "Aucune fiche de poste Ã  afficher.";
       host.appendChild(empty);
       return;
     }
@@ -110,7 +110,7 @@
 
       const code = document.createElement("span");
       code.className = "sb-badge sb-badge--poste";
-      code.textContent = it.code || "—";
+      code.textContent = it.code || "â€”";
 
       const title = document.createElement("div");
       title.className = "sb-row-title";
@@ -154,7 +154,7 @@
         } else {
           const arch = document.createElement("span");
           arch.className = "sb-badge sb-badge--poste studio-catalog-archive-badge";
-          arch.textContent = "Archivé";
+          arch.textContent = "ArchivÃ©";
           iconActions.appendChild(arch);
         }
 
@@ -193,7 +193,7 @@
     const showMine = !!_mine;
     const showClients = !!_clients;
 
-    // Sécurité UX: au moins un filtre actif
+    // SÃ©curitÃ© UX: au moins un filtre actif
     if (!showCat && !showMine && !showClients) {
       _catalogue = true;
     }
@@ -214,11 +214,11 @@
     _modalMode = "create";
     _editingId = null;
 
-    byId("posteModalTitle").textContent = "Créer une fiche de poste";
+    byId("posteModalTitle").textContent = "CrÃ©er une fiche de poste";
     byId("posteModalSub").textContent = "";
     byId("posteModalSub").style.display = "none";
 
-    byId("posteCodif").value = "…";
+    byId("posteCodif").value = "â€¦";
     byId("posteCodifClient").value = "";
     byId("posteIntitule").value = "";
 
@@ -248,11 +248,11 @@
   }
 
   async function save(portal){
-    const ownerId = getOwnerId();    
+    const ownerId = getOwnerId();
     const codc = (byId("posteCodifClient").value || "").trim();
     const title = (byId("posteIntitule").value || "").trim();
-    
-    if (!title) { portal.showAlert("error", "Intitulé obligatoire."); return; }
+
+    if (!title) { portal.showAlert("error", "IntitulÃ© obligatoire."); return; }
 
     if (_modalMode === "create") {
       await portal.apiJson(
@@ -282,7 +282,7 @@
 
   function openArchive(it){
     _archiveId = it.id_poste;
-    byId("posteArchiveMsg").textContent = `Archiver "${it.code || "—"} – ${it.intitule || ""}" ?`;
+    byId("posteArchiveMsg").textContent = `Archiver "${it.code || "â€”"} â€“ ${it.intitule || ""}" ?`;
     openModal("modalPosteArchive");
   }
 
@@ -377,11 +377,11 @@
     await ensureRole(portal);
     bindOnce(portal);
 
-    setStatus("Chargement…");
+    setStatus("Chargementâ€¦");
     await loadList(portal);
 
     _loaded = true;
-    setStatus("—");
+    setStatus("â€”");
   }
 
   init().catch(e => {

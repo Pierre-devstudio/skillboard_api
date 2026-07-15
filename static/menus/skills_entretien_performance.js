@@ -1,12 +1,12 @@
-/* ======================================================
+﻿/* ======================================================
    static/menus/skills_entretien_performance.js
    - Menu "Entretien de performance"
-   - Squelette + chargement périmètre (services) + collaborateurs
-   - Réutilisé aussi en mode embarqué dans Studio > Espace de gestion.
-   - Toute évolution de cette page doit préserver :
-     1) l'accès Insights classique /skills/entretien-performance/... ;
-     2) l'accès Studio embarqué avec contexte id_owner + id_ent ;
-     3) la traçabilité évaluateur : tbl_effectif_client côté Insights, tbl_utilisateur côté Studio.
+   - Squelette + chargement pÃ©rimÃ¨tre (services) + collaborateurs
+   - RÃ©utilisÃ© aussi en mode embarquÃ© dans Studio > Espace de gestion.
+   - Toute Ã©volution de cette page doit prÃ©server :
+     1) l'accÃ¨s Insights classique /skills/entretien-performance/... ;
+     2) l'accÃ¨s Studio embarquÃ© avec contexte id_owner + id_ent ;
+     3) la traÃ§abilitÃ© Ã©valuateur : tbl_effectif_client cÃ´tÃ© Insights, tbl_utilisateur cÃ´tÃ© Studio.
    ====================================================== */
 (function () {
   "use strict";
@@ -23,7 +23,7 @@
 
   const state = {
     serviceId: "",
-    population: "team", // encore présent dans ton HTML, ignoré côté API pour l’instant
+    population: "team", // encore prÃ©sent dans ton HTML, ignorÃ© cÃ´tÃ© API pour lâ€™instant
     focusMode: false,
     selectedCollaborateurId: null,
     selectedCollaborateurServiceId: "",
@@ -59,7 +59,7 @@
 
   function setText(id, value) {
     const el = $(id);
-    if (el) el.textContent = (value === null || value === undefined || value === "") ? "—" : String(value);
+    if (el) el.textContent = (value === null || value === undefined || value === "") ? "â€”" : String(value);
   }
 
   function setDisabled(id, disabled) {
@@ -103,8 +103,8 @@
     rows.forEach(r => {
       const opt = document.createElement("option");
       opt.value = r.id_ent;
-      const indent = r.depth > 0 ? `${"— ".repeat(Math.min(r.depth, 4))}` : "";
-      const type = r.type_entreprise ? ` · ${r.type_entreprise}` : "";
+      const indent = r.depth > 0 ? `${"â€” ".repeat(Math.min(r.depth, 4))}` : "";
+      const type = r.type_entreprise ? ` Â· ${r.type_entreprise}` : "";
       opt.textContent = `${indent}${r.label}${type}`;
       select.appendChild(opt);
     });
@@ -177,11 +177,11 @@
 
   function epEvaluationNoteLabel(value) {
     const n = Number(value);
-    if (n === 1) return "Débutant";
-    if (n === 2) return "Intermédiaire";
-    if (n === 3) return "Avancé";
+    if (n === 1) return "DÃ©butant";
+    if (n === 2) return "IntermÃ©diaire";
+    if (n === 3) return "AvancÃ©";
     if (n === 4) return "Expert";
-    return "—";
+    return "â€”";
   }
 
   function epApplyEvaluationNoteLabels() {
@@ -192,7 +192,7 @@
       Array.from(sel.options || []).forEach(opt => {
         const value = (opt.value || "").toString().trim();
         if (!value) {
-          opt.textContent = "—";
+          opt.textContent = "â€”";
           return;
         }
 
@@ -220,7 +220,7 @@
     gauge.classList.remove("is-empty");
     gauge.style.setProperty("--ep-mastery-pct", `${safePct}%`);
     gauge.setAttribute("aria-hidden", "false");
-    gauge.setAttribute("aria-label", `Maîtrise ${Math.round(safePct)} %`);
+    gauge.setAttribute("aria-label", `MaÃ®trise ${Math.round(safePct)} %`);
   }
 
   function epSetScorePct(value) {
@@ -229,7 +229,7 @@
   }
 
   // ------------------------------------------------------
-  // Couverture poste: modal détail (réutilise state._covData)
+  // Couverture poste: modal dÃ©tail (rÃ©utilise state._covData)
   // ------------------------------------------------------
   function _epGetCovWeightedFlag() {
     return true;
@@ -237,8 +237,8 @@
 
   function _nsLevelKey4(v) {
     const raw = String(v ?? "").trim();
-    const norm = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-    if (!norm || norm === "-" || norm === "—") return "";
+    const norm = raw.normalize("NFD").replace(/[Ì€-Í¯]/g, "").toLowerCase();
+    if (!norm || norm === "-" || norm === "â€”") return "";
     if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
     if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
     if (norm === "c" || norm.includes("avance") || norm.includes("advanced")) return "C";
@@ -248,7 +248,7 @@
 
   function _nsLevelLabel4(v) {
     const k = _nsLevelKey4(v);
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" })[k] || (String(v ?? "").trim() || "—");
+    return ({ A: "DÃ©butant", B: "IntermÃ©diaire", C: "AvancÃ©", D: "Expert" })[k] || (String(v ?? "").trim() || "â€”");
   }
 
   function _nsLevelCodeFromScore24(score) {
@@ -263,7 +263,7 @@
   function _nsLevelKey4(value) {
     const raw = (value === null || value === undefined) ? "" : String(value).trim();
     const norm = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    if (!norm || norm === "-" || norm === "—") return "";
+    if (!norm || norm === "-" || norm === "â€”") return "";
     if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
     if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
     if (norm === "c" || norm.includes("avance")) return "C";
@@ -273,7 +273,7 @@
 
   function _nsLevelLabel4(value) {
     const k = _nsLevelKey4(value);
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" })[k] || ((value === null || value === undefined || String(value).trim() === "") ? "—" : String(value).trim());
+    return ({ A: "DÃ©butant", B: "IntermÃ©diaire", C: "AvancÃ©", D: "Expert" })[k] || ((value === null || value === undefined || String(value).trim() === "") ? "â€”" : String(value).trim());
   }
 
   function _nsLevelCodeFromPct(pct) {
@@ -335,12 +335,12 @@
       };
     }
 
-    return { sum: null, count: 0, pct: null, score24: null, levelCode: "", levelLabel: "—" };
+    return { sum: null, count: 0, pct: null, score24: null, levelCode: "", levelLabel: "â€”" };
   }
 
   function _epLevelFromScore24(score) {
     const s = Number(score);
-    if (!Number.isFinite(s) || s <= 0) return "—";
+    if (!Number.isFinite(s) || s <= 0) return "â€”";
     const pct = Math.max(0, Math.min(100, Math.round((s / 24) * 100)));
     return _nsLevelLabelFromPct(pct);
   }
@@ -350,29 +350,29 @@
     const tbody = $("ep_tblCoverageDetail")?.querySelector("tbody");
     if (tbody) tbody.innerHTML = "";
 
-    // data calculée par l’API couverture
+    // data calculÃ©e par lâ€™API couverture
     const covRoot = state._covData || state.covData || null;
     if (!covRoot) {
-      if (info) info.textContent = "Aucun calcul disponible. Sélectionne un collaborateur.";
+      if (info) info.textContent = "Aucun calcul disponible. SÃ©lectionne un collaborateur.";
       return;
     }
 
     const weighted = _epGetCovWeightedFlag();
 
-    // tolérant aux noms (plain/weighted)
+    // tolÃ©rant aux noms (plain/weighted)
     const cov =
       (weighted ? (covRoot.weighted || covRoot.pondered || covRoot.weight || null)
                 : (covRoot.plain || covRoot.simple || covRoot.unweighted || null))
       || null;
 
     if (!cov) {
-      if (info) info.textContent = "Données de couverture indisponibles (mode).";
+      if (info) info.textContent = "DonnÃ©es de couverture indisponibles (mode).";
       return;
     }
 
     const poste = (covRoot.poste_intitule || covRoot.poste || cov.poste || "").toString().trim();
-    const modeTxt = weighted ? "Pondéré par criticité" : "Non pondéré";
-    if (info) info.textContent = [poste ? `Poste : ${poste}` : "", modeTxt].filter(Boolean).join(" • ");
+    const modeTxt = weighted ? "PondÃ©rÃ© par criticitÃ©" : "Non pondÃ©rÃ©";
+    if (info) info.textContent = [poste ? `Poste : ${poste}` : "", modeTxt].filter(Boolean).join(" â€¢ ");
 
     const details = Array.isArray(cov.details) ? cov.details : [];
     if (!details.length) return;
@@ -389,26 +389,26 @@
 
       const tr = document.createElement("tr");
 
-      // Compétence: badge code ligne 1, intitulé ligne 2
+      // CompÃ©tence: badge code ligne 1, intitulÃ© ligne 2
       const tdComp = document.createElement("td");
       tdComp.innerHTML = `
         <div>
-          <div><span class="sb-badge sb-badge-accent">${code || "—"}</span></div>
-          <div style="margin-top:4px; font-size:13px;">${intitule || "—"}</div>
+          <div><span class="sb-badge sb-badge-accent">${code || "â€”"}</span></div>
+          <div style="margin-top:4px; font-size: var(--ns-text-sm);">${intitule || "â€”"}</div>
         </div>
       `;
 
       const tdPoids = document.createElement("td");
       tdPoids.className = "col-center";
-      tdPoids.textContent = poids || "—";
+      tdPoids.textContent = poids || "â€”";
 
       const tdReq = document.createElement("td");
       tdReq.className = "col-center";
-      tdReq.innerHTML = niveauRequis ? `<span class="sb-badge">${niveauRequis}</span>` : "—";
+      tdReq.innerHTML = niveauRequis ? `<span class="sb-badge">${niveauRequis}</span>` : "â€”";
 
       const tdSal = document.createElement("td");
       tdSal.className = "col-center";
-      tdSal.innerHTML = (niveauSalarie && niveauSalarie !== "—") ? `<span class="sb-badge">${niveauSalarie}</span>` : "—";
+      tdSal.innerHTML = (niveauSalarie && niveauSalarie !== "â€”") ? `<span class="sb-badge">${niveauSalarie}</span>` : "â€”";
 
       tr.appendChild(tdComp);
       tr.appendChild(tdPoids);
@@ -421,8 +421,8 @@
 
 
   /* ======================================================
-     Guide de notation (popover par critère)
-     - Créé en JS (pas besoin de toucher au CSS)
+     Guide de notation (popover par critÃ¨re)
+     - CrÃ©Ã© en JS (pas besoin de toucher au CSS)
      - Se ferme au clic dehors / scroll / resize
      ====================================================== */
 
@@ -444,8 +444,8 @@
 
     pop.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <div style="font-weight:600;">Guide de notation</div>
-        <button type="button" class="modal-x" id="ep_popGuideClose" aria-label="Fermer">×</button>
+        <div style="font-weight: var(--ns-weight-semibold);">Guide de notation</div>
+        <button type="button" class="modal-x" id="ep_popGuideClose" aria-label="Fermer">Ã—</button>
       </div>
       <div class="card-sub" id="ep_popGuideTitle" style="margin-top:6px;"></div>
       <div id="ep_popGuideBody" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
@@ -470,7 +470,7 @@
       close();
     });
 
-    // Scroll/resize -> ferme (sinon ça se balade n'importe où)
+    // Scroll/resize -> ferme (sinon Ã§a se balade n'importe oÃ¹)
     window.addEventListener("resize", close);
     window.addEventListener("scroll", close, true);
 
@@ -487,14 +487,14 @@
         const pop = ensureGuidePopover();
         if (!pop || !anchorEl) return;
 
-        // On retrouve le select de note du critère depuis la ligne du tableau
+        // On retrouve le select de note du critÃ¨re depuis la ligne du tableau
         const tr = anchorEl.closest("tr");
         const noteSelect = tr ? tr.querySelector('select[id^="ep_critNote"]') : null;
 
         const title = document.getElementById("ep_popGuideTitle");
         if (title) {
             const lbl = (critLabel || "").toString().trim();
-            title.textContent = lbl ? `Critère ${critIndex} : ${lbl}` : `Critère ${critIndex}`;
+            title.textContent = lbl ? `CritÃ¨re ${critIndex} : ${lbl}` : `CritÃ¨re ${critIndex}`;
         }
 
         const body = document.getElementById("ep_popGuideBody");
@@ -514,7 +514,7 @@
             line.style.borderRadius = "10px";
             line.style.cursor = (noteSelect && !noteSelect.disabled) ? "pointer" : "default";
 
-            // surlignage de la note sélectionnée
+            // surlignage de la note sÃ©lectionnÃ©e
             if (String(selectedNote || "") === String(i)) {
             line.style.background = "color-mix(in srgb, var(--reading-accent) 10%, #ffffff)";
             line.style.borderColor = "color-mix(in srgb, var(--reading-accent) 35%, #e5e7eb)";
@@ -531,12 +531,12 @@
             const text = document.createElement("div");
             text.style.flex = "1";
             text.style.minWidth = "0";
-            text.textContent = txt || "—";
+            text.textContent = txt || "â€”";
 
             line.appendChild(badge);
             line.appendChild(text);
 
-            // Clic = on pousse la note dans le select du critère
+            // Clic = on pousse la note dans le select du critÃ¨re
             line.addEventListener("click", () => {
               if (!noteSelect || noteSelect.disabled) {
                 return;
@@ -544,7 +544,7 @@
 
               noteSelect.value = String(i);
 
-              // déclenche les listeners éventuels (recalcul / score, etc.)
+              // dÃ©clenche les listeners Ã©ventuels (recalcul / score, etc.)
               noteSelect.dispatchEvent(new Event("input", { bubbles: true }));
               noteSelect.dispatchEvent(new Event("change", { bubbles: true }));
 
@@ -593,13 +593,13 @@
     if (list) list.innerHTML = "";
     setText("ep_collabCount", "0");
     state.selectedCollaborateurId = null;
-    setText("ep_ctxCollaborateur", "—");
-    setText("ep_ctxInitials", "—");
-    setText("ep_ctxMatricule", "—");
-    setText("ep_ctxPoste", "—");
-    setText("ep_ctxService", "—");
-    setText("ep_ctxServiceBadge", "Service non renseigné");
-    setText("ep_ctxDate", "—");
+    setText("ep_ctxCollaborateur", "â€”");
+    setText("ep_ctxInitials", "â€”");
+    setText("ep_ctxMatricule", "â€”");
+    setText("ep_ctxPoste", "â€”");
+    setText("ep_ctxService", "â€”");
+    setText("ep_ctxServiceBadge", "Service non renseignÃ©");
+    setText("ep_ctxDate", "â€”");
     state._annualHistoryShowAll = false;
     epRenderAnnualCompetenceSummary([]);
     epRenderEntretienOverview([]);
@@ -762,13 +762,13 @@
 
   function resetContextPanel() {
     setText("ep_ctxStatus", "Brouillon");
-    setText("ep_ctxCollaborateur", "—");
-    setText("ep_ctxInitials", "—");
-    setText("ep_ctxMatricule", "—");
-    setText("ep_ctxPoste", "—");
-    setText("ep_ctxService", "—");
-    setText("ep_ctxServiceBadge", "Service non renseigné");
-    setText("ep_ctxDate", "—");
+    setText("ep_ctxCollaborateur", "â€”");
+    setText("ep_ctxInitials", "â€”");
+    setText("ep_ctxMatricule", "â€”");
+    setText("ep_ctxPoste", "â€”");
+    setText("ep_ctxService", "â€”");
+    setText("ep_ctxServiceBadge", "Service non renseignÃ©");
+    setText("ep_ctxDate", "â€”");
 
     epRenderAnnualCompetenceSummary([]);
     epRenderEntretienOverview([]);
@@ -797,7 +797,7 @@
 
     const txt = document.createElement("span");
     txt.className = "ep-eval-title-text";
-    txt.textContent = t || "—";
+    txt.textContent = t || "â€”";
     titleEl.appendChild(txt);
   }
 
@@ -833,23 +833,23 @@
     const titleEl = $("ep_compTitle");
     if (titleEl) {
       titleEl.innerHTML = "";
-      titleEl.textContent = "—";
+      titleEl.textContent = "â€”";
     }
 
     renderEvalDomainBadge("", "");
-  
-    setText("ep_evalHint", "Sélectionne une compétence.");
-    setText("ep_compTitle", "—");
+
+    setText("ep_evalHint", "SÃ©lectionne une compÃ©tence.");
+    setText("ep_compTitle", "â€”");
     setText("ep_compDomain", "");
-    setText("ep_compCurrent", "—");
+    setText("ep_compCurrent", "â€”");
     setText("ep_compLastEval", "");
 
-    setText("ep_scoreRaw", "—");
-    epSetScorePct("—");
-    setText("ep_levelABC", "—");
+    setText("ep_scoreRaw", "â€”");
+    epSetScorePct("â€”");
+    setText("ep_levelABC", "â€”");
 
     for (let i = 1; i <= 4; i++) {
-      setText(`ep_critLabel${i}`, "—");
+      setText(`ep_critLabel${i}`, "â€”");
       const sel = $(`ep_critNote${i}`);
       if (sel) sel.value = "";
       const com = $(`ep_critCom${i}`);
@@ -872,7 +872,7 @@
   }
 
   function epHistoryEvaluatorName(row) {
-    return (row?.nom_evaluateur || row?.id_evaluateur || "Non affecté").toString().trim() || "Non affecté";
+    return (row?.nom_evaluateur || row?.id_evaluateur || "Non affectÃ©").toString().trim() || "Non affectÃ©";
   }
 
   function epHistoryMethodName(row) {
@@ -899,10 +899,10 @@
   async function epLoadEvaluationReferentielData(idComp) {
     const fallback = {
       labels: {
-        Critere1: "Critère 1",
-        Critere2: "Critère 2",
-        Critere3: "Critère 3",
-        Critere4: "Critère 4"
+        Critere1: "CritÃ¨re 1",
+        Critere2: "CritÃ¨re 2",
+        Critere3: "CritÃ¨re 3",
+        Critere4: "CritÃ¨re 4"
       },
       evals: {
         Critere1: [],
@@ -1001,10 +1001,10 @@
     const intitule = (row.intitule || "").toString().trim();
     const scoreInfo = _epScoreInfoFromAudit(row);
     const niveau = scoreInfo.levelLabel;
-    const lastDate = epFormatDateFR(row.date_audit) || "—";
+    const lastDate = epFormatDateFR(row.date_audit) || "â€”";
     const method = epHistoryMethodName(row);
     const obs = (row.observation || "").toString();
-    const evaluatorName = (context?.evaluatorName || epHistoryEvaluatorName(row)).toString().trim() || "Non affecté";
+    const evaluatorName = (context?.evaluatorName || epHistoryEvaluatorName(row)).toString().trim() || "Non affectÃ©";
 
     resetEvaluationPanel();
 
@@ -1027,7 +1027,7 @@
       evalModal.classList.toggle("is-history-editable", !!canEditHistoryAudit);
     }
 
-    setText("ep_evalHint", `Historique du ${lastDate} · évaluateur : ${evaluatorName}${canEditHistoryAudit ? "" : " · consultation seule"}`);
+    setText("ep_evalHint", `Historique du ${lastDate} Â· Ã©valuateur : ${evaluatorName}${canEditHistoryAudit ? "" : " Â· consultation seule"}`);
 
     const refData = await epLoadEvaluationReferentielData(row.id_comp);
 
@@ -1035,10 +1035,10 @@
     renderEvalDomainBadge(refData?.domaine?.label || "", refData?.domaine?.couleur || "");
 
     setText("ep_compCurrent", niveau);
-    setText("ep_compLastEval", lastDate ? `Dernière éval : ${lastDate}` : "");
+    setText("ep_compLastEval", lastDate ? `DerniÃ¨re Ã©val : ${lastDate}` : "");
     setText("ep_levelABC", niveau);
-    setText("ep_scoreRaw", scoreInfo.sum === null ? "—" : String(scoreInfo.sum));
-    epSetScorePct(scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
+    setText("ep_scoreRaw", scoreInfo.sum === null ? "â€”" : String(scoreInfo.sum));
+    epSetScorePct(scoreInfo.pct === null ? "â€”" : `${scoreInfo.pct}%`);
 
     epSetSelectValueOrAdd("ep_selEvalMethod", method);
     setDisabled("ep_selEvalMethod", !canEditHistoryAudit);
@@ -1072,7 +1072,7 @@
       if (labelEl) {
         labelEl.innerHTML = "";
 
-        const labelText = refData?.labels?.[codeCrit] || `Critère ${i}`;
+        const labelText = refData?.labels?.[codeCrit] || `CritÃ¨re ${i}`;
         const evalsAll = Array.isArray(refData?.evals?.[codeCrit]) ? refData.evals[codeCrit] : [];
 
         const spanTxt = document.createElement("span");
@@ -1130,7 +1130,7 @@
     const s = (v ?? "").toString().trim();
     if (!s) return "";
 
-    // déjà au format FR
+    // dÃ©jÃ  au format FR
     if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(s)) return s.replace(/-/g, "/");
 
     // ISO / timestamp
@@ -1159,7 +1159,7 @@
     const levelTxt = (document.getElementById("ep_levelABC")?.textContent || "").toString().trim();
     const levelBadge = tr.querySelector(".ep-comp-level-badge");
 
-    if (levelBadge && levelTxt && levelTxt !== "—") {
+    if (levelBadge && levelTxt && levelTxt !== "â€”") {
       levelBadge.textContent = _nsLevelLabel4(levelTxt);
       levelBadge.className = `sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(levelTxt)}`;
     }
@@ -1230,9 +1230,9 @@
   }
 
   function epCompetenceStatusLabel(key) {
-    if (key === "never") return "Jamais évaluée";
-    if (key === "review") return "À revoir";
-    return "À jour";
+    if (key === "never") return "Jamais Ã©valuÃ©e";
+    if (key === "review") return "Ã€ revoir";
+    return "Ã€ jour";
   }
 
   function epCompetenceStatusBadgeClass(key) {
@@ -1242,7 +1242,7 @@
   }
 
   function epBadgeLevelHtml(niveau) {
-    const txt = _nsLevelLabel4(niveau || "—");
+    const txt = _nsLevelLabel4(niveau || "â€”");
     return `<span class="sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(txt)}</span>`;
   }
 
@@ -1251,7 +1251,7 @@
     const idComp = (item?.id_comp || "").toString().trim();
 
     if (!_portal?.apiBase || !_portal?.contactId || !idEffectif || !idComp) {
-      throw new Error("Collaborateur ou compétence introuvable pour la fiche PDF.");
+      throw new Error("Collaborateur ou compÃ©tence introuvable pour la fiche PDF.");
     }
 
     const url = `${_portal.apiBase}/skills/collaborateurs/competences/fiche_pdf/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEffectif)}/${encodeURIComponent(idComp)}?_=${Date.now()}`;
@@ -1285,10 +1285,10 @@
 
   function epRenderPdfBlobInWindow(popupWin, blob, title) {
     const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
-    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+    if (!win) throw new Error("Ouverture du PDF bloquÃ©e par le navigateur.");
 
     const blobUrl = URL.createObjectURL(blob);
-    const safeTitle = epEsc(title || "Fiche compétence");
+    const safeTitle = epEsc(title || "Fiche compÃ©tence");
 
     win.document.open();
     win.document.write(`<!doctype html>
@@ -1317,24 +1317,24 @@
   async function epOpenCompetencePdfFromPunctual(item) {
     const popup = window.open("about:blank", "_blank");
     if (popup) {
-      try { popup.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
+      try { popup.document.write("<p style='font-family: var(--ns-font-ui);padding:16px;'>Ouverture du PDFâ€¦</p>"); } catch (_) {}
     }
 
     try {
       const blob = await epFetchCompetencePdfBlobFromPunctual(item);
       const code = (item?.code || "").toString().trim();
-      const title = `Fiche compétence - ${code ? `${code} - ` : ""}${(item?.intitule || "Compétence").toString().trim()}`;
+      const title = `Fiche compÃ©tence - ${code ? `${code} - ` : ""}${(item?.intitule || "CompÃ©tence").toString().trim()}`;
       epRenderPdfBlobInWindow(popup, blob, title);
     } catch (e) {
       try { if (popup && !popup.closed) popup.close(); } catch (_) {}
-      _portal?.showAlert?.("warning", String(e?.message || e || "Impossible d’ouvrir le PDF."));
+      _portal?.showAlert?.("warning", String(e?.message || e || "Impossible dâ€™ouvrir le PDF."));
     }
   }
 
   function epSetBadgeText(id, textValue) {
     const el = $(id);
     if (!el) return;
-    const txt = (textValue || "—").toString().trim() || "—";
+    const txt = (textValue || "â€”").toString().trim() || "â€”";
     el.textContent = txt;
     el.className = `sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(txt)}`;
   }
@@ -1365,7 +1365,7 @@
     if (validated) {
       return {
         key: validationAuto ? "validee_auto" : "validee",
-        label: "Préparé",
+        label: "PrÃ©parÃ©",
         done: true,
         inProgress: false,
         validationAuto,
@@ -1392,7 +1392,7 @@
 
     return {
       key: "a_preparer",
-      label: "À préparer",
+      label: "Ã€ prÃ©parer",
       done: false,
       inProgress: false,
       validationAuto: false,
@@ -1484,7 +1484,7 @@
   function epBuildEntretienPayloadFromItem(entretien, statusMode) {
     return {
       type_entretien: entretien?.type_entretien || "Entretien annuel",
-      statut: entretien?.statut || "à réaliser",
+      statut: entretien?.statut || "Ã  rÃ©aliser",
       date_prevue: entretien?.date_prevue || null,
       date_realisee: entretien?.date_realisee || null,
       periode_debut: entretien?.periode_debut || null,
@@ -1543,7 +1543,7 @@
 
     const arr = Array.isArray(list) ? list : [];
     if (!arr.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="ep-empty-cell">Aucune compétence disponible pour ce collaborateur.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="ep-empty-cell">Aucune compÃ©tence disponible pour ce collaborateur.</td></tr>`;
       epUpdatePunctualMoreButton(0, 0);
       return;
     }
@@ -1561,17 +1561,17 @@
       tr.dataset.searchText = `${x.code || ""} ${x.intitule || ""}`;
 
       tr.innerHTML = `
-        <td class="ep-punctual-code-cell"><span class="sb-badge sb-badge-ref-comp-code ep-comp-code">${epEsc(x.code || "—")}</span></td>
-        <td><div class="ep-punctual-comp-title" title="${epEsc(x.intitule || "")}">${epEsc(x.intitule || "—")}</div></td>
-        <td class="ep-punctual-date-cell">${epEsc(epFormatDateFR(x.date_derniere_eval) || "—")}</td>
-        <td class="ep-punctual-level-cell">${epBadgeLevelHtml(x.niveau_actuel || "—")}</td>
+        <td class="ep-punctual-code-cell"><span class="sb-badge sb-badge-ref-comp-code ep-comp-code">${epEsc(x.code || "â€”")}</span></td>
+        <td><div class="ep-punctual-comp-title" title="${epEsc(x.intitule || "")}">${epEsc(x.intitule || "â€”")}</div></td>
+        <td class="ep-punctual-date-cell">${epEsc(epFormatDateFR(x.date_derniere_eval) || "â€”")}</td>
+        <td class="ep-punctual-level-cell">${epBadgeLevelHtml(x.niveau_actuel || "â€”")}</td>
         <td class="ep-punctual-status-cell"><span class="${epCompetenceStatusBadgeClass(statusKey)}">${epEsc(epCompetenceStatusLabel(statusKey))}</span></td>
         <td class="ep-punctual-actions-cell">
           <div class="ep-punctual-actions">
-            <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--eval" data-eval="1" title="Évaluer" aria-label="Évaluer">
+            <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--eval" data-eval="1" title="Ã‰valuer" aria-label="Ã‰valuer">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
             </button>
-            <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--pdf" data-pdf="1" title="Fiche compétence PDF" aria-label="Fiche compétence PDF">
+            <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--pdf" data-pdf="1" title="Fiche compÃ©tence PDF" aria-label="Fiche compÃ©tence PDF">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
             </button>
           </div>
@@ -1620,9 +1620,9 @@
     btn.setAttribute("aria-expanded", expanded ? "true" : "false");
 
     if (expanded) {
-      label.textContent = "Voir moins de compétences";
+      label.textContent = "Voir moins de compÃ©tences";
     } else {
-      label.textContent = `Voir plus de compétences (${hidden})`;
+      label.textContent = `Voir plus de compÃ©tences (${hidden})`;
     }
   }
 
@@ -1784,7 +1784,7 @@
         );
         epRenderEntretienOverview(state._entretiensList);
       } catch (e) {
-        _portal?.showAlert?.("warning", String(e?.message || e || "Impossible de marquer la préparation en cours."));
+        _portal?.showAlert?.("warning", String(e?.message || e || "Impossible de marquer la prÃ©paration en cours."));
       }
     }
 
@@ -1793,14 +1793,14 @@
     if (!entretien) {
       epSetValue("ep_entretienType", "Entretien annuel");
       if (state._entretienDraft) state._entretienDraft.type_entretien = "Entretien annuel";
-      setText("ep_entretienModalTitle", wantedMode === "realisation" ? "Réaliser l’entretien annuel" : "Préparer l’entretien annuel");
+      setText("ep_entretienModalTitle", wantedMode === "realisation" ? "RÃ©aliser lâ€™entretien annuel" : "PrÃ©parer lâ€™entretien annuel");
     }
   }
 
   function epOpenNewPunctualEvaluation() {
     const arr = Array.isArray(state._checklistAll) ? state._checklistAll : [];
     if (!arr.length) {
-      _portal?.showAlert?.("warning", "Aucune compétence disponible pour ce collaborateur.");
+      _portal?.showAlert?.("warning", "Aucune compÃ©tence disponible pour ce collaborateur.");
       return;
     }
 
@@ -1818,18 +1818,18 @@
     state._annualLastEntretien = last || null;
 
     if (last) {
-      epSetSummaryLink("ep_annualLastDate", epFormatDateFR(epEntretienDateValue(last)) || "—", false, "Ouvrir le dernier entretien annuel");
-      setText("ep_annualLastSub", epIsEntretienClosed(last) ? "Entretien signé ou terminé" : (last.statut || "—"));
+      epSetSummaryLink("ep_annualLastDate", epFormatDateFR(epEntretienDateValue(last)) || "â€”", false, "Ouvrir le dernier entretien annuel");
+      setText("ep_annualLastSub", epIsEntretienClosed(last) ? "Entretien signÃ© ou terminÃ©" : (last.statut || "â€”"));
     } else {
-      epSetSummaryLink("ep_annualLastDate", "—", true, "Aucun entretien annuel enregistré");
+      epSetSummaryLink("ep_annualLastDate", "â€”", true, "Aucun entretien annuel enregistrÃ©");
       setText("ep_annualLastSub", "Aucun historique annuel");
     }
 
     if (current?.date_prevue) {
       epSetSummaryLink("ep_annualNextDate", epFormatDateFR(current.date_prevue), false, "Ouvrir le calendrier");
-      setText("ep_annualNextSub", current.date_realisee ? "Réalisé" : "Voir au calendrier");
+      setText("ep_annualNextSub", current.date_realisee ? "RÃ©alisÃ©" : "Voir au calendrier");
     } else {
-      epSetSummaryLink("ep_annualNextDate", "À planifier", false, "Planifier dans le calendrier");
+      epSetSummaryLink("ep_annualNextDate", "Ã€ planifier", false, "Planifier dans le calendrier");
       setText("ep_annualNextSub", "Ouvrir le calendrier");
     }
 
@@ -1837,13 +1837,13 @@
     if (currentItem) currentItem.style.display = current ? "" : "none";
 
     const currentStatus = epSignatureStatusFromEntretien(current);
-    epSetBadgeText("ep_annualCurrentStatus", currentStatus || "À préparer");
-    setText("ep_annualCurrentSub", current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "");
+    epSetBadgeText("ep_annualCurrentStatus", currentStatus || "Ã€ prÃ©parer");
+    setText("ep_annualCurrentSub", current?.date_prevue ? `PrÃ©vu le ${epFormatDateFR(current.date_prevue)}` : "");
 
     const st = epNormText(current?.statut || "");
-    let signTxt = "Non engagé";
+    let signTxt = "Non engagÃ©";
     if (st.includes("signer")) signTxt = currentStatus;
-    if (st.includes("termine") || st.includes("signe")) signTxt = "Signé";
+    if (st.includes("termine") || st.includes("signe")) signTxt = "SignÃ©";
 
     const prepState = epPreparationState(current);
     const realizationDone = !!(current?.date_realisee || st.includes("signer") || st.includes("termine") || st.includes("signe"));
@@ -1851,27 +1851,27 @@
     const reportDone = signaturesDone && !!current?.id_entretien;
 
     const prepSub = prepState.key === "validee_auto"
-      ? "Validée automatiquement à la réalisation"
+      ? "ValidÃ©e automatiquement Ã  la rÃ©alisation"
       : prepState.done
-        ? (prepState.dateValidation ? `Validée le ${epFormatDateFR(prepState.dateValidation)}` : "Préparation validée")
+        ? (prepState.dateValidation ? `ValidÃ©e le ${epFormatDateFR(prepState.dateValidation)}` : "PrÃ©paration validÃ©e")
         : prepState.inProgress
-          ? (prepState.dateOuverture ? `Ouverte le ${epFormatDateFR(prepState.dateOuverture)}` : "Préparation en cours")
-          : (current?.date_prevue ? `Prévu le ${epFormatDateFR(current.date_prevue)}` : "Aucune préparation ouverte");
+          ? (prepState.dateOuverture ? `Ouverte le ${epFormatDateFR(prepState.dateOuverture)}` : "PrÃ©paration en cours")
+          : (current?.date_prevue ? `PrÃ©vu le ${epFormatDateFR(current.date_prevue)}` : "Aucune prÃ©paration ouverte");
 
     setText("ep_stepPreparationBadge", prepState.label);
     setText("ep_stepPreparationSub", prepSub);
-    setText("ep_stepRealisationBadge", realizationDone ? "Réalisé" : "À réaliser");
-    setText("ep_stepRealisationSub", realizationDone ? `Réalisé le ${epFormatDateFR(current.date_realisee)}` : "Planifier et conduire l’entretien");
+    setText("ep_stepRealisationBadge", realizationDone ? "RÃ©alisÃ©" : "Ã€ rÃ©aliser");
+    setText("ep_stepRealisationSub", realizationDone ? `RÃ©alisÃ© le ${epFormatDateFR(current.date_realisee)}` : "Planifier et conduire lâ€™entretien");
     setText("ep_stepSignaturesBadge", signTxt);
-    setText("ep_stepSignaturesSub", st.includes("signer") ? "Validation électronique en attente" : (signaturesDone ? "Signatures finalisées" : "Validation électronique"));
-    setText("ep_stepRapportBadge", current?.id_entretien ? "Disponible" : "À générer");
-    setText("ep_stepRapportSub", current?.id_entretien ? "Rapport PDF accessible" : "Enregistre l’entretien avant le rapport");
+    setText("ep_stepSignaturesSub", st.includes("signer") ? "Validation Ã©lectronique en attente" : (signaturesDone ? "Signatures finalisÃ©es" : "Validation Ã©lectronique"));
+    setText("ep_stepRapportBadge", current?.id_entretien ? "Disponible" : "Ã€ gÃ©nÃ©rer");
+    setText("ep_stepRapportSub", current?.id_entretien ? "Rapport PDF accessible" : "Enregistre lâ€™entretien avant le rapport");
 
     const prepareBtnLabel = $("ep_btnAnnualPrepare")?.querySelector("span:last-child");
     if (prepareBtnLabel) {
       prepareBtnLabel.textContent = prepState.done
-        ? "Modifier la préparation"
-        : (prepState.inProgress ? "Reprendre la préparation" : "Préparer l’entretien");
+        ? "Modifier la prÃ©paration"
+        : (prepState.inProgress ? "Reprendre la prÃ©paration" : "PrÃ©parer lâ€™entretien");
     }
 
     const reportBtn = $("ep_btnAnnualReport");
@@ -1900,7 +1900,7 @@
 
     btn.style.display = (hidden > 0 || expanded) ? "" : "none";
     btn.setAttribute("aria-expanded", expanded ? "true" : "false");
-    label.textContent = expanded ? "Voir moins d’historique" : `Plus d’historique (${hidden})`;
+    label.textContent = expanded ? "Voir moins dâ€™historique" : `Plus dâ€™historique (${hidden})`;
   }
 
   function epIconEyeSvg() {
@@ -1938,21 +1938,21 @@
     epUpdateAnnualHistoryMoreButton(allRows.length, hidden);
 
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="4" class="ep-empty-cell">Aucun entretien annuel enregistré.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" class="ep-empty-cell">Aucun entretien annuel enregistrÃ©.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = "";
     rows.forEach(e => {
       const d = epDateObj(epEntretienDateValue(e));
-      const year = d ? String(d.getFullYear()) : "—";
+      const year = d ? String(d.getFullYear()) : "â€”";
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${epEsc(year)}</td>
-        <td>${epEsc(epFormatDateFR(epEntretienDateValue(e)) || "—")}</td>
-        <td class="ep-annual-history-status-cell"><span class="sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(e.statut)}">${epEsc(e.statut || "—")}</span></td>
+        <td>${epEsc(epFormatDateFR(epEntretienDateValue(e)) || "â€”")}</td>
+        <td class="ep-annual-history-status-cell"><span class="sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(e.statut)}">${epEsc(e.statut || "â€”")}</span></td>
         <td class="ep-annual-history-actions">
-          <button type="button" class="sb-icon-btn ep-square-action-btn" data-act="open" title="Voir l’entretien" aria-label="Voir l’entretien">${epIconEyeSvg()}</button>
+          <button type="button" class="sb-icon-btn ep-square-action-btn" data-act="open" title="Voir lâ€™entretien" aria-label="Voir lâ€™entretien">${epIconEyeSvg()}</button>
           <button type="button" class="sb-icon-btn ep-square-action-btn" data-act="pdf" title="Rapport PDF" aria-label="Rapport PDF">${epIconPdfSvg()}</button>
         </td>
       `;
@@ -1968,12 +1968,12 @@
 
     if (!state.selectedCollaborateurId || !_portal) {
       state._historyAll = [];
-      list.innerHTML = `<div class="ep-empty-cell">Sélectionne un collaborateur.</div>`;
+      list.innerHTML = `<div class="ep-empty-cell">SÃ©lectionne un collaborateur.</div>`;
       epUpdatePunctualHistoryMoreButton(0, 0);
       return;
     }
 
-    list.innerHTML = `<div class="ep-empty-cell">Chargement…</div>`;
+    list.innerHTML = `<div class="ep-empty-cell">Chargementâ€¦</div>`;
     epUpdatePunctualHistoryMoreButton(0, 0);
 
     try {
@@ -1984,7 +1984,7 @@
       epRenderPunctualHistorySummary(rows);
     } catch (e) {
       state._historyAll = [];
-      list.innerHTML = `<div class="ep-empty-cell">Impossible de charger l’historique.</div>`;
+      list.innerHTML = `<div class="ep-empty-cell">Impossible de charger lâ€™historique.</div>`;
       epUpdatePunctualHistoryMoreButton(0, 0);
     }
   }
@@ -2005,7 +2005,7 @@
     if ((row?.id_action_formation_acquisition || "").toString().trim()) return "Suivi post-formation";
     if ((row?.id_entretien_individuel || "").toString().trim()) return type || "Entretien individuel";
     if (methodKey.includes("formation")) return "Suivi post-formation";
-    if (methodKey.includes("audit") || methodKey.includes("certification") || methodKey.includes("examen")) return "Audit compétence";
+    if (methodKey.includes("audit") || methodKey.includes("certification") || methodKey.includes("examen")) return "Audit compÃ©tence";
     if (!method || methodKey.includes("entretien de performance")) return "Entretien ponctuel";
     return method;
   }
@@ -2046,7 +2046,7 @@
       const group = ensureGroup(row, index);
       const auditDate = row?.date_audit || "";
       const scoreInfo = _epScoreInfoFromAudit(row);
-      const auditLevel = scoreInfo?.levelLabel && scoreInfo.levelLabel !== "—"
+      const auditLevel = scoreInfo?.levelLabel && scoreInfo.levelLabel !== "â€”"
         ? scoreInfo.levelLabel
         : _epLevelFromScore24(row?.resultat_eval);
 
@@ -2054,14 +2054,14 @@
         group.audits.push({
           ...row,
           _sourceLabel: epHistorySourceLabel(row),
-          _levelLabel: auditLevel || "—",
+          _levelLabel: auditLevel || "â€”",
           _dateTime: epHistoryDateTime(auditDate),
         });
       }
 
       if (auditDate && epHistoryDateTime(auditDate) >= epHistoryDateTime(group.derniere_eval)) {
         group.derniere_eval = auditDate;
-        if (auditLevel && auditLevel !== "—") group.dernier_niveau = auditLevel;
+        if (auditLevel && auditLevel !== "â€”") group.dernier_niveau = auditLevel;
       }
 
       if (!group.code && row?.code) group.code = row.code;
@@ -2092,7 +2092,7 @@
 
     btn.style.display = (hidden > 0 || expanded) ? "" : "none";
     btn.setAttribute("aria-expanded", expanded ? "true" : "false");
-    label.textContent = expanded ? "Voir moins de compétences" : `Voir plus de compétences (${hidden})`;
+    label.textContent = expanded ? "Voir moins de compÃ©tences" : `Voir plus de compÃ©tences (${hidden})`;
   }
 
   function epRenderPunctualHistorySummary(rows) {
@@ -2100,14 +2100,14 @@
     if (!list) return;
 
     if (!state.selectedCollaborateurId) {
-      list.innerHTML = `<div class="ep-empty-cell">Sélectionne un collaborateur.</div>`;
+      list.innerHTML = `<div class="ep-empty-cell">SÃ©lectionne un collaborateur.</div>`;
       epUpdatePunctualHistoryMoreButton(0, 0);
       return;
     }
 
     const groups = epBuildPunctualHistoryCompetenceGroups(rows);
     if (!groups.length) {
-      list.innerHTML = `<div class="ep-empty-cell">Aucune compétence rattachée à ce collaborateur.</div>`;
+      list.innerHTML = `<div class="ep-empty-cell">Aucune compÃ©tence rattachÃ©e Ã  ce collaborateur.</div>`;
       epUpdatePunctualHistoryMoreButton(0, 0);
       return;
     }
@@ -2123,49 +2123,49 @@
 
       const hasAudits = group.audits.length > 0;
       const open = index === 0 && hasAudits;
-      const level = group.dernier_niveau && group.dernier_niveau !== "—" ? group.dernier_niveau : "—";
-      const countLabel = `${group.audits.length} évaluation${group.audits.length > 1 ? "s" : ""}`;
+      const level = group.dernier_niveau && group.dernier_niveau !== "â€”" ? group.dernier_niveau : "â€”";
+      const countLabel = `${group.audits.length} Ã©valuation${group.audits.length > 1 ? "s" : ""}`;
 
       acc.innerHTML = `
         <button type="button" class="ep-punctual-history-acc-head${open ? " is-open" : ""}" aria-expanded="${open ? "true" : "false"}">
           <span class="ep-punctual-history-acc-main">
-            <span class="sb-badge sb-badge-ref-comp-code ep-punctual-history-code">${epEsc(group.code || "—")}</span>
+            <span class="sb-badge sb-badge-ref-comp-code ep-punctual-history-code">${epEsc(group.code || "â€”")}</span>
             <span class="ep-punctual-history-acc-title">
-              <span class="ep-punctual-history-acc-name" title="${epEsc(group.intitule || "")}">${epEsc(group.intitule || "Compétence sans intitulé")}</span>
+              <span class="ep-punctual-history-acc-name" title="${epEsc(group.intitule || "")}">${epEsc(group.intitule || "CompÃ©tence sans intitulÃ©")}</span>
               <span class="ep-punctual-history-acc-meta">
                 <span>Dernier niveau : <strong>${epEsc(level)}</strong></span>
-                <span>Dernière évaluation : <strong>${epEsc(epFormatDateFR(group.derniere_eval) || "—")}</strong></span>
+                <span>DerniÃ¨re Ã©valuation : <strong>${epEsc(epFormatDateFR(group.derniere_eval) || "â€”")}</strong></span>
               </span>
             </span>
           </span>
           <span class="ep-punctual-history-count">${epEsc(countLabel)}</span>
-          <span class="ep-punctual-history-chevron" aria-hidden="true">⌄</span>
+          <span class="ep-punctual-history-chevron" aria-hidden="true">âŒ„</span>
         </button>
         <div class="ep-punctual-history-acc-body${open ? " is-open" : ""}">
           ${hasAudits ? `
             <div class="ep-punctual-history-eval-head" aria-hidden="true">
               <span>Date</span>
-              <span>Type d’évaluation</span>
+              <span>Type dâ€™Ã©valuation</span>
               <span>Niveau atteint</span>
-              <span>Évaluateur</span>
+              <span>Ã‰valuateur</span>
               <span></span>
             </div>
             ${group.audits.map((audit, auditIndex) => `
               <div class="ep-punctual-history-eval-row${auditIndex >= 4 ? " ep-punctual-history-eval-extra" : ""}">
-                <span class="ep-punctual-history-date">${epEsc(epFormatDateFR(audit.date_audit) || "—")}</span>
-                <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "—")}</span>
-                <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
-                <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "Non affecté")}">${epEsc(audit.nom_evaluateur || "Non affecté")}</span>
-                <button type="button" class="sb-icon-btn ep-square-action-btn ep-punctual-history-view" data-ep-history-view="${auditIndex}" title="Voir l’évaluation" aria-label="Voir l’évaluation">${epIconEyeSvg()}</button>
+                <span class="ep-punctual-history-date">${epEsc(epFormatDateFR(audit.date_audit) || "â€”")}</span>
+                <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "â€”")}</span>
+                <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "â€”")}</span>
+                <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "Non affectÃ©")}">${epEsc(audit.nom_evaluateur || "Non affectÃ©")}</span>
+                <button type="button" class="sb-icon-btn ep-square-action-btn ep-punctual-history-view" data-ep-history-view="${auditIndex}" title="Voir lâ€™Ã©valuation" aria-label="Voir lâ€™Ã©valuation">${epIconEyeSvg()}</button>
               </div>
             `).join("")}
             ${group.audits.length > 4 ? `
               <button type="button" class="ep-punctual-history-more-audits" data-ep-more-audits="1" aria-expanded="false">
-                <span>Voir toutes les évaluations (${group.audits.length - 4})</span>
-                <span class="ep-more-competences__chevron" aria-hidden="true">⌄</span>
+                <span>Voir toutes les Ã©valuations (${group.audits.length - 4})</span>
+                <span class="ep-more-competences__chevron" aria-hidden="true">âŒ„</span>
               </button>
             ` : ""}
-          ` : `<div class="ep-punctual-history-empty-row">Aucune évaluation enregistrée pour cette compétence.</div>`}
+          ` : `<div class="ep-punctual-history-empty-row">Aucune Ã©valuation enregistrÃ©e pour cette compÃ©tence.</div>`}
         </div>
       `;
 
@@ -2183,7 +2183,7 @@
           ev.stopPropagation();
           const idx = Number(btn.getAttribute("data-ep-history-view"));
           const audit = Number.isFinite(idx) ? group.audits[idx] : null;
-          await epOpenHistoryEvaluationDetail(audit, { evaluatorName: audit?.nom_evaluateur || "Non affecté" });
+          await epOpenHistoryEvaluationDetail(audit, { evaluatorName: audit?.nom_evaluateur || "Non affectÃ©" });
         });
       });
 
@@ -2195,7 +2195,7 @@
         moreAuditsBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
         const label = moreAuditsBtn.querySelector("span");
         if (label) {
-          label.textContent = isExpanded ? "Voir moins d’évaluations" : `Voir toutes les évaluations (${Math.max(0, group.audits.length - 4)})`;
+          label.textContent = isExpanded ? "Voir moins dâ€™Ã©valuations" : `Voir toutes les Ã©valuations (${Math.max(0, group.audits.length - 4)})`;
         }
       });
 
@@ -2206,18 +2206,18 @@
   }
 
   async function afterAuditSavedRefresh(savedApiResp) {
-    // 1) Mettre à jour l’en-tête de la compétence (niveau + date dernière éval)
+    // 1) Mettre Ã  jour lâ€™en-tÃªte de la compÃ©tence (niveau + date derniÃ¨re Ã©val)
     const levelTxt = (document.getElementById("ep_levelABC")?.textContent || "").toString().trim();
-    if (levelTxt && levelTxt !== "—") {
+    if (levelTxt && levelTxt !== "â€”") {
       setText("ep_compCurrent", _nsLevelLabel4(levelTxt));
     }
 
     const apiDate = _formatDateFR(savedApiResp?.date_audit);
     const dateTxt = apiDate || new Date().toLocaleDateString("fr-FR");
     const lastEl = $("ep_compLastEval");
-    if (lastEl) lastEl.textContent = `Dernière éval : ${dateTxt}`;
+    if (lastEl) lastEl.textContent = `DerniÃ¨re Ã©val : ${dateTxt}`;
 
-    // 2) Mettre à jour la checklist (state + synthèses de page)
+    // 2) Mettre Ã  jour la checklist (state + synthÃ¨ses de page)
     const idEc = (state.selectedEffectifCompetenceId || "").toString().trim();
     if (idEc) {
       if (Array.isArray(state._checklistAll)) {
@@ -2225,7 +2225,7 @@
         if (it) {
           it._neverAudited = false;
           it.date_derniere_eval = dateTxt;
-          if (levelTxt && levelTxt !== "—") it.niveau_actuel = levelTxt;
+          if (levelTxt && levelTxt !== "â€”") it.niveau_actuel = levelTxt;
         }
       }
 
@@ -2250,19 +2250,19 @@
         item.id_effectif_competence = idEc;
         item.date_derniere_eval = dateTxt;
 
-        if (levelTxt && levelTxt !== "—") {
+        if (levelTxt && levelTxt !== "â€”") {
           item.niveau_actuel = levelTxt;
         }
       });
     }
 
-    // 4) KPI “à faire” (jamais auditées)
+    // 4) KPI â€œÃ  faireâ€ (jamais auditÃ©es)
     _recalcKpiToDoPreferState();
     epRenderAnnualCompetenceSummary(state._checklistAll || []);
     epApplyPunctualFilters();
     await epLoadPunctualHistorySummary();
 
-    // 5) Réappliquer filtres éventuels (recherche / slider selon ta version)
+    // 5) RÃ©appliquer filtres Ã©ventuels (recherche / slider selon ta version)
     try {
       if (typeof applyChecklistCriticiteFilter === "function") applyChecklistCriticiteFilter();
       else if (typeof filterChecklistRows === "function") filterChecklistRows();
@@ -2315,7 +2315,7 @@
 
     setDisabled("ep_btnSave", true);
 
-    if (!scopeOk) setText("ep_ctxService", "—");
+    if (!scopeOk) setText("ep_ctxService", "â€”");
 
     if (!collabOk) {
       resetCouverturePosteUI();
@@ -2342,12 +2342,12 @@
 
     if (hint) {
       hint.style.display = "";
-      hint.textContent = "Sélectionne un collaborateur pour préparer un entretien ou lancer une évaluation.";
+      hint.textContent = "SÃ©lectionne un collaborateur pour prÃ©parer un entretien ou lancer une Ã©valuation.";
     }
     if (wrap) wrap.style.display = "none";
     if (svg) svg.innerHTML = "";
-    if (pctPoste) pctPoste.textContent = "—";
-    if (pctMax) pctMax.textContent = "—";
+    if (pctPoste) pctPoste.textContent = "â€”";
+    if (pctMax) pctMax.textContent = "â€”";
   }
 
   function showCouverturePosteWrap(message) {
@@ -2399,11 +2399,11 @@
       renderCouverturePoste();
 
     } catch (e) {
-      // On garde le bloc visible (toggle inclus), mais on affiche l’erreur.
+      // On garde le bloc visible (toggle inclus), mais on affiche lâ€™erreur.
       showCouverturePosteWrap("Impossible de calculer la couverture du poste actuel : " + String(e?.message || e));
       console.error("Couverture poste actuel:", e);
 
-      // petite jauge vide pour éviter un “grand trou”
+      // petite jauge vide pour Ã©viter un â€œgrand trouâ€
       const svg = $("ep_svgGauge");
       if (svg) {
         renderGauge(svg, 0, 100, 0);
@@ -2431,21 +2431,21 @@
       const pctPoste = $("ep_covPctPoste");
       const pctMaxEl = $("ep_covPctMax");
 
-      if (pctPoste) pctPoste.textContent = "—";
-      if (pctMaxEl) pctMaxEl.textContent = "—";
+      if (pctPoste) pctPoste.textContent = "â€”";
+      if (pctMaxEl) pctMaxEl.textContent = "â€”";
       return;
     }
 
     const pct = Math.max(0, Math.min(100, pctMaitrise));
 
-    // Le chiffre affiché et l'aiguille utilisent strictement le même pourcentage.
+    // Le chiffre affichÃ© et l'aiguille utilisent strictement le mÃªme pourcentage.
     renderGauge(svg, 0, 100, pct);
 
     const pctPoste = $("ep_covPctPoste");
     const pctMaxEl = $("ep_covPctMax");
 
     if (pctPoste) pctPoste.textContent = `${Math.round(pct)}%`;
-    if (pctMaxEl) pctMaxEl.textContent = "—";
+    if (pctMaxEl) pctMaxEl.textContent = "â€”";
   }
 
   function renderGauge(svg, gaugeMin, gaugeMax, value) {
@@ -2500,9 +2500,9 @@
     };
 
     /*
-      Même logique que la jauge dashboard :
+      MÃªme logique que la jauge dashboard :
       - rouge : zone basse
-      - orange : zone intermédiaire
+      - orange : zone intermÃ©diaire
       - vert : zone conforme
       On n'affiche pas une progression partielle.
       On affiche une vraie jauge de lecture.
@@ -2572,14 +2572,14 @@
         selectId: "ep_selService",
         storageKey: LS_KEY_SERVICE,
         labelAll: "Tous les services",
-        labelNonLie: "Non lié",
+        labelNonLie: "Non liÃ©",
         includeAll: true,
         includeNonLie: true,
         allowIndent: true
       });
 
       _servicesLoaded = true;
-      _servicesFlat = []; // plus utilisé ici (centralisé)
+      _servicesFlat = []; // plus utilisÃ© ici (centralisÃ©)
     } catch (e) {
       _portal.showAlert("error", "Impossible de charger la liste des services : " + String(e?.message || e));
       console.error(e);
@@ -2591,9 +2591,9 @@
 
   function getCollaborateurPriority(c) {
     const raw = (c?.priorite_eval || "").toString().trim().toLowerCase();
-    if (["high", "haute", "priorite", "priorité", "priorite_haute", "priorité haute"].includes(raw)) return "high";
-    if (["plan", "planning", "a_planifier", "à planifier", "planifier"].includes(raw)) return "plan";
-    if (["ok", "a_jour", "à jour", "done"].includes(raw)) return "ok";
+    if (["high", "haute", "priorite", "prioritÃ©", "priorite_haute", "prioritÃ© haute"].includes(raw)) return "high";
+    if (["plan", "planning", "a_planifier", "Ã  planifier", "planifier"].includes(raw)) return "plan";
+    if (["ok", "a_jour", "Ã  jour", "done"].includes(raw)) return "ok";
     if (["none", "aucune", "empty"].includes(raw)) return "none";
 
     const total = Number(c?.nb_competences_total ?? 0);
@@ -2628,19 +2628,19 @@ function getCollaborateurInitials(c) {
     const nom = (c?.nom_effectif || "").toString().trim();
     const p = prenom ? prenom.charAt(0) : "";
     const n = nom ? nom.charAt(0) : "";
-    return `${p}${n}`.toUpperCase() || "—";
+    return `${p}${n}`.toUpperCase() || "â€”";
   }
 
   function getInitialsFromNameParts(prenom, nom) {
     const p = (prenom || "").toString().trim();
     const n = (nom || "").toString().trim();
-    return `${p ? p.charAt(0) : ""}${n ? n.charAt(0) : ""}`.toUpperCase() || "—";
+    return `${p ? p.charAt(0) : ""}${n ? n.charAt(0) : ""}`.toUpperCase() || "â€”";
   }
 
   function epSetSummaryLink(id, label, disabled, title) {
     const btn = $(id);
     if (!btn) return;
-    btn.textContent = (label || "—").toString().trim() || "—";
+    btn.textContent = (label || "â€”").toString().trim() || "â€”";
     btn.disabled = !!disabled;
     btn.classList.toggle("is-disabled", !!disabled);
     if (title) btn.title = title;
@@ -2650,11 +2650,11 @@ function getCollaborateurInitials(c) {
   function epSignatureStatusFromEntretien(entretien) {
     const raw = (entretien?.statut || "").toString().trim();
     const norm = epNormText(raw);
-    if (!norm.includes("signer")) return raw || "À réaliser";
+    if (!norm.includes("signer")) return raw || "Ã€ rÃ©aliser";
 
     const match = raw.match(/(\d+)\s*\/\s*2/);
-    if (match) return `À signer ${match[1]}/2`;
-    return "À signer 2/2";
+    if (match) return `Ã€ signer ${match[1]}/2`;
+    return "Ã€ signer 2/2";
   }
 
   function epOpenCalendarForAnnualContext() {
@@ -2672,24 +2672,24 @@ function getCollaborateurInitials(c) {
     const raw = (c?.statut_entretien_suivi || "").toString().trim().toLowerCase();
     const label = (c?.libelle_entretien_suivi || "").toString().trim();
 
-    if (["a_jour", "ok", "jour", "signed", "signe", "signé"].includes(raw)) {
-      return { key: "ok", label: label || "Entretien à jour" };
+    if (["a_jour", "ok", "jour", "signed", "signe", "signÃ©"].includes(raw)) {
+      return { key: "ok", label: label || "Entretien Ã  jour" };
     }
-    if (["planifie", "planifié", "planned", "prepare", "préparé"].includes(raw)) {
-      return { key: "planned", label: label || "Entretien planifié" };
+    if (["planifie", "planifiÃ©", "planned", "prepare", "prÃ©parÃ©"].includes(raw)) {
+      return { key: "planned", label: label || "Entretien planifiÃ©" };
     }
     if (["retard", "late", "overdue", "en_retard"].includes(raw)) {
       return { key: "late", label: label || "Entretien en retard" };
     }
-    if (["a_planifier", "à_planifier", "todo", "none"].includes(raw)) {
-      return { key: "todo", label: label || "Entretien à planifier" };
+    if (["a_planifier", "Ã _planifier", "todo", "none"].includes(raw)) {
+      return { key: "todo", label: label || "Entretien Ã  planifier" };
     }
 
     const priority = getCollaborateurPriority(c);
-    if (priority === "ok") return { key: "ok", label: "Entretien à jour" };
-    if (priority === "plan") return { key: "todo", label: "Entretien à planifier" };
+    if (priority === "ok") return { key: "ok", label: "Entretien Ã  jour" };
+    if (priority === "plan") return { key: "todo", label: "Entretien Ã  planifier" };
     if (priority === "high") return { key: "late", label: "Entretien en retard" };
-    return { key: "neutral", label: "Statut entretien non renseigné" };
+    return { key: "neutral", label: "Statut entretien non renseignÃ©" };
   }
 
   function renderCollaborateurs(list) {
@@ -2727,7 +2727,7 @@ function getCollaborateurInitials(c) {
       const nomRaw = (c.nom_effectif || "").toString().trim();
       const nom = nomRaw.toUpperCase();
       const name = `${nom} ${prenom}`.trim() || "Collaborateur";
-      const poste = (c.intitule_poste || "Poste non renseigné").toString().trim();
+      const poste = (c.intitule_poste || "Poste non renseignÃ©").toString().trim();
       const status = getCollaborateurEntretienStatus(c);
 
       const item = document.createElement("button");
@@ -2736,7 +2736,7 @@ function getCollaborateurInitials(c) {
       item.dataset.idEffectif = String(c.id_effectif || "");
       item.dataset.idService = String(c.id_service || "");
       item.dataset.entretienStatus = status.key;
-      item.title = `${name}${poste ? ` - ${poste}` : ""} · ${status.label}`;
+      item.title = `${name}${poste ? ` - ${poste}` : ""} Â· ${status.label}`;
 
       const avatar = document.createElement("span");
       avatar.className = "ep-collab-card-avatar";
@@ -2766,15 +2766,15 @@ function getCollaborateurInitials(c) {
       item.appendChild(dot);
 
       item.addEventListener("click", async () => {
-        // sélection visuelle
+        // sÃ©lection visuelle
         wrap.querySelectorAll(".ep-collab-card.active").forEach(x => x.classList.remove("active"));
         item.classList.add("active");
 
         state.selectedCollaborateurId = c.id_effectif || null;
         state.selectedCompetenceId = null;
 
-        // Progression : données dépendantes du collaborateur.
-        // Sans reset, le modal garde la courbe du précédent collaborateur.
+        // Progression : donnÃ©es dÃ©pendantes du collaborateur.
+        // Sans reset, le modal garde la courbe du prÃ©cÃ©dent collaborateur.
         state._progressData = null;
         state._progressVisible = {};
         state._progressLoadedKey = "";
@@ -2784,7 +2784,7 @@ function getCollaborateurInitials(c) {
         const progCanvas = $("ep_progChart");
 
         if (progWrap) {
-          progWrap.innerHTML = `<div class="ep-history-empty">Ouvre l’onglet Progression pour charger les données du collaborateur sélectionné.</div>`;
+          progWrap.innerHTML = `<div class="ep-history-empty">Ouvre lâ€™onglet Progression pour charger les donnÃ©es du collaborateur sÃ©lectionnÃ©.</div>`;
         }
 
         if (progCanvas) {
@@ -2810,41 +2810,41 @@ function getCollaborateurInitials(c) {
           _portal.showAlert("", "");
 
 
-          // Date entretien = date du clic (pour l’instant)
+          // Date entretien = date du clic (pour lâ€™instant)
           setText("ep_ctxDate", new Date().toLocaleDateString("fr-FR"));
 
-          // Contexte réel + checklist compétences
+          // Contexte rÃ©el + checklist compÃ©tences
           const url = `${_portal.apiBase}/skills/entretien-performance/effectif-checklist/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
           const data = await _portal.apiJson(url);
 
           const eff = data?.effectif || null;
 
-          // ---- Contexte (service réel + matricule) ----
+          // ---- Contexte (service rÃ©el + matricule) ----
           if (eff) {
-            // service réel du collaborateur (sert pour charger le détail référentiel)
+            // service rÃ©el du collaborateur (sert pour charger le dÃ©tail rÃ©fÃ©rentiel)
             state.selectedCollaborateurServiceId = (eff.id_service || "").toString().trim();
 
             const prenom = (eff.prenom_effectif || "").toString().trim();
             const nom = (eff.nom_effectif || "").toString().trim();
-            setText("ep_ctxCollaborateur", `${prenom} ${nom}`.trim() || "—");
+            setText("ep_ctxCollaborateur", `${prenom} ${nom}`.trim() || "â€”");
             setText("ep_ctxInitials", getInitialsFromNameParts(prenom, nom));
 
-            setText("ep_ctxMatricule", (eff.matricule_interne || "").toString().trim() || "—");
-            setText("ep_ctxPoste", (eff.intitule_poste || "").toString().trim() || "—");
+            setText("ep_ctxMatricule", (eff.matricule_interne || "").toString().trim() || "â€”");
+            setText("ep_ctxPoste", (eff.intitule_poste || "").toString().trim() || "â€”");
 
             const svc = (eff.nom_service || eff.id_service || "").toString().trim();
-            setText("ep_ctxService", svc || "—");
-            setText("ep_ctxServiceBadge", svc || "Service non renseigné");
+            setText("ep_ctxService", svc || "â€”");
+            setText("ep_ctxServiceBadge", svc || "Service non renseignÃ©");
           } else {
             state.selectedCollaborateurServiceId = "";
 
-            // fallback si jamais l’API ne renvoie pas le contexte
-            setText("ep_ctxCollaborateur", name || "—");
+            // fallback si jamais lâ€™API ne renvoie pas le contexte
+            setText("ep_ctxCollaborateur", name || "â€”");
             setText("ep_ctxInitials", getCollaborateurInitials(c));
-            setText("ep_ctxMatricule", "—");
-            setText("ep_ctxPoste", "—");
-            setText("ep_ctxService", "—");
-            setText("ep_ctxServiceBadge", "Service non renseigné");
+            setText("ep_ctxMatricule", "â€”");
+            setText("ep_ctxPoste", "â€”");
+            setText("ep_ctxService", "â€”");
+            setText("ep_ctxServiceBadge", "Service non renseignÃ©");
           }
 
 
@@ -2854,13 +2854,13 @@ function getCollaborateurInitials(c) {
 
           let list = Array.isArray(data?.competences) ? data.competences : [];
 
-          // flag "jamais audité" = date_derniere_eval null
+          // flag "jamais auditÃ©" = date_derniere_eval null
           list = list.map(x => ({
             ...x,
             _neverAudited: !x.date_derniere_eval
           }));
 
-          // Bonus: tri => jamais audité en haut, puis code
+          // Bonus: tri => jamais auditÃ© en haut, puis code
           list.sort((a, b) => {
             const na = a._neverAudited ? 1 : 0;
             const nb = b._neverAudited ? 1 : 0;
@@ -2868,14 +2868,14 @@ function getCollaborateurInitials(c) {
             return String(a.code || "").localeCompare(String(b.code || ""), "fr", { sensitivity: "base" });
           });
 
-          // On garde la liste complète en mémoire pour recalculer les KPI après filtrage
+          // On garde la liste complÃ¨te en mÃ©moire pour recalculer les KPI aprÃ¨s filtrage
           state._checklistAll = list;
 
-          // Valeurs provisoires, recalculées juste après rendu par applyChecklistCriticiteFilter()
+          // Valeurs provisoires, recalculÃ©es juste aprÃ¨s rendu par applyChecklistCriticiteFilter()
           setText("ep_compCount", String(list.length));
           setText("ep_kpiToDo", `0 / ${list.length}`);
 
-          // (les autres KPI restent à 0 pour l’instant, on les fera quand on sauvegardera des audits)
+          // (les autres KPI restent Ã  0 pour lâ€™instant, on les fera quand on sauvegardera des audits)
           setText("ep_kpiDone", "0");
           setText("ep_kpiChanged", "0");
           setText("ep_kpiReview", "0");
@@ -2892,7 +2892,7 @@ function getCollaborateurInitials(c) {
 
           epLoadPunctualHistorySummary();
 
-          // Slider criticité activé + filtre appliqué
+          // Slider criticitÃ© activÃ© + filtre appliquÃ©
           bindCriticiteSliderOnce();
 
           const rngCrit = $("ep_rngCriticite");
@@ -2901,7 +2901,7 @@ function getCollaborateurInitials(c) {
           if (rngCrit) {
             rngCrit.disabled = false;
 
-            // Reprend le seuil mémorisé si déjà défini, sinon conserve la valeur courante
+            // Reprend le seuil mÃ©morisÃ© si dÃ©jÃ  dÃ©fini, sinon conserve la valeur courante
             const seuil = (typeof state._critSeuil === "number")
               ? state._critSeuil
               : Number(rngCrit.value || 0);
@@ -2936,8 +2936,8 @@ function getCollaborateurInitials(c) {
       more.type = "button";
       more.className = "ep-collab-more";
       more.innerHTML = isExpanded
-        ? `<span>Réduire la liste</span><span aria-hidden="true">↑</span>`
-        : `<span>Plus de collaborateurs</span><strong>${arr.length - 6}</strong><span aria-hidden="true">→</span>`;
+        ? `<span>RÃ©duire la liste</span><span aria-hidden="true">â†‘</span>`
+        : `<span>Plus de collaborateurs</span><strong>${arr.length - 6}</strong><span aria-hidden="true">â†’</span>`;
       more.addEventListener("click", () => {
         state.collabExpanded = !state.collabExpanded;
         renderCollaborateurs(state._collaborateursAll || []);
@@ -2958,10 +2958,10 @@ function getCollaborateurInitials(c) {
         window.setTimeout(() => {
           if (!document.body.contains(btnToSelect)) return;
 
-          // Si une présélection externe arrive entre-temps, elle reste prioritaire.
+          // Si une prÃ©sÃ©lection externe arrive entre-temps, elle reste prioritaire.
           if (String(state.pendingPreselectCollaborateurId || "").trim()) return;
 
-          // Évite de relancer un chargement si une sélection a déjà été faite.
+          // Ã‰vite de relancer un chargement si une sÃ©lection a dÃ©jÃ  Ã©tÃ© faite.
           if (wrap.querySelector(".ep-collab-card.active")) return;
 
           btnToSelect.click();
@@ -3057,7 +3057,7 @@ function getCollaborateurInitials(c) {
     try {
       _portal.showAlert("", "");
 
-      setText("ep_collabCount", "…");
+      setText("ep_collabCount", "â€¦");
 
       const params = new URLSearchParams();
       if (q) params.set("q", q);
@@ -3068,8 +3068,8 @@ function getCollaborateurInitials(c) {
       if (state._collabLoadSeq !== loadSeq) return;
 
       renderCollaborateurs(data || []);
-      setText("ep_ctxService", getSelectedServiceName() || "—");
-      setText("ep_ctxServiceBadge", getSelectedServiceName() || "Service non renseigné");
+      setText("ep_ctxService", getSelectedServiceName() || "â€”");
+      setText("ep_ctxServiceBadge", getSelectedServiceName() || "Service non renseignÃ©");
 
     } catch (e) {
       if (state._collabLoadSeq !== loadSeq) return;
@@ -3077,8 +3077,8 @@ function getCollaborateurInitials(c) {
       _portal.showAlert("error", "Impossible de charger les collaborateurs : " + String(e?.message || e));
       console.error(e);
       renderCollaborateurs([]);
-      setText("ep_ctxService", getSelectedServiceName() || "—");
-      setText("ep_ctxServiceBadge", getSelectedServiceName() || "Service non renseigné");
+      setText("ep_ctxService", getSelectedServiceName() || "â€”");
+      setText("ep_ctxServiceBadge", getSelectedServiceName() || "Service non renseignÃ©");
     } finally {
       if (state._collabLoadSeq === loadSeq) {
         state._collabLoadingKey = "";
@@ -3116,8 +3116,8 @@ function getCollaborateurInitials(c) {
     const apply = (opened) => {
       card.classList.toggle("is-collapsed", !opened);
       btn.setAttribute("aria-expanded", opened ? "true" : "false");
-      btn.setAttribute("title", opened ? "Replier les filtres" : "Déplier les filtres");
-      btn.setAttribute("aria-label", opened ? "Replier les filtres" : "Déplier les filtres");
+      btn.setAttribute("title", opened ? "Replier les filtres" : "DÃ©plier les filtres");
+      btn.setAttribute("aria-label", opened ? "Replier les filtres" : "DÃ©plier les filtres");
       try { localStorage.setItem(LS_KEY_FILTERS_OPEN, opened ? "1" : "0"); } catch (_) {}
     };
 
@@ -3187,18 +3187,18 @@ function getCollaborateurInitials(c) {
 
     const labels = {
       missions: "Missions",
-      reussites: "Réussites",
-      difficultes: "Difficultés",
+      reussites: "RÃ©ussites",
+      difficultes: "DifficultÃ©s",
       contexte: "Organisation / conditions de travail",
 
       objectifs: "Objectifs",
       indicateurs: "Indicateurs / attendus",
-      moyens: "Moyens nécessaires",
-      echeances: "Échéances",
+      moyens: "Moyens nÃ©cessaires",
+      echeances: "Ã‰chÃ©ances",
 
       besoins_formation: "Besoins de formation",
       souhaits: "Souhaits du collaborateur",
-      evolution: "Évolution / mobilité",
+      evolution: "Ã‰volution / mobilitÃ©",
       accompagnement: "Accompagnement",
 
       actions: "Actions",
@@ -3258,19 +3258,19 @@ function getCollaborateurInitials(c) {
 
   function epCurrentCollabName() {
     const v = ($("ep_ctxCollaborateur")?.textContent || "").toString().trim();
-    return v && v !== "—" ? v : "Collaborateur sélectionné";
+    return v && v !== "â€”" ? v : "Collaborateur sÃ©lectionnÃ©";
   }
 
   function epNormalizeEntretienStatut(value) {
     const v = (value || "").toString().trim().toLowerCase();
 
     if (["en cours", "encours"].includes(v)) return "en cours";
-    if (["à signer 2/2", "a signer 2/2", "à signer", "a signer"].includes(v)) return "à signer 2/2";
-    if (["à signer 1/2", "a signer 1/2"].includes(v)) return "à signer 1/2";
-    if (["terminé", "termine"].includes(v)) return "terminé";
-    if (["archivé", "archive"].includes(v)) return "archivé";
+    if (["Ã  signer 2/2", "a signer 2/2", "Ã  signer", "a signer"].includes(v)) return "Ã  signer 2/2";
+    if (["Ã  signer 1/2", "a signer 1/2"].includes(v)) return "Ã  signer 1/2";
+    if (["terminÃ©", "termine"].includes(v)) return "terminÃ©";
+    if (["archivÃ©", "archive"].includes(v)) return "archivÃ©";
 
-    return "à réaliser";
+    return "Ã  rÃ©aliser";
   }
 
   function epSetEntretienStatutValue(value) {
@@ -3286,8 +3286,8 @@ function getCollaborateurInitials(c) {
       toggle.setAttribute("aria-checked", checked ? "true" : "false");
     }
 
-    // Libellés fixes dans l'UI : "À réaliser" à gauche, "En cours" à droite.
-    // Le switch seul porte l'état.
+    // LibellÃ©s fixes dans l'UI : "Ã€ rÃ©aliser" Ã  gauche, "En cours" Ã  droite.
+    // Le switch seul porte l'Ã©tat.
   }
 
   function epGetEntretienMode() {
@@ -3316,7 +3316,7 @@ function getCollaborateurInitials(c) {
     if (dateRealiseeField) dateRealiseeField.style.display = isPreparation ? "none" : "";
     if (entretienCritFilter) entretienCritFilter.style.display = isPreparation ? "" : "none";
     if (savePrepDraftBtn) savePrepDraftBtn.style.display = isPreparation ? "" : "none";
-    if (saveEntretienBtn) saveEntretienBtn.textContent = isPreparation ? "Valider la préparation" : "Enregistrer";
+    if (saveEntretienBtn) saveEntretienBtn.textContent = isPreparation ? "Valider la prÃ©paration" : "Enregistrer";
 
     document.querySelectorAll("#modalEpEntretien .ep-entretien-tab").forEach(btn => {
       const panel = btn.dataset.panel || "";
@@ -3330,10 +3330,10 @@ function getCollaborateurInitials(c) {
     }
 
     if (isPreparation) {
-      epSetEntretienStatutValue("à réaliser");
+      epSetEntretienStatutValue("Ã  rÃ©aliser");
     } else {
       const current = epNormalizeEntretienStatut(epGetValue("ep_entretienStatut"));
-      epSetEntretienStatutValue(current === "à réaliser" ? "en cours" : current);
+      epSetEntretienStatutValue(current === "Ã  rÃ©aliser" ? "en cours" : current);
     }
   }
 
@@ -3361,7 +3361,7 @@ function getCollaborateurInitials(c) {
     return {
       id_entretien: "",
       type_entretien: "Entretien individuel",
-      statut: "à réaliser",
+      statut: "Ã  rÃ©aliser",
       date_prevue: epTodayIso(),
       date_realisee: "",
       periode_debut: "",
@@ -3463,7 +3463,7 @@ function getCollaborateurInitials(c) {
 
     epSetValue("ep_entretienId", d.id_entretien || "");
     epSetValue("ep_entretienType", d.type_entretien || "Entretien individuel");
-    epSetValue("ep_entretienStatut", d.statut || "à réaliser");
+    epSetValue("ep_entretienStatut", d.statut || "Ã  rÃ©aliser");
     epSetValue("ep_entretienDatePrevue", d.date_prevue || epTodayIso());
     epSetValue("ep_entretienDateRealisee", d.date_realisee || "");
     epSetValue("ep_entretienPeriodeDebut", d.periode_debut || "");
@@ -3481,7 +3481,7 @@ function getCollaborateurInitials(c) {
     epSetValue("ep_entretienSyntheseCollaborateur", d.synthese?.collaborateur || "");
     epSetEntretienDocFile(null);
 
-    setText("ep_entretienModalTitle", d.id_entretien ? (d.type_entretien || "Entretien individuel") : "Préparer un entretien individuel");
+    setText("ep_entretienModalTitle", d.id_entretien ? (d.type_entretien || "Entretien individuel") : "PrÃ©parer un entretien individuel");
     setText("ep_entretienModalSub", epCurrentCollabName());
 
     epSetInlineMsg("ep_entretienMsg", "info", "");
@@ -3493,10 +3493,10 @@ function getCollaborateurInitials(c) {
 
   function buildEntretienPayload(statutOverride, options) {
     const d = state._entretienDraft || epDefaultEntretienDraft();
-    const statut = statutOverride || epGetValue("ep_entretienStatut") || "à réaliser";
+    const statut = statutOverride || epGetValue("ep_entretienStatut") || "Ã  rÃ©aliser";
     let preparationStatus = options?.preparationStatus || "";
 
-    if (!preparationStatus && epGetEntretienMode() === "realisation" && epNormalizeEntretienStatut(statut) !== "à réaliser") {
+    if (!preparationStatus && epGetEntretienMode() === "realisation" && epNormalizeEntretienStatut(statut) !== "Ã  rÃ©aliser") {
       preparationStatus = "auto_validee";
     }
 
@@ -3558,7 +3558,7 @@ function getCollaborateurInitials(c) {
         .filter(x => role !== "poste" || !isPreparation || getEpCritPctValue(x.poids_criticite_pct) + EPS >= seuil);
 
       if (!list.length) {
-        wrap.innerHTML = `<div class="ep-entretien-empty">Aucune compétence</div>`;
+        wrap.innerHTML = `<div class="ep-entretien-empty">Aucune compÃ©tence</div>`;
         return;
       }
 
@@ -3577,8 +3577,8 @@ function getCollaborateurInitials(c) {
         row.innerHTML = `
           <label class="ep-entretien-comp-main">
             <input type="checkbox" data-check="1" ${checked ? "checked" : ""} />
-            <span class="sb-badge sb-badge-ref-comp-code">${epEsc(item.code || "—")}</span>
-            <span class="ep-entretien-comp-title" title="${epEsc(item.intitule || "")}">${epEsc(item.intitule || "—")}</span>
+            <span class="sb-badge sb-badge-ref-comp-code">${epEsc(item.code || "â€”")}</span>
+            <span class="ep-entretien-comp-title" title="${epEsc(item.intitule || "")}">${epEsc(item.intitule || "â€”")}</span>
           </label>
 
           <div class="ep-entretien-comp-meta">
@@ -3595,7 +3595,7 @@ function getCollaborateurInitials(c) {
               </button>
             ` : ""}
             ${canEvaluate ? `
-              <button type="button" class="sb-icon-btn ep-entretien-eval-btn" data-eval="1" title="Évaluer" aria-label="Évaluer">
+              <button type="button" class="sb-icon-btn ep-entretien-eval-btn" data-eval="1" title="Ã‰valuer" aria-label="Ã‰valuer">
                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 20h9"/>
                   <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
@@ -3634,7 +3634,7 @@ function getCollaborateurInitials(c) {
 
   function openEntretienModal(entretien, modeOverride) {
     if (!state.selectedCollaborateurId) {
-      _portal && _portal.showAlert("warning", "Sélectionne un collaborateur.");
+      _portal && _portal.showAlert("warning", "SÃ©lectionne un collaborateur.");
       return;
     }
 
@@ -3646,7 +3646,7 @@ function getCollaborateurInitials(c) {
 
   async function saveEntretienOnly(statutOverride, options) {
     if (!state.selectedCollaborateurId || !_portal) {
-      throw new Error("Sélectionne un collaborateur.");
+      throw new Error("SÃ©lectionne un collaborateur.");
     }
 
     const idEntretien = epGetValue("ep_entretienId");
@@ -3678,7 +3678,7 @@ function getCollaborateurInitials(c) {
       fillEntretienModal(refreshed, state._entretienModalMode);
     }
 
-    epSetInlineMsg("ep_entretienMsg", "success", message || "Entretien enregistré");
+    epSetInlineMsg("ep_entretienMsg", "success", message || "Entretien enregistrÃ©");
     await loadEntretiensIndividuels();
   }
 
@@ -3686,9 +3686,9 @@ function getCollaborateurInitials(c) {
     if (state._entretienModalMode !== "preparation") return;
 
     try {
-      epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de la préparation…");
-      await saveEntretienOnly("à réaliser", { preparationStatus: "en_cours" });
-      epSetInlineMsg("ep_entretienMsg", "success", "Préparation enregistrée sans validation.");
+      epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de la prÃ©parationâ€¦");
+      await saveEntretienOnly("Ã  rÃ©aliser", { preparationStatus: "en_cours" });
+      epSetInlineMsg("ep_entretienMsg", "success", "PrÃ©paration enregistrÃ©e sans validation.");
     } catch (e) {
       const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
       epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
@@ -3697,15 +3697,15 @@ function getCollaborateurInitials(c) {
 
   async function openEntretienValidationFlow() {
     if (!state.selectedCollaborateurId || !_portal) {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Sélectionne un collaborateur.");
+      epSetInlineMsg("ep_entretienMsg", "danger", "SÃ©lectionne un collaborateur.");
       return;
     }
 
     if (state._entretienModalMode === "preparation") {
       try {
-        epSetInlineMsg("ep_entretienMsg", "info", "Validation de la préparation…");
-        await saveEntretienOnly("à réaliser", { preparationStatus: "validee" });
-        epSetInlineMsg("ep_entretienMsg", "success", "Préparation validée. Entretien à réaliser.");
+        epSetInlineMsg("ep_entretienMsg", "info", "Validation de la prÃ©parationâ€¦");
+        await saveEntretienOnly("Ã  rÃ©aliser", { preparationStatus: "validee" });
+        epSetInlineMsg("ep_entretienMsg", "success", "PrÃ©paration validÃ©e. Entretien Ã  rÃ©aliser.");
       } catch (e) {
         const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
         epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
@@ -3715,16 +3715,16 @@ function getCollaborateurInitials(c) {
 
     const statut = epNormalizeEntretienStatut(epGetValue("ep_entretienStatut"));
 
-    if (["à signer 1/2", "à signer 2/2", "terminé"].includes(statut)) {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Entretien déjà engagé dans le circuit de signature : modification bloquée.");
+    if (["Ã  signer 1/2", "Ã  signer 2/2", "terminÃ©"].includes(statut)) {
+      epSetInlineMsg("ep_entretienMsg", "danger", "Entretien dÃ©jÃ  engagÃ© dans le circuit de signature : modification bloquÃ©e.");
       return;
     }
 
-    if (statut === "à réaliser") {
+    if (statut === "Ã  rÃ©aliser") {
       try {
-        epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de l'entretien…");
-        await saveEntretienOnly("à réaliser");
-        epSetInlineMsg("ep_entretienMsg", "success", "Entretien enregistré en statut à réaliser.");
+        epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de l'entretienâ€¦");
+        await saveEntretienOnly("Ã  rÃ©aliser");
+        epSetInlineMsg("ep_entretienMsg", "success", "Entretien enregistrÃ© en statut Ã  rÃ©aliser.");
       } catch (e) {
         const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
         epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
@@ -3733,11 +3733,11 @@ function getCollaborateurInitials(c) {
     }
 
     if (!window.NovoskillValidationElectronique || typeof window.NovoskillValidationElectronique.open !== "function") {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Composant de validation électronique indisponible.");
+      epSetInlineMsg("ep_entretienMsg", "danger", "Composant de validation Ã©lectronique indisponible.");
       return;
     }
 
-    const evaluatorName = (document.getElementById("topbarName")?.textContent || "").trim() || "Évaluateur";
+    const evaluatorName = (document.getElementById("topbarName")?.textContent || "").trim() || "Ã‰valuateur";
 
     try {
       await window.NovoskillValidationElectronique.open({
@@ -3748,23 +3748,23 @@ function getCollaborateurInitials(c) {
         typeDocument: "entretien_individuel",
         typeSignataire: "evaluateur",
         signataireName: evaluatorName,
-        title: "Validation électronique de l’entretien",
-        subtitle: `Évaluateur : ${evaluatorName}`,
-        saveDocument: async (statutSignature) => saveEntretienOnly(statutSignature || "à signer 2/2"),
+        title: "Validation Ã©lectronique de lâ€™entretien",
+        subtitle: `Ã‰valuateur : ${evaluatorName}`,
+        saveDocument: async (statutSignature) => saveEntretienOnly(statutSignature || "Ã  signer 2/2"),
         payloadValidation: {
           source: "insights",
           workflow: "entretien_individuel",
         },
         onLater: async () => {
-          await epRefreshEntretienAfterValidation("Entretien enregistré — signature à finaliser");
+          await epRefreshEntretienAfterValidation("Entretien enregistrÃ© â€” signature Ã  finaliser");
         },
         onSigned: async () => {
-          await epRefreshEntretienAfterValidation("Entretien enregistré et validation électronique enregistrée");
+          await epRefreshEntretienAfterValidation("Entretien enregistrÃ© et validation Ã©lectronique enregistrÃ©e");
         },
       });
     } catch (e) {
       const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
-      epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'ouverture de la validation électronique.");
+      epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'ouverture de la validation Ã©lectronique.");
     }
   }
 
@@ -3802,13 +3802,13 @@ function getCollaborateurInitials(c) {
     const id = (idEntretien || epGetValue("ep_entretienId") || "").toString().trim();
 
     if (!id || !_portal) {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Enregistre l'entretien avant de générer le rapport.");
+      epSetInlineMsg("ep_entretienMsg", "danger", "Enregistre l'entretien avant de gÃ©nÃ©rer le rapport.");
       return;
     }
 
     const popup = window.open("about:blank", "_blank");
     if (popup) {
-      try { popup.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Ouverture du PDF…</p>"); } catch (_) {}
+      try { popup.document.write("<p style='font-family: var(--ns-font-ui);padding:16px;'>Ouverture du PDFâ€¦</p>"); } catch (_) {}
     }
 
     try {
@@ -3848,11 +3848,11 @@ function getCollaborateurInitials(c) {
   async function loadEntretiensIndividuels() {
     const wrap = $("ep_entretienList");
     if (!state.selectedCollaborateurId || !_portal) {
-      if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Sélectionne un collaborateur.</div>`;
+      if (wrap) wrap.innerHTML = `<div class="ep-history-empty">SÃ©lectionne un collaborateur.</div>`;
       return [];
     }
 
-    if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Chargement…</div>`;
+    if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Chargementâ€¦</div>`;
 
     const url = `${_portal.apiBase}/skills/entretien-performance/entretiens/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
     const data = await _portal.apiJson(url);
@@ -3882,8 +3882,8 @@ function getCollaborateurInitials(c) {
       const card = document.createElement("div");
       card.className = "ep-entretien-row";
 
-      const dateTxt = entretien.date_realisee || entretien.date_prevue || entretien.created_at || "—";
-      const statut = entretien.statut || "à réaliser";
+      const dateTxt = entretien.date_realisee || entretien.date_prevue || entretien.created_at || "â€”";
+      const statut = entretien.statut || "Ã  rÃ©aliser";
       const statusClass = statut
         .toLowerCase()
         .normalize("NFD")
@@ -3923,14 +3923,14 @@ function getCollaborateurInitials(c) {
 
   function epCatalogueRoleLabel(role) {
     return role === "detenue_hors_poste"
-      ? "Compétences détenues hors poste"
-      : "Compétences à développer ou explorer";
+      ? "CompÃ©tences dÃ©tenues hors poste"
+      : "CompÃ©tences Ã  dÃ©velopper ou explorer";
   }
 
   function epCatalogueRoleSubLabel(role) {
     return role === "detenue_hors_poste"
-      ? "Ajoute une ou plusieurs compétences détenues par le collaborateur, hors référentiel du poste."
-      : "Ajoute une ou plusieurs compétences à développer, explorer ou sécuriser pendant l'entretien.";
+      ? "Ajoute une ou plusieurs compÃ©tences dÃ©tenues par le collaborateur, hors rÃ©fÃ©rentiel du poste."
+      : "Ajoute une ou plusieurs compÃ©tences Ã  dÃ©velopper, explorer ou sÃ©curiser pendant l'entretien.";
   }
 
   function epCatalogueNormalizeText(value) {
@@ -4033,19 +4033,19 @@ function getCollaborateurInitials(c) {
 
     if (info) {
       info.textContent = filtered.length
-        ? `${filtered.length} compétence(s) affichée(s). Les compétences déjà ajoutées dans cette section sont verrouillées.`
-        : "Aucune compétence ne correspond aux filtres.";
+        ? `${filtered.length} compÃ©tence(s) affichÃ©e(s). Les compÃ©tences dÃ©jÃ  ajoutÃ©es dans cette section sont verrouillÃ©es.`
+        : "Aucune compÃ©tence ne correspond aux filtres.";
     }
 
     if (addBtn) {
       addBtn.disabled = selected.size === 0;
       addBtn.textContent = selected.size > 0
-        ? `Ajouter la sélection (${selected.size})`
-        : "Ajouter la sélection";
+        ? `Ajouter la sÃ©lection (${selected.size})`
+        : "Ajouter la sÃ©lection";
     }
 
     if (!filtered.length) {
-      wrap.innerHTML = `<div class="ep-catalogue-empty">Aucune compétence trouvée.</div>`;
+      wrap.innerHTML = `<div class="ep-catalogue-empty">Aucune compÃ©tence trouvÃ©e.</div>`;
       return;
     }
 
@@ -4078,8 +4078,8 @@ function getCollaborateurInitials(c) {
       const title = document.createElement("div");
       title.className = "ep-catalogue-row-title";
       title.innerHTML = `
-        <span class="sb-badge sb-badge-ref-comp-code">${epEsc(c.code || "—")}</span>
-        <span>${epEsc(c.intitule || "—")}</span>
+        <span class="sb-badge sb-badge-ref-comp-code">${epEsc(c.code || "â€”")}</span>
+        <span>${epEsc(c.intitule || "â€”")}</span>
       `;
 
       const sub = document.createElement("div");
@@ -4091,7 +4091,7 @@ function getCollaborateurInitials(c) {
 
       const stateTxt = document.createElement("div");
       stateTxt.className = "ep-catalogue-row-state";
-      stateTxt.textContent = already ? "Déjà ajoutée" : "";
+      stateTxt.textContent = already ? "DÃ©jÃ  ajoutÃ©e" : "";
 
       row.appendChild(checkbox);
       row.appendChild(main);
@@ -4109,7 +4109,7 @@ function getCollaborateurInitials(c) {
     state._entretienCatalogueRole = role === "detenue_hors_poste" ? "detenue_hors_poste" : "a_developper";
     state._entretienCatalogueSelected = new Set();
 
-    setText("ep_catalogueModalTitle", "Ajouter des compétences");
+    setText("ep_catalogueModalTitle", "Ajouter des compÃ©tences");
     setText("ep_catalogueModalSub", epCatalogueRoleSubLabel(state._entretienCatalogueRole));
     epCatalogueSetMsg("info", "");
 
@@ -4125,7 +4125,7 @@ function getCollaborateurInitials(c) {
     const addBtn = $("ep_btnCatalogueAddSelection");
     if (addBtn) {
       addBtn.disabled = true;
-      addBtn.textContent = "Ajouter la sélection";
+      addBtn.textContent = "Ajouter la sÃ©lection";
     }
 
     openModal("modalEpCatalogueCompetences");
@@ -4155,7 +4155,7 @@ function getCollaborateurInitials(c) {
       : [];
 
     if (!selected.length) {
-      epCatalogueSetMsg("info", "Sélectionne au moins une compétence.");
+      epCatalogueSetMsg("info", "SÃ©lectionne au moins une compÃ©tence.");
       return;
     }
 
@@ -4192,7 +4192,7 @@ function getCollaborateurInitials(c) {
     });
 
     if (!added) {
-      epCatalogueSetMsg("info", "Aucune nouvelle compétence à ajouter.");
+      epCatalogueSetMsg("info", "Aucune nouvelle compÃ©tence Ã  ajouter.");
       epRenderCatalogueCompetenceModal();
       return;
     }
@@ -4200,7 +4200,7 @@ function getCollaborateurInitials(c) {
     epRenderEntretienCompetences();
     epCloseCatalogueCompetenceModal();
     epSetEntretienTab("competences");
-    epSetInlineMsg("ep_entretienMsg", "success", `${added} compétence(s) ajoutée(s) dans ${epCatalogueRoleLabel(role).toLowerCase()}.`);
+    epSetInlineMsg("ep_entretienMsg", "success", `${added} compÃ©tence(s) ajoutÃ©e(s) dans ${epCatalogueRoleLabel(role).toLowerCase()}.`);
   }
 
   async function epEnsureEffectifCompetence(idComp) {
@@ -4219,14 +4219,14 @@ function getCollaborateurInitials(c) {
     if (!item || !item.id_comp) return;
 
     if (item.selectionnee === false) {
-      epSetInlineMsg("ep_entretienMsg", "info", "Coche la compétence avant de l'évaluer.");
+      epSetInlineMsg("ep_entretienMsg", "info", "Coche la compÃ©tence avant de l'Ã©valuer.");
       return;
     }
 
     const idEntretien = epGetValue("ep_entretienId");
 
     if (!idEntretien) {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Enregistre l'entretien avant d'évaluer une compétence.");
+      epSetInlineMsg("ep_entretienMsg", "danger", "Enregistre l'entretien avant d'Ã©valuer une compÃ©tence.");
       return;
     }
 
@@ -4273,12 +4273,12 @@ function getCollaborateurInitials(c) {
     clearSaveInlineMsg();
     openModal("modalEpEvaluation");
 
-    setText("ep_evalHint", "Évaluation en cours.");
+    setText("ep_evalHint", "Ã‰valuation en cours.");
     renderEvalCompetenceTitle(x.code, x.intitule);
     renderEvalDomainBadge("", "");
 
     for (let i = 1; i <= 4; i++) {
-      setText(`ep_critLabel${i}`, "—");
+      setText(`ep_critLabel${i}`, "â€”");
       const sel = $(`ep_critNote${i}`);
       if (sel) sel.value = "";
       const com = $(`ep_critCom${i}`);
@@ -4410,7 +4410,7 @@ function getCollaborateurInitials(c) {
 
     const nameEl = $("ep_entretienDocDropName");
     if (nameEl) {
-      nameEl.textContent = file ? file.name : "Cliquez ou déposez un fichier ici";
+      nameEl.textContent = file ? file.name : "Cliquez ou dÃ©posez un fichier ici";
     }
 
     const drop = $("ep_entretienDocDrop");
@@ -4482,7 +4482,7 @@ function getCollaborateurInitials(c) {
 
     const file = state._entretienDocFile || fileInput?.files?.[0] || null;
     if (!file) {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Sélectionne ou dépose un fichier.");
+      epSetInlineMsg("ep_entretienMsg", "danger", "SÃ©lectionne ou dÃ©pose un fichier.");
       return;
     }
 
@@ -4491,7 +4491,7 @@ function getCollaborateurInitials(c) {
     fd.append("file", file);
 
     try {
-      epSetInlineMsg("ep_entretienMsg", "info", "Import du document…");
+      epSetInlineMsg("ep_entretienMsg", "info", "Import du documentâ€¦");
 
       const url = `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEntretien)}/document`;
       await _portal.apiJson(url, {
@@ -4501,7 +4501,7 @@ function getCollaborateurInitials(c) {
 
       if (fileInput) fileInput.value = "";
       epSetEntretienDocFile(null);
-      epSetInlineMsg("ep_entretienMsg", "success", "Document importé");
+      epSetInlineMsg("ep_entretienMsg", "success", "Document importÃ©");
       await epLoadEntretienDocuments();
 
     } catch (e) {
@@ -4520,7 +4520,7 @@ function getCollaborateurInitials(c) {
   }
 
   function epFormatDateFR(v) {
-    if (!v) return "—";
+    if (!v) return "â€”";
     try {
       const d = new Date(v);
       if (Number.isNaN(d.getTime())) return String(v);
@@ -4585,9 +4585,9 @@ function getCollaborateurInitials(c) {
   }
 
   function epTrendIcon(trend) {
-    if (trend === "up") return `<span class="ep-trend ep-trend--up" title="Progression">↗</span>`;
-    if (trend === "down") return `<span class="ep-trend ep-trend--down" title="Régression">↘</span>`;
-    return `<span class="ep-trend ep-trend--stable" title="Stable">→</span>`;
+    if (trend === "up") return `<span class="ep-trend ep-trend--up" title="Progression">â†—</span>`;
+    if (trend === "down") return `<span class="ep-trend ep-trend--down" title="RÃ©gression">â†˜</span>`;
+    return `<span class="ep-trend ep-trend--stable" title="Stable">â†’</span>`;
   }
 
   function bindHistoryTabsOnce() {
@@ -4665,7 +4665,7 @@ function getCollaborateurInitials(c) {
     const canvas = $("ep_progChart");
 
     if (!state.selectedCollaborateurId || !_portal) {
-      if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Sélectionne un collaborateur pour afficher la progression.</div>`;
+      if (wrap) wrap.innerHTML = `<div class="ep-history-empty">SÃ©lectionne un collaborateur pour afficher la progression.</div>`;
       if (canvas) {
         const ctx = canvas.getContext("2d");
         ctx && ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -4673,7 +4673,7 @@ function getCollaborateurInitials(c) {
       return;
     }
 
-    if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Chargement de la progression…</div>`;
+    if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Chargement de la progressionâ€¦</div>`;
 
     const selectedId = (state.selectedCollaborateurId || "").toString().trim();
     const method = ($("ep_progMethod")?.value || "").toString().trim();
@@ -4691,8 +4691,8 @@ function getCollaborateurInitials(c) {
       const url = `${_portal.apiBase}/skills/entretien-performance/progression/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(selectedId)}?${params.toString()}`;
       const data = await _portal.apiJson(url);
 
-      // Si l'utilisateur a changé de collaborateur pendant l'appel API,
-      // on ignore la réponse obsolète. Sinon, merveille : les courbes voyagent entre salariés.
+      // Si l'utilisateur a changÃ© de collaborateur pendant l'appel API,
+      // on ignore la rÃ©ponse obsolÃ¨te. Sinon, merveille : les courbes voyagent entre salariÃ©s.
       if (state._progressLoadingKey !== loadKey || state.selectedCollaborateurId !== selectedId) {
         return;
       }
@@ -4705,7 +4705,7 @@ function getCollaborateurInitials(c) {
       const sel = $("ep_progMethod");
       if (sel && Array.isArray(data?.methodes)) {
         const current = sel.value || "";
-        sel.innerHTML = `<option value="">Toutes les méthodes</option>`;
+        sel.innerHTML = `<option value="">Toutes les mÃ©thodes</option>`;
 
         data.methodes.forEach(m => {
           const opt = document.createElement("option");
@@ -4739,7 +4739,7 @@ function getCollaborateurInitials(c) {
       const poste = data.poste || {};
       return [{
         id: "poste",
-        label: poste.label || "Maîtrise du poste",
+        label: poste.label || "MaÃ®trise du poste",
         points: Array.isArray(poste.points) ? poste.points : [],
         _kind: "poste",
         _color: "var(--accent)",
@@ -4762,7 +4762,7 @@ function getCollaborateurInitials(c) {
 
     if (!series.length || !series.some(s => Array.isArray(s.points) && s.points.length)) {
       renderProgressionChart([]);
-      wrap.innerHTML = `<div class="ep-history-empty">Aucune donnée de progression disponible avec les filtres actuels.</div>`;
+      wrap.innerHTML = `<div class="ep-history-empty">Aucune donnÃ©e de progression disponible avec les filtres actuels.</div>`;
       return;
     }
 
@@ -4791,8 +4791,8 @@ function getCollaborateurInitials(c) {
     const wrap = $("ep_progTableWrap");
     if (!wrap) return;
 
-    const labelHeader = view === "domaines" ? "Domaine" : "Compétence";
-    const lastHeader = view === "domaines" ? "Dernière évolution" : "Dernière éval.";
+    const labelHeader = view === "domaines" ? "Domaine" : "CompÃ©tence";
+    const lastHeader = view === "domaines" ? "DerniÃ¨re Ã©volution" : "DerniÃ¨re Ã©val.";
 
     const rows = series.map(s => {
       const id = String(s.id || s.label || "");
@@ -4802,8 +4802,8 @@ function getCollaborateurInitials(c) {
       const last = s.last_date || (s.points?.length ? s.points[s.points.length - 1].date : "");
 
       const title = view === "competences" && s.code
-        ? `${s.code} — ${s.label || ""}`
-        : (s.label || s.titre || s.id || "—");
+        ? `${s.code} â€” ${s.label || ""}`
+        : (s.label || s.titre || s.id || "â€”");
 
       return `
         <tr>
@@ -4867,7 +4867,7 @@ function getCollaborateurInitials(c) {
           <thead>
             <tr>
               <th>Date</th>
-              <th class="col-center" style="width:160px;">Maîtrise du poste</th>
+              <th class="col-center" style="width:160px;">MaÃ®trise du poste</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -4912,7 +4912,7 @@ function getCollaborateurInitials(c) {
       ctx.fillStyle = "#6b7280";
       ctx.font = "13px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Aucune donnée à afficher.", w / 2, h / 2);
+      ctx.fillText("Aucune donnÃ©e Ã  afficher.", w / 2, h / 2);
       return;
     }
 
@@ -5023,7 +5023,7 @@ function getCollaborateurInitials(c) {
         }
 
 
-        // Modal évaluation (standard)
+        // Modal Ã©valuation (standard)
         const modalEval = $("modalEpEvaluation");
         const btnXEval = $("btnCloseEpEvaluationModalX");
         const btnCloseEval = $("btnEpEvaluationModalClose");
@@ -5135,7 +5135,7 @@ function getCollaborateurInitials(c) {
         const statutToggle = $("ep_entretienStatutToggle");
         if (statutToggle) {
           statutToggle.addEventListener("click", () => {
-            const next = statutToggle.classList.contains("is-on") ? "à réaliser" : "en cours";
+            const next = statutToggle.classList.contains("is-on") ? "Ã  rÃ©aliser" : "en cours";
             epSetEntretienStatutValue(next);
           });
         }
@@ -5157,14 +5157,14 @@ function getCollaborateurInitials(c) {
         if (btnReportPdf) {
           btnReportPdf.addEventListener("click", () => {
             if (!state.selectedCollaborateurId || !_portal) {
-              _portal && _portal.showAlert("warning", "Sélectionne un collaborateur avant de générer le rapport PDF.");
+              _portal && _portal.showAlert("warning", "SÃ©lectionne un collaborateur avant de gÃ©nÃ©rer le rapport PDF.");
               return;
             }
 
             /*
-              Bouton prêt côté front.
-              La route backend dédiée sera à créer quand le contenu exact du rapport sera validé.
-              Endpoint cible prévu :
+              Bouton prÃªt cÃ´tÃ© front.
+              La route backend dÃ©diÃ©e sera Ã  crÃ©er quand le contenu exact du rapport sera validÃ©.
+              Endpoint cible prÃ©vu :
               GET /skills/entretien-performance/rapport-pdf/{id_contact}/{id_effectif}?criticite_min=XX
             */
             const params = new URLSearchParams();
@@ -5182,7 +5182,7 @@ function getCollaborateurInitials(c) {
             const finalUrl = typeof _portal.decorateApiUrl === "function" ? _portal.decorateApiUrl(url) : url;
             const win = window.open(finalUrl, "_blank", "noopener");
             if (!win) {
-              _portal.showAlert("warning", "Le navigateur a bloqué l'ouverture du PDF.");
+              _portal.showAlert("warning", "Le navigateur a bloquÃ© l'ouverture du PDF.");
             }
           });
         }
@@ -5203,9 +5203,9 @@ function getCollaborateurInitials(c) {
             if (!timeline) return;
 
             const currentCollabName = ($("ep_ctxCollaborateur")?.textContent || "").toString().trim();
-            if (histName) histName.textContent = currentCollabName && currentCollabName !== "—"
+            if (histName) histName.textContent = currentCollabName && currentCollabName !== "â€”"
               ? currentCollabName
-              : "Collaborateur sélectionné";
+              : "Collaborateur sÃ©lectionnÃ©";
 
             const esc = (s) => String(s ?? "")
               .replaceAll("&", "&amp;")
@@ -5215,7 +5215,7 @@ function getCollaborateurInitials(c) {
               .replaceAll("'", "&#39;");
 
             const formatDateFR = (v) => {
-              if (!v) return "—";
+              if (!v) return "â€”";
               try {
                 const d = new Date(v);
                 if (Number.isNaN(d.getTime())) return String(v);
@@ -5233,8 +5233,8 @@ function getCollaborateurInitials(c) {
 
             const niveauFromScore = (score) => _epLevelFromScore24(score);
 
-            const getEvalKey = (x) => (x?.nom_evaluateur || x?.id_evaluateur || "Non affecté").toString().trim() || "Non affecté";
-            const getMethKey = (x) => (x?.methode_eval || "Non renseignée").toString().trim() || "Non renseignée";
+            const getEvalKey = (x) => (x?.nom_evaluateur || x?.id_evaluateur || "Non affectÃ©").toString().trim() || "Non affectÃ©";
+            const getMethKey = (x) => (x?.methode_eval || "Non renseignÃ©e").toString().trim() || "Non renseignÃ©e";
 
             const setHistoryMessage = (msg) => {
               timeline.innerHTML = `<div class="ep-history-empty">${esc(msg)}</div>`;
@@ -5272,10 +5272,10 @@ function getCollaborateurInitials(c) {
             const loadEvaluationReferentielData = async (idComp) => {
               const fallback = {
                 labels: {
-                  Critere1: "Critère 1",
-                  Critere2: "Critère 2",
-                  Critere3: "Critère 3",
-                  Critere4: "Critère 4"
+                  Critere1: "CritÃ¨re 1",
+                  Critere2: "CritÃ¨re 2",
+                  Critere3: "CritÃ¨re 3",
+                  Critere4: "CritÃ¨re 4"
                 },
                 evals: {
                   Critere1: [],
@@ -5368,7 +5368,7 @@ function getCollaborateurInitials(c) {
             };
 
             const openHistoryEvaluationDetail = async (x, group) => {
-              
+
 
               const code = (x.code || "").toString().trim();
               const intitule = (x.intitule || "").toString().trim();
@@ -5399,7 +5399,7 @@ function getCollaborateurInitials(c) {
                 evalModal.classList.toggle("is-history-editable", !!canEditHistoryAudit);
               }
 
-              setText("ep_evalHint", `Historique du ${lastDate} · évalué par : ${group.evalTxt}`);
+              setText("ep_evalHint", `Historique du ${lastDate} Â· Ã©valuÃ© par : ${group.evalTxt}`);
 
               const refData = await loadEvaluationReferentielData(x.id_comp);
 
@@ -5416,7 +5416,7 @@ function getCollaborateurInitials(c) {
 
               const titleText = document.createElement("span");
                 titleText.className = "ep-eval-title-text";
-                titleText.textContent = intitule || "—";
+                titleText.textContent = intitule || "â€”";
                 titleEl.appendChild(titleText);
               }
 
@@ -5439,12 +5439,12 @@ function getCollaborateurInitials(c) {
               }
 
               setText("ep_compCurrent", niveau);
-              setText("ep_compLastEval", lastDate ? `Dernière éval : ${lastDate}` : "");
+              setText("ep_compLastEval", lastDate ? `DerniÃ¨re Ã©val : ${lastDate}` : "");
 
               setText("ep_levelABC", niveau);
 
-              setText("ep_scoreRaw", scoreInfo.sum === null ? "—" : String(scoreInfo.sum));
-              epSetScorePct(scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
+              setText("ep_scoreRaw", scoreInfo.sum === null ? "â€”" : String(scoreInfo.sum));
+              epSetScorePct(scoreInfo.pct === null ? "â€”" : `${scoreInfo.pct}%`);
 
               setSelectValueOrAdd("ep_selEvalMethod", method);
               setDisabled("ep_selEvalMethod", !canEditHistoryAudit);
@@ -5478,7 +5478,7 @@ function getCollaborateurInitials(c) {
                 if (labelEl) {
                   labelEl.innerHTML = "";
 
-                  const labelText = refData?.labels?.[codeCrit] || `Critère ${i}`;
+                  const labelText = refData?.labels?.[codeCrit] || `CritÃ¨re ${i}`;
                   const evalsAll = Array.isArray(refData?.evals?.[codeCrit]) ? refData.evals[codeCrit] : [];
 
                   const spanTxt = document.createElement("span");
@@ -5517,11 +5517,11 @@ function getCollaborateurInitials(c) {
             };
 
             if (!state.selectedCollaborateurId) {
-              setHistoryMessage("Sélectionne un collaborateur pour afficher l’historique.");
+              setHistoryMessage("SÃ©lectionne un collaborateur pour afficher lâ€™historique.");
               return;
             }
 
-            setHistoryMessage("Chargement…");
+            setHistoryMessage("Chargementâ€¦");
 
             let rows = [];
             try {
@@ -5531,7 +5531,7 @@ function getCollaborateurInitials(c) {
               rows = Array.isArray(data) ? data : [];
               state._historyAll = rows;
             } catch (e) {
-              setHistoryMessage("Impossible de charger l’historique : " + String(e?.message || e));
+              setHistoryMessage("Impossible de charger lâ€™historique : " + String(e?.message || e));
               return;
             }
 
@@ -5576,7 +5576,7 @@ function getCollaborateurInitials(c) {
 
             const render = (list) => {
               if (!list.length) {
-                timeline.innerHTML = `<div class="ep-history-empty">Aucun audit trouvé.</div>`;
+                timeline.innerHTML = `<div class="ep-history-empty">Aucun audit trouvÃ©.</div>`;
                 return;
               }
 
@@ -5595,16 +5595,16 @@ function getCollaborateurInitials(c) {
                 head.innerHTML = `
                   <div class="ep-history-group-main">
                     <div class="ep-history-group-title">
-                      ${esc(g.dateTxt)} · ${esc(g.methTxt)}
+                      ${esc(g.dateTxt)} Â· ${esc(g.methTxt)}
                     </div>
                     <div class="ep-history-group-sub">
-                      ${esc(g.evalTxt)} · ${g.rows.length} compétence(s) évaluée(s)
+                      ${esc(g.evalTxt)} Â· ${g.rows.length} compÃ©tence(s) Ã©valuÃ©e(s)
                     </div>
                   </div>
 
                   <div class="ep-history-group-right">
-                    ${hasObs ? `<span class="ep-history-dot" title="Observation présente"></span>` : ""}
-                    <span class="ep-history-chevron">⌄</span>
+                    ${hasObs ? `<span class="ep-history-dot" title="Observation prÃ©sente"></span>` : ""}
+                    <span class="ep-history-chevron">âŒ„</span>
                   </div>
                 `;
 
@@ -5634,12 +5634,12 @@ function getCollaborateurInitials(c) {
                   row.innerHTML = `
                     <div class="ep-history-comp-main">
                       ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
-                      <span class="ep-history-comp-title" title="${esc(intitule)}">${esc(intitule || "—")}</span>
+                      <span class="ep-history-comp-title" title="${esc(intitule)}">${esc(intitule || "â€”")}</span>
                     </div>
 
                     <div class="ep-history-comp-result">
                       <span class="sb-badge ${esc(getEpLevelBadgeClass(niveau))}">${esc(niveau)}</span>
-                      <button type="button" class="sb-icon-btn ep-history-view-btn" title="Voir la grille d'évaluation" aria-label="Voir la grille d'évaluation" data-view="1">
+                      <button type="button" class="sb-icon-btn ep-history-view-btn" title="Voir la grille d'Ã©valuation" aria-label="Voir la grille d'Ã©valuation" data-view="1">
                         ${iconEye}
                       </button>
                     </div>
@@ -5759,7 +5759,7 @@ function getCollaborateurInitials(c) {
         }
 
         // ======================================================
-        // Scoring live (affichage métier : maîtrise %, calcul interne sur 24)
+        // Scoring live (affichage mÃ©tier : maÃ®trise %, calcul interne sur 24)
         // ======================================================
         const computeCoef = (n) => {
         if (n === 4) return 1.5;
@@ -5770,11 +5770,11 @@ function getCollaborateurInitials(c) {
         };
 
         const computeLevel = (score24) => {
-        if (score24 <= 6) return "Débutant";
-        if (score24 <= 12) return "Intermédiaire";
-        if (score24 <= 18) return "Avancé";
+        if (score24 <= 6) return "DÃ©butant";
+        if (score24 <= 12) return "IntermÃ©diaire";
+        if (score24 <= 18) return "AvancÃ©";
         if (score24 <= 24) return "Expert";
-        return "—";
+        return "â€”";
         };
 
         const computePct = (score24) => {
@@ -5811,9 +5811,9 @@ function getCollaborateurInitials(c) {
         }
 
         if (filledCount === 0) {
-            setText("ep_scoreRaw", "—");
-            epSetScorePct("—");
-            setText("ep_levelABC", "—");
+            setText("ep_scoreRaw", "â€”");
+            epSetScorePct("â€”");
+            setText("ep_levelABC", "â€”");
             return;
         }
 
@@ -5827,12 +5827,12 @@ function getCollaborateurInitials(c) {
             epSetScorePct(`${pct}%`);
             setText("ep_levelABC", computeLevel(score24));
         } else {
-            epSetScorePct("—");
-            setText("ep_levelABC", "—");
+            epSetScorePct("â€”");
+            setText("ep_levelABC", "â€”");
         }
         };
 
-        // Bind notes (une fois) : toute modification de note déclenche le recalcul
+        // Bind notes (une fois) : toute modification de note dÃ©clenche le recalcul
         for (let i = 1; i <= 4; i++) {
         const sel = $(`ep_critNote${i}`);
         if (!sel) continue;
@@ -5841,7 +5841,7 @@ function getCollaborateurInitials(c) {
         }
 
         // ======================================================
-        // Actions évaluation (placeholders)
+        // Actions Ã©valuation (placeholders)
         // ======================================================
         const btnSave = $("ep_btnSave");
         if (btnSave) {
@@ -5851,7 +5851,7 @@ function getCollaborateurInitials(c) {
             let msg = $("ep_saveInlineMsg") || $("ep_saveMsg");
 
             if (!msg) {
-              // Si le HTML n'est pas à jour, on crée le message juste à côté du bouton
+              // Si le HTML n'est pas Ã  jour, on crÃ©e le message juste Ã  cÃ´tÃ© du bouton
               msg = document.createElement("div");
               msg.id = "ep_saveInlineMsg";
               msg.className = "card-sub";
@@ -5900,19 +5900,19 @@ function getCollaborateurInitials(c) {
                 openModal("modalEpEntretien");
                 epRenderEntretienCompetences();
                 epSetEntretienTab("competences");
-                epSetInlineMsg("ep_entretienMsg", "success", "Compétence évaluée. Tu peux poursuivre les autres évaluations.");
+                epSetInlineMsg("ep_entretienMsg", "success", "CompÃ©tence Ã©valuÃ©e. Tu peux poursuivre les autres Ã©valuations.");
                 state._entretienAuditContext = null;
                 return;
               }
 
-              setMsg(true, isHistoryUpdate ? "Évaluation mise à jour" : "Audit enregistré avec succès");
+              setMsg(true, isHistoryUpdate ? "Ã‰valuation mise Ã  jour" : "Audit enregistrÃ© avec succÃ¨s");
             } catch (e) {
               const rawReason = String(e?.message || e || "").trim();
               const cleanReason = rawReason
                 .replace(/^Erreur serveur\s*:\s*/i, "")
                 .trim();
 
-              setMsg(false, `Échec de l'enregistrement : ${cleanReason || "raison inconnue"}`);
+              setMsg(false, `Ã‰chec de l'enregistrement : ${cleanReason || "raison inconnue"}`);
             } finally {
               btnSave.disabled = false;
             }
@@ -5943,7 +5943,7 @@ function getCollaborateurInitials(c) {
 
     const hasPreselect = readPendingCollaborateurPreselect();
 
-    // Chargement services dès affichage
+    // Chargement services dÃ¨s affichage
     await loadServices();
 
     // Si un collaborateur vient de la page Collaborateurs, on se place directement
@@ -5971,10 +5971,10 @@ function getCollaborateurInitials(c) {
       const com = document.getElementById(`ep_critCom${i}`);
       if (!sel) continue;
 
-      // Critère vide => on considère inactif
-      if (!lbl || lbl === "—") continue;
+      // CritÃ¨re vide => on considÃ¨re inactif
+      if (!lbl || lbl === "â€”") continue;
 
-      // Si le select est désactivé, on ne le prend pas
+      // Si le select est dÃ©sactivÃ©, on ne le prend pas
       if (sel.disabled) continue;
 
       arr.push({
@@ -6012,30 +6012,30 @@ function getCollaborateurInitials(c) {
       return window.NovoskillLevels.label(value);
     }
     const k = String(value || "").trim().toUpperCase();
-    if (k === "A") return "Débutant";
-    if (k === "B") return "Intermédiaire";
-    if (k === "C") return "Avancé";
+    if (k === "A") return "DÃ©butant";
+    if (k === "B") return "IntermÃ©diaire";
+    if (k === "C") return "AvancÃ©";
     if (k === "D") return "Expert";
-    return String(value || "—");
+    return String(value || "â€”");
   }
 
   async function saveCurrentAudit() {
-    // On a besoin d’un collaborateur + d’une compétence sélectionnée
+    // On a besoin dâ€™un collaborateur + dâ€™une compÃ©tence sÃ©lectionnÃ©e
     const id_effectif_competence =
       (state.selectedEffectifCompetenceId || "").toString().trim();
 
     const id_comp = (state.selectedCompetenceId || "").toString().trim();
 
     if (!id_effectif_competence) {
-      throw new Error("id_effectif_competence manquant (sélection compétence).");
+      throw new Error("id_effectif_competence manquant (sÃ©lection compÃ©tence).");
     }
     if (!id_comp) {
-      throw new Error("Compétence non sélectionnée.");
+      throw new Error("CompÃ©tence non sÃ©lectionnÃ©e.");
     }
 
     const enabled = _getEnabledCriteria();
     if (!enabled.length) {
-      throw new Error("Aucun critère actif pour cette compétence.");
+      throw new Error("Aucun critÃ¨re actif pour cette compÃ©tence.");
     }
 
     let sum = 0;
@@ -6043,7 +6043,7 @@ function getCollaborateurInitials(c) {
 
     for (const c of enabled) {
       const v = (c.select.value || "").trim();
-      if (!v) throw new Error("Notes incomplètes: renseigne tous les critères.");
+      if (!v) throw new Error("Notes incomplÃ¨tes: renseigne tous les critÃ¨res.");
 
       const note = parseInt(v, 10);
       if (!note || note < 1 || note > 4) throw new Error("Note invalide (1..4).");
@@ -6061,7 +6061,7 @@ function getCollaborateurInitials(c) {
     const { coef, score24 } = _computeScore24(sum, enabled.length);
     const niveau_actuel = _levelFromScore24(score24);
 
-    // Alignement UI : résultat affiché en pourcentage de maîtrise
+    // Alignement UI : rÃ©sultat affichÃ© en pourcentage de maÃ®trise
     const pct = Math.max(0, Math.min(100, Math.round((score24 / 24) * 100)));
     if (document.getElementById("ep_scoreRaw")) document.getElementById("ep_scoreRaw").textContent = String(sum);
     epSetScorePct(`${pct}%`);

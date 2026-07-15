@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   let _bound = false;
   let _loaded = false;
   let _bootstrap = null;
@@ -73,7 +73,7 @@
     const el = byId(id);
     if (!el) return;
     const current = keepValue ? clean(el.value) : "";
-    const first = placeholder !== null ? option(placeholder || "Sélectionner", "", !current) : "";
+    const first = placeholder !== null ? option(placeholder || "SÃ©lectionner", "", !current) : "";
     const opts = asArray(rows).map(r => option(labelFn(r), r[valueKey], current && clean(r[valueKey]) === current)).join("");
     el.innerHTML = first + opts;
     if (current && Array.from(el.options || []).some(o => o.value === current)) el.value = current;
@@ -81,28 +81,28 @@
 
   function statutLabel(value){
     const map = {
-      a_planifier: "À planifier", proposee: "À planifier", "proposée": "À planifier",
-      planifie: "Planifié", planifiee: "Planifié", "planifiée": "Planifié", prevue: "Prévue", "prévue": "Prévue",
-      en_cours: "En cours", realise: "Réalisé", realisee: "Réalisé", "réalisé": "Réalisé",
-      terminee: "Terminée", "terminée": "Terminée", annule: "Annulé", "annulé": "Annulé",
-      brouillon: "Brouillon", cloturee: "Clôturée", "clôturée": "Clôturée", archive: "Archivé", "archivé": "Archivé"
+      a_planifier: "Ã€ planifier", proposee: "Ã€ planifier", "proposÃ©e": "Ã€ planifier",
+      planifie: "PlanifiÃ©", planifiee: "PlanifiÃ©", "planifiÃ©e": "PlanifiÃ©", prevue: "PrÃ©vue", "prÃ©vue": "PrÃ©vue",
+      en_cours: "En cours", realise: "RÃ©alisÃ©", realisee: "RÃ©alisÃ©", "rÃ©alisÃ©": "RÃ©alisÃ©",
+      terminee: "TerminÃ©e", "terminÃ©e": "TerminÃ©e", annule: "AnnulÃ©", "annulÃ©": "AnnulÃ©",
+      brouillon: "Brouillon", cloturee: "ClÃ´turÃ©e", "clÃ´turÃ©e": "ClÃ´turÃ©e", archive: "ArchivÃ©", "archivÃ©": "ArchivÃ©"
     };
-    return map[clean(value).toLowerCase()] || clean(value) || "—";
+    return map[clean(value).toLowerCase()] || clean(value) || "â€”";
   }
 
   function typeLabel(value){
     const map = {
-      indisponibilite: "Indisponibilité",
+      indisponibilite: "IndisponibilitÃ©",
       entretien_annuel: "Entretien annuel",
-      entretien_competence: "Entretien compétence",
-      evaluation_competence: "Évaluation compétence"
+      entretien_competence: "Entretien compÃ©tence",
+      evaluation_competence: "Ã‰valuation compÃ©tence"
     };
-    return map[clean(value)] || clean(value) || "Événement RH";
+    return map[clean(value)] || clean(value) || "Ã‰vÃ©nement RH";
   }
 
   function dateLabel(value){
     const raw = clean(value);
-    if (!raw) return "Non daté";
+    if (!raw) return "Non datÃ©";
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return dateOnlyLabel(raw);
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return raw;
@@ -111,7 +111,7 @@
 
   function dateOnlyLabel(value){
     const raw = clean(value);
-    if (!raw) return "Non daté";
+    if (!raw) return "Non datÃ©";
     const d = new Date(`${raw.slice(0, 10)}T00:00:00`);
     if (Number.isNaN(d.getTime())) return raw;
     return d.toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit", year:"numeric" });
@@ -166,7 +166,7 @@
     if (list) list.innerHTML = rows.map(p => `<option value="${esc(p.label)}"></option>`).join("");
     if (!panel || !input) return;
     if (!rows.length) {
-      panel.innerHTML = `<div class="studio-rh-suggest-empty">Aucun poste trouvé</div>`;
+      panel.innerHTML = `<div class="studio-rh-suggest-empty">Aucun poste trouvÃ©</div>`;
       panel.style.display = document.activeElement === input ? "" : "none";
       input.setAttribute("aria-expanded", panel.style.display === "none" ? "false" : "true");
       return;
@@ -214,7 +214,7 @@
     if (list) list.innerHTML = rows.map(p => `<option value="${esc(p.label)}"></option>`).join("");
     if (!panel || !input) return;
     if (!rows.length) {
-      panel.innerHTML = `<div class="studio-rh-suggest-empty">Aucun poste trouvé</div>`;
+      panel.innerHTML = `<div class="studio-rh-suggest-empty">Aucun poste trouvÃ©</div>`;
       panel.style.display = document.activeElement === input ? "" : "none";
       input.setAttribute("aria-expanded", panel.style.display === "none" ? "false" : "true");
       return;
@@ -238,17 +238,17 @@
     fillSelect("planRhFilterService", refsServices, "id_service", serviceLabel, "Tous les services");
     fillSelect("planRhFilterCollab", refsCollabs, "id_effectif", collabLabel, "Tous les collaborateurs");
     fillSelect("planRhFilterStatut", [
-      { id:"a_planifier", label:"À planifier" },
-      { id:"planifie", label:"Planifié" },
-      { id:"realise", label:"Réalisé" },
-      { id:"annule", label:"Annulé" },
-      { id:"archive", label:"Archivé" }
+      { id:"a_planifier", label:"Ã€ planifier" },
+      { id:"planifie", label:"PlanifiÃ©" },
+      { id:"realise", label:"RÃ©alisÃ©" },
+      { id:"annule", label:"AnnulÃ©" },
+      { id:"archive", label:"ArchivÃ©" }
     ], "id", x => x.label, "Tous les statuts");
 
     fillSelect("planIndispoService", refsServices, "id_service", serviceLabel, "Tous les services", true);
     fillSelect("planCampagneService", refsServices, "id_service", serviceLabel, "Choisir un service", true);
     fillSelect("planCompService", refsServices, "id_service", serviceLabel, "Tous les services", true);
-    fillSelect("planCompManager", refsManagers.length ? refsManagers : refsCollabs, "id_effectif", collabLabel, "Non renseigné", true);
+    fillSelect("planCompManager", refsManagers.length ? refsManagers : refsCollabs, "id_effectif", collabLabel, "Non renseignÃ©", true);
 
     updateIndispoCollabOptions();
     updateCampagneScope();
@@ -264,7 +264,7 @@
     set("planRhKpiClosed", k.annules_archives);
 
     if (data.sql_ready === false) {
-      setMsg("planRhMsg", "Tables calendrier RH absentes. Exécute le script SQL déjà présent dans docs/sql/20260701_insights_calendrier_rh.sql.", "warn");
+      setMsg("planRhMsg", "Tables calendrier RH absentes. ExÃ©cute le script SQL dÃ©jÃ  prÃ©sent dans docs/sql/20260701_insights_calendrier_rh.sql.", "warn");
     }
   }
 
@@ -316,7 +316,7 @@
   }
 
   function updateCampaignManagerOptions(){
-    fillSelect("planCampagneManager", campaignManagerRows(), "id_effectif", collabLabel, "Non renseigné", true);
+    fillSelect("planCampagneManager", campaignManagerRows(), "id_effectif", collabLabel, "Non renseignÃ©", true);
   }
 
   function checkboxItemHtml(kind, id, label, meta, checked){
@@ -334,14 +334,14 @@
     const box = byId(targetId);
     if (!box) return;
     if (!rows.length) {
-      box.innerHTML = `<div class="studio-rh-check-empty">${esc(emptyText || "Aucun collaborateur trouvé.")}</div>`;
+      box.innerHTML = `<div class="studio-rh-check-empty">${esc(emptyText || "Aucun collaborateur trouvÃ©.")}</div>`;
       return;
     }
     box.innerHTML = rows.map(c => checkboxItemHtml(
       kind,
       clean(c.id_effectif),
       collabLabel(c),
-      [clean(c.nom_service), clean(c.intitule_poste)].filter(Boolean).join(" · "),
+      [clean(c.nom_service), clean(c.intitule_poste)].filter(Boolean).join(" Â· "),
       selectedSet.has(clean(c.id_effectif))
     )).join("");
   }
@@ -358,11 +358,11 @@
     const excludedRows = scopeRows.filter(c => !excludedSearch || [collabLabel(c), c.email_effectif, c.nom_service, c.intitule_poste].map(lower).join(" ").includes(excludedSearch));
 
     renderCollabCheckboxList("planCampagneIncludedList", "campagne-included", includedRows, _campaignIncluded, "Aucun collaborateur disponible.");
-    renderCollabCheckboxList("planCampagneExcludedList", "campagne-excluded", excludedRows, _campaignExcluded, "Aucun collaborateur dans ce périmètre.");
+    renderCollabCheckboxList("planCampagneExcludedList", "campagne-excluded", excludedRows, _campaignExcluded, "Aucun collaborateur dans ce pÃ©rimÃ¨tre.");
 
     const incCount = byId("planCampagneIncludedCount");
     const excCount = byId("planCampagneExcludedCount");
-    if (incCount) incCount.textContent = `${_campaignIncluded.size} sélectionné${_campaignIncluded.size > 1 ? "s" : ""}`;
+    if (incCount) incCount.textContent = `${_campaignIncluded.size} sÃ©lectionnÃ©${_campaignIncluded.size > 1 ? "s" : ""}`;
     if (excCount) excCount.textContent = `${_campaignExcluded.size} exclu${_campaignExcluded.size > 1 ? "s" : ""}`;
 
     const excludedDetails = byId("planCampagneExcludedDetails");
@@ -391,12 +391,12 @@
     const eff = collabs().find(c => clean(c.id_effectif) === selected);
     const refsManagers = managers();
     if (!eff || !refsManagers.length) {
-      fillSelect("planCompManager", refsManagers, "id_effectif", collabLabel, "Non renseigné", true);
+      fillSelect("planCompManager", refsManagers, "id_effectif", collabLabel, "Non renseignÃ©", true);
       return;
     }
     const ids = serviceAncestors(eff.id_service);
     const rows = refsManagers.filter(m => ids.has(clean(m.id_service)));
-    fillSelect("planCompManager", rows.length ? rows : refsManagers, "id_effectif", collabLabel, "Non renseigné", true);
+    fillSelect("planCompManager", rows.length ? rows : refsManagers, "id_effectif", collabLabel, "Non renseignÃ©", true);
   }
 
   function isUuidLike(value){
@@ -442,7 +442,7 @@
     const selectedRows = competences().filter(c => _competencesSelected.has(clean(c.id_comp)));
     wrap.style.display = selectedRows.length ? "" : "none";
     list.innerHTML = selectedRows.map(c => `
-      <button type="button" class="studio-rh-selected-chip" data-competence-remove="${esc(clean(c.id_comp))}" title="Retirer cette compétence">
+      <button type="button" class="studio-rh-selected-chip" data-competence-remove="${esc(clean(c.id_comp))}" title="Retirer cette compÃ©tence">
         <span>${esc(competenceLabel(c))}</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>`).join("");
@@ -461,13 +461,13 @@
       })
       .slice(0, 90);
     if (!rows.length) {
-      box.innerHTML = '<div class="studio-rh-check-empty">Aucune compétence trouvée.</div>';
+      box.innerHTML = '<div class="studio-rh-check-empty">Aucune compÃ©tence trouvÃ©e.</div>';
     } else {
       box.innerHTML = rows.map(competenceChoiceHtml).join("");
     }
     renderSelectedCompetences();
     const count = byId("planCompCompetenceCount");
-    if (count) count.textContent = `${_competencesSelected.size} sélectionnée${_competencesSelected.size > 1 ? "s" : ""}`;
+    if (count) count.textContent = `${_competencesSelected.size} sÃ©lectionnÃ©e${_competencesSelected.size > 1 ? "s" : ""}`;
   }
 
   async function loadBootstrap(){
@@ -530,22 +530,22 @@
     const prevDisabled = page <= 1 ? " disabled" : "";
     const nextDisabled = page >= totalPages ? " disabled" : "";
     const tokens = buildPlanRhPaginationTokens(totalPages, page);
-    const range = total ? `${pageData.start + 1} – ${pageData.end} sur ${total}` : "0 sur 0";
+    const range = total ? `${pageData.start + 1} â€“ ${pageData.end} sur ${total}` : "0 sur 0";
 
     return `
       <div class="studio-rh-page-size-wrap">
-        <select class="sb-select studio-rh-page-size-select" data-plan-page-size aria-label="Nombre d'événements par page">
+        <select class="sb-select studio-rh-page-size-select" data-plan-page-size aria-label="Nombre d'Ã©vÃ©nements par page">
           <option value="25"${_pageSize === 25 ? " selected" : ""}>25 par page</option>
           <option value="50"${_pageSize === 50 ? " selected" : ""}>50 par page</option>
           <option value="100"${_pageSize === 100 ? " selected" : ""}>100 par page</option>
         </select>
       </div>
-      <div class="studio-rh-pagination" aria-label="Pagination événements RH">
-        <button type="button" class="sb-icon-btn studio-rh-page-nav" data-plan-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
+      <div class="studio-rh-pagination" aria-label="Pagination Ã©vÃ©nements RH">
+        <button type="button" class="sb-icon-btn studio-rh-page-nav" data-plan-page-nav="prev" title="Page prÃ©cÃ©dente" aria-label="Page prÃ©cÃ©dente"${prevDisabled}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
         </button>
         ${tokens.map(t => {
-          if (typeof t === "string") return '<span class="studio-rh-page-ellipsis" aria-hidden="true">…</span>';
+          if (typeof t === "string") return '<span class="studio-rh-page-ellipsis" aria-hidden="true">â€¦</span>';
           return `<button type="button" class="studio-rh-page-btn${t === page ? " is-active" : ""}" data-plan-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? "page" : "false"}">${t}</button>`;
         }).join("")}
         <button type="button" class="sb-icon-btn studio-rh-page-nav" data-plan-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
@@ -561,7 +561,7 @@
     const empty = byId("planRhEmpty");
     const sub = byId("planRhListSubtitle");
     if (!list) return;
-    if (sub) sub.textContent = `${_items.length} événement${_items.length > 1 ? "s" : ""} dans la liste de travail.`;
+    if (sub) sub.textContent = `${_items.length} Ã©vÃ©nement${_items.length > 1 ? "s" : ""} dans la liste de travail.`;
 
     if (!_items.length) {
       list.innerHTML = "";
@@ -574,16 +574,16 @@
     const rows = pageData.items.map(item => {
       const isSuggestion = item.kind === "suggestion";
       const type = clean(item.type_evenement || item.type_suggestion);
-      const metaDate = isSuggestion ? `Échéance : ${dateOnlyLabel(item.date_echeance)}` : `${dateLabel(item.date_debut)}${item.date_fin ? ` → ${dateLabel(item.date_fin)}` : ""}`;
-      const action = isSuggestion ? `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-plan-open-calendar="${esc(item.id)}">Planifier</button>` : `<span class="studio-rh-table-muted">—</span>`;
+      const metaDate = isSuggestion ? `Ã‰chÃ©ance : ${dateOnlyLabel(item.date_echeance)}` : `${dateLabel(item.date_debut)}${item.date_fin ? ` â†’ ${dateLabel(item.date_fin)}` : ""}`;
+      const action = isSuggestion ? `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-plan-open-calendar="${esc(item.id)}">Planifier</button>` : `<span class="studio-rh-table-muted">â€”</span>`;
       return `
         <div class="studio-rh-table-row studio-rh-row--${esc(type)}">
           <div class="studio-rh-table-cell studio-rh-table-cell--event">
             <span class="studio-rh-table-title">${esc(item.titre || typeLabel(type))}</span>
-            <span class="studio-rh-table-sub">${esc(item.collaborateur || "Périmètre RH")}</span>
+            <span class="studio-rh-table-sub">${esc(item.collaborateur || "PÃ©rimÃ¨tre RH")}</span>
           </div>
           <div class="studio-rh-table-cell"><span class="studio-rh-badge studio-rh-badge--${esc(type)}">${esc(item.type_label || typeLabel(type))}</span></div>
-          <div class="studio-rh-table-cell">${esc(item.nom_service || "Service non lié")}</div>
+          <div class="studio-rh-table-cell">${esc(item.nom_service || "Service non liÃ©")}</div>
           <div class="studio-rh-table-cell">${esc(metaDate)}</div>
           <div class="studio-rh-table-cell"><span class="studio-rh-status">${esc(item.statut_label || statutLabel(item.statut))}</span></div>
           <div class="studio-rh-table-cell studio-rh-table-cell--actions">${action}</div>
@@ -593,10 +593,10 @@
     list.innerHTML = `
       <div class="studio-rh-table">
         <div class="studio-rh-table-row studio-rh-table-head">
-          <div class="studio-rh-table-cell">Événement</div>
+          <div class="studio-rh-table-cell">Ã‰vÃ©nement</div>
           <div class="studio-rh-table-cell">Type</div>
           <div class="studio-rh-table-cell">Service</div>
-          <div class="studio-rh-table-cell">Date / période</div>
+          <div class="studio-rh-table-cell">Date / pÃ©riode</div>
           <div class="studio-rh-table-cell">Statut</div>
           <div class="studio-rh-table-cell studio-rh-table-cell--actions">Action</div>
         </div>
@@ -616,8 +616,8 @@
     if (body) body.style.display = isCollapsed ? "none" : "";
     if (btn) {
       btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
-      btn.title = isCollapsed ? "Déplier les filtres" : "Replier les filtres";
-      btn.setAttribute("aria-label", isCollapsed ? "Déplier les filtres" : "Replier les filtres");
+      btn.title = isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres";
+      btn.setAttribute("aria-label", isCollapsed ? "DÃ©plier les filtres" : "Replier les filtres");
     }
   }
 
@@ -652,8 +652,8 @@
     const title = byId("planRhModalTitle");
     const sub = byId("planRhModalSub");
     const icon = byId("planRhModalIcon");
-    if (title) title.textContent = _currentType === "campagne" ? "Créer une campagne d’entretiens" : _currentType === "competence" ? "Créer une évaluation compétence" : "Créer une indisponibilité";
-    if (sub) sub.textContent = _currentType === "campagne" ? "Préparez une campagne annuelle et générez les entretiens à planifier." : _currentType === "competence" ? "Préparez une ou plusieurs évaluations compétence pour un collaborateur." : "Ajoutez une ou plusieurs périodes d’indisponibilité pour un collaborateur.";
+    if (title) title.textContent = _currentType === "campagne" ? "CrÃ©er une campagne dâ€™entretiens" : _currentType === "competence" ? "CrÃ©er une Ã©valuation compÃ©tence" : "CrÃ©er une indisponibilitÃ©";
+    if (sub) sub.textContent = _currentType === "campagne" ? "PrÃ©parez une campagne annuelle et gÃ©nÃ©rez les entretiens Ã  planifier." : _currentType === "competence" ? "PrÃ©parez une ou plusieurs Ã©valuations compÃ©tence pour un collaborateur." : "Ajoutez une ou plusieurs pÃ©riodes dâ€™indisponibilitÃ© pour un collaborateur.";
     if (icon) {
       icon.className = `studio-rh-modal-title-icon studio-rh-modal-title-icon--${_currentType}`;
       icon.innerHTML = modalIconSvg(_currentType);
@@ -672,7 +672,7 @@
     row.dataset.line = String(id);
     row.innerHTML = `
       <label>
-        <span class="label studio-rh-line-label">Date début</span>
+        <span class="label studio-rh-line-label">Date dÃ©but</span>
         <input type="date" class="sb-date" data-indispo-start required value="${esc(startValue || "")}">
       </label>
       <label>
@@ -699,7 +699,7 @@
   function removeIndispoLine(lineId){
     const rows = byId("planIndispoLines")?.querySelectorAll(".studio-rh-indispo-line") || [];
     if (rows.length <= 1) {
-      setMsg("planRhModalMsg", "Conserve au moins une période d’indisponibilité.", "warn");
+      setMsg("planRhModalMsg", "Conserve au moins une pÃ©riode dâ€™indisponibilitÃ©.", "warn");
       return;
     }
     byId("planIndispoLines")?.querySelector(`[data-line="${String(lineId).replace(/"/g, "")}"]`)?.remove();
@@ -738,12 +738,12 @@
   function getIndispoPayloads(){
     const idEffectif = clean(byId("planIndispoCollab")?.value);
     const rows = Array.from(byId("planIndispoLines")?.querySelectorAll(".studio-rh-indispo-line") || []);
-    if (!idEffectif) throw new Error("Sélectionne un collaborateur.");
-    if (!rows.length) throw new Error("Ajoute au moins une période d’indisponibilité.");
+    if (!idEffectif) throw new Error("SÃ©lectionne un collaborateur.");
+    if (!rows.length) throw new Error("Ajoute au moins une pÃ©riode dâ€™indisponibilitÃ©.");
     return rows.map(row => {
       const dateDebut = clean(row.querySelector("[data-indispo-start]")?.value);
       const dateFin = clean(row.querySelector("[data-indispo-end]")?.value);
-      if (!dateDebut || !dateFin) throw new Error("Chaque ligne d’indisponibilité doit avoir une date début et une date fin.");
+      if (!dateDebut || !dateFin) throw new Error("Chaque ligne dâ€™indisponibilitÃ© doit avoir une date dÃ©but et une date fin.");
       return {
         id_effectif: idEffectif,
         date_debut: dateDebut,
@@ -771,8 +771,8 @@
   function getCompetencePayloads(){
     const idEffectif = clean(byId("planCompCollab")?.value);
     const idsCompetences = Array.from(_competencesSelected);
-    if (!idEffectif) throw new Error("Sélectionne un collaborateur.");
-    if (!idsCompetences.length) throw new Error("Sélectionne au moins une compétence à évaluer.");
+    if (!idEffectif) throw new Error("SÃ©lectionne un collaborateur.");
+    if (!idsCompetences.length) throw new Error("SÃ©lectionne au moins une compÃ©tence Ã  Ã©valuer.");
     return idsCompetences.map(idCompetence => ({
       id_effectif: idEffectif,
       type_entretien: "evaluation_competence",
@@ -809,7 +809,7 @@
         await postPayloads(`/studio/planification/competence/${baseOwner}`, getCompetencePayloads());
       }
       closeModal();
-      setMsg("planRhMsg", "Événement RH créé.", "ok");
+      setMsg("planRhMsg", "Ã‰vÃ©nement RH crÃ©Ã©.", "ok");
       await loadBootstrap();
       await loadItems();
     } catch (e) {

@@ -1,8 +1,8 @@
-(function () {
+﻿(function () {
   const portal = PortalCommon.createPortal({
     apiBase: "https://skillboard-services.onrender.com",
     queryIdParam: "id",
-    topbarInfoText: "Console Insights · Abonnement actif",
+    topbarInfoText: "Console Insights Â· Abonnement actif",
   });
 
   function roleLabel(roleCode) {
@@ -12,7 +12,7 @@
     return "Utilisateur";
   }
 
-    // URL propre: on supprime le #... dès qu'on quitte le planning
+    // URL propre: on supprime le #... dÃ¨s qu'on quitte le planning
   const _origSwitchView = (typeof portal.switchView === "function") ? portal.switchView.bind(portal) : null;
   if (_origSwitchView) {
     portal.switchView = async (viewName, ...args) => {
@@ -31,7 +31,7 @@
   }
 
 
-    // Contexte + topbar centralisés (évite de dupliquer ensureContext dans chaque menu)
+    // Contexte + topbar centralisÃ©s (Ã©vite de dupliquer ensureContext dans chaque menu)
   portal.ensureContext = async () => {
     if (portal.context) return portal.context;
     if (portal._contextPromise) return portal._contextPromise;
@@ -47,7 +47,7 @@
       const display = [prenom, nom].filter(Boolean).join(" ").trim();
       const entreprise = (ctx.nom_ent || "").trim() || "Entreprise";
       const abonnementActif = ctx.abonnement_actif !== false;
-      const abonnementTexte = abonnementActif ? "Console Insights · Abonnement actif" : "Console Insights · Abonnement inactif";
+      const abonnementTexte = abonnementActif ? "Console Insights Â· Abonnement actif" : "Console Insights Â· Abonnement inactif";
 
       const topbarName = document.getElementById("topbarName");
       const topbarSubtitle = document.getElementById("topbarSubtitle");
@@ -65,7 +65,7 @@
     try {
       return await portal._contextPromise;
     } catch (e) {
-      portal._contextPromise = null; // autorise un retry en cas d'échec
+      portal._contextPromise = null; // autorise un retry en cas d'Ã©chec
       throw e;
     }
   };
@@ -116,7 +116,7 @@
   portal.registerMenu({
     view: "cartographie-competences",
     htmlUrl: "/menus/skills_cartographie_competences.html",
-    jsUrl: "/menus/skills_cartographie_competences.js", // optionnel (auto-guess), mais on le met pour être clair
+    jsUrl: "/menus/skills_cartographie_competences.js", // optionnel (auto-guess), mais on le met pour Ãªtre clair
     onShow: (p) => window.SkillsCartographieCompetences?.onShow?.(p),
   });
 
@@ -143,7 +143,7 @@
 
 
 
-  // Placeholders (pour éviter les clics “vides”)
+  // Placeholders (pour Ã©viter les clics â€œvidesâ€)
   const COMING_SOON = "/menus/skills_coming_soon.html";
 
   portal.registerMenu({
