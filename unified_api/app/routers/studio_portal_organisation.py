@@ -8290,6 +8290,7 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                     SELECT
                       p.id_poste,
                       p.id_service,
+                      s.nom_service,
                       COALESCE(p.actif, TRUE) AS actif,
                       p.codif_poste,
                       p.codif_client,
@@ -8319,6 +8320,10 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                       COALESCE(pr.param_rh_verrouille, FALSE) AS param_rh_verrouille,
                       pr.param_rh_commentaire
                     FROM public.tbl_fiche_poste p
+                    LEFT JOIN public.tbl_entreprise_organigramme s
+                      ON s.id_service = p.id_service
+                     AND s.id_ent = p.id_ent
+                     AND COALESCE(s.archive, FALSE) = FALSE
                     LEFT JOIN public.tbl_nsf_groupe ng
                       ON ng.code = p.nsf_groupe_code
                      AND COALESCE(ng.masque, FALSE) = FALSE
@@ -8338,6 +8343,7 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
         return {
             "id_poste": r.get("id_poste"),
             "id_service": r.get("id_service"),
+            "nom_service": r.get("nom_service"),
             "actif": bool(r.get("actif")),
             "codif_poste": r.get("codif_poste"),
             "codif_client": r.get("codif_client"),

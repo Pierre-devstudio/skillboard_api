@@ -13242,15 +13242,64 @@ body.studio-poste-page-open .content{
 }
 
 @media (max-width:560px){
+  body.studio-poste-page-open .content{
+    padding:0 8px 12px;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-modal-head{
+    padding:8px 34px 10px 0;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-titleline{
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-titleline .sb-title-text{
+    min-width:0;
+    white-space:normal;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-modal-nav,
+  #modalPoste.is-poste-page .studio-poste-page-actions,
   #modalPoste.is-poste-page .studio-poste-kpis{
-    grid-template-columns:1fr;
+    display:none;
   }
 
-  #modalPoste.is-poste-page .studio-poste-page-actions{
-    align-items:stretch;
+  #modalPoste.is-poste-page .sb-tab-panel[data-panel]{
+    display:none;
   }
 
-  #modalPoste.is-poste-page .studio-poste-page-actions > .sb-btn{
-    justify-content:center;
+  #modalPoste.is-poste-page .sb-tab-panel[data-panel="overview"]{
+    display:block;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-overview-grid,
+  #modalPoste.is-poste-page .studio-poste-overview-highlight-grid{
+    grid-template-columns:minmax(0, 1fr);
+    gap:12px;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-overview-main,
+  #modalPoste.is-poste-page .studio-poste-overview-side{
+    min-width:0;
+    gap:12px;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-overview-main > section,
+  #modalPoste.is-poste-page .studio-poste-overview-side > section:not(.studio-poste-overview-card--collaborators){
+    display:none;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-overview-card{
+    padding:12px;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-collaborator-row{
+    grid-template-columns:34px minmax(0, 1fr);
+  }
+
+  #modalPoste.is-poste-page .studio-poste-collaborator-status{
+    grid-column:2;
   }
 }

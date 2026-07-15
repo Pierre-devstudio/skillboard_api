@@ -1919,6 +1919,18 @@ body {
         return String(service?.nom_service || "").trim() || "—";
     }
 
+    function getSelectedPosteServiceLabel(){
+        const select = byId("posteService");
+        const selected = select?.selectedOptions?.[0];
+        const selectedId = String(select?.value || "").trim();
+        const label = String(selected?.textContent || "")
+            .replace(/^—+\s*/, "")
+            .trim();
+
+        if (!selectedId || !label || label === "(Choisir un service)") return "";
+        return label;
+    }
+
     function getPosteSortValue(poste, key){
         if (key === "code") return normalizePosteSortValue(poste?.code || "");
         if (key === "intitule") return normalizePosteSortValue(poste?.intitule || "");
@@ -5689,9 +5701,12 @@ function refreshPosteCompEditCritDisplay(){
             if (!certHost.children.length) certHost.textContent = "Aucune certification rattachée.";
         }
 
-        const overviewService = d.nom_service || getPosteServiceLabel({
-            id_service: d.id_service || _editingPosteListItem?.id_service
-        });
+        const overviewServiceId = String(d.id_service || _editingPosteListItem?.id_service || "").trim();
+        const mappedService = getPosteServiceLabel({ id_service: overviewServiceId });
+        const overviewService = String(d.nom_service || "").trim()
+            || (mappedService !== "—" ? mappedService : "")
+            || getSelectedPosteServiceLabel()
+            || (overviewServiceId ? "Service non disponible" : "Non lié");
         const overviewCode = String(d.codif_client || "").trim()
             || String(d.codif_poste || "").trim()
             || String(_editingPosteListItem?.code || "").trim()
@@ -5853,6 +5868,7 @@ function refreshPosteCompEditCritDisplay(){
             let d = await fetchPosteDetail(portal, _editingPosteId);
             if (!d) return;
             d = repairAiDraftPayload(d || {});
+            fillPosteServiceSelect(String(d.id_service || p?.id_service || ""));
 
             await ensureNsfGroupes(portal);
             fillNsfSelect(d?.nsf_groupe_code || "");
