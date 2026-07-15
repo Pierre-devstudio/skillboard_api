@@ -315,7 +315,7 @@
 
   function posteBadge(r) {
     const code = (r?.codif_client || r?.codif_poste || "").toString().trim();
-    return code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : "";
+    return code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : "";
   }
 
   function renderNoAction(data) {
@@ -372,7 +372,7 @@
           <td>${esc(service)}</td>
           <td class="col-center">${criticite || "—"}</td>
           <td class="col-center">${esc(titulaires)}</td>
-          <td class="col-center"><span class="sb-badge sb-badge--danger">${Math.round(indice)}%</span></td>
+          <td class="col-center"><span class="ns-badge sb-badge sb-badge--danger">${Math.round(indice)}%</span></td>
           <td>${esc(points.length ? points.join(" · ") : "Aucune action de sécurisation identifiée")}</td>
         </tr>
       `;
@@ -570,26 +570,16 @@
   function healthToneIcon(tone) {
     if (tone === "robust" || tone === "solid") {
       return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 6 9 17l-5-5"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7465f1b17497"></use></svg>
       `;
     }
     if (tone === "danger") {
       return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 9v4"></path>
-          <path d="M12 17h.01"></path>
-          <path d="M10.3 4.2 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7cd893ed60a5"></use></svg>
       `;
     }
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"></circle>
-        <path d="M12 8v5"></path>
-        <path d="M12 16h.01"></path>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
     `;
   }
 
@@ -597,45 +587,30 @@
     const k = (key || "").toString();
     if (k === "competences") {
       return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 10 12 5 2 10l10 5 10-5Z"></path>
-          <path d="M6 12.5V17c0 1.2 2.7 2.5 6 2.5s6-1.3 6-2.5v-4.5"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
       `;
     }
     if (k === "fiabilite") {
       return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <ellipse cx="12" cy="5" rx="7" ry="3"></ellipse>
-          <path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5"></path>
-          <path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-c4e47578bd15"></use></svg>
       `;
     }
     if (k === "transmission") {
       return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 2 11 13"></path>
-          <path d="M22 2 15 22l-4-9-9-4 20-7Z"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-a708db67a7a0"></use></svg>
       `;
     }
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="4" width="16" height="16" rx="3"></rect>
-        <path d="M8 9h8"></path>
-        <path d="M8 13h8"></path>
-        <path d="M8 17h5"></path>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9bf44221f8c8"></use></svg>
     `;
   }
 
   function healthMetaIcon(kind) {
     const icons = {
-      scope: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9"></path><path d="M16 3.1a4 4 0 0 1 0 7.8"></path></svg>`,
-      criticite: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg>`,
-      postes: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 13h18"></path></svg>`,
-      score: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 5-7"></path></svg>`
+      scope: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-criticality"></use></svg>`,
+      criticite: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`,
+      postes: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`,
+      score: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`
     };
     return icons[kind] || icons.score;
   }
@@ -745,7 +720,7 @@
           <div class="sb-dashboard-health-hero-main">
             <div class="sb-dashboard-health-hero-line">
               <div class="sb-dashboard-health-hero-score">${pctTxt(pct, 0)}</div>
-              <span class="sb-health-status ${esc(st.cls)}">${esc(st.label)}</span>
+              <span class="ns-badge sb-health-status ${esc(st.cls)}">${esc(st.label)}</span>
             </div>
             <div class="sb-dashboard-health-hero-text">${esc(healthDetailInterpretation(pct))}</div>
           </div>
@@ -776,10 +751,7 @@
 
         <div class="sb-dashboard-read-block">
           <div class="sb-dashboard-read-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-              <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15Z"></path>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b023effc5040"></use></svg>
           </div>
           <div>
             <div class="sb-dashboard-read-title">Comment lire la jauge</div>
@@ -806,7 +778,7 @@
   }
 
   function transmissionStatusBadge(key, label) {
-    return `<span class="sb-dashboard-status ${transmissionStatusClass(key)}">${esc(label || "À qualifier")}</span>`;
+    return `<span class="ns-badge sb-dashboard-status ${transmissionStatusClass(key)}">${esc(label || "À qualifier")}</span>`;
   }
 
   function transmissionRelayHtml(item) {
@@ -862,7 +834,7 @@
           <tr>
             <td>
               <div class="sb-dashboard-comp-cell">
-                ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
+                ${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
                 <span>${esc(title)}</span>
               </div>
             </td>
@@ -900,7 +872,7 @@
       const title = (item?.intitule || "Compétence").toString().trim();
       return `
         <li>
-          ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
+          ${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
           <span>${esc(title)}</span>
         </li>
       `;
@@ -1005,12 +977,7 @@
             </div>
           </div>
           <div class="sb-dashboard-transmission-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M7 7h11"></path>
-              <path d="m14 3 4 4-4 4"></path>
-              <path d="M17 17H6"></path>
-              <path d="m10 13-4 4 4 4"></path>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
           </div>
         </div>
 
@@ -1073,7 +1040,7 @@
               Une compétence est transmissible lorsqu’au moins une personne disponible est <strong>Expert</strong>
               ou <strong>Avancé haut</strong> avec un score ≥ <strong>${numTxt(threshold, 0)}%</strong>.
               Les évaluations de plus de <strong>${numTxt(months, 0)} mois</strong> sont isolées.
-              <span class="sb-dashboard-rule-chip">Criticité prise en compte : ${esc(criticiteLabel)}</span>
+              <span class="ns-badge sb-dashboard-rule-chip">Criticité prise en compte : ${esc(criticiteLabel)}</span>
             </div>
           </div>
         </div>

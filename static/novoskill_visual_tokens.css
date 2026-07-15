@@ -1,0 +1,22 @@
+/* Socle visuel central Novoskill : icônes et badges */
+:root {
+  --ns-icon-xs: 14px;
+  --ns-icon-sm: 16px;
+  --ns-icon-md: 18px;
+  --ns-icon-lg: 20px;
+  --ns-icon-xl: 24px;
+  --ns-icon-kpi: 28px;
+  --ns-success-text: #166534; --ns-success-bg: #f0fdf4; --ns-success-border: #bbf7d0;
+  --ns-warning-text: #92400e; --ns-warning-bg: #fffbeb; --ns-warning-border: #fde68a;
+  --ns-danger-text: #991b1b; --ns-danger-bg: #fef2f2; --ns-danger-border: #fecaca;
+  --ns-info-text: #1e40af; --ns-info-bg: #eff6ff; --ns-info-border: #bfdbfe;
+  --ns-neutral-text: #475569; --ns-neutral-bg: #f8fafc; --ns-neutral-border: #cbd5e1;
+}
+.ns-icon-use { display:inline-block; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; vertical-align:middle; }
+.ns-icon-use use { pointer-events:none; }
+.ns-badge { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-height:24px; padding:.2rem .55rem; border-radius:999px; font-size:var(--ns-text-xs,.75rem); font-weight:var(--ns-weight-semibold,600); line-height:1.2; white-space:nowrap; border:1px solid transparent; }
+.ns-badge-status--success { color:var(--ns-success-text); background:var(--ns-success-bg); border-color:var(--ns-success-border); }
+.ns-badge-status--warning { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }
+.ns-badge-status--danger { color:var(--ns-danger-text); background:var(--ns-danger-bg); border-color:var(--ns-danger-border); }
+.ns-badge-status--info { color:var(--ns-info-text); background:var(--ns-info-bg); border-color:var(--ns-info-border); }
+.ns-badge-status--neutral { color:var(--ns-neutral-text); background:var(--ns-neutral-bg); border-color:var(--ns-neutral-border); }

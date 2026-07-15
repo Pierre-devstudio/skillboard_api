@@ -373,14 +373,14 @@
 
   function collabModalSvg(name){
     const icons = {
-      contract: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h6"/></svg>',
-      skills: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>',
-      certs: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
-      medal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>',
-      calendar: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
-      org: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="8.5" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v2a2 2 0 0 0 2 2H12"/><path d="M17.5 10v2a2 2 0 0 1-2 2H12"/></svg>',
-      school: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>',
-      import: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/><path d="M5 17v4"/><path d="M19 17v4"/></svg>'
+      contract: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-660d27ff6f29"></use></svg>',
+      skills: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-44d3a5d04e56"></use></svg>',
+      certs: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-daf48b3c0111"></use></svg>',
+      medal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e097d44ef300"></use></svg>',
+      calendar: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-18bccb4b2b39"></use></svg>',
+      org: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e641f66fe2cb"></use></svg>',
+      school: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-67df5329c093"></use></svg>',
+      import: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3e94ce657c01"></use></svg>'
     };
     return icons[name] || icons.contract;
   }
@@ -452,7 +452,7 @@
           if (!iconUrl) return '';
 
           return `
-            <span class="sb-console-chip" title="${esc(label)} - ${esc(roleLabel)}">
+            <span class="ns-badge sb-console-chip" title="${esc(label)} - ${esc(roleLabel)}">
               <img
                 src="${esc(iconUrl)}"
                 alt="${esc(label)}"
@@ -2316,9 +2316,9 @@
 
   function renderDrawerRoles(it){
     const roles = [];
-    if (it?.ismanager) roles.push('<span class="collab-role-badge collab-role-badge--manager">Manager</span>');
-    if (it?.isformateur) roles.push('<span class="collab-role-badge collab-role-badge--formateur">Formateur</span>');
-    if (it?.is_temp) roles.push('<span class="collab-role-badge">Temporaire</span>');
+    if (it?.ismanager) roles.push('<span class="ns-badge collab-role-badge collab-role-badge--manager">Manager</span>');
+    if (it?.isformateur) roles.push('<span class="ns-badge collab-role-badge collab-role-badge--formateur">Formateur</span>');
+    if (it?.is_temp) roles.push('<span class="ns-badge collab-role-badge">Temporaire</span>');
     return roles.length ? roles.join('') : '<span class="card-sub" style="margin:0;">—</span>';
   }
 
@@ -2816,14 +2816,14 @@
       </div>
       <div class="collab-pagination" aria-label="Pagination collaborateurs">
         <button type="button" class="sb-icon-btn collab-page-nav" data-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-24b9971b5c72"></use></svg>
         </button>
         ${tokens.map(t => {
           if (typeof t === 'string') return '<span class="collab-page-ellipsis" aria-hidden="true">…</span>';
           return `<button type="button" class="collab-page-btn${t === page ? ' is-active' : ''}" data-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? 'page' : 'false'}">${t}</button>`;
         }).join('')}
         <button type="button" class="sb-icon-btn collab-page-nav" data-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-0ba498c7ae0a"></use></svg>
         </button>
       </div>
       <div class="collab-range-label">${esc(range)}</div>
@@ -2864,7 +2864,7 @@
     const p = splitPosteLabel(posteLabel);
     return `
       <div class="collab-poste-cell">
-        ${p.code ? `<span class="sb-badge sb-badge--poste collab-poste-code">${esc(p.code)}</span>` : ''}
+        ${p.code ? `<span class="ns-badge sb-badge sb-badge--poste collab-poste-code">${esc(p.code)}</span>` : ''}
         <span class="collab-poste-title">${esc(p.title)}</span>
       </div>
     `;
@@ -2880,8 +2880,8 @@
       <div class="collab-status-stack">
         <span class="collab-status-dot ${statusClass}">${esc(statusLabel)}</span>
         <span class="collab-role-line">
-          ${it?.ismanager ? '<span class="collab-role-badge collab-role-badge--manager">Manager</span>' : ''}
-          ${it?.isformateur ? '<span class="collab-role-badge collab-role-badge--formateur">Formateur</span>' : ''}
+          ${it?.ismanager ? '<span class="ns-badge collab-role-badge collab-role-badge--manager">Manager</span>' : ''}
+          ${it?.isformateur ? '<span class="ns-badge collab-role-badge collab-role-badge--formateur">Formateur</span>' : ''}
         </span>
       </div>
     `;
@@ -2938,29 +2938,15 @@
     empty.style.display = "none";
 
     const iconPdf = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/>
-        <path d="M14 2v6h6"/>
-        <path d="M8.5 15.5h7"/>
-        <path d="M8.5 18.5h5"/>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
     `;
 
     const iconEdit = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 20h9"/>
-        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-48dd56632f54"></use></svg>
     `;
 
     const iconTrash = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="3 6 5 6 21 6"/>
-        <path d="M19 6l-1 14H6L5 6"/>
-        <path d="M10 11v6"/>
-        <path d="M14 11v6"/>
-        <path d="M9 6V4h6v2"/>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>
     `;
 
     const sortedItems = getSortedCollaborateurs(_items);
@@ -3400,16 +3386,16 @@
       const title = String(intitule || '').trim();
       return `
         <div class="sb-collab-skill-titleline">
-          ${code ? `<span class="sb-badge sb-badge--comp">${esc(code)}</span>` : ''}
+          ${code ? `<span class="ns-badge sb-badge sb-badge--comp">${esc(code)}</span>` : ''}
           <span class="sb-collab-skill-title" title="${esc(title)}">${esc(title || 'Compétence')}</span>
         </div>
       `;
     };
 
-    const iconPdf = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
-    const iconEval = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;
-    const iconTrash = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
-    const iconPlus = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`;
+    const iconPdf = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>`;
+    const iconEval = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-733db69d696c"></use></svg>`;
+    const iconTrash = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-52fbff751eeb"></use></svg>`;
+    const iconPlus = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>`;
 
     const sortHead = (scope, key, label, cls = '') => {
       const state = _collabSkillSorts[scope] || { key:'competence', dir:'asc' };
@@ -3436,7 +3422,7 @@
         return `
           <tr ${rowAttrs}>
             <td>${buildCompCell(x.code || '', x.intitule || '')}</td>
-            <td class="col-center"><span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span></td>
+            <td class="col-center"><span class="ns-badge sb-badge ${lvl.cls}">${esc(lvl.text)}</span></td>
             <td class="col-center">${esc(lastEval)}</td>
             <td class="sb-table-action-cell">
               <div class="sb-icon-actions">
@@ -3454,7 +3440,7 @@
       <div class="sb-collab-skill-section ${modifier || ''}">
         <div class="sb-collab-skill-section-head">
           <div class="sb-collab-skill-section-title">${esc(title)}</div>
-          <span class="sb-badge">${rows.length}</span>
+          <span class="ns-badge sb-badge">${rows.length}</span>
         </div>
         <div class="sb-table-wrap">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--owned">
@@ -3539,8 +3525,8 @@
     const posteLabel = poste.label || data?.intitule_poste || '–';
     const canAdd = !!_editingId;
 
-    const iconPen = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
-    const iconTrash = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+    const iconPen = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`;
+    const iconTrash = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`;
 
     const requiredCount = items.filter(x => !!x.is_required_poste || !!x.is_wanted_poste).length;
     const acquiredCount = items.filter(x => String(x.etat || '').toLowerCase() === 'obtenue' || String(x.etat || '').toLowerCase() === 'valide' || !!x.date_obtention).length;
@@ -3556,13 +3542,13 @@
       if (raw.includes('obten') || raw.includes('valide')) cls = 'sb-collab-cert-status--ok';
       if (raw.includes('renouvel')) cls = 'sb-collab-cert-status--warn';
       if (raw.includes('expire')) cls = 'sb-collab-cert-status--danger';
-      return `<span class="sb-badge sb-collab-cert-status ${cls}">${esc(label || '—')}</span>`;
+      return `<span class="ns-badge sb-badge sb-collab-cert-status ${cls}">${esc(label || '—')}</span>`;
     };
 
     const requirementBadge = (x) => {
-      if (x.is_required_poste) return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--required">Requis</span>`;
-      if (x.is_wanted_poste) return `<span class="sb-badge sb-collab-cert-badge sb-collab-cert-badge--wanted">Souhaité</span>`;
-      return `<span class="sb-badge sb-collab-cert-badge">Hors poste</span>`;
+      if (x.is_required_poste) return `<span class="ns-badge sb-badge sb-collab-cert-badge sb-collab-cert-badge--required">Requis</span>`;
+      if (x.is_wanted_poste) return `<span class="ns-badge sb-badge sb-collab-cert-badge sb-collab-cert-badge--wanted">Souhaité</span>`;
+      return `<span class="ns-badge sb-badge sb-collab-cert-badge">Hors poste</span>`;
     };
 
     const rows = items.map(x => `
@@ -3570,7 +3556,7 @@
         <td>
           <div class="sb-collab-cert-title">${esc(x.nom_certification || 'Certification')}</div>
           <div class="sb-collab-cert-badges">
-            ${x.categorie ? `<span class="sb-badge sb-collab-cert-badge">${esc(x.categorie)}</span>` : ``}
+            ${x.categorie ? `<span class="ns-badge sb-badge sb-collab-cert-badge">${esc(x.categorie)}</span>` : ``}
             ${requirementBadge(x)}
           </div>
         </td>
@@ -3601,7 +3587,7 @@
       <div class="sb-collab-cert-section">
         <div class="sb-collab-skill-section-head">
           <div class="sb-collab-skill-section-title">Certifications du collaborateur</div>
-          <span class="sb-badge">${items.length}</span>
+          <span class="ns-badge sb-badge">${items.length}</span>
         </div>
         ${items.length ? `
           <div class="sb-table-wrap">
@@ -3662,7 +3648,7 @@
           <td><div class="sb-collab-history-formation">${esc(intitule)}</div>${service ? `<div class="sb-collab-history-code">${esc(service)}</div>` : ''}</td>
           <td class="col-center">${esc(formatDateFR(x.date_debut))}</td>
           <td class="col-center">${esc(formatDateFR(x.date_fin))}</td>
-          <td class="col-center"><span class="sb-badge sb-collab-history-status--neutral">${esc(x.source_changement_label || historyPosteSourceLabel(x.source_changement))}</span></td>
+          <td class="col-center"><span class="ns-badge sb-badge sb-collab-history-status--neutral">${esc(x.source_changement_label || historyPosteSourceLabel(x.source_changement))}</span></td>
         </tr>
       `;
     }).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune évolution structurante enregistrée.</td></tr>`;
@@ -3676,7 +3662,7 @@
           <td><div class="sb-collab-history-formation">${esc(x.titre_formation || 'Formation')}</div>${x.code_formation ? `<div class="sb-collab-history-code">${esc(x.code_formation)}</div>` : ''}</td>
           <td class="col-center">${esc(formatDateFR(x.date_debut_formation))}</td>
           <td class="col-center">${esc(formatDateFR(x.date_fin_formation))}</td>
-          <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.etat_action || '—')}</span></td>
+          <td class="col-center"><span class="ns-badge sb-badge sb-collab-history-status--blue">${esc(x.etat_action || '—')}</span></td>
         </tr>
       `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucune formation JMB enregistrée.</td></tr>`);
 
@@ -3685,7 +3671,7 @@
         <td class="col-center"><span class="sb-collab-history-action-code">${esc(x.code_competence || '–')}</span></td>
         <td><div class="sb-collab-history-formation">${esc(x.intitule_competence || 'Compétence')}</div>${x.methode_eval ? `<div class="sb-collab-history-code">${esc(x.methode_eval)}</div>` : ''}</td>
         <td class="col-center">${esc(formatDateFR(x.date_audit))}</td>
-        <td class="col-center"><span class="sb-badge sb-collab-history-status--blue">${esc(x.niveau_label || x.niveau_actuel || '—')}</span></td>
+        <td class="col-center"><span class="ns-badge sb-badge sb-collab-history-status--blue">${esc(x.niveau_label || x.niveau_actuel || '—')}</span></td>
         <td class="col-center">${esc(x.nom_evaluateur || '—')}</td>
       </tr>
     `).join('') : `<tr><td colspan="5" class="sb-collab-skill-empty">Aucun audit de compétence enregistré.</td></tr>`;

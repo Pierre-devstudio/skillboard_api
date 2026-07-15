@@ -82,7 +82,7 @@
     if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(value, title || "Niveau de maîtrise");
     const k = nsLevelCode(value);
     const cls = ({ A: "sb-badge-niv-a", B: "sb-badge-niv-b", C: "sb-badge-niv-c", D: "sb-badge-niv-d" }[k]) || "";
-    return `<span class="sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(nsLevelLabel(value))}</span>`;
+    return `<span class="ns-badge sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(nsLevelLabel(value))}</span>`;
   }
 
 
@@ -94,7 +94,7 @@
     label = (label || "").toString().trim().replace(/^[A-D]\s*[-–—: ]\s*/i, "");
     if (!label) label = "—";
     const cls = ({ A: "sb-badge-niv-a", B: "sb-badge-niv-b", C: "sb-badge-niv-c", D: "sb-badge-niv-d" }[code]) || "";
-    return `<span class="sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau attendu")}">${escapeHtml(label)}</span>`;
+    return `<span class="ns-badge sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau attendu")}">${escapeHtml(label)}</span>`;
   }
 
 
@@ -618,30 +618,30 @@
   }
 
   function analyseEyeIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-analysis"></use></svg>`;
   }
 
   function analysePdfIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-analysis"></use></svg>`;
   }
 
   function analysePrintIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/><path d="M8 18h8"/></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-analysis"></use></svg>`;
   }
 
   function analyseDetailIconSvg(kind) {
     const icons = {
-      risques: `<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
-      matching: `<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>`,
-      previsions: `<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V8"/><path d="M17 16V5"/></svg>`,
-      postes: `<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>`,
-      competences: `<svg viewBox="0 0 24 24"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>`,
-      evol3m: `<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>`,
-      matchingPostes: `<svg viewBox="0 0 24 24"><path d="M19 13.5V19H5v-5.5"/><path d="M9 10.5V5h6v5.5"/><path d="M8 13h8"/><path d="M12 9v8"/><path d="M4 13h4v4H4z"/><path d="M16 13h4v4h-4z"/></svg>`,
-      candidats: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
-      sortiesConfirmees: `<svg viewBox="0 0 24 24"><path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>`,
-      sortiesPotentielles: `<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-2a6 6 0 0 1 12 0v2"/><path d="M4 8a8 8 0 0 0-1 4"/><path d="M20 8a8 8 0 0 1 1 4"/></svg>`,
-      transmissions: `<svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`
+      risques: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-analysis"></use></svg>`,
+      matching: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`,
+      previsions: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`,
+      postes: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>`,
+      competences: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>`,
+      evol3m: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>`,
+      matchingPostes: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>`,
+      candidats: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-a80aadd95de8"></use></svg>`,
+      sortiesConfirmees: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-8cde59156672"></use></svg>`,
+      sortiesPotentielles: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9893168354d9"></use></svg>`,
+      transmissions: `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-analysis"></use></svg>`
     };
     return icons[kind] || icons.risques;
   }
@@ -1761,12 +1761,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return `
       <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
         <div style="position:relative; width:${size}px; height:${size}px;">
-          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
-            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
-            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
-                    stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
-                    transform="rotate(-90 ${size / 2} ${size / 2})" />
-          </svg>
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b788c288e596"></use></svg>
           <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
             <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">
               ${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span>
@@ -1857,11 +1852,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const critBadgeHtml = (v) => {
     const n = Number(v);
     if (!Number.isFinite(n) || n <= 0) return "—";
-    return `<span class="sb-crit-badge ${critLevelClass(n)}">${escapeHtml(String(Math.round(n)))}</span>`;
+    return `<span class="ns-badge sb-crit-badge ${critLevelClass(n)}">${escapeHtml(String(Math.round(n)))}</span>`;
   };
 
   const compCodeBadge = (code) =>
-    `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
+    `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
 
   const nivBadgeHtml = (niv) => nsLevelBadgeHtml(niv, "Niveau de maîtrise");
 
@@ -1985,8 +1980,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                     <div style="font-size:var(--ns-text-md, 0.875rem); font-weight:var(--ns-weight-bold, 700);">${escapeHtml(r?.full || "Collaborateur")}</div>
                     <div class="card-sub" style="margin:2px 0 0; font-size:var(--ns-text-xs, 0.75rem);">${escapeHtml(String(r?.competences_ok ?? 0))}/${escapeHtml(String(r?.competences_total ?? 0))} compétences au niveau requis</div>
                   </td>
-                  <td class="col-center"><span class="sb-badge">${escapeHtml(String(r?.maitrise_actuelle_pct ?? 0))}%</span></td>
-                  <td class="col-center"><span class="sb-badge sb-badge--dep-none">-${escapeHtml(String(r?.ecart_pct ?? 0))}%</span></td>
+                  <td class="col-center"><span class="ns-badge sb-badge">${escapeHtml(String(r?.maitrise_actuelle_pct ?? 0))}%</span></td>
+                  <td class="col-center"><span class="ns-badge sb-badge sb-badge--dep-none">-${escapeHtml(String(r?.ecart_pct ?? 0))}%</span></td>
                   <td class="col-center">
                     <button type="button"
                             class="sb-icon-btn poste-cause-match-person"
@@ -2028,7 +2023,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
                   <td style="min-width:280px;"><div style="font-size:var(--ns-text-md, 0.875rem); font-weight:var(--ns-weight-semibold, 600);">${intit}</div></td>
                   <td class="col-center" style="white-space:nowrap;">${req}</td>
-                  <td class="col-center" style="white-space:nowrap;"><span class="sb-badge">${escapeHtml(String(nDef))}</span><span style="color:#6b7280; font-size:var(--ns-text-xs, 0.75rem); margin-left:6px;">/ ${escapeHtml(String(nTit))}</span></td>
+                  <td class="col-center" style="white-space:nowrap;"><span class="ns-badge sb-badge">${escapeHtml(String(nDef))}</span><span style="color:#6b7280; font-size:var(--ns-text-xs, 0.75rem); margin-left:6px;">/ ${escapeHtml(String(nTit))}</span></td>
                 </tr>
               `;
             }).join("")}
@@ -2190,7 +2185,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 ${causeDot("main")}<span>Couverture du poste insuffisante</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
-                <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(structureSharePct))}%</span>
+                <span class="ns-badge sb-badge sb-badge--risk-share">${escapeHtml(String(structureSharePct))}%</span>
                 ${causeHelpButton("structure")}
                 <span class="sb-acc-chevron">▾</span>
               </span>
@@ -2206,7 +2201,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 ${causeDot("main")}<span>Niveau attendu non atteint</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
-                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
+                ${showSecondaryRiskShare ? `<span class="ns-badge sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
                 ${causeHelpButton("efficacite")}
                 <span class="sb-acc-chevron">▾</span>
               </span>
@@ -2222,7 +2217,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 ${causeDot("main")}<span>Compétence trop dépendante d'une personne</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
-                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
+                ${showSecondaryRiskShare ? `<span class="ns-badge sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
                 ${causeHelpButton("dependance")}
                 <span class="sb-acc-chevron">▾</span>
               </span>
@@ -2238,7 +2233,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 ${causeDot("aggravant")}<span>Sortie approchante d’un titulaire</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
-                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(sortiesSharePct))}%</span>` : ``}
+                ${showSecondaryRiskShare ? `<span class="ns-badge sb-badge sb-badge--risk-share">${escapeHtml(String(sortiesSharePct))}%</span>` : ``}
                 ${causeHelpButton("sorties")}
                 <span class="sb-acc-chevron">▾</span>
               </span>
@@ -2254,7 +2249,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 ${causeDot("aggravant")}<span>Renfort potentiel insuffisant</span>
               </span>
               <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
-                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>` : ``}
+                ${showSecondaryRiskShare ? `<span class="ns-badge sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>` : ``}
                 ${causeHelpButton("transmission")}
                 <span class="sb-acc-chevron">▾</span>
               </span>
@@ -2743,10 +2738,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
               <div class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
                 <span id="matchPersonModalTitle" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Détail</span>
-                <span id="matchPersonModalTitleBadge" class="sb-badge" style="display:none;"></span>
+                <span id="matchPersonModalTitleBadge" class="ns-badge sb-badge" style="display:none;"></span>
               </div>
               <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                <span id="matchPersonModalTitlePosteCode" class="sb-badge sb-badge-ref-poste-code" style="display:none;"></span>
+                <span id="matchPersonModalTitlePosteCode" class="ns-badge sb-badge sb-badge-ref-poste-code" style="display:none;"></span>
                 <span id="matchPersonModalTitlePosteText" class="card-sub" style="margin:0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
               </div>
             </div>
@@ -2900,12 +2895,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
           <div style="position:relative; width:${size}px; height:${size}px;">
-            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
-              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
-              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
-                      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
-                      transform="rotate(-90 ${size / 2} ${size / 2})" />
-            </svg>
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b788c288e596"></use></svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
               <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">
                 ${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span>
@@ -2919,10 +2909,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function statusBadge(etat) {
       const s = String(etat || "").toLowerCase();
-      if (s === "ok") return `<span class="sb-badge sb-badge--success">OK</span>`;
-      if (s === "improvable" || s === "ameliorable" || s === "améliorable") return `<span class="sb-badge sb-badge--success">Améliorable</span>`;
-      if (s === "under") return `<span class="sb-badge sb-badge--warning">À renforcer</span>`;
-      return `<span class="sb-badge sb-badge--danger">Manquante</span>`;
+      if (s === "ok") return `<span class="ns-badge sb-badge sb-badge--success">OK</span>`;
+      if (s === "improvable" || s === "ameliorable" || s === "améliorable") return `<span class="ns-badge sb-badge sb-badge--success">Améliorable</span>`;
+      if (s === "under") return `<span class="ns-badge sb-badge sb-badge--warning">À renforcer</span>`;
+      return `<span class="ns-badge sb-badge sb-badge--danger">Manquante</span>`;
     }
 
     function fmtScore(v) {
@@ -2946,7 +2936,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const n = Number(p);
       const txt = Number.isFinite(n) ? String(Math.round(n)) : "—";
       const lvl = critLevel(n);
-      return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité (poids)">${escapeHtml(txt)}</span>`;
+      return `<span class="ns-badge sb-crit-badge sb-crit-l${lvl}" title="Criticité (poids)">${escapeHtml(txt)}</span>`;
     }
 
     function nivBadgeHtml(v) {
@@ -2959,7 +2949,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const rawCol = it?.domaine_couleur ?? it?.domaine_color ?? it?.domaine_couleur_hex ?? it?.couleur_domaine;
       const col = normalizeColor(rawCol);
       const style = col ? ` style="--dom-color:${escapeHtml(col)};"` : "";
-      return `<span class="sb-badge-domaine sb-badge-domaine--soft"${style}>${escapeHtml(txt)}</span>`;
+      return `<span class="ns-badge sb-badge-domaine sb-badge-domaine--soft"${style}>${escapeHtml(txt)}</span>`;
     }
 
     function renderCritDetailsRow(uid, arr) {
@@ -3012,7 +3002,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       const badgesTop = `
         <div class="sb-badges" style="flex-wrap:wrap;">
-          <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
+          <span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
           ${domainPill(it)}
         </div>
       `;
@@ -3043,8 +3033,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </td>
           <td class="col-center">${critBadgeHtml(poids)}</td>
           <td class="col-center">${nivBadgeHtml(nivReq)}</td>
-          <td class="col-center"><span class="sb-badge" title="Note maximale du niveau requis">${escapeHtml(String(noteMax))}</span></td>
-          <td class="col-center" style="border-left:1px solid #d1d5db;"><span class="sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span></td>
+          <td class="col-center"><span class="ns-badge sb-badge" title="Note maximale du niveau requis">${escapeHtml(String(noteMax))}</span></td>
+          <td class="col-center" style="border-left:1px solid #d1d5db;"><span class="ns-badge sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span></td>
           <td class="col-center">${nivBadgeHtml(nivAt)}</td>
           <td class="col-center">${statusBadge(it?.etat)}</td>
           <td class="col-center">${btnCompetencePdf}</td>
@@ -3878,7 +3868,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     host.innerHTML = `
       <div class="card-sub" style="margin:0 0 8px 0;">
         <span>Poste :</span>
-        <span class="sb-badge sb-badge-ref-poste-code">
+        <span class="ns-badge sb-badge sb-badge-ref-poste-code">
           ${escapeHtml(((poste?.codif_client || "").trim() || (poste?.codif_poste || "").trim() || "—"))}
         </span>
         <b style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -4027,7 +4017,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="modal-card modal-card--wide">
           <div class="modal-header">
             <div id="analyseCompModalTitle" class="sb-modal-titleline">
-              <span class="sb-badge sb-badge-ref-comp-code" id="analyseCompModalTitleCode" style="display:none;"></span>
+              <span class="ns-badge sb-badge sb-badge-ref-comp-code" id="analyseCompModalTitleCode" style="display:none;"></span>
               <span id="analyseCompModalTitleText" class="sb-title-text">Détail compétence</span>
             </div>
             <button type="button" class="modal-x" id="analyseCompModalCloseBtn" aria-label="Fermer">×</button>
@@ -4230,12 +4220,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
           <div style="position:relative; width:${size}px; height:${size}px;">
-            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
-              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
-              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
-                      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
-                      transform="rotate(-90 ${size / 2} ${size / 2})" />
-            </svg>
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b788c288e596"></use></svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
               <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span></div>
             </div>
@@ -4275,7 +4260,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         pct = visibleScoreTotal > 0 ? Math.round((value / visibleScoreTotal) * 100) : 0;
       }
       pct = clamp(pct, 0, 100);
-      return `<span class="sb-badge sb-badge--risk-share">${esc(String(pct))}%</span>`;
+      return `<span class="ns-badge sb-badge sb-badge--risk-share">${esc(String(pct))}%</span>`;
     }
 
     function causeHelpKey(code) {
@@ -4325,7 +4310,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     function critBadgeHtml(v) {
       const n = Number(v);
       if (!Number.isFinite(n) || n <= 0) return "—";
-      return `<span class="sb-crit-badge ${critLevelClass(n)}">${esc(String(Math.round(n)))}</span>`;
+      return `<span class="ns-badge sb-crit-badge ${critLevelClass(n)}">${esc(String(Math.round(n)))}</span>`;
     }
 
     function causeItemsHtml(cause) {
@@ -4349,14 +4334,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 <tr>
                   <td>
                     <div style="display:flex;align-items:center;gap:8px;min-width:320px;">
-                      <span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span>
+                      <span class="ns-badge sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span>
                       <span style="font-size:var(--ns-text-md, 0.875rem);font-weight:var(--ns-weight-semibold, 600);color:#0f172a;white-space:normal;line-height:var(--ns-leading-title, 1.25);">${esc(it.intitule_poste || "—")}</span>
                     </div>
                   </td>
                   <td class="col-center">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
                   <td class="col-center">${esc(String(it.besoin ?? 0))}</td>
                   <td class="col-center">${esc(String(it.porteurs_niveau_requis ?? it.collaborateurs_niveau_requis ?? 0))}</td>
-                  <td class="col-center"><span class="sb-badge sb-badge--warning">${esc(String(it.ecart ?? 0))}</span></td>
+                  <td class="col-center"><span class="ns-badge sb-badge sb-badge--warning">${esc(String(it.ecart ?? 0))}</span></td>
                   <td class="col-center">${critBadgeHtml(it.criticite)}</td>
                 </tr>`).join("") : `<tr><td colspan="6" class="col-center sb-muted">Aucun écart de maîtrise détaillé.</td></tr>`}</tbody>
             </table>
@@ -4396,7 +4381,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 <tr>
                   <td><b>${esc(it.collaborateur || "—")}</b></td>
                   <td>${esc(it.poste || "—")}</td>
-                  <td><span class="sb-badge sb-badge--warning">${esc(it.evenement || "Événement")}</span></td>
+                  <td><span class="ns-badge sb-badge sb-badge--warning">${esc(it.evenement || "Événement")}</span></td>
                   <td class="col-center">${esc(it.debut || "—")}</td>
                   <td class="col-center">${esc(it.fin || "—")}</td>
                 </tr>`).join("") : `<tr><td colspan="5" class="col-center sb-muted">Aucun événement détaillé.</td></tr>`}</tbody>
@@ -4411,7 +4396,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             ${items.length ? items.map(it => `
               <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;">
                 <span style="font-size:var(--ns-text-sm, 0.8125rem); color:#334155; font-weight:var(--ns-weight-semibold, 600);">${esc(it.label || "Point à vérifier")}</span>
-                <span class="sb-badge">${esc(String(it.value ?? "—"))}</span>
+                <span class="ns-badge sb-badge">${esc(String(it.value ?? "—"))}</span>
               </div>`).join("") : `<div class="card-sub" style="margin:0;">Aucune donnée à vérifier.</div>`}
           </div>`;
       }
@@ -4449,7 +4434,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <td class="sb-fs-13">${esc(r?.intitule_poste || "—")}</td>
           <td class="col-center">${nsLevelBadgeHtml(r?.niveau_actuel || "—", "Niveau actuel")}</td>
           <td class="col-center">${esc(evalDate ? formatDateFr(evalDate) : "—")}</td>
-          <td><span class="sb-badge ${cls}">${esc(label)}</span></td>
+          <td><span class="ns-badge sb-badge ${cls}">${esc(label)}</span></td>
         </tr>`;
     }).join("");
 
@@ -4853,7 +4838,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
 
     const focusLab = focusLabel(focus);
     const focusHtml = focusLab
-      ? `<span class="sb-badge">Focus : ${escapeHtml(focusLab)}</span>`
+      ? `<span class="ns-badge sb-badge">Focus : ${escapeHtml(focusLab)}</span>`
     : ``;
 
     const sub = focusHtml
@@ -5233,7 +5218,7 @@ function renderDetail(mode) {
     const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "—").toString();
     const col = normalizeColor(item?.domaine_couleur) || "#9ca3af";
     return `
-      <span class="sb-badge-domaine sb-badge-domaine--soft"
+      <span class="ns-badge sb-badge-domaine sb-badge-domaine--soft"
             style="--dom-color:${escapeHtml(col)};"
             title="${escapeHtml(lab)}">
         ${escapeHtml(lab)}
@@ -5344,7 +5329,7 @@ function renderDetail(mode) {
                 <tr class="risk-poste-row" data-id_poste="${escapeHtml(idPoste)}">
                   <td class="risk-poste-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                      <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
+                      <span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
                       <span style="font-weight:var(--ns-weight-semibold, 600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(intitule)}
                       </span>
@@ -5353,10 +5338,10 @@ function renderDetail(mode) {
                   <td>${escapeHtml(svc)}</td>
 
                   <td class="col-center" title="${escapeHtml(scoreTitle)}">
-                    ${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : scoreChip(score)}
+                    ${isNonAnalyse ? '<span class="ns-badge sb-badge">Non analysé</span>' : scoreChip(score)}
                   </td>
 
-                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : statePill(etat, score)}</td>
+                  <td class="col-center">${isNonAnalyse ? '<span class="ns-badge sb-badge">Non analysé</span>' : statePill(etat, score)}</td>
 
                   <td class="col-center">
                     <div class="sb-icon-actions" style="justify-content:center;">
@@ -5481,7 +5466,7 @@ function renderDetail(mode) {
 
                   <td class="risk-comp-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                      <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
+                      <span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
                       <span style="font-weight:var(--ns-weight-semibold, 600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(intit)}
                       </span>
@@ -5527,11 +5512,11 @@ function renderDetail(mode) {
   function previsionDeltaBadge(delta) {
     const d = Math.round(Number(delta || 0));
     if (d === 0) {
-      return `<span class="sb-badge" title="Aucune évolution détectée">0%</span>`;
+      return `<span class="ns-badge sb-badge" title="Aucune évolution détectée">0%</span>`;
     }
     const mod = d > 0 ? "sb-badge--danger" : "sb-badge--success";
     const txt = `${d > 0 ? "+" : ""}${d}%`;
-    return `<span class="sb-badge ${mod}" title="Évolution depuis la situation actuelle">${escapeHtml(txt)}</span>`;
+    return `<span class="ns-badge sb-badge ${mod}" title="Évolution depuis la situation actuelle">${escapeHtml(txt)}</span>`;
   }
 
 
@@ -5653,12 +5638,7 @@ function renderDetail(mode) {
         ${detailBtn}
         <div class="sb-prev-ring-title">${escapeHtml(title || "—")}</div>
         <div class="sb-prev-ring-visual" style="width:${size}px; height:${size}px; flex-basis:${size}px;">
-          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" class="sb-prev-ring-svg">
-            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
-            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
-                    stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
-                    transform="rotate(-90 ${size / 2} ${size / 2})" />
-          </svg>
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" class="sb-prev-ring-svg ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-1e1958f9e096"></use></svg>
           <div class="sb-prev-ring-percent">
             <div>${s}<span>%</span></div>
           </div>
@@ -5695,20 +5675,20 @@ function renderDetail(mode) {
 
   function analysePrevisionCapacityStatusBadge(ok) {
     return ok
-      ? `<span class="sb-badge sb-badge--success">Atteint</span>`
-      : `<span class="sb-badge sb-badge--danger">Non atteint</span>`;
+      ? `<span class="ns-badge sb-badge sb-badge--success">Atteint</span>`
+      : `<span class="ns-badge sb-badge sb-badge--danger">Non atteint</span>`;
   }
 
   function analysePrevisionCriticityBadge(value) {
     const n = Math.max(0, Math.min(100, Math.round(Number(value || 0))));
     const lvl = n >= 90 ? 5 : (n >= 80 ? 4 : (n >= 70 ? 3 : (n >= 50 ? 2 : 1)));
-    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité">${escapeHtml(String(n))}</span>`;
+    return `<span class="ns-badge sb-crit-badge sb-crit-l${lvl}" title="Criticité">${escapeHtml(String(n))}</span>`;
   }
 
   function analysePrevisionCapacityCompLabel(c) {
     const code = (c?.code || "").toString().trim();
     const intitule = (c?.intitule || "—").toString().trim();
-    return `${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}<span class="sb-prev-capacity-comp-title">${escapeHtml(intitule)}</span>`;
+    return `${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}<span class="sb-prev-capacity-comp-title">${escapeHtml(intitule)}</span>`;
   }
 
   function analysePrevisionCapacityRowsEmpty(colspan, text) {
@@ -5754,7 +5734,7 @@ function renderDetail(mode) {
               <span class="sb-prev-capacity-acc-label">${analysePrevisionCapacityCompLabel(c)}</span>
             </button>
           </td>
-          <td class="col-center"><span class="sb-badge ${nb > 0 ? "sb-badge--success" : ""}">${escapeHtml(String(nb))}</span></td>
+          <td class="col-center"><span class="ns-badge sb-badge ${nb > 0 ?"sb-badge--success" : ""}">${escapeHtml(String(nb))}</span></td>
           <td class="col-center">${analysePrevisionCriticityBadge(c.criticite)}</td>
           <td class="col-center">${analysePrevisionCompetencePdfButton(c)}</td>
         </tr>
@@ -5995,11 +5975,11 @@ function renderDetail(mode) {
             const after = analysePrevisionPct(p.indice_fragilite_after);
             const delta = Math.max(0, Math.round(Number(p.delta_fragilite || 0)));
             return `<tr>
-              <td>${pCode ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(pCode)}</span> ` : ""}<strong>${escapeHtml(pLabel)}</strong></td>
+              <td>${pCode ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(pCode)}</span> ` : ""}<strong>${escapeHtml(pLabel)}</strong></td>
               <td>${escapeHtml(p.nom_service || "—")}</td>
               <td class="col-center">${analysePrevisionFragilityBadge(now)}</td>
               <td class="col-center">${analysePrevisionFragilityBadge(after)}</td>
-              <td class="col-center"><span class="sb-badge sb-badge--warning">+${escapeHtml(String(delta))}%</span></td>
+              <td class="col-center"><span class="ns-badge sb-badge sb-badge--warning">+${escapeHtml(String(delta))}%</span></td>
             </tr>`;
           }).join("")}</tbody>
         </table>
@@ -6014,7 +5994,7 @@ function renderDetail(mode) {
           <div style="display:flex; flex-direction:column; gap:7px; min-width:0;">
             <div style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-title-sm, 1.0625rem); line-height:var(--ns-leading-tight, 1.15); color:#111827;">${escapeHtml(full)}</div>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-              ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}
+              ${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}
               <span style="font-size:var(--ns-text-sm, 0.8125rem); font-weight:var(--ns-weight-semibold, 600); color:#111827; min-width:0;">${escapeHtml(poste)}</span>
             </div>
             <div class="card-sub" style="margin:0; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -6123,9 +6103,9 @@ function renderDetail(mode) {
 
     function transmissionStatusBadgeHtml(status, label) {
       const s = String(status || "review").toLowerCase();
-      if (s === "validated") return `<span class="sb-badge sb-badge--success">Validé</span>`;
-      if (s === "confirm") return `<span class="sb-badge sb-badge--info">À confirmer</span>`;
-      return `<span class="sb-badge sb-badge--formateur">${escapeHtml(label || "Entretien recommandé")}</span>`;
+      if (s === "validated") return `<span class="ns-badge sb-badge sb-badge--success">Validé</span>`;
+      if (s === "confirm") return `<span class="ns-badge sb-badge sb-badge--info">À confirmer</span>`;
+      return `<span class="ns-badge sb-badge sb-badge--formateur">${escapeHtml(label || "Entretien recommandé")}</span>`;
     }
 
     const transmitters = parseTransmitters(
@@ -6149,7 +6129,7 @@ function renderDetail(mode) {
             ${transmitters.map((p) => `
               <tr>
                 <td><strong>${escapeHtml(p.full || "—")}</strong></td>
-                <td>${p.poste_code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.poste_code)}</span> ` : ""}${escapeHtml(p.poste_label || "—")}</td>
+                <td>${p.poste_code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(p.poste_code)}</span> ` : ""}${escapeHtml(p.poste_label || "—")}</td>
                 <td class="col-center">${p.niveau ? nsLevelBadgeHtml(p.niveau, "Niveau de maîtrise") : `<span class="sb-muted">—</span>`}</td>
                 <td class="col-center">${analysePrevisionDate(p.date_derniere_eval)}</td>
                 <td class="col-center">${transmissionStatusBadgeHtml(p.transmission_status, p.transmission_status_label)}</td>
@@ -6176,7 +6156,7 @@ function renderDetail(mode) {
             <div class="sb-prev-modal-title">Compétence concernée</div>
             <div class="sb-prev-transmission-hero-line">
               <div class="sb-prev-transmission-comp">
-                ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
+                ${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
                 <strong>${escapeHtml(comp)}</strong>
               </div>
               <div class="sb-icon-actions">${analysePrevisionCompetencePdfButton(r)}</div>
@@ -6240,7 +6220,7 @@ function renderDetail(mode) {
             const motif = isPotential ? "Retraite estimée" : (r.raison_sortie || r.event_kind_label || "Sortie prévue").toString();
             return `<tr class="prev-transition-row" data-index="${idx}">
               <td><strong>${escapeHtml(full)}</strong></td>
-              <td>${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(poste)}</td>
+              <td>${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span> ` : ""}${escapeHtml(poste)}</td>
               <td>${isPotential ? escapeHtml(potentialYear(r)) : analysePrevisionDate(r.exit_date)}</td>
               <td>${escapeHtml(motif)}</td>
               <td class="col-center"><button type="button" class="sb-icon-btn prev-transition-open" title="Voir" aria-label="Voir le détail">${analyseEyeIconSvg()}</button></td>
@@ -6313,7 +6293,7 @@ function renderDetail(mode) {
             const code = (r.code || "").toString().trim();
             const comp = (r.intitule || "—").toString();
             return `<tr class="prev-transmission-row" data-index="${idx}">
-              <td>${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span> ` : ""}<strong>${escapeHtml(comp)}</strong></td>
+              <td>${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span> ` : ""}<strong>${escapeHtml(comp)}</strong></td>
               <td>${analysePrevisionDate(r.exit_date || r.first_exit_date)}</td>
               <td>${escapeHtml(r.impact_label || "—")}</td>
               <td class="col-center">${expertiseDot(r)}</td>
@@ -6400,17 +6380,14 @@ function renderDetail(mode) {
 
         const fmtIndex = (v) => `${Math.round(Number(v) || 0)}%`;
         const eyeIcon = `
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-2fb5e9684f26"></use></svg>
         `;
         const evolBadge = (delta, isToday) => {
           if (isToday) return `<span style="font-weight:var(--ns-weight-semibold, 600); color:var(--sb-gray-500);">—</span>`;
           const d = Math.round(Number(delta) || 0);
           const cls = d > 0 ? "sb-badge--danger" : (d < 0 ? "sb-badge--success" : "");
           const txt = d === 0 ? "Stable" : `${d > 0 ? "+" : ""}${d}%`;
-          return `<span class="sb-badge ${cls}">${escapeHtml(txt)}</span>`;
+          return `<span class="ns-badge sb-badge ${cls}">${escapeHtml(txt)}</span>`;
         };
 
         const rows = [0, 1, 2, 3].map((idx) => {
@@ -6435,13 +6412,13 @@ function renderDetail(mode) {
               <td>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                   <span>${escapeHtml(r.label)}</span>
-                  ${isPeak ? `<span class="sb-badge sb-badge--warning">pic retenu</span>` : ``}
+                  ${isPeak ? `<span class="ns-badge sb-badge sb-badge--warning">pic retenu</span>` : ``}
                 </div>
               </td>
               <td class="col-center"><strong>${escapeHtml(fmtIndex(r.score))}</strong></td>
               <td class="col-center">${evolBadge(r.delta, isToday)}</td>
-              <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.indisponibilites_count || 0)))}</span></td>
-              <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.sorties_count || 0)))}</span></td>
+              <td class="col-center"><span class="ns-badge sb-badge">${escapeHtml(String(Number(r.indisponibilites_count || 0)))}</span></td>
+              <td class="col-center"><span class="ns-badge sb-badge">${escapeHtml(String(Number(r.sorties_count || 0)))}</span></td>
               <td class="col-center">
                 <button type="button"
                         class="sb-icon-btn"
@@ -7348,7 +7325,7 @@ function bindOnce(portal) {
     if (!modal || !bodyEl) return;
 
     const scope = (meta?.scopeLabel || "").trim();
-    const scopeHtml = scope ? ` <span class="sb-badge">${escapeHtml(scope)}</span>` : "";
+    const scopeHtml = scope ? ` <span class="ns-badge sb-badge">${escapeHtml(scope)}</span>` : "";
 
     const isPostes = (kind === "postes");
     const titleTxt = isPostes
@@ -7396,7 +7373,7 @@ function bindOnce(portal) {
                               cursor:pointer;">
                     <div style="min-width:0;">
                       <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                        <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "—")}</span>
+                        <span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "—")}</span>
                         <span style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-sm, 0.8125rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                           ${escapeHtml(r.label || "—")}
                         </span>
@@ -7409,9 +7386,9 @@ function bindOnce(portal) {
                     </div>
 
                     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                      <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s0 || 0))))}%</span>
+                      <span class="ns-badge sb-badge">${escapeHtml(String(Math.round(Number(r.s0 || 0))))}%</span>
                       <span style="opacity:.6;">→</span>
-                      <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s3 || 0))))}%</span>
+                      <span class="ns-badge sb-badge">${escapeHtml(String(Math.round(Number(r.s3 || 0))))}%</span>
                       ${deltaBadge(r.delta)}
                     </div>
                   </div>
@@ -7455,7 +7432,7 @@ function bindOnce(portal) {
                               cursor:pointer;">
                     <div style="min-width:0;">
                       <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                        <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(r.code || "—")}</span>
+                        <span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(r.code || "—")}</span>
                         <span style="font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-text-sm, 0.8125rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                           ${escapeHtml(r.label || "—")}
                         </span>
@@ -7468,9 +7445,9 @@ function bindOnce(portal) {
                     </div>
 
                     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                      <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s0 || 0))))}%</span>
+                      <span class="ns-badge sb-badge">${escapeHtml(String(Math.round(Number(r.s0 || 0))))}%</span>
                       <span style="opacity:.6;">→</span>
-                      <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s3 || 0))))}%</span>
+                      <span class="ns-badge sb-badge">${escapeHtml(String(Math.round(Number(r.s3 || 0))))}%</span>
                       ${deltaBadge(r.delta)}
                     </div>
                   </div>
@@ -7511,7 +7488,7 @@ function bindOnce(portal) {
     if (!modal || !bodyEl) return;
 
     const label = (month?.label || "Projection").toString();
-    if (titleEl) titleEl.innerHTML = `Détail projection <span class="sb-badge">${escapeHtml(label)}</span>`;
+    if (titleEl) titleEl.innerHTML = `Détail projection <span class="ns-badge sb-badge">${escapeHtml(label)}</span>`;
 
     const indispos = Array.isArray(month?.indisponibilites) ? month.indisponibilites : [];
     const sorties = Array.isArray(month?.sorties) ? month.sorties : [];
@@ -7535,7 +7512,7 @@ function bindOnce(portal) {
                     <div class="card-sub" style="margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(poste)}</div>
                     ${motif}
                   </div>
-                  <span class="sb-badge" style="flex:0 0 auto;">${escapeHtml(dates)}</span>
+                  <span class="ns-badge sb-badge" style="flex:0 0 auto;">${escapeHtml(dates)}</span>
                 </div>
               </div>
             `;

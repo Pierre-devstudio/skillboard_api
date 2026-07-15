@@ -444,8 +444,8 @@
     if (lbl) lbl.textContent = isArchive ? "Archiver" : "Enregistrer";
     if (icon) {
       icon.innerHTML = isArchive
-        ? `<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>`
-        : `<svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>`;
+        ? `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`
+        : `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
     }
   }
 
@@ -458,14 +458,10 @@
     tr.innerHTML = `
       <td><input type="date" class="sb-batch-date sb-ctrl" data-k="start" value="${escapeHtml(d1)}"></td>
       <td><input type="date" class="sb-batch-date sb-ctrl" data-k="end" value="${escapeHtml(d2)}"></td>
-      <td><span class="sb-batch-status">—</span></td>
+      <td><span class="ns-badge sb-batch-status">—</span></td>
       <td class="col-center">
         <button type="button" class="sb-icon-btn sb-icon-btn--danger sb-batch-del" title="Retirer" aria-label="Retirer">
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 6h18"></path>
-            <path d="M8 6V4h8v2"></path>
-            <path d="M19 6l-1 14H6L5 6"></path>
-          </svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7b78c227a9c4"></use></svg>
         </button>
       </td>
     `;
@@ -498,9 +494,9 @@
       if (statusKind) cell.classList.add(`is-${statusKind}`);
 
       const icon = statusKind === "ok"
-        ? `<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>`
+        ? `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d5ec94a8e947"></use></svg>`
         : statusKind === "err"
-          ? `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><path d="M12 17h.01"/></svg>`
+          ? `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-1303e62bb18e"></use></svg>`
           : "";
 
       cell.innerHTML = icon ? `<span class="sb-batch-status-icon" aria-hidden="true">${icon}</span><span>${escapeHtml(safeText)}</span>` : escapeHtml(safeText);

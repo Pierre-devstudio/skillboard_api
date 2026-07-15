@@ -4,14 +4,7 @@
   <div class="card ep-page-head">
     <div class="ep-page-head__main">
       <div class="ep-page-head__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M8 6h13"/>
-          <path d="M8 12h13"/>
-          <path d="M8 18h13"/>
-          <path d="M3 6h.01"/>
-          <path d="M3 12h.01"/>
-          <path d="M3 18h.01"/>
-        </svg>
+        <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e80bd2086299"></use></svg>
       </div>
       <div style="min-width:0;">
         <div class="card-title ep-page-head__title">Entretiens & évaluations</div>
@@ -38,17 +31,7 @@
                   aria-controls="epFilterBody"
                   title="Replier les filtres"
                   aria-label="Replier les filtres">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 21v-7"/>
-              <path d="M4 10V3"/>
-              <path d="M12 21v-9"/>
-              <path d="M12 8V3"/>
-              <path d="M20 21v-5"/>
-              <path d="M20 12V3"/>
-              <path d="M2 14h4"/>
-              <path d="M10 8h4"/>
-              <path d="M18 16h4"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-f88614ed0cb1"></use></svg>
           </button>
         </div>
 
@@ -93,7 +76,7 @@
         <div class="card-header ep-collab-head">
           <div class="ep-section-title">
             <span class="ep-section-title__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>
             </span>
             <span class="card-title">Collaborateurs à évaluer</span>
           </div>
@@ -104,7 +87,7 @@
           <div class="ep-search-field">
             <input id="ep_txtSearchCollab" class="ep-search-input" placeholder="Rechercher un collaborateur" autocomplete="off" />
             <span class="ep-search-field__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>
             </span>
           </div>
 
@@ -130,7 +113,7 @@
                 <div class="ep-summary-label">Collaborateur</div>
                 <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
                 <div class="ep-summary-role" id="ep_ctxPoste">—</div>
-                <div class="ep-collab-service-pill" id="ep_ctxServiceBadge">Service non renseigné</div>
+                <div class="ns-badge ep-collab-service-pill" id="ep_ctxServiceBadge">Service non renseigné</div>
               </div>
             </div>
 
@@ -147,7 +130,7 @@
               </div>
               <div class="ep-collab-summary-item" id="ep_annualCurrentItem" style="display:none;">
                 <span>Entretien en cours</span>
-                <strong><span class="sb-badge ep-entretien-status" id="ep_annualCurrentStatus">—</span></strong>
+                <strong><span class="ns-badge sb-badge ep-entretien-status" id="ep_annualCurrentStatus">—</span></strong>
                 <em id="ep_annualCurrentSub">—</em>
               </div>
             </div>
@@ -178,58 +161,58 @@
             <div class="ep-annual-steps">
               <div class="ep-annual-step" id="ep_stepPreparation">
                 <div class="ep-step-icon-wrap">
-                  <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M9 7h6"/><path d="M5 5a2 2 0 0 1 2-2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5"/></svg></div>
-                  <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <div class="ep-step-icon"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-201caff8d498"></use></svg></div>
+                  <span class="ns-badge ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d5ec94a8e947"></use></svg></span>
                 </div>
                 <div class="ep-step-title">1. Préparation</div>
-                <span class="sb-badge" id="ep_stepPreparationBadge">À préparer</span>
+                <span class="ns-badge sb-badge" id="ep_stepPreparationBadge">À préparer</span>
                 <div class="ep-step-sub" id="ep_stepPreparationSub">Aucune préparation ouverte</div>
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAnnualPrepare">
-                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span>
+                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-c5450b5bda66"></use></svg></span>
                   <span>Préparer</span>
                 </button>
               </div>
 
-              <div class="ep-annual-step-sep" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+              <div class="ep-annual-step-sep" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9478f892ade6"></use></svg></div>
 
               <div class="ep-annual-step" id="ep_stepRealisation">
                 <div class="ep-step-icon-wrap">
-                  <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></div>
-                  <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <div class="ep-step-icon"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-23f69b85988b"></use></svg></div>
+                  <span class="ns-badge ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d5ec94a8e947"></use></svg></span>
                 </div>
                 <div class="ep-step-title">2. Réalisation</div>
-                <span class="sb-badge" id="ep_stepRealisationBadge">À réaliser</span>
+                <span class="ns-badge sb-badge" id="ep_stepRealisationBadge">À réaliser</span>
                 <div class="ep-step-sub" id="ep_stepRealisationSub">Planifier et conduire l’entretien</div>
                 <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="ep_btnAnnualRealize">
-                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></span>
+                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-23f69b85988b"></use></svg></span>
                   <span>Réaliser l’entretien</span>
                 </button>
               </div>
 
-              <div class="ep-annual-step-sep" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+              <div class="ep-annual-step-sep" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9478f892ade6"></use></svg></div>
 
               <div class="ep-annual-step" id="ep_stepSignatures">
                 <div class="ep-step-icon-wrap">
-                  <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></div>
-                  <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <div class="ep-step-icon"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-c5450b5bda66"></use></svg></div>
+                  <span class="ns-badge ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d5ec94a8e947"></use></svg></span>
                 </div>
                 <div class="ep-step-title">3. Signatures</div>
-                <span class="sb-badge" id="ep_stepSignaturesBadge">Non engagé</span>
+                <span class="ns-badge sb-badge" id="ep_stepSignaturesBadge">Non engagé</span>
                 <div class="ep-step-sub" id="ep_stepSignaturesSub">Validation électronique</div>
               </div>
 
-              <div class="ep-annual-step-sep" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+              <div class="ep-annual-step-sep" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9478f892ade6"></use></svg></div>
 
               <div class="ep-annual-step" id="ep_stepRapport">
                 <div class="ep-step-icon-wrap">
-                  <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg></div>
-                  <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <div class="ep-step-icon"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-4d87c5005d49"></use></svg></div>
+                  <span class="ns-badge ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d5ec94a8e947"></use></svg></span>
                 </div>
                 <div class="ep-step-title">4. Rapport</div>
-                <span class="sb-badge" id="ep_stepRapportBadge">À générer</span>
+                <span class="ns-badge sb-badge" id="ep_stepRapportBadge">À générer</span>
                 <div class="ep-step-sub" id="ep_stepRapportSub">Rapport d’entretien</div>
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAnnualReport">
-                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg></span>
+                  <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg></span>
                   <span>Voir le rapport</span>
                 </button>
               </div>
@@ -240,7 +223,7 @@
             <div class="card ep-panel-card ep-annual-comp-card">
               <div class="ep-panel-title-row">
                 <div class="ep-section-title">
-                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span>
+                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg></span>
                   <span class="card-title">Compétences à aborder</span>
                 </div>
               </div>
@@ -272,7 +255,7 @@
             <div class="card ep-panel-card ep-annual-history-card">
               <div class="ep-panel-title-row">
                 <div class="ep-section-title">
-                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></span>
+                  <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-23f69b85988b"></use></svg></span>
                   <span class="card-title">Historique des entretiens annuels</span>
                 </div>
               </div>
@@ -308,11 +291,11 @@
             </div>
             <div class="sb-actions">
               <button type="button" class="sb-btn sb-btn--accent" id="ep_btnNewPonctuel">
-                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-797f87d895b8"></use></svg></span>
                 <span>Nouvelle évaluation ponctuelle</span>
               </button>
               <button type="button" class="sb-btn sb-btn--soft" id="ep_btnHistoryGlobal">
-                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg></span>
                 <span>Voir l’historique</span>
               </button>
             </div>
@@ -323,13 +306,13 @@
               <div class="ep-punctual-inner-tabs" role="tablist" aria-label="Évaluations ponctuelles">
                 <button type="button" class="ep-punctual-inner-tab is-active" data-ep-punctual-tab="competences" role="tab" aria-selected="true">
                   <span class="ep-punctual-inner-tab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 12h18"/><path d="m6 6 12 12"/><path d="m18 6-12 12"/></svg>
+                    <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
                   </span>
                   <span>Compétences à évaluer</span>
                 </button>
                 <button type="button" class="ep-punctual-inner-tab" data-ep-punctual-tab="historique" role="tab" aria-selected="false">
                   <span class="ep-punctual-inner-tab__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+                    <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-ad374d420dd2"></use></svg>
                   </span>
                   <span>Historique</span>
                 </button>
@@ -339,7 +322,7 @@
                 <div class="ep-punctual-toolbar">
                   <div class="ep-search-field ep-punctual-search">
                     <input id="ep_txtSearchCompetence" class="ep-search-input" placeholder="Rechercher une compétence" autocomplete="off" />
-                    <span class="ep-search-field__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                    <span class="ep-search-field__icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg></span>
                   </div>
                   <div class="ep-status-filter" role="group" aria-label="Filtrer les compétences">
                     <button type="button" class="ep-status-filter-btn" data-ep-status="never">Jamais évaluée</button>
@@ -393,18 +376,18 @@
             </div>
             <div class="sb-actions">
               <button type="button" class="sb-btn sb-btn--accent" id="ep_btnFormationEval" disabled>
-                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3Z"/></svg></span>
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-67447bc93b8a"></use></svg></span>
                 <span>Lancer l’évaluation</span>
               </button>
               <button type="button" class="sb-btn sb-btn--soft" id="ep_btnFormationReport" disabled>
-                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg></span>
+                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg></span>
                 <span>Voir le rapport</span>
               </button>
             </div>
           </div>
 
           <div class="card ep-panel-card ep-formation-empty-card">
-            <div class="ep-empty-illustration" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg></div>
+            <div class="ep-empty-illustration" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d65e416a1ac0"></use></svg></div>
             <div>
               <div class="card-title">Aucune formation terminée à suivre pour l’instant</div>
               <div class="card-sub">Cet onglet recevra les évaluations à froid lorsque les formations terminées seront reliées au collaborateur.</div>
@@ -431,7 +414,7 @@
             <div class="sb-label"><b>Compétence</b></div>
             <div class="ep-skill-title" id="ep_compTitle">—</div>
             <div style="margin-top:8px;">
-              <span class="sb-badge" id="ep_compDomain" style="display:inline-block;"></span>
+              <span class="ns-badge sb-badge" id="ep_compDomain" style="display:inline-block;"></span>
             </div>
           </div>
 
@@ -548,11 +531,11 @@
       <div class="modal-footer ep-eval-modal-footer">
         <div id="ep_saveMsg" class="sb-inline-msg" aria-live="polite"></div>
         <button type="button" class="sb-btn sb-btn--soft" id="btnEpEvaluationModalClose">
-          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg></span>
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-1fb0c0fccced"></use></svg></span>
           <span>Annuler</span>
         </button>
         <button class="sb-btn sb-btn--accent" id="ep_btnSave" type="button" disabled>
-          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6" /></svg></span>
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-158e5cc05034"></use></svg></span>
           <span>Enregistrer</span>
         </button>
       </div>
@@ -848,12 +831,7 @@
 
               <div class="ep-entretien-dropzone" id="ep_entretienDocDrop" role="button" tabindex="0" aria-label="Cliquez ou déposez un fichier">
                 <div class="ep-entretien-drop-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
-                    <path d="M14 2v5h5"></path>
-                    <path d="M12 18v-7"></path>
-                    <path d="M9 14l3-3 3 3"></path>
-                  </svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-0d6919acfe8c"></use></svg>
                 </div>
                 <div class="ep-entretien-drop-main" id="ep_entretienDocDropName">Cliquez ou déposez un fichier ici</div>
                 <div class="ep-entretien-drop-sub">PDF, Word, image ou document d’entretien</div>

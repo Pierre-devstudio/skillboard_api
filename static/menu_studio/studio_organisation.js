@@ -1935,20 +1935,11 @@ body {
             }
 
             const iconEdit = `
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 20h9"/>
-                    <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                </svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
             `;
 
             const iconTrash = `
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14H6L5 6"/>
-                    <path d="M10 11v6"/>
-                    <path d="M14 11v6"/>
-                    <path d="M9 6V4h6v2"/>
-                </svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
             `;
 
             postes.forEach(p => {
@@ -1994,7 +1985,7 @@ body {
                 pdfBtn.className = "sb-icon-btn sb-icon-btn--doc";
                 pdfBtn.title = "Exporter pdf";
                 pdfBtn.setAttribute("aria-label", "Exporter pdf");
-                pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
+                pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
                 pdfBtn.addEventListener("click", async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -3465,14 +3456,7 @@ function renderPosteCompAiResults(){
             btnPdf.title = "Voir fiche";
             btnPdf.setAttribute("aria-label", "Voir fiche compétence");
             btnPdf.innerHTML = `
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <path d="M14 2v6h6"/>
-                    <path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/>
-                    <path d="M13 13v3"/>
-                    <path d="M13 13h3"/>
-                    <path d="M16 13v3"/>
-                </svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
             `;
             btnPdf.addEventListener("click", async (e) => {
                 e.preventDefault();
@@ -3754,31 +3738,15 @@ function renderPosteCompAiResults(){
         };
 
         const iconEdit = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
         `;
 
         const iconPdf = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/>
-                <path d="M13 13v3"/>
-                <path d="M13 13h3"/>
-                <path d="M16 13v3"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
         `;
 
         const iconTrash = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6"/>
-                <path d="M14 11v6"/>
-                <path d="M9 6V4h6v2"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
         `;
 
         const q = (_posteCompSearch || "").toLowerCase();
@@ -4138,7 +4106,7 @@ function renderPosteCompAiResults(){
               </div>
               <div id="posteCompImportFileCard" class="sb-row-card" style="display:none;margin-top:12px;">
                 <div class="sb-row-left">
-                  <span class="sb-badge sb-badge--accent-soft">DOC</span>
+                  <span class="ns-badge sb-badge sb-badge--accent-soft">DOC</span>
                   <div>
                     <div class="sb-row-title" id="posteCompImportFileName">—</div>
                     <div class="card-sub" id="posteCompImportFileMeta">—</div>
@@ -4685,20 +4653,11 @@ function refreshPosteCompEditCritDisplay(){
         if (!tb) return;
 
         const iconEdit = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-certification"></use></svg>
         `;
 
         const iconTrash = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6"/>
-                <path d="M14 11v6"/>
-                <path d="M9 6V4h6v2"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
         `;
 
         const q = (_posteCertSearch || "").toLowerCase();
@@ -5406,7 +5365,7 @@ function refreshPosteCompEditCritDisplay(){
                 const row = document.createElement("div");
                 const levelKey = nsLevelKey(it.niveau_requis || it.niveau || "").toLowerCase();
                 const code = String(it.code_competence || it.code || "").trim();
-                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="sb-badge sb-badge--comp"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="ns-badge sb-badge sb-badge--comp"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="ns-badge studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey ||"default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
                 compHost.appendChild(row);
             });
             if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
@@ -5418,7 +5377,7 @@ function refreshPosteCompEditCritDisplay(){
             (_posteCertItems || []).slice(0, 4).forEach(it => {
                 const row = document.createElement("div");
                 const certStatus = it.obligatoire ? "Obligatoire" : "Recommandée";
-                row.innerHTML = `<span>${htmlEsc(it.intitule_certification || it.nom_certification || it.intitule || "Certification")}</span><strong class="studio-poste-overview-badge studio-poste-overview-badge--cert">${htmlEsc(certStatus)}</strong>`;
+                row.innerHTML = `<span>${htmlEsc(it.intitule_certification || it.nom_certification || it.intitule || "Certification")}</span><strong class="ns-badge studio-poste-overview-badge studio-poste-overview-badge--cert">${htmlEsc(certStatus)}</strong>`;
                 certHost.appendChild(row);
             });
             if (!certHost.children.length) certHost.textContent = "Aucune certification rattachée.";

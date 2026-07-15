@@ -44,7 +44,7 @@
       <div class="sb-modal-head">
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span class="sb-badge sb-badge--lms-only" id="lmsPreviewBadge">LMS</span>
+            <span class="ns-badge sb-badge sb-badge--lms-only" id="lmsPreviewBadge">LMS</span>
             <div class="card-title" id="lmsPreviewTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
               Prévisualisation d’import LMS
             </div>
@@ -107,7 +107,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <span class="sb-local-status" id="lmsPreviewStatus" style="display:none;"></span>
+        <span class="ns-badge sb-local-status" id="lmsPreviewStatus" style="display:none;"></span>
 
         <button type="button" class="sb-btn sb-btn--accent" id="btnLmsPreviewCreate" disabled>
           Créer la fiche Novoskill
@@ -122,7 +122,7 @@
       <div class="sb-modal-head">
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span id="formModalBadge" class="sb-badge sb-badge--form" style="display:none;"></span>
+            <span id="formModalBadge" class="ns-badge sb-badge sb-badge--form" style="display:none;"></span>
             <div class="card-title" id="formModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Formation</div>
           </div>
           <div class="card-sub" id="formModalSub" style="margin:4px 0 0 0; display:none;"></div>
@@ -220,7 +220,7 @@
         </div>
 
         <div class="sb-form-panel" data-panel="modalites">
-          
+
           <div class="lf-check-grid-wrap">
             <div>
               <div class="label">Modalités possibles</div>
@@ -302,7 +302,7 @@
             </div>
 
             <div class="sb-actions">
-              <span class="sb-local-status" id="formContentHeadStatus" style="display:none;"></span>
+              <span class="ns-badge sb-local-status" id="formContentHeadStatus" style="display:none;"></span>
 
               <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormContentAdd">
                 Ajouter un contenu
@@ -314,9 +314,9 @@
         </div>
 
         <div class="sb-form-panel" data-panel="plans">
-          
+
           <div class="sb-actions" style="justify-content:flex-end; margin-bottom:10px;">
-            <span class="sb-local-status" id="formPlanHeadStatus" style="display:none;"></span>            
+            <span class="ns-badge sb-local-status" id="formPlanHeadStatus" style="display:none;"></span>
             <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormPlanNew">Créer un plan pédagogique</button>
           </div>
 
@@ -340,7 +340,7 @@
       <div class="sb-modal-head">
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span id="planModalBadge" class="sb-badge sb-badge--plan" style="display:none;"></span>
+            <span id="planModalBadge" class="ns-badge sb-badge sb-badge--plan" style="display:none;"></span>
             <div class="card-title" id="planModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Plan pédagogique</div>
           </div>
           <div class="card-sub" id="planModalSub" style="margin:4px 0 0 0;">
@@ -427,7 +427,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <span class="sb-local-status" id="planModalStatus" style="display:none;"></span>
+        <span class="ns-badge sb-local-status" id="planModalStatus" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormPlanSave">Enregistrer le plan</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormPlanCancel">Annuler</button>
       </div>
@@ -566,7 +566,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <span class="sb-local-status" id="aiCadrageStatus" style="display:none;"></span>
+        <span class="ns-badge sb-local-status" id="aiCadrageStatus" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiCadrageRun">Générer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormAiCadrageCancel">Annuler</button>
       </div>
@@ -620,7 +620,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <span class="sb-local-status" id="aiFormStatus" style="display:none;"></span>
+        <span class="ns-badge sb-local-status" id="aiFormStatus" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormGenerateBack">Revenir au cadrage</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormGenerateApply" disabled>Remplir la fiche</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormGenerateCancel">Annuler</button>
@@ -669,7 +669,7 @@
               Analyser le document
             </button>
 
-            <div class="lf-import-status" id="formImportStatus"></div>
+            <div class="ns-badge lf-import-status" id="formImportStatus"></div>
           </div>
 
           <div class="lf-import-preview" id="formImportPreview" style="display:none;">
@@ -750,7 +750,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <span class="sb-local-status" id="formContentModalStatus" style="display:none;"></span>
+        <span class="ns-badge sb-local-status" id="formContentModalStatus" style="display:none;"></span>
 
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormContentSave">Enregistrer le contenu</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormContentCancel">Annuler</button>
@@ -798,7 +798,7 @@
       <div class="sb-modal-head">
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span id="formCompModalBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
+            <span id="formCompModalBadge" class="ns-badge sb-badge sb-badge--comp" style="display:none;"></span>
             <div class="card-title" id="formCompModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
           </div>
         </div>
@@ -844,19 +844,19 @@
           </div>
 
           <div class="lf-comp-level-row">
-            <div class="sb-badge sb-badge-niv sb-badge-niv-a lf-comp-level-badge">Débutant</div>
+            <div class="ns-badge sb-badge sb-badge-niv sb-badge-niv-a lf-comp-level-badge">Débutant</div>
             <textarea id="formCompNivA" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Identifie les repères essentiels avec un accompagnement."></textarea>
           </div>
           <div class="lf-comp-level-row">
-            <div class="sb-badge sb-badge-niv sb-badge-niv-b lf-comp-level-badge">Intermédiaire</div>
+            <div class="ns-badge sb-badge sb-badge-niv sb-badge-niv-b lf-comp-level-badge">Intermédiaire</div>
             <textarea id="formCompNivB" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Applique la méthode de manière autonome dans une situation simple."></textarea>
           </div>
           <div class="lf-comp-level-row">
-            <div class="sb-badge sb-badge-niv sb-badge-niv-c lf-comp-level-badge">Avancé</div>
+            <div class="ns-badge sb-badge sb-badge-niv sb-badge-niv-c lf-comp-level-badge">Avancé</div>
             <textarea id="formCompNivC" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Adapte la pratique au contexte et fiabilise les résultats."></textarea>
           </div>
           <div class="lf-comp-level-row">
-            <div class="sb-badge sb-badge-niv sb-badge-niv-d lf-comp-level-badge">Expert</div>
+            <div class="ns-badge sb-badge sb-badge-niv sb-badge-niv-d lf-comp-level-badge">Expert</div>
             <textarea id="formCompNivD" rows="1" maxlength="230" class="sb-textarea--md sb-textarea--niv" placeholder="Ex : Optimise la démarche et transmet les bonnes pratiques."></textarea>
           </div>
         </div>
@@ -914,7 +914,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <span class="sb-local-status" id="formCompModalStatus" style="display:none;"></span>
+        <span class="ns-badge sb-local-status" id="formCompModalStatus" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormCompAi">Concevoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompCancel">Annuler</button>
@@ -979,7 +979,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <span class="sb-local-status" id="formCompAiStatus" style="display:none;"></span>
+        <span class="ns-badge sb-local-status" id="formCompAiStatus" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompAiGenerate">Générer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompAiCancel">Annuler</button>
       </div>

@@ -2407,7 +2407,7 @@ function bindPostalAssist(){
         <tr class="sb-table-row-clickable cs-org-row" data-id-ent="${item.id_ent}" data-structure-type="${structureType}">
           <td>
             <div class="cs-org-struct-cell">
-              <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
+              <span class="ns-badge sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
               <div class="cs-org-struct-main">
                 <div class="cs-org-struct-name">${textOrDash(item.nom_ent)}</div>
                 <div class="cs-org-struct-sub">${typeLabel}</div>
@@ -2521,39 +2521,25 @@ function bindPostalAssist(){
 
   function getOrgToggleSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="9 6 15 12 9 18"></polyline>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-78574d868437"></use></svg>
     `;
   }
 
   function getOrgPlusSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 5v14"></path>
-        <path d="M5 12h14"></path>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9590cca5021d"></use></svg>
     `;
   }
 
   function getOrgPencilSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 20h9"></path>
-        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-5aa307c78cac"></use></svg>
     `;
   }
 
   function getOrgTrashSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="3 6 5 6 21 6"></polyline>
-        <path d="M19 6l-1 14H6L5 6"></path>
-        <path d="M10 11v6"></path>
-        <path d="M14 11v6"></path>
-        <path d="M9 6V4h6v2"></path>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-f1517d01dcc5"></use></svg>
     `;
   }
 
@@ -2660,7 +2646,7 @@ function bindPostalAssist(){
 
           <div class="cs-org-node-main">
             <div class="cs-org-struct-cell">
-              <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
+              <span class="ns-badge sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
               <div class="cs-org-struct-main">
                 <div class="cs-org-struct-name">${escHtml(textOrDash(node?.nom_ent))}</div>
                 <div class="cs-org-struct-sub">${escHtml(profil)}${ville !== "—" ? ` • ${escHtml(ville)}` : ""}${countLabel}</div>
@@ -2810,7 +2796,7 @@ function bindPostalAssist(){
       return `
         <div class="cs-history-row">
           <div class="cs-history-main">
-            <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
+            <span class="ns-badge sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
             <div class="cs-history-text">
               <div class="cs-history-title">${escHtml(textOrDash(item?.nom_ent))}</div>
               <div class="cs-history-sub">${escHtml(profil)}${ville !== "—" ? ` • ${escHtml(ville)}` : ""} • Ancien parent : ${escHtml(parent)}${childLabel}</div>
@@ -2908,16 +2894,16 @@ function bindPostalAssist(){
 
     const badges = [];
     if (_detail?.studio_actif) {
-      badges.push(`<span class="cs-badge cs-badge--studio">Studio actif</span>`);
+      badges.push(`<span class="ns-badge cs-badge cs-badge--studio">Studio actif</span>`);
     }
     if (_detail?.gestion_acces_studio_autorisee) {
-      badges.push(`<span class="cs-badge cs-badge--deleg">Gestion accès Studio</span>`);
+      badges.push(`<span class="ns-badge cs-badge cs-badge--deleg">Gestion accès Studio</span>`);
     }
     if (_detail?.group_ok) {
-      badges.push(`<span class="cs-badge cs-badge--group">${textOrDash(_detail?.type_groupe || "Groupe / réseau")}</span>`);
+      badges.push(`<span class="ns-badge cs-badge cs-badge--group">${textOrDash(_detail?.type_groupe || "Groupe / réseau")}</span>`);
     }
     if (_detail?.tete_groupe) {
-      badges.push(`<span class="cs-badge cs-badge--head">Tête de groupe</span>`);
+      badges.push(`<span class="ns-badge cs-badge cs-badge--head">Tête de groupe</span>`);
     }
 
     const badgesEl = byId("csClientBadges");

@@ -133,10 +133,10 @@
   function skillLevelBadgeHtml(value, title) {
     const k = normalizeSkillLevel(value);
     const label = skillLevelLabel(value);
-    if (!k) return `<span class="sb-badge sb-badge-niv">${_nsEscapeHtml(label)}</span>`;
+    if (!k) return `<span class="ns-badge sb-badge sb-badge-niv">${_nsEscapeHtml(label)}</span>`;
     const cls = skillLevelClass(k);
     const tt = title ? ` title="${_nsEscapeHtml(title)}"` : "";
-    return `<span class="sb-badge sb-badge-niv ${cls}"${tt}>${_nsEscapeHtml(label)}</span>`;
+    return `<span class="ns-badge sb-badge sb-badge-niv ${cls}"${tt}>${_nsEscapeHtml(label)}</span>`;
   }
 
   window.NovoskillLevels = Object.assign(window.NovoskillLevels || {}, {

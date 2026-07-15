@@ -527,96 +527,56 @@
 
     function iconHtml(){
         return `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16v16H4z"/>
-            <path d="M8 9l-3 3 3 3"/>
-            <path d="M16 9l3 3-3 3"/>
-            <path d="M14 7l-4 10"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-f6c5fa7803a5"></use></svg>
         `;
     }
 
 
     function iconLms(){
         return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 16l-4-4-4 4"/>
-            <path d="M12 12v9"/>
-            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-            <path d="M16 16l-4-4-4 4"/>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
         `;
     }
 
 function iconPdf(){
         return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <path d="M14 2v6h6"/>
-            <path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/>
-            <path d="M13 13v3"/>
-            <path d="M13 13h3"/>
-            <path d="M16 13v3"/>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
         `;
     }
 
   function iconEdit(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 20h9"/>
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d05ad005bb80"></use></svg>
     `;
   }
 
   function iconTrash(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 6h18"/>
-        <path d="M8 6V4h8v2"/>
-        <path d="M19 6l-1 14H6L5 6"/>
-        <path d="M10 11v6"/>
-        <path d="M14 11v6"/>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-35144a80cbe9"></use></svg>
     `;
   }
 
   function iconPlus(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 5v14"/>
-        <path d="M5 12h14"/>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-0da5a727d9ec"></use></svg>
     `;
   }
 
   function iconSync(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12a9 9 0 0 1-15.5 6.2"/>
-        <path d="M3 12A9 9 0 0 1 18.5 5.8"/>
-        <path d="M18 3v4h-4"/>
-        <path d="M6 21v-4h4"/>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-dbe08b9be49a"></use></svg>
     `;
   }
 
     function iconDoubleUp(){
     return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M7 14l5-5 5 5"/>
-        <path d="M7 20l5-5 5 5"/>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-5d73056a518e"></use></svg>
     `;
     }
 
     function iconDoubleDown(){
     return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M7 4l5 5 5-5"/>
-        <path d="M7 10l5 5 5-5"/>
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg>
     `;
     }
 
@@ -1886,12 +1846,7 @@ function iconPdf(){
         drop.setAttribute("tabindex", "0");
         drop.innerHTML = `
             <div class="lf-comp-ai-doc-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M12 12v6"/>
-                <path d="M9 15h6"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3dd4aec65f53"></use></svg>
             </div>
             <div class="lf-comp-ai-doc-main">
               <div class="lf-comp-ai-doc-title">Ajouter des documents de contexte</div>
@@ -2362,13 +2317,7 @@ function iconPdf(){
         <div class="lf-prereq-card-head">
           <div class="lf-prereq-title">Prérequis ${idx + 1}</div>
           <button type="button" class="sb-icon-btn sb-icon-btn--danger" title="Retirer" aria-label="Retirer">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18"/>
-              <path d="M8 6V4h8v2"/>
-              <path d="M19 6l-1 14H6L5 6"/>
-              <path d="M10 11v6"/>
-              <path d="M14 11v6"/>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-35144a80cbe9"></use></svg>
           </button>
         </div>
 
@@ -2652,7 +2601,7 @@ function renderContentCompBadges(l){
   }
 
   return items.map(c => `
-    <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(c.intitule || "")}">
+    <span class="ns-badge sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(c.intitule || "")}">
       ${htmlEsc(c.code || "—")}
     </span>
   `).join("");
@@ -3059,7 +3008,7 @@ function renderContentCompBadges(l){
         }
 
         return items.map(x => `
-            <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(x.intitule || "")}">
+            <span class="ns-badge sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(x.intitule || "")}">
             ${htmlEsc(x.code || "—")}
             </span>
         `).join("");
@@ -3204,7 +3153,7 @@ function renderContentCompBadges(l){
             return `
             <div class="lf-plan-seq-content" draggable="true" data-content-index="${idx}">
                 <div class="lf-plan-seq-content-main">
-                <span class="sb-badge sb-badge--form">${idx + 1}</span>
+                <span class="ns-badge sb-badge sb-badge--form">${idx + 1}</span>
                 <div class="lf-plan-seq-content-title">${htmlEsc(c?.titre_sequence || "Contenu introuvable")}</div>
                 </div>
 
@@ -3887,7 +3836,7 @@ function renderContentCompBadges(l){
             <div class="lf-plan-head">
                 <div class="lf-plan-head-main">
                 <div class="lf-plan-title">
-                    <span class="sb-badge sb-badge--plan">${htmlEsc(p.codification || "PLAN")}</span>
+                    <span class="ns-badge sb-badge sb-badge--plan">${htmlEsc(p.codification || "PLAN")}</span>
                     <span>${htmlEsc(p.titre || "Plan pédagogique")}</span>
                 </div>
                 <div class="card-sub" style="margin:4px 0 0 0;">
@@ -3976,7 +3925,7 @@ function renderContentCompBadges(l){
             <div class="lf-plan-head">
                 <div class="lf-plan-head-main">
                 <div class="lf-plan-title">
-                    <span class="sb-badge sb-badge--lms-only">Lära</span>
+                    <span class="ns-badge sb-badge sb-badge--lms-only">Lära</span>
                     <span>${htmlEsc(s.name || "Session Lära")}</span>
                 </div>
                 <div class="card-sub" style="margin:4px 0 0 0;">
@@ -4814,7 +4763,7 @@ function renderContentCompBadges(l){
                         name="${htmlEsc(radioName)}"
                         value="${htmlEsc(idComp)}"
                         ${selectedId === idComp ? "checked" : ""} />
-                    <span class="sb-badge sb-badge--comp">${htmlEsc(m.code || "—")}</span>
+                    <span class="ns-badge sb-badge sb-badge--comp">${htmlEsc(m.code || "—")}</span>
                     <span class="lf-import-match-title">${htmlEsc(m.intitule || "")}</span>
                     <span class="lf-import-score">${htmlEsc(m.score || 0)}%</span>
                 </label>
@@ -4831,7 +4780,7 @@ function renderContentCompBadges(l){
                         style="margin:0 8px 0 0;" />
                     ${htmlEsc(r.source || "")}
                 </span>
-                <span class="lf-import-status-pill ${statusClass}">${htmlEsc(status)}</span>
+                <span class="ns-badge lf-import-status-pill ${statusClass}">${htmlEsc(status)}</span>
             </label>
             ${r.description ? `<div class="card-sub" style="margin:4px 0 0 26px;">${htmlEsc(r.description)}</div>` : ""}
             ${meta ? `<div class="card-sub" style="margin:4px 0 0 26px;">${htmlEsc(meta)}</div>` : ""}
@@ -4897,7 +4846,7 @@ function renderContentCompBadges(l){
             contents.innerHTML = rows.length
             ? rows.map((c, idx) => `
                 <div class="lf-import-content-row">
-                <span class="sb-badge sb-badge--form">${idx + 1}</span>
+                <span class="ns-badge sb-badge sb-badge--form">${idx + 1}</span>
                 <div>
                     <strong>${htmlEsc(c.titre_sequence || "Contenu")}</strong>
                     <div class="card-sub">${htmlEsc(c.objectif || "")}</div>
@@ -5245,7 +5194,7 @@ function renderContentCompBadges(l){
                 const subjects = Array.isArray(c.sous_themes) ? c.sous_themes.filter(Boolean).slice(0, 5) : [];
                 return `
                 <div class="lf-import-content-row">
-                <span class="sb-badge sb-badge--form">${idx + 1}</span>
+                <span class="ns-badge sb-badge sb-badge--form">${idx + 1}</span>
                 <div>
                     <strong>${htmlEsc(c.titre_sequence || "Contenu")}</strong>
                     <div class="card-sub">${htmlEsc(c.objectif || c.intention_pedagogique || "")}</div>
