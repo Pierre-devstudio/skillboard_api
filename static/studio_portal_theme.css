@@ -13041,12 +13041,13 @@ body.studio-poste-page-open{
   overflow:hidden;
 }
 
-body.studio-poste-page-open .sidebar{
-  position:sticky;
-  top:0;
-  height:100vh;
-  box-sizing:border-box;
-  overflow-y:auto;
+@media (min-width:769px){
+  body.studio-poste-page-open .sidebar{
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
 }
 
 body.studio-poste-page-open .studio-topbar{
@@ -13197,4 +13198,59 @@ body.studio-poste-page-open .content{
 #modalPoste.is-poste-page .studio-poste-overview-link,
 #modalPoste.is-poste-page .studio-poste-collaborators__empty{
   font-size:var(--ns-text-sm, 0.8125rem);
+}
+
+/* Fiche poste dédiée : comportement petits écrans */
+@media (max-width:768px){
+  body.studio-poste-page-open .main{
+    width:100%;
+    min-width:0;
+    min-height:100vh;
+  }
+
+  body.studio-poste-page-open .content{
+    width:100%;
+    min-height:0;
+    box-sizing:border-box;
+    padding:0 12px 16px;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-modal-card{
+    min-height:0;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-page-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-modal-nav{
+    width:100%;
+    max-width:100%;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-nav-btn{
+    flex:0 0 auto;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-overview dl{
+    grid-template-columns:minmax(110px, .9fr) minmax(0, 1.1fr);
+  }
+}
+
+@media (max-width:560px){
+  #modalPoste.is-poste-page .studio-poste-kpis{
+    grid-template-columns:1fr;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-page-actions{
+    align-items:stretch;
+  }
+
+  #modalPoste.is-poste-page .studio-poste-page-actions > .sb-btn{
+    justify-content:center;
+  }
 }

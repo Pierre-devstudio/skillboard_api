@@ -87,6 +87,7 @@
 
     let _orgCcnController = null;
     let _orgCcnAssetsPromise = null;
+    let _posteOverviewCcnState = null;
     let _posteSaveInlineTimer = null;
 
     function getStudioOrganisationAssetUrl(filename){
@@ -158,6 +159,7 @@
                 getEditingPosteId: () => _editingPosteId,
                 openIaBusyOverlay,
                 closeIaBusyOverlay,
+                onOverviewChange: renderPosteOverviewCcn,
             });
         }
 
@@ -5605,6 +5607,32 @@ function refreshPosteCompEditCritDisplay(){
         }
     }
 
+    function renderPosteOverviewCcn(state){
+        _posteOverviewCcnState = state || null;
+
+        const summaryEl = byId("posteOverviewCcnSummary");
+        const noteEl = byId("posteOverviewCcnNote");
+        if (!summaryEl || !noteEl) return;
+
+        const status = String(state?.status || "Chargement…").trim();
+        const result = String(state?.result || "—").trim();
+        const category = String(state?.category || "—").trim();
+        const details = [];
+
+        if (status === "Validée") {
+            details.push(`Validée · ${result !== "—" ? result : "Résultat enregistré"}`);
+        } else if (status === "Brouillon" || status === "Proposition non enregistrée") {
+            details.push(`${status}${result !== "—" ? ` · ${result}` : ""}`);
+        } else {
+            details.push(status);
+        }
+
+        if (category && category !== "—") details.push(category);
+        summaryEl.textContent = details.join("\n");
+        const rawSummary = String(state?.summary || "La justification détaillée est disponible dans l’onglet dédié.").trim();
+        noteEl.textContent = rawSummary.length > 220 ? `${rawSummary.slice(0, 217).trimEnd()}…` : rawSummary;
+    }
+
     function renderPosteOverview(detail){
         const d = detail || {};
         const collabs = _editingPosteListItem?.nb_collabs ?? _editingPosteListItem?.nb_collaborateurs ?? "—";
@@ -5661,9 +5689,17 @@ function refreshPosteCompEditCritDisplay(){
             if (!certHost.children.length) certHost.textContent = "Aucune certification rattachée.";
         }
 
+        const overviewService = d.nom_service || getPosteServiceLabel({
+            id_service: d.id_service || _editingPosteListItem?.id_service
+        });
+        const overviewCode = String(d.codif_client || "").trim()
+            || String(d.codif_poste || "").trim()
+            || String(_editingPosteListItem?.code || "").trim()
+            || "—";
+
         setOverviewDl("posteOverviewInfo", [
-            ["Service", d.nom_service || _editingPosteListItem?.nom_service],
-            ["Code client", d.codif_client],
+            ["Service", overviewService],
+            ["Code interne", overviewCode],
             ["Statut du poste", d.statut_poste],
             ["Stratégie de pourvoi", d.strategie_pourvoi],
             ["Nb titulaires cible", String(d.nb_titulaires_cible ?? "—")],
@@ -5676,6 +5712,7 @@ function refreshPosteCompEditCritDisplay(){
             ["Perspectives d’évolution", d.perspectives_evolution],
             ["Niveau de contraintes", d.niveau_contrainte]
         ], { constraintBadges: true });
+        renderPosteOverviewCcn(_posteOverviewCcnState);
     }
 
     function openCreatePosteModal(portal){

@@ -64,6 +64,7 @@
     const getEditingPosteId = deps.getEditingPosteId;
     const openIaBusyOverlay = deps.openIaBusyOverlay;
     const closeIaBusyOverlay = deps.closeIaBusyOverlay;
+    const onOverviewChange = typeof deps.onOverviewChange === "function" ? deps.onOverviewChange : null;
 
     let _ctx = null;
     let _analysis = null;
@@ -236,10 +237,18 @@
 
     function formatResultText(data){
       const mode = getMode();
+      const ref = getReferential() || {};
       const coef = parseInt(data?.coefficient ?? 0, 10) || 0;
       const palier = parseInt(data?.palier ?? 0, 10) || 0;
       if (mode === "group_level"){
         return (!coef && !palier) ? "—" : `Groupe ${coef || "—"} · Niveau ${palier || "—"}`;
+      }
+      if (Array.isArray(ref.classification_map) && ref.classification_map.length){
+        const band = findPalierByCoefficient(coef) || {};
+        const group = String(data?.groupe_emploi || band?.groupe || "").trim().toUpperCase();
+        const classe = palier || parseInt(data?.classe_emploi ?? band?.palier ?? 0, 10) || 0;
+        if (!coef && !classe && !group) return "—";
+        return `Cotation ${coef || "—"} · Classe ${classe || "—"}${group ? ` · Groupe ${group}` : ""}`;
       }
       return (!coef && !palier) ? "—" : `Coef. ${coef || "—"} · Palier ${palier || "—"}`;
     }
@@ -423,6 +432,17 @@
       setValue("posteCcnResult", result);
       setValue("posteCcnCategory", category);
       setValue("posteCcnSummary", summary);
+      if (onOverviewChange){
+        onOverviewChange({
+          status,
+          result,
+          category,
+          summary,
+          supported: !!ctx?.supported,
+          convention_label: ctx?.convention_label || "",
+          idcc: ctx?.idcc || ""
+        });
+      }
       setValue("posteCcnPageJustification", validation?.justification || proposal?.justification_globale || proposal?.proposal?.resume_cotation || defaultSummary(false));
       renderPageCriteria(proposal);
 
@@ -527,10 +547,17 @@
         setValue("posteCcnStatus", "Proposition non enregistrée");
         setValue("posteCcnResult", formatResultText(analysis?.proposal || {}));
         setValue("posteCcnCategory", analysis?.proposal?.categorie_professionnelle || "—");
-        setValue(
-          "posteCcnSummary",
-          analysis?.justification_globale || analysis?.proposal?.resume_cotation || "Proposition IA prête à être revue."
-        );
+        const overviewSummary = analysis?.justification_globale || analysis?.proposal?.resume_cotation || "Proposition IA prête à être revue.";
+        setValue("posteCcnSummary", overviewSummary);
+        if (onOverviewChange){
+          onOverviewChange({
+            status: "Proposition non enregistrée",
+            result: formatResultText(analysis?.proposal || {}),
+            category: analysis?.proposal?.categorie_professionnelle || "—",
+            summary: overviewSummary,
+            supported: true
+          });
+        }
 
         portal.showAlert("", "");
       } finally {
@@ -626,7 +653,18 @@
       setValue("posteCcnStatus", isCreate ? "Brouillon non enregistré" : "Chargement…");
       setValue("posteCcnResult", "—");
       setValue("posteCcnCategory", "—");
-      setValue("posteCcnSummary", defaultSummary(!!isCreate));
+      const overviewStatus = isCreate ? "Brouillon non enregistré" : "Chargement…";
+      const overviewSummary = defaultSummary(!!isCreate);
+      setValue("posteCcnSummary", overviewSummary);
+      if (onOverviewChange){
+        onOverviewChange({
+          status: overviewStatus,
+          result: "—",
+          category: "—",
+          summary: overviewSummary,
+          supported: false
+        });
+      }
 
       setValue("posteCcnModalConvention", "—");
       setValue("posteCcnModalVersion", "—");
