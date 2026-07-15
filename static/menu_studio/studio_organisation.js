@@ -12,6 +12,9 @@
 
     let _posteSearch = "";
     let _posteSearchTimer = null;
+    let _posteItems = [];
+    let _posteSortKey = "code";
+    let _posteSortDir = "asc";
 
     let _catalogSearch = "";
     let _catalogTimer = null;
@@ -1896,6 +1899,246 @@ body {
         }
     }
 
+    function normalizePosteSortValue(value){
+        return String(value ?? "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim()
+            .toLowerCase();
+    }
+
+    function getPosteServiceLabel(poste){
+        const sid = String(poste?.id_service || "").trim();
+        if (!sid) return "Non lié";
+
+        const service = (_services || []).find(s => String(s?.id_service || "").trim() === sid);
+        return String(service?.nom_service || "").trim() || "—";
+    }
+
+    function getPosteSortValue(poste, key){
+        if (key === "code") return normalizePosteSortValue(poste?.code || "");
+        if (key === "intitule") return normalizePosteSortValue(poste?.intitule || "");
+        if (key === "service") return normalizePosteSortValue(getPosteServiceLabel(poste));
+        if (key === "collabs") return Number(poste?.nb_collabs || 0);
+        if (key === "statut") return poste?.actif === false ? 1 : 0;
+        return "";
+    }
+
+    function getSortedPostes(items){
+        const postes = Array.isArray(items) ? items.slice() : [];
+        const key = _posteSortKey || "code";
+        const dir = _posteSortDir === "desc" ? -1 : 1;
+
+        postes.sort((a, b) => {
+            const va = getPosteSortValue(a, key);
+            const vb = getPosteSortValue(b, key);
+            let cmp = 0;
+
+            if (typeof va === "number" && typeof vb === "number") {
+                cmp = va - vb;
+            } else {
+                cmp = String(va).localeCompare(String(vb), "fr", { sensitivity: "base", numeric: true });
+            }
+
+            if (cmp !== 0) return cmp * dir;
+
+            const codeCmp = getPosteSortValue(a, "code").localeCompare(
+                getPosteSortValue(b, "code"),
+                "fr",
+                { sensitivity: "base", numeric: true }
+            );
+            if (codeCmp !== 0) return codeCmp;
+
+            return getPosteSortValue(a, "intitule").localeCompare(
+                getPosteSortValue(b, "intitule"),
+                "fr",
+                { sensitivity: "base", numeric: true }
+            );
+        });
+
+        return postes;
+    }
+
+    function renderPosteSortHead(key, label, portal){
+        const active = _posteSortKey === key;
+        const dir = active ? _posteSortDir : "";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `org-poste-sort-head${active ? " is-active" : ""}`;
+        btn.setAttribute("aria-sort", active ? (_posteSortDir === "desc" ? "descending" : "ascending") : "none");
+        btn.setAttribute("aria-label", `Trier par ${label}`);
+
+        const text = document.createElement("span");
+        text.textContent = label;
+
+        const arrows = document.createElement("span");
+        arrows.className = "org-poste-sort-arrows";
+        arrows.setAttribute("aria-hidden", "true");
+        arrows.innerHTML = `<span class="org-poste-sort-arrow${active && dir === "asc" ? " is-active" : ""}">▲</span><span class="org-poste-sort-arrow${active && dir === "desc" ? " is-active" : ""}">▼</span>`;
+
+        btn.appendChild(text);
+        btn.appendChild(arrows);
+        btn.addEventListener("click", () => {
+            if (_posteSortKey === key) {
+                _posteSortDir = _posteSortDir === "asc" ? "desc" : "asc";
+            } else {
+                _posteSortKey = key;
+                _posteSortDir = "asc";
+            }
+            renderPostes(portal);
+        });
+
+        return btn;
+    }
+
+    function renderPostes(portal){
+        const host = byId("posteList");
+        if (!host) return;
+
+        host.innerHTML = "";
+        const postes = getSortedPostes(_posteItems);
+
+        if (!postes.length) {
+            const empty = document.createElement("div");
+            empty.className = "org-empty-state";
+            empty.textContent = "Aucun poste à afficher.";
+            host.appendChild(empty);
+            return;
+        }
+
+        const table = document.createElement("table");
+        table.className = "sb-table org-poste-table";
+
+        const thead = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        [
+            ["code", "Code"],
+            ["intitule", "Intitulé du poste"],
+            ["service", "Service"],
+            ["collabs", "Collaborateurs"],
+            ["statut", "Statut"]
+        ].forEach(([key, label]) => {
+            const th = document.createElement("th");
+            th.scope = "col";
+            if (key === "collabs" || key === "statut") th.className = "col-center";
+            th.appendChild(renderPosteSortHead(key, label, portal));
+            headRow.appendChild(th);
+        });
+
+        const actionsHead = document.createElement("th");
+        actionsHead.scope = "col";
+        actionsHead.className = "col-center";
+        actionsHead.textContent = "Actions";
+        headRow.appendChild(actionsHead);
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        const iconEdit = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>';
+        const iconPdf = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-2afcccc2e903"></use></svg>';
+        const iconArchive = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e9e37938472f"></use></svg>';
+        const iconRestore = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3b373ae03afc"></use></svg>';
+
+        postes.forEach(p => {
+            const row = document.createElement("tr");
+            row.className = "sb-table-row-clickable";
+            row.tabIndex = 0;
+            if (p.actif === false) row.classList.add("is-archived");
+
+            const codeCell = document.createElement("td");
+            const code = document.createElement("span");
+            code.className = "sb-badge sb-badge--poste";
+            code.textContent = p.code || "—";
+            codeCell.appendChild(code);
+
+            const titleCell = document.createElement("td");
+            titleCell.className = "org-poste-title";
+            titleCell.textContent = p.intitule || "—";
+
+            const serviceCell = document.createElement("td");
+            serviceCell.textContent = getPosteServiceLabel(p);
+
+            const collabsCell = document.createElement("td");
+            collabsCell.className = "col-center";
+            collabsCell.textContent = String(Number(p.nb_collabs || 0));
+
+            const statusCell = document.createElement("td");
+            statusCell.className = "col-center";
+            const status = document.createElement("span");
+            status.className = p.actif === false
+                ? "ns-badge ns-badge-status ns-badge-status--neutral"
+                : "ns-badge ns-badge-status ns-badge-status--success";
+            status.textContent = p.actif === false ? "Archivé" : "Actif";
+            statusCell.appendChild(status);
+
+            const actionsCell = document.createElement("td");
+            actionsCell.className = "col-center";
+            const actions = document.createElement("div");
+            actions.className = "sb-icon-actions org-poste-actions";
+
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "sb-icon-btn";
+            editBtn.title = "Voir/Modifier";
+            editBtn.setAttribute("aria-label", "Voir/Modifier");
+            editBtn.innerHTML = iconEdit;
+            editBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openEditPosteModal(portal, p);
+            });
+            actions.appendChild(editBtn);
+
+            const pdfBtn = document.createElement("button");
+            pdfBtn.type = "button";
+            pdfBtn.className = "sb-icon-btn";
+            pdfBtn.title = "Imprimer en PDF";
+            pdfBtn.setAttribute("aria-label", "Imprimer en PDF");
+            pdfBtn.innerHTML = iconPdf;
+            pdfBtn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try { await openPosteFichePdf(portal, p.id_poste); }
+                catch (err) { portal.showAlert("error", err?.message || String(err)); }
+            });
+            actions.appendChild(pdfBtn);
+
+            const archiveBtn = document.createElement("button");
+            archiveBtn.type = "button";
+            archiveBtn.className = "sb-icon-btn sb-icon-btn--danger";
+            archiveBtn.title = p.actif === false ? "Restaurer" : "Archiver";
+            archiveBtn.setAttribute("aria-label", p.actif === false ? "Restaurer" : "Archiver");
+            archiveBtn.innerHTML = p.actif === false ? iconRestore : iconArchive;
+            archiveBtn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try { await toggleArchivePosteFromList(portal, p); }
+                catch (err) { portal.showAlert("error", err?.message || String(err)); }
+            });
+            actions.appendChild(archiveBtn);
+
+            actionsCell.appendChild(actions);
+            row.appendChild(codeCell);
+            row.appendChild(titleCell);
+            row.appendChild(serviceCell);
+            row.appendChild(collabsCell);
+            row.appendChild(statusCell);
+            row.appendChild(actionsCell);
+
+            row.addEventListener("click", () => openEditPosteModal(portal, p));
+            row.addEventListener("keydown", (e) => {
+                if (e.target !== row || (e.key !== "Enter" && e.key !== " ")) return;
+                e.preventDefault();
+                openEditPosteModal(portal, p);
+            });
+
+            tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        host.appendChild(table);
+    }
+
     async function loadPostes(portal){
         const ownerId = getOwnerId();
         if (!ownerId) throw new Error("Owner manquant (?id=...).");
@@ -1912,129 +2155,17 @@ body {
         try {
             const data = await portal.apiJson(url);
 
-            const host = byId("posteList");
-            if (!host) {
+            if (!byId("posteList")) {
                 traceOrg("postes:no-host", { url });
                 return;
             }
 
-            host.innerHTML = "";
+            _posteItems = data.postes || [];
+            renderPostes(portal);
 
-            const postes = data.postes || [];
-            if (!postes.length) {
-                const empty = document.createElement("div");
-                empty.className = "org-empty-state";
-                empty.textContent = "Aucun poste à afficher.";
-                host.appendChild(empty);
-
-                traceOrg("postes:empty", {
-                    url,
-                    nbPostes: 0
-                });
-                return;
-            }
-
-            const iconEdit = `
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
-            `;
-
-            const iconTrash = `
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
-            `;
-
-            postes.forEach(p => {
-                const row = document.createElement("div");
-                row.className = "sb-row-card";
-
-                const left = document.createElement("div");
-                left.className = "sb-row-left";
-
-                const code = document.createElement("span");
-                code.className = "sb-badge sb-badge--poste";
-                code.textContent = p.code || "—";
-
-                const title = document.createElement("div");
-                title.className = "sb-row-title";
-                title.textContent = p.intitule || "";
-
-                left.appendChild(code);
-                left.appendChild(title);
-
-                if (p.actif === false) row.classList.add("is-archived");
-
-                const right = document.createElement("div");
-                right.className = "sb-row-right";
-
-                if (p.actif === false){
-                    const arch = document.createElement("span");
-                    arch.className = "sb-badge sb-badge--accent-soft";
-                    arch.textContent = "ARCHIVÉ";
-                    right.appendChild(arch);
-                }
-
-                const badge = document.createElement("span");
-                badge.className = "sb-badge sb-badge--poste-soft";
-                badge.textContent = `${p.nb_collabs || 0} collab.`;
-                right.appendChild(badge);
-
-                const actions = document.createElement("div");
-                actions.className = "sb-icon-actions";
-
-                const pdfBtn = document.createElement("button");
-                pdfBtn.type = "button";
-                pdfBtn.className = "sb-icon-btn sb-icon-btn--doc";
-                pdfBtn.title = "Exporter pdf";
-                pdfBtn.setAttribute("aria-label", "Exporter pdf");
-                pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
-                pdfBtn.addEventListener("click", async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    try { await openPosteFichePdf(portal, p.id_poste); }
-                    catch (err) { portal.showAlert("error", err?.message || String(err)); }
-                });
-                actions.appendChild(pdfBtn);
-
-                const editBtn = document.createElement("button");
-                editBtn.type = "button";
-                editBtn.className = "sb-icon-btn";
-                editBtn.title = "Voir/Modifier";
-                editBtn.setAttribute("aria-label", "Voir/Modifier");
-                editBtn.innerHTML = iconEdit;
-                editBtn.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openEditPosteModal(portal, p);
-                });
-                actions.appendChild(editBtn);
-
-                const archiveBtn = document.createElement("button");
-                archiveBtn.type = "button";
-                archiveBtn.className = "sb-icon-btn sb-icon-btn--danger";
-                archiveBtn.title = (p.actif === false) ? "Restaurer" : "Archiver";
-                archiveBtn.setAttribute("aria-label", (p.actif === false) ? "Restaurer" : "Archiver");
-                archiveBtn.innerHTML = iconTrash;
-                archiveBtn.addEventListener("click", async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    try { await toggleArchivePosteFromList(portal, p); }
-                    catch (err) { portal.showAlert("error", err?.message || String(err)); }
-                });
-                actions.appendChild(archiveBtn);
-
-                right.appendChild(actions);
-
-                row.appendChild(left);
-                row.appendChild(right);
-
-                row.style.cursor = "pointer";
-                row.addEventListener("click", () => openEditPosteModal(portal, p));
-
-                host.appendChild(row);
-            });
-
-            traceOrg("postes:ok", {
+            traceOrg(_posteItems.length ? "postes:ok" : "postes:empty", {
                 url,
-                nbPostes: postes.length
+                nbPostes: _posteItems.length
             });
         } catch (e) {
             traceOrgError("postes:error", e, { url });
