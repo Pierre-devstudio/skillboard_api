@@ -5258,6 +5258,74 @@
   justify-content:center;
 }
 
+#view-organisation .org-poste-pagination-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  padding:12px 2px 0;
+  color:#64748b;
+  font-size:var(--ns-text-xs, 0.75rem);
+}
+
+#view-organisation .org-poste-pagination-summary{
+  font-weight:var(--ns-weight-medium, 500);
+}
+
+#view-organisation .org-poste-pagination{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+#view-organisation .org-poste-page-btn{
+  width:24px;
+  height:24px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#0f172a;
+  font-size:var(--ns-text-xs, 0.75rem);
+  font-weight:var(--ns-weight-semibold, 600);
+  cursor:pointer;
+}
+
+#view-organisation .org-poste-page-btn:hover{
+  background:#f1f5f9;
+}
+
+#view-organisation .org-poste-page-btn.is-active{
+  background:var(--accent);
+  color:#111827;
+}
+
+#view-organisation .org-poste-page-btn:disabled{
+  opacity:.45;
+  cursor:default;
+}
+
+#view-organisation .org-poste-page-btn--nav{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+}
+
+#view-organisation .org-poste-page-ellipsis{
+  min-width:18px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#94a3b8;
+  font-size:var(--ns-text-xs, 0.75rem);
+  font-weight:var(--ns-weight-semibold, 600);
+}
+
 #view-organisation .org-empty-state{
   padding:18px 12px;
   border:1px dashed #dbe3ef;

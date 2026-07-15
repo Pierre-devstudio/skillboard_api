@@ -15,6 +15,8 @@
     let _posteItems = [];
     let _posteSortKey = "code";
     let _posteSortDir = "asc";
+    let _postePage = 1;
+    const _postePageSize = 25;
 
     let _catalogSearch = "";
     let _catalogTimer = null;
@@ -1991,20 +1993,132 @@ body {
         return btn;
     }
 
+    function buildPostePaginationButton(label, options = {}){
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "org-poste-page-btn";
+        btn.textContent = label;
+        if (options.nav) btn.classList.add("org-poste-page-btn--nav");
+        if (options.active) btn.classList.add("is-active");
+        if (options.disabled) {
+            btn.disabled = true;
+            btn.setAttribute("aria-disabled", "true");
+        }
+        if (options.label) btn.setAttribute("aria-label", options.label);
+        return btn;
+    }
+
+    function renderPostePagination(host, totalItems, totalPages, portal){
+        const bar = document.createElement("div");
+        bar.className = "org-poste-pagination-bar";
+
+        const summary = document.createElement("div");
+        summary.className = "org-poste-pagination-summary";
+        const start = totalItems ? ((_postePage - 1) * _postePageSize) + 1 : 0;
+        const end = Math.min(totalItems, _postePage * _postePageSize);
+        summary.textContent = totalItems
+            ? `Affichage ${start}-${end} sur ${totalItems} poste${totalItems > 1 ? "s" : ""}`
+            : "Aucun poste à afficher.";
+        bar.appendChild(summary);
+
+        const pagination = document.createElement("div");
+        pagination.className = "org-poste-pagination";
+        pagination.setAttribute("aria-label", "Pagination des postes");
+
+        const prev = buildPostePaginationButton("‹", {
+            nav: true,
+            disabled: _postePage <= 1,
+            label: "Page précédente"
+        });
+        prev.addEventListener("click", () => {
+            if (_postePage <= 1) return;
+            _postePage -= 1;
+            renderPostes(portal);
+        });
+        pagination.appendChild(prev);
+
+        const maxVisible = 5;
+        let startPage = Math.max(1, _postePage - 2);
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        startPage = Math.max(1, endPage - maxVisible + 1);
+
+        if (startPage > 1) {
+            const first = buildPostePaginationButton("1", { active: _postePage === 1, label: "Aller à la page 1" });
+            first.addEventListener("click", () => { _postePage = 1; renderPostes(portal); });
+            pagination.appendChild(first);
+            if (startPage > 2) {
+                const ellipsis = document.createElement("span");
+                ellipsis.className = "org-poste-page-ellipsis";
+                ellipsis.textContent = "…";
+                pagination.appendChild(ellipsis);
+            }
+        }
+
+        for (let page = startPage; page <= endPage; page += 1) {
+            const btn = buildPostePaginationButton(String(page), {
+                active: page === _postePage,
+                label: `Aller à la page ${page}`
+            });
+            btn.addEventListener("click", () => {
+                if (_postePage === page) return;
+                _postePage = page;
+                renderPostes(portal);
+            });
+            pagination.appendChild(btn);
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const ellipsis = document.createElement("span");
+                ellipsis.className = "org-poste-page-ellipsis";
+                ellipsis.textContent = "…";
+                pagination.appendChild(ellipsis);
+            }
+            const last = buildPostePaginationButton(String(totalPages), {
+                active: _postePage === totalPages,
+                label: `Aller à la page ${totalPages}`
+            });
+            last.addEventListener("click", () => { _postePage = totalPages; renderPostes(portal); });
+            pagination.appendChild(last);
+        }
+
+        const next = buildPostePaginationButton("›", {
+            nav: true,
+            disabled: _postePage >= totalPages,
+            label: "Page suivante"
+        });
+        next.addEventListener("click", () => {
+            if (_postePage >= totalPages) return;
+            _postePage += 1;
+            renderPostes(portal);
+        });
+        pagination.appendChild(next);
+        bar.appendChild(pagination);
+
+        host.appendChild(bar);
+    }
+
     function renderPostes(portal){
         const host = byId("posteList");
         if (!host) return;
 
         host.innerHTML = "";
         const postes = getSortedPostes(_posteItems);
+        const totalItems = postes.length;
 
-        if (!postes.length) {
+        if (!totalItems) {
             const empty = document.createElement("div");
             empty.className = "org-empty-state";
             empty.textContent = "Aucun poste à afficher.";
             host.appendChild(empty);
             return;
         }
+
+        const totalPages = Math.max(1, Math.ceil(totalItems / _postePageSize));
+        if (_postePage > totalPages) _postePage = totalPages;
+        if (_postePage < 1) _postePage = 1;
+        const startIndex = (_postePage - 1) * _postePageSize;
+        const pagePostes = postes.slice(startIndex, startIndex + _postePageSize);
 
         const table = document.createElement("table");
         table.className = "sb-table org-poste-table";
@@ -2039,7 +2153,7 @@ body {
         const iconArchive = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e9e37938472f"></use></svg>';
         const iconRestore = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3b373ae03afc"></use></svg>';
 
-        postes.forEach(p => {
+        pagePostes.forEach(p => {
             const row = document.createElement("tr");
             row.className = "sb-table-row-clickable";
             row.tabIndex = 0;
@@ -2137,6 +2251,7 @@ body {
 
         table.appendChild(tbody);
         host.appendChild(table);
+        renderPostePagination(host, totalItems, totalPages, portal);
     }
 
     async function loadPostes(portal){
@@ -2161,6 +2276,7 @@ body {
             }
 
             _posteItems = data.postes || [];
+            _postePage = 1;
             renderPostes(portal);
 
             traceOrg(_posteItems.length ? "postes:ok" : "postes:empty", {
