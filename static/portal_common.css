@@ -388,14 +388,9 @@ textarea:focus {
 .sb-tree-meta { font-size: var(--ns-text-xs, 0.75rem); color: var(--muted); white-space: nowrap; }
 
 .sb-badge {
-  display: inline-block;
-  padding: 2px 8px;
   border: 1px solid #d1d5db;
-  border-radius: 999px;
-  font-size: var(--ns-text-xs, 0.75rem);
   color: #374151;
   background: #ffffff;
-  white-space: nowrap;
 }
 .sb-badge-accent {
   border-color: var(--reading-accent);
@@ -509,20 +504,10 @@ textarea:focus {
 .sb-badge.sb-badge--niv,
 .pp-badge.pp-badge--niv{
   --ns-level-orange: 226,114,9;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:96px;
-  height:22px;
-  padding:0 10px;
   border:1.5px solid rgba(var(--ns-level-orange), .45);
-  border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   box-sizing:border-box;
 }
 .sb-badge-niv-a,
@@ -560,8 +545,6 @@ textarea:focus {
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold, 600);
-  white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
   border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;

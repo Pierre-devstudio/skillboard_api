@@ -15,12 +15,6 @@
 }
 
 .product-badge{
-  display:inline-flex;
-  align-items:center;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   background: rgba(var(--pp-accent-rgb), .22);
   border:1px solid rgba(var(--pp-accent-rgb), .55);
   color:#ffffff;
@@ -193,23 +187,12 @@
   color:#6b7280;
 }
 .pp-row-badges{
-  display:flex;
-  align-items:center;
-  gap:6px;
   flex-wrap:wrap;
-  justify-content:flex-end;
 }
 .pp-badge{
-  display:inline-flex;
-  align-items:center;
-  border-radius:999px;
-  padding:4px 8px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   border:1px solid rgba(40,76,141,.20);
   background:rgba(40,76,141,.08);
   color:#1f3f79;
-  white-space:nowrap;
 }
 .pp-badge--ok{
   color:#166534;
@@ -461,20 +444,10 @@
 .sb-badge.sb-badge--niv,
 .pp-badge.pp-badge--niv{
   --ns-level-orange: 226,114,9;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:96px;
-  height:22px;
-  padding:0 10px;
   border:1.5px solid rgba(var(--ns-level-orange), .45);
-  border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   box-sizing:border-box;
 }
 .sb-badge-niv-a,
@@ -512,8 +485,6 @@
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold, 600);
-  white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
   border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;

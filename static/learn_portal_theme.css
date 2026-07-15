@@ -15,12 +15,6 @@
 }
 
 .product-badge{
-  display:inline-flex;
-  align-items:center;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   background: rgba(var(--lp-accent-rgb), .22);
   border:1px solid rgba(var(--lp-accent-rgb), .55);
   color:#ffffff;
@@ -256,13 +250,10 @@
   background:rgba(var(--sb-domain-rgb), .12);
   border:1px solid rgba(var(--sb-domain-rgb), .55);
   color:#111827;
-  gap:6px;
 }
 
 .sb-badge--comp-domain .sb-dot{
   width:10px;
-  height:10px;
-  border-radius:999px;
   background:rgb(var(--sb-domain-rgb));
   box-shadow:0 0 0 2px rgba(255,255,255,.75) inset;
 }
@@ -536,7 +527,6 @@
 
 .lf-comp-selected-row .sb-badge--comp-domain{
   max-width:160px;
-  white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
@@ -700,10 +690,7 @@
 }
 
 .lf-content-comp-badges{
-  display:flex;
   flex-wrap:wrap;
-  justify-content:flex-end;
-  gap:5px;
 }
 
 .lf-content-comp-badge{
@@ -756,10 +743,6 @@
 
   .lf-content-side{
     align-items:flex-start;
-  }
-
-  .lf-content-comp-badges{
-    justify-content:flex-start;
   }
 }
 
@@ -1419,13 +1402,8 @@
 }
 
 .lf-import-status-pill{
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   text-transform:uppercase;
   letter-spacing:0;
-  border-radius:999px;
-  padding:3px 7px;
-  white-space:nowrap;
 }
 
 .lf-import-status-pill.is-create{
@@ -2278,20 +2256,10 @@
 .sb-badge.sb-badge--niv,
 .pp-badge.pp-badge--niv{
   --ns-level-orange: 226,114,9;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:96px;
-  height:22px;
-  padding:0 10px;
   border:1.5px solid rgba(var(--ns-level-orange), .45);
-  border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   box-sizing:border-box;
 }
 .sb-badge-niv-a,
@@ -2329,8 +2297,6 @@
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold, 600);
-  white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
   border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
@@ -2390,8 +2356,6 @@
 .lf-comp-level-badge{
   width:112px;
   min-width:112px;
-  height:22px;
-  font-size:var(--ns-text-xs, 0.75rem);
 }
 
 .lf-comp-level-row textarea{
@@ -2461,7 +2425,6 @@
   }
 
   .lf-comp-level-badge{
-    justify-content:center;
     width:112px;
   }
 }

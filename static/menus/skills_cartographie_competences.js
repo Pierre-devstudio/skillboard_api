@@ -78,7 +78,7 @@
     const k = levelKey4(v);
     const label = levelLabel4(v);
     const cls = k ? `sb-badge-niv sb-badge-niv-${k.toLowerCase()}` : "sb-badge-niv";
-    return `<span class="sb-badge ${cls}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>`;
+    return `<span class="ns-badge sb-badge ${cls}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>`;
   }
 
   /**
@@ -206,7 +206,7 @@
         const text = safeTrim(title.text) || "Détail";
         t.innerHTML = `
           <div class="map-modal-titleline">
-            ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ``}
+            ${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ``}
             <span class="map-modal-titletext">${escapeHtml(text)}</span>
           </div>
         `;
@@ -480,7 +480,7 @@
     return `
       <div class="map-advanced-poste-cell">
         <div class="map-advanced-poste-line">
-          ${p.code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(p.code)}</span>` : ``}
+          ${p.code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(p.code)}</span>` : ``}
           <span>${escapeHtml(title)}</span>
         </div>
         <div class="map-advanced-poste-service">${escapeHtml(p.service || "Service non renseigné")}</div>
@@ -498,7 +498,7 @@
     const { code, comp } = advancedCompLabel(it);
     return `
       <div class="map-advanced-comp-line">
-        ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+        ${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
         <span>${escapeHtml(comp)}</span>
       </div>
     `;
@@ -507,7 +507,7 @@
   function advancedDomainBadgeHtml(it) {
     const label = safeTrim(it?.domaine_label) || "Domaine non renseigné";
     const color = normalizeColor(it?.domaine_couleur) || "#9ca3af";
-    return `<span class="sb-badge-domaine sb-badge-domaine--soft map-advanced-domain-badge" style="--dom-color:${escapeHtml(color)}">${escapeHtml(label)}</span>`;
+    return `<span class="ns-badge sb-badge-domaine sb-badge-domaine--soft map-advanced-domain-badge" style="--dom-color:${escapeHtml(color)}">${escapeHtml(label)}</span>`;
   }
 
   function renderAdvancedSelection() {
@@ -524,7 +524,7 @@
               <div class="map-advanced-selected-title">${escapeHtml(advancedPersonName(_advancedSelectedPerson))}</div>
               <div class="map-advanced-selected-sub">${escapeHtml(safeTrim(_advancedSelectedPerson.nom_service) || "Service non renseigné")} · ${escapeHtml(advancedPosteLabel(_advancedSelectedPerson))}</div>
             </div>
-            <button type="button" class="map-advanced-chip-x" data-map-advanced-clear-person aria-label="Retirer le collaborateur">×</button>
+            <button type="button" class="ns-badge map-advanced-chip-x" data-map-advanced-clear-person aria-label="Retirer le collaborateur">×</button>
           </div>
         `;
       } else {
@@ -537,7 +537,7 @@
       const code = safeTrim(skill.code);
       const label = safeTrim(skill.intitule) || "Compétence";
       return `
-        <span class="map-advanced-chip" title="${escapeHtml(label)}">
+        <span class="ns-badge map-advanced-chip" title="${escapeHtml(label)}">
           ${code ? `<strong>${escapeHtml(code)}</strong>` : ``}
           <span>${escapeHtml(label)}</span>
           <button type="button" data-map-advanced-remove-skill="${escapeHtml(skill.id_comp)}" aria-label="Retirer">×</button>
@@ -589,7 +589,7 @@
       return `
         <button type="button" class="map-advanced-suggest-row" data-map-advanced-suggest-index="${index}">
           <span class="map-advanced-suggest-main">
-            ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+            ${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
             <span>${escapeHtml(comp)}</span>
           </span>
           <span class="map-advanced-suggest-sub">${escapeHtml(safeTrim(it.domaine_label) || "Domaine non renseigné")}</span>
@@ -691,7 +691,7 @@
           <td>${hasPerson ? `<strong>${escapeHtml(advancedPersonName(it))}</strong>` : `<span class="sb-muted">Aucun détenteur identifié</span>`}</td>
           <td>${hasPerson ? advancedPosteHtml(it) : `<span class="sb-muted">—</span>`}</td>
           <td>${advancedCompHtml(it)}</td>
-          <td class="col-center">${hasPerson ? advancedLevelBadge(it.niveau_actuel) : `<span class="sb-badge">—</span>`}</td>
+          <td class="col-center">${hasPerson ? advancedLevelBadge(it.niveau_actuel) : `<span class="ns-badge sb-badge">—</span>`}</td>
         </tr>
       `;
     }).join("");
@@ -839,13 +839,13 @@
 
   function mapIconSvg(name) {
     const icons = {
-      domain: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
-      postes: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>`,
-      skills: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
-      users: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-      section: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 22l5-3 5 3-1.5-9.5"/></svg>`,
-      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`,
-      search: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>`
+      domain: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-092d9b0f7a9d"></use></svg>`,
+      postes: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-ab7588ce3088"></use></svg>`,
+      skills: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-896fd277674b"></use></svg>`,
+      users: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-971e031d8a28"></use></svg>`,
+      section: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7b2980eb4a79"></use></svg>`,
+      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b917bd60dcf2"></use></svg>`,
+      search: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-4212181d8913"></use></svg>`
     };
     return icons[name] || "";
   }
@@ -864,10 +864,10 @@
 
   function mapCritBadgeHtml(raw) {
     const n = Number(raw);
-    if (!Number.isFinite(n)) return `<span class="sb-crit-badge sb-crit-l1">—</span>`;
+    if (!Number.isFinite(n)) return `<span class="ns-badge sb-crit-badge sb-crit-l1">—</span>`;
     const v = Math.max(0, Math.min(100, Math.round(n)));
     const level = v >= 80 ? 5 : (v >= 60 ? 4 : (v >= 40 ? 3 : (v >= 20 ? 2 : 1)));
-    return `<span class="sb-crit-badge sb-crit-l${level}" title="Criticité ${v}">${escapeHtml(String(v))}</span>`;
+    return `<span class="ns-badge sb-crit-badge sb-crit-l${level}" title="Criticité ${v}">${escapeHtml(String(v))}</span>`;
   }
 
   function mapCoverageState(comp, cible, pauseActive) {
@@ -1104,7 +1104,7 @@
         <tr>
           <td class="hb-rowhead">
             <div class="hb-poste-line">
-              ${cod ? `<span class="sb-badge sb-badge-ref-poste-code hb-poste-code">${escapeHtml(cod)}</span>` : ``}
+              ${cod ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code hb-poste-code">${escapeHtml(cod)}</span>` : ``}
               <span class="hb-poste-title">${escapeHtml(intit || "—")}</span>
             </div>
           </td>
@@ -1475,7 +1475,7 @@
         // modal "loading" instant (sinon l’utilisateur croit que ça ne fait rien)
         openModal(
           isPosteTotal ? "Détail poste" : "Détail cellule",
-          `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`,
+          `<span class="ns-badge sb-badge">Service : ${escapeHtml(scope)}</span>`,
           `<div class="card" style="padding:12px; margin:0;">
             <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>`
@@ -1593,7 +1593,7 @@
                           return `
                             <tr>
                               <td class="map-detail-comp-cell">
-                                <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
+                                <span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
                                 <span class="map-detail-comp-title">${escapeHtml(intit)}</span>
                               </td>
                               <td class="col-center map-detail-level-cell">${niv}</td>
@@ -1629,7 +1629,7 @@
         } catch (e) {
           openModal(
             "Détail cellule",
-            `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`,
+            `<span class="ns-badge sb-badge">Service : ${escapeHtml(scope)}</span>`,
             `<div class="card" style="padding:12px; margin:0;">
               <div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>
             </div>`

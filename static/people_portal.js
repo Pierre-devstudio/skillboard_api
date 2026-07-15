@@ -50,7 +50,7 @@
   function levelBadge(v) {
     const label = levelLabel(v);
     const cls = window.NovoskillLevels ? window.NovoskillLevels.cssClass(v) : "";
-    return `<span class="pp-badge pp-badge--niv ${cls}">${escapeHtml(label)}</span>`;
+    return `<span class="ns-badge pp-badge pp-badge--niv ${cls}">${escapeHtml(label)}</span>`;
   }
 
   function itemEmpty(text) {
@@ -67,7 +67,7 @@
   }
 
   function badge(text, kind) {
-    return `<span class="pp-badge ${kind ? `pp-badge--${kind}` : ""}">${escapeHtml(text || "-")}</span>`;
+    return `<span class="ns-badge pp-badge ${kind ? `pp-badge--${kind}` : ""}">${escapeHtml(text || "-")}</span>`;
   }
 
   window.PeoplePortal = {

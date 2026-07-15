@@ -442,9 +442,9 @@
     const selectedRows = competences().filter(c => _competencesSelected.has(clean(c.id_comp)));
     wrap.style.display = selectedRows.length ? "" : "none";
     list.innerHTML = selectedRows.map(c => `
-      <button type="button" class="studio-rh-selected-chip" data-competence-remove="${esc(clean(c.id_comp))}" title="Retirer cette compétence">
+      <button type="button" class="ns-badge studio-rh-selected-chip" data-competence-remove="${esc(clean(c.id_comp))}" title="Retirer cette compétence">
         <span>${esc(competenceLabel(c))}</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
       </button>`).join("");
   }
 
@@ -542,14 +542,14 @@
       </div>
       <div class="studio-rh-pagination" aria-label="Pagination événements RH">
         <button type="button" class="sb-icon-btn studio-rh-page-nav" data-plan-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-chevron"></use></svg>
         </button>
         ${tokens.map(t => {
           if (typeof t === "string") return '<span class="studio-rh-page-ellipsis" aria-hidden="true">…</span>';
           return `<button type="button" class="studio-rh-page-btn${t === page ? " is-active" : ""}" data-plan-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? "page" : "false"}">${t}</button>`;
         }).join("")}
         <button type="button" class="sb-icon-btn studio-rh-page-nav" data-plan-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-chevron"></use></svg>
         </button>
       </div>
       <div class="studio-rh-range-label">${esc(range)}</div>
@@ -582,7 +582,7 @@
             <span class="studio-rh-table-title">${esc(item.titre || typeLabel(type))}</span>
             <span class="studio-rh-table-sub">${esc(item.collaborateur || "Périmètre RH")}</span>
           </div>
-          <div class="studio-rh-table-cell"><span class="studio-rh-badge studio-rh-badge--${esc(type)}">${esc(item.type_label || typeLabel(type))}</span></div>
+          <div class="studio-rh-table-cell"><span class="ns-badge studio-rh-badge studio-rh-badge--${esc(type)}">${esc(item.type_label || typeLabel(type))}</span></div>
           <div class="studio-rh-table-cell">${esc(item.nom_service || "Service non lié")}</div>
           <div class="studio-rh-table-cell">${esc(metaDate)}</div>
           <div class="studio-rh-table-cell"><span class="studio-rh-status">${esc(item.statut_label || statutLabel(item.statut))}</span></div>
@@ -632,9 +632,9 @@
   }
 
   function modalIconSvg(type){
-    if (type === "campagne") return '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
-    if (type === "competence") return '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>';
-    return '<svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>';
+    if (type === "campagne") return '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>';
+    if (type === "competence") return '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>';
+    return '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-6c4efe8135fb"></use></svg>';
   }
 
   function setCurrentType(type){
@@ -680,7 +680,7 @@
         <input type="date" class="sb-date" data-indispo-end required value="${esc(endValue || "")}">
       </label>
       <button type="button" class="sb-icon-btn studio-rh-line-delete" data-indispo-remove="${esc(id)}" title="Supprimer la ligne" aria-label="Supprimer la ligne">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-a8e6143d9f5c"></use></svg>
       </button>`;
     box.appendChild(row);
     updateIndispoLinesCount();

@@ -838,17 +838,6 @@
 }
 .sb-tab-panel{ display:none; }
 .sb-tab-panel.is-active{ display:block; }
-
-/* Badges (Studio: accent jaune => texte sombre) */
-.sb-badge{
-  display:inline-flex;
-  align-items:center;
-  padding:3px 10px;
-  border-radius:999px;
-  font-weight:var(--ns-weight-semibold, 600);
-  font-size:var(--ns-text-xs, 0.75rem);
-  white-space:nowrap;
-}
 .sb-badge--accent-soft{
   background: rgba(var(--sb-accent-rgb), .22);
   border:1px solid rgba(var(--sb-accent-rgb), .55);
@@ -883,19 +872,12 @@
   background: rgba(var(--sb-domain-rgb), .12);
   border: 1px solid rgba(var(--sb-domain-rgb), .55);
   color:#111827;
-  gap:6px;
 }
 
 .sb-badge--comp-domain .sb-dot{
   width:10px;
-  height:10px;
-  border-radius:999px;
   background: rgb(var(--sb-domain-rgb));
   box-shadow: 0 0 0 2px rgba(255,255,255,.75) inset;
-}
-
-.sb-badge--ai-match{
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 .sb-badge--ai-match-recommended{
@@ -1030,16 +1012,7 @@
 .sb-badge.sb-badge--niv,
 .sb-badge.sb-badge-niv{
   min-width:88px;
-  height:22px;
-  padding:0 10px;
-  border-radius:999px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   background:transparent;
-  font-weight:var(--ns-weight-semibold, 600);
-  font-size:var(--ns-text-xs, 0.75rem);
-  line-height:var(--ns-leading-tight, 1.15);
   box-sizing:border-box;
 }
 
@@ -1070,17 +1043,8 @@
 .sb-badge.sb-crit-badge,
 .sb-crit-badge{
   --crit-violet: 124,58,237;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   width:28px;
   min-width:28px;
-  height:28px;
-  padding:0;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
   background:transparent;
   border:2px solid rgba(var(--crit-violet), 0.45);
   color:rgba(var(--crit-violet), 0.85);
@@ -1221,18 +1185,8 @@
 .sb-badge.sb-badge--niv,
 .sb-badge.sb-badge-niv{
   min-width:72px;
-  height:20px;
-  padding:0 8px;
-  border-radius:999px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   background:transparent;
-  font-weight:var(--ns-weight-semibold, 600);
-  font-size:var(--ns-text-xs, 0.75rem);
-  line-height:var(--ns-leading-tight, 1.15);
   box-sizing:border-box;
-  white-space:nowrap;
 }
 
 /* Organisation > Poste > Exigences */
@@ -1275,7 +1229,6 @@
 }
 
 #posteCompTable td:nth-child(2) .sb-badge--niv{
-  display:inline-flex;
   margin:0 auto;
 }
 
@@ -2520,11 +2473,6 @@
 
 .sb-badge--ccn-level{
   min-width:46px;
-  justify-content:center;
-  padding:3px 8px;
-  border-radius:999px;
-  font-weight:var(--ns-weight-semibold, 600);
-  font-size:var(--ns-text-xs, 0.75rem);
   background: var(--sb-violet);
   border:1px solid var(--sb-violet);
   color:#fff;
@@ -2555,8 +2503,6 @@
   gap:5px;
 }
 .sb-row-badges{
-  display:flex;
-  gap:6px;
   flex-wrap:wrap;
 }
 .sb-row-meta{
@@ -2599,7 +2545,6 @@
 .sb-collab-modal-card{
   width:min(1320px, calc(100vw - 32px));
   max-width:1320px;
-  padding:12px;
 }
 
 .sb-collab-modal-card .sb-modal-head{
@@ -2945,23 +2890,14 @@
 }
 
 #modalCollaborateur .sb-collab-role-chip{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  min-height:34px;
-  padding:7px 12px;
-  border-radius:10px;
   border:1px solid #d8dee8;
   background:#fff;
   color:#334155;
-  font-size:var(--ns-text-sm, 0.8125rem);
-  font-weight:var(--ns-weight-medium, 500);
   cursor:pointer;
 }
 
 #modalCollaborateur .sb-collab-role-chip input{
   width:15px;
-  height:15px;
   margin:0;
   accent-color:var(--accent);
 }
@@ -3277,20 +3213,12 @@
 
 .sb-console-chip{
   width:28px;
-  height:28px;
-  border-radius:10px;
   border:1px solid rgba(17,24,39,.12);
   background:#fff;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:2px;
 }
 
 .sb-console-chip img{
   width:20px;
-  height:20px;
-  display:block;
   object-fit:contain;
 }
 
@@ -4352,16 +4280,9 @@
 #view-dashboard.studio-dash .studio-dash-mini-row--click:hover{ background:#f8fafc; }
 #view-dashboard.studio-dash .studio-dash-mini-row>div{ display:flex; flex-direction:column; gap:3px; min-width:0; }
 #view-dashboard.studio-dash .studio-dash-mini-row strong{ font-size:var(--ns-text-sm, 0.8125rem); color:#0f172a; }
-#view-dashboard.studio-dash .studio-dash-mini-row span:not(.studio-dash-badge){ font-size:var(--ns-text-xs, 0.75rem); color:#64748b; }
 
 #view-dashboard.studio-dash .studio-dash-badge{
-  display:inline-flex;
-  align-items:center;
   width:max-content;
-  padding:3px 8px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   border:1px solid #e5e7eb;
   color:#334155;
   background:#f8fafc;
@@ -4425,20 +4346,10 @@
 .sb-badge.sb-badge--niv,
 .pp-badge.pp-badge--niv{
   --ns-level-orange: 226,114,9;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:96px;
-  height:22px;
-  padding:0 10px;
   border:1.5px solid rgba(var(--ns-level-orange), .45);
-  border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   box-sizing:border-box;
 }
 .sb-badge-niv-a,
@@ -4476,8 +4387,6 @@
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold, 600);
-  white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
   border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
@@ -4502,7 +4411,6 @@
   background: transparent !important;
   border-style: solid !important;
   border-width: 1px !important;
-  white-space: nowrap !important;
 }
 .sb-badge.sb-badge--niv-a,
 .sb-badge.sb-badge-niv-a{
@@ -4838,12 +4746,6 @@
   max-width:190px;
   overflow:hidden;
   text-overflow:ellipsis;
-}
-
-.studio-catalog-archive-badge{
-  min-height:30px;
-  padding:0 9px;
-  align-items:center;
 }
 
 #modalPosteEdit .sb-modal-card,
@@ -5828,16 +5730,6 @@
   flex-wrap:wrap;
 }
 
-#view-collaborateurs .collab-role-badge{
-  display:inline-flex;
-  align-items:center;
-  min-height:20px;
-  padding:2px 7px;
-  border-radius:7px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-}
-
 #view-collaborateurs .collab-role-badge--manager{
   background:#e0f2fe;
   border:1px solid #38bdf8;
@@ -6296,10 +6188,7 @@
 }
 
 #modalCollaborateur .sb-collab-cert-badges{
-  display:flex;
-  align-items:center;
   flex-wrap:wrap;
-  gap:6px;
   margin-top:7px;
 }
 
@@ -6933,15 +6822,6 @@
   flex-wrap:wrap;
   gap:8px;
 }
-.studio-rh-badge,
-.studio-rh-status{
-  border-radius:999px;
-  padding:4px 8px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
-}
 .studio-rh-status{
   background:#f1f5f9;
   color:#475569;
@@ -7071,29 +6951,20 @@
 .studio-rh-event-chip{
   border:1px solid rgba(17,24,39,.10);
   border-left:4px solid rgba(var(--sb-accent-rgb), .9);
-  border-radius:9px;
   background:#fff;
   color:#111827;
-  padding:6px;
   text-align:left;
   cursor:pointer;
   min-width:0;
 }
 .studio-rh-event-chip span,
 .studio-rh-event-chip small{
-  display:block;
   overflow:hidden;
   text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.studio-rh-event-chip span{
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 .studio-rh-event-chip small{
   margin-top:2px;
   color:#64748b;
-  font-size:var(--ns-text-xs, 0.75rem);
 }
 .studio-rh-detail-box{
   border:1px solid #e2e8f0;
@@ -7148,9 +7019,6 @@
   .studio-rh-day{
     min-height:92px;
     padding:6px;
-  }
-  .studio-rh-event-chip span{
-    font-size:var(--ns-text-xs, 0.75rem);
   }
 }
 
@@ -8460,17 +8328,10 @@
 
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-chip{
   border:1px solid rgba(124,58,237,.22);
-  border-radius:999px;
   background:rgba(124,58,237,.08);
   color:#4c1d95;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
   max-width:100%;
-  padding:5px 8px 5px 10px;
   font:inherit;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   cursor:pointer;
 }
 
@@ -8478,12 +8339,10 @@
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
-  white-space:nowrap;
 }
 
 #modalPlanRhEvent.studio-rh-modal--competence .studio-rh-selected-chip svg{
   width:13px !important;
-  height:13px !important;
   flex:0 0 auto;
 }
 
@@ -9076,8 +8935,6 @@
   min-width:0;
   border:0;
   border-left:0;
-  border-radius:11px;
-  padding:7px 8px;
   background:#f8fafc;
   color:#111827;
   text-align:left;
@@ -9093,18 +8950,9 @@
   outline:none;
 }
 
-#view-calendrier_rh .studio-rh-event-chip.is-range{
-  min-height:42px;
-  border-radius:12px;
-}
-
 #view-calendrier_rh .studio-rh-event-chip.is-range-start{
   border-top-right-radius:9px;
   border-bottom-right-radius:9px;
-}
-
-#view-calendrier_rh .studio-rh-event-chip.is-range-middle{
-  border-radius:9px;
 }
 
 #view-calendrier_rh .studio-rh-event-chip.is-range-end{
@@ -9113,9 +8961,6 @@
 }
 
 #view-calendrier_rh .studio-rh-event-chip-main{
-  display:flex;
-  align-items:center;
-  gap:6px;
   min-width:0;
 }
 
@@ -9670,7 +9515,6 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-event-chip{
-  padding:6px 7px;
   border:1px solid rgba(226,232,240,.82);
   box-shadow:none;
 }
@@ -10711,15 +10555,8 @@ body.studio-rh-calendar-expanded{
 }
 
 #view-calendrier_rh .studio-rh-detail-date-pill{
-  display:inline-flex;
-  align-items:center;
-  min-height:28px;
-  border-radius:999px;
   background:#f8fafc;
   color:#334155;
-  padding:0 10px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-calendrier_rh .studio-rh-detail-group{
@@ -12446,14 +12283,7 @@ body.studio-rh-calendar-expanded{
 }
 
 #modalPoste .studio-poste-overview-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:76px;
-  padding:3px 8px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
 }
 #modalPoste .studio-poste-overview-badge--a{ background:#fff1e6; color:#c2410c; }
 #modalPoste .studio-poste-overview-badge--b{ background:#ffedd5; color:#c2410c; }
@@ -12657,18 +12487,9 @@ body.studio-rh-calendar-expanded{
 
 #modalPoste .studio-poste-status-badge,
 #modalPoste .studio-poste-constraint-badge{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  min-height:22px;
-  padding:3px 8px;
   border:1px solid #dbe3ef;
-  border-radius:999px;
   background:#fff;
   color:#334155;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
 }
 
 #modalPoste .studio-poste-status-badge.is-success{
@@ -12696,8 +12517,6 @@ body.studio-rh-calendar-expanded{
 
 #modalPoste .studio-poste-constraint-badge__dot{
   width:7px;
-  height:7px;
-  border-radius:999px;
   background:#94a3b8;
 }
 
@@ -12948,13 +12767,6 @@ body.studio-poste-page-open .content{
 #modalPoste.is-poste-page .studio-poste-overview-list strong,
 #modalPoste.is-poste-page .studio-poste-collaborator-name{
   font-size:var(--ns-text-sm, 0.8125rem);
-}
-
-#modalPoste.is-poste-page .studio-poste-overview-badge,
-#modalPoste.is-poste-page .studio-poste-status-badge,
-#modalPoste.is-poste-page .studio-poste-constraint-badge,
-#modalPoste.is-poste-page .studio-poste-collaborator-status{
-  font-size:var(--ns-text-xs, 0.75rem);
 }
 
 #modalPoste.is-poste-page .studio-poste-overview-link,

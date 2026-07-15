@@ -742,16 +742,6 @@ textarea.sb-ctrl{
 
 /* -------- Badges -------- */
 .sb-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  height:22px;
-  padding:0 10px;
-  border-radius: var(--sb-r-pill);
-  font-size: var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   border:1px solid var(--sb-gray-300);
   background: transparent;
   color: var(--sb-gray-900);
@@ -794,22 +784,16 @@ textarea.sb-ctrl{
   border-color: color-mix(in srgb, var(--accent) 42%, #d8dee8);
   background: color-mix(in srgb, var(--accent) 8%, #ffffff);
   color: color-mix(in srgb, var(--accent) 82%, #111827);
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 .sb-badge.sb-badge-certif-souhaite{
   border-color: color-mix(in srgb, var(--sb-info) 34%, #d8dee8);
   background: color-mix(in srgb, var(--sb-info) 8%, #ffffff);
   color: color-mix(in srgb, var(--sb-info) 82%, #111827);
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 /* Badge "Critère" (grille d'évaluation) */
 .sb-badge.sb-badge-critere{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: color-mix(in srgb, var(--accent) 10%, #ffffff);
   border-color: var(--sb-critere);
@@ -818,10 +802,6 @@ textarea.sb-ctrl{
 
 /* Badge "Manager" */
 .sb-badge.sb-badge-manager{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: color-mix(in srgb, var(--sb-manager) 5%, #ffffff);
   border-color: var(--sb-manager);
@@ -829,10 +809,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--indispo{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-indispo-bg);
   border-color: var(--sb-badge-indispo-border);
@@ -840,10 +816,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--actif{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-actif-bg);
   border-color: var(--sb-badge-actif-border);
@@ -851,10 +823,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--inactif{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-inactif-bg);
   border-color: var(--sb-badge-inactif-border);
@@ -862,10 +830,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--temp{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-temp-bg);
   border-color: var(--sb-badge-temp-border);
@@ -873,10 +837,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--formateur{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: color-mix(in srgb, var(--sb-badge-formateur-bg) 5%, #ffffff);
   border-color: var(--sb-badge-formateur-border);
@@ -884,10 +844,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--archive{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-archive-bg);
   border-color: var(--sb-badge-archive-border);
@@ -897,7 +853,6 @@ textarea.sb-ctrl{
 /* Badge Niveau comp soft */
 .sb-badge-niv{
   background:transparent;
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 /* bordures orange dégradées selon niveau */
@@ -908,15 +863,7 @@ textarea.sb-ctrl{
 /* Badge criticité : rond, fond transparent, bord violet avec 5 niveaux de teinte */
 .sb-crit-badge{
   --crit-violet: 124,58,237; /* violet */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  font-size: var(--ns-text-xs, 0.75rem);
-  font-weight: var(--ns-weight-semibold, 600);
-  line-height: var(--ns-leading-tight, 1.15);
   background: transparent;
   border: 2px solid rgba(var(--crit-violet), 0.45);
   color: rgba(var(--crit-violet), 0.85);
@@ -932,29 +879,18 @@ textarea.sb-ctrl{
 
 /* Badge Domaine (pill) */
 .sb-badge-domaine {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 
-  padding: 5px 10px;
-  border-radius: 999px;
 
   background: #ffffff;
   border: 1px solid #e5e7eb;
 
   color: #111827;
-  font-size: var(--ns-text-xs, 0.75rem);
-  font-weight: var(--ns-weight-medium, 500); /* moins épais */
-  line-height: var(--ns-leading-tight, 1.15);
-  white-space: nowrap;
 }
 
 /* Point couleur: alimenté par data-color (DB) */
 .sb-badge-domaine::before {
   content: "";
   width: 8px;
-  height: 8px;
-  border-radius: 999px;
   background: var(--dom-color, #9ca3af); /* fallback gris */
   flex: 0 0 8px;
 }
@@ -964,32 +900,16 @@ textarea.sb-ctrl{
   border-color:var(--dom-color, var(--sb-gray-300));
   background:color-mix(in srgb, var(--dom-color, #9ca3af) 10%, #ffffff);
   color:var(--sb-gray-900);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 .sb-badge-domaine--soft::before{
   background:var(--dom-color, #9ca3af);
 }
 
-
-/* -------- Badges: group (alignement + spacing) -------- */
-.sb-badges{
-  display:inline-flex;
-  gap:6px;
-  align-items:center;
-  justify-content:center;
-}
-
 /* -------- Badges: carré (écarts / indicateurs courts) -------- */
 .sb-badge--sq{
   width:22px;
   min-width:22px;
-  height:22px;
-  padding:0;
-  border-radius:6px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
-  line-height:var(--ns-leading-tight, 1.15);
   color:#ffffff;
   background:#9ca3af;
   border-color: rgba(0,0,0,.12);
@@ -998,42 +918,13 @@ textarea.sb-ctrl{
 .sb-badge--sq-sm{
   width:18px;
   min-width:18px;
-  height:18px;
-  border-radius:4px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
 }
-
-/* Ancien nom: sb-gap-badges / sb-gap-badge */
-.sb-gap-badges{
-  display:inline-flex;
-  gap:6px;
-  align-items:center;
-  justify-content:center;
-}
-
-.sb-gap-badges--sm{ gap:4px; }
 
 .sb-gap-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   width:22px;
-  height:22px;
-  border-radius:6px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
-  line-height:var(--ns-leading-tight, 1.15);
   border:1px solid rgba(0,0,0,.12);
   color:#ffffff;
   background:#9ca3af;
-}
-
-.sb-gap-badge--sm{
-  height:18px;
-  border-radius:4px;
-  font-weight:var(--ns-weight-bold, 700);
-  font-size:var(--ns-text-xs, 0.75rem);
 }
 
 /* -------- Legend (écarts / matching) -------- */
@@ -1256,16 +1147,12 @@ textarea.sb-ctrl{
 
 .sb-coverbar-badge{
   min-width:56px;
-  justify-content:center;
   text-align:center;
 }
 
 
 /* -------- Modal title line (badge + texte sur 1 ligne) -------- */
 .sb-modal-titleline{
-  display:flex;
-  align-items:center;
-  gap:10px;
   min-width:0;
 }
 
@@ -1476,7 +1363,6 @@ textarea.sb-ctrl{
   background: var(--sb-comp);
   border-color: var(--sb-comp);
   color:#fff;
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 /* Badge code poste (si tu gardes ce nom au lieu de sb-badge--success) */
@@ -1484,7 +1370,6 @@ textarea.sb-ctrl{
   background: var(--sb-poste);
   border-color: var(--sb-poste);
   color:#fff;
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 /* =========================
@@ -2101,17 +1986,11 @@ textarea.sb-ctrl{
   overflow-wrap:anywhere;
 }
 
-#view-vos-collaborateurs .collab-preview-fields .sb-badge{
-  height:20px;
-  font-size:var(--ns-text-xs, 0.75rem);
-}
-
 
 #view-vos-collaborateurs .collab-role-badge{
   background:#ffffff;
   border-color:#d1d5db;
   color:var(--collab-text);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-vos-collaborateurs .collab-role-badge--manager{
@@ -3353,9 +3232,6 @@ textarea.sb-ctrl{
 }
 
 #modalCollaborateur .sb-collab-modal-badges{
-  display:flex;
-  align-items:center;
-  gap:6px;
   flex-wrap:wrap;
 }
 
@@ -3363,7 +3239,6 @@ textarea.sb-ctrl{
   background:#ffffff;
   border-color:#d1d5db;
   color:#111827;
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #modalCollaborateur .sb-collab-modal-badges .collab-role-badge--manager{
@@ -4026,10 +3901,7 @@ textarea.sb-ctrl{
 }
 
 #modalCollaborateur .sb-collab-cert-badges{
-  display:flex;
-  align-items:center;
   flex-wrap:wrap;
-  gap:6px;
   margin-top:7px;
 }
 
@@ -4262,17 +4134,6 @@ textarea.sb-ctrl{
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--reading-accent) 30%, transparent);
 }
 
-/* ============================
-   Sidebar header: badge produit
-   ============================ */
-
-.sidebar-header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  line-height:var(--ns-leading-tight, 1.15);
-}
-
 .sidebar-header .brand{
   font-weight:var(--ns-weight-semibold, 600);
   letter-spacing:0;
@@ -4281,17 +4142,10 @@ textarea.sb-ctrl{
 }
 
 .sidebar-header .product-badge{
-  display:inline-flex;
-  align-items:center;
-  height:24px;
-  padding:0 14px;
-  border-radius:999px;
 
   background: var(--accent);
   color:#fff;
 
-  font-weight:var(--ns-weight-semibold, 600);
-  font-size:var(--ns-text-md, 0.875rem);
   letter-spacing:0;
   text-transform:none; /* "Insights" > "INSIGHTS" */
 
@@ -4542,18 +4396,9 @@ textarea.sb-ctrl{
 
 /* Analyse compétences — badge code poste */
 #view-analyse-competences .sb-badge-poste-code{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:2px 8px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
   background: rgb(62,190,73);
   color:#fff;
   border:1px solid rgb(62,190,73);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
 }
 
 
@@ -5068,8 +4913,6 @@ body{
   background:rgba(193,39,45,.18);
   border:1px solid rgb(193,39,45);
   color:rgb(193,39,45);
-  font-weight:var(--ns-weight-bold, 700);
-  white-space:nowrap;
 }
 
 #modalOrgPoste .org-poste-def-date{
@@ -5083,8 +4926,6 @@ body{
   background:rgba(131,39,193,.14);
   border:1px solid rgba(131,39,193,.85);
   color:rgb(131,39,193);
-  font-weight:var(--ns-weight-bold, 700);
-  white-space:nowrap;
 }
 
 #modalOrgPoste .org-rh-lock-info{
@@ -6388,19 +6229,10 @@ body{
 }
 
 #view-besoins-formations .bf-skill-chip{
-  display:inline-flex;
-  align-items:center;
   max-width:230px;
-  min-height:22px;
-  padding:0 8px;
   border:1px solid var(--sb-gray-200);
-  border-radius:999px;
   background:#fff;
   color:var(--sb-gray-700);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
@@ -6433,11 +6265,6 @@ body{
   font-size:var(--ns-text-xs, 0.75rem);
   font-weight:var(--ns-weight-semibold, 600);
   line-height:var(--ns-leading-tight, 1.15);
-}
-
-#view-besoins-formations .bf-cell--status .sb-badge{
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-besoins-formations .bf-cell--comment{
@@ -9925,7 +9752,6 @@ body{
 @media (max-width: 1050px){ .analyse-summary-grid{ grid-template-columns:repeat(2, minmax(160px, 1fr)); } }
 @media (max-width: 640px){ .analyse-summary-grid{ grid-template-columns:1fr; } }
 .analyse-summary-chip{ border:1px solid var(--sb-gray-200); border-radius:12px; padding:8px 11px; background:#fff; min-height:52px; display:flex; flex-direction:column; justify-content:center; }
-.analyse-summary-chip .label{ font-size:var(--ns-text-xs, 0.75rem); line-height:var(--ns-leading-tight, 1.15); color:var(--sb-gray-500); font-weight:var(--ns-weight-semibold, 600); letter-spacing:0; }
 .analyse-summary-chip .value{ margin-top:3px; font-size:var(--ns-text-lg, 0.9375rem); line-height:var(--ns-leading-tight, 1.15); font-weight:var(--ns-weight-bold, 700); color:var(--sb-gray-900); }
 .analyse-risk-summary-list{ display:grid; grid-template-columns:1fr; gap:10px; }
 .analyse-risk-effect-card{ border:1px solid var(--sb-gray-200); border-radius:14px; padding:12px; background:#fff; }
@@ -10072,7 +9898,6 @@ body{
 .sim2-builder-actions{ margin-top:14px; }
 .sim2-preview-title{ font-weight:var(--ns-weight-bold, 700); color:var(--sb-gray-900); font-size:var(--ns-text-lg, 0.9375rem); }
 .sim2-preview-text{ color:var(--sb-gray-700); line-height:var(--ns-leading-body, 1.5); margin-top:8px; }
-.sim2-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
 .sim2-read-row{ display:flex; justify-content:space-between; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--sb-gray-100); }
 .sim2-read-row:last-child{ border-bottom:0; }
 .sim2-read-row strong{ color:var(--sb-gray-900); }
@@ -10123,20 +9948,10 @@ body{
 .sb-badge.sb-badge--niv,
 .pp-badge.pp-badge--niv{
   --ns-level-orange: 226,114,9;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:96px;
-  height:22px;
-  padding:0 10px;
   border:1.5px solid rgba(var(--ns-level-orange), .45);
-  border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   box-sizing:border-box;
 }
 .sb-badge-niv-a,
@@ -10174,8 +9989,6 @@ body{
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold, 600);
-  white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
   border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
@@ -10365,18 +10178,10 @@ body{
 }
 
 #modalAnalysePrevPosteRed .sb-prev-impact-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   flex:0 0 auto;
   border:1px solid var(--sb-gray-300);
-  border-radius:999px;
-  padding:3px 8px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   color:var(--sb-gray-700);
   background:#fff;
-  white-space:nowrap;
 }
 
 #modalAnalysePrevPosteRed .sb-prev-impact-badge--critical{
@@ -10848,12 +10653,6 @@ body{
   font-weight:var(--ns-weight-semibold, 600);
   color:var(--sb-gray-900);
   line-height:var(--ns-leading-title, 1.25);
-}
-.sim-lego-focus-title .sb-badge-ref-poste-code{
-  height:20px;
-  padding:0 8px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 .sim-lego-focus-label{
   min-width:0;
@@ -11438,32 +11237,22 @@ body{
 }
 
 .sim-result-pill-row{
-  display:grid;
   grid-template-columns:repeat(5, minmax(130px, 1fr));
-  gap:8px;
   margin-top:14px;
 }
 
 .sim-result-pill{
   border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  padding:9px 10px;
   background:#fff;
 }
 
 .sim-result-pill span{
-  display:block;
   color:var(--sb-gray-500);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 .sim-result-pill strong{
-  display:block;
   margin-top:4px;
   color:var(--sb-gray-900);
-  font-size:var(--ns-title-sm, 1.0625rem);
-  font-weight:var(--ns-weight-bold, 700);
 }
 
 .sim-result-pill.is-good{
@@ -12553,18 +12342,9 @@ body{
 }
 
 .sim-result-priority-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:20px;
-  padding:0 8px;
-  border-radius:999px;
   border:1px solid color-mix(in srgb,var(--sb-warning) 40%,#ffffff);
   background:color-mix(in srgb,var(--sb-warning) 12%,#ffffff);
   color:#b45309;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  white-space:nowrap;
 }
 
 .sim-result-priority-badge.is-priority{
@@ -13795,16 +13575,6 @@ textarea.sb-ctrl{
 
 /* -------- Badges -------- */
 .sb-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  height:22px;
-  padding:0 10px;
-  border-radius: var(--sb-r-pill);
-  font-size: var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   border:1px solid var(--sb-gray-300);
   background: transparent;
   color: var(--sb-gray-900);
@@ -13847,22 +13617,16 @@ textarea.sb-ctrl{
   border-color: color-mix(in srgb, var(--accent) 42%, #d8dee8);
   background: color-mix(in srgb, var(--accent) 8%, #ffffff);
   color: color-mix(in srgb, var(--accent) 82%, #111827);
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 .sb-badge.sb-badge-certif-souhaite{
   border-color: color-mix(in srgb, var(--sb-info) 34%, #d8dee8);
   background: color-mix(in srgb, var(--sb-info) 8%, #ffffff);
   color: color-mix(in srgb, var(--sb-info) 82%, #111827);
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 /* Badge "Critère" (grille d'évaluation) */
 .sb-badge.sb-badge-critere{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: color-mix(in srgb, var(--accent) 10%, #ffffff);
   border-color: var(--sb-critere);
@@ -13871,10 +13635,6 @@ textarea.sb-ctrl{
 
 /* Badge "Manager" */
 .sb-badge.sb-badge-manager{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: color-mix(in srgb, var(--sb-manager) 5%, #ffffff);
   border-color: var(--sb-manager);
@@ -13882,10 +13642,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--indispo{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-indispo-bg);
   border-color: var(--sb-badge-indispo-border);
@@ -13893,10 +13649,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--actif{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-actif-bg);
   border-color: var(--sb-badge-actif-border);
@@ -13904,10 +13656,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--inactif{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-inactif-bg);
   border-color: var(--sb-badge-inactif-border);
@@ -13915,10 +13663,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--temp{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-temp-bg);
   border-color: var(--sb-badge-temp-border);
@@ -13926,10 +13670,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--formateur{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: color-mix(in srgb, var(--sb-badge-formateur-bg) 5%, #ffffff);
   border-color: var(--sb-badge-formateur-border);
@@ -13937,10 +13677,6 @@ textarea.sb-ctrl{
 }
 
 .sb-badge.sb-badge--archive{
-  font-size: var(--ns-text-xs, 0.75rem);          /* police plus petite */
-  font-weight: var(--ns-weight-semibold, 600);         /* plus “badge” */
-  height: 22px;             /* garde le gabarit */
-  padding: 0 10px;
 
   background: var(--sb-badge-archive-bg);
   border-color: var(--sb-badge-archive-border);
@@ -13950,7 +13686,6 @@ textarea.sb-ctrl{
 /* Badge Niveau comp soft */
 .sb-badge-niv{
   background:transparent;
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 /* bordures orange dégradées selon niveau */
@@ -13961,15 +13696,7 @@ textarea.sb-ctrl{
 /* Badge criticité : rond, fond transparent, bord violet avec 5 niveaux de teinte */
 .sb-crit-badge{
   --crit-violet: 124,58,237; /* violet */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  font-size: var(--ns-text-xs, 0.75rem);
-  font-weight: var(--ns-weight-semibold, 600);
-  line-height: var(--ns-leading-tight, 1.15);
   background: transparent;
   border: 2px solid rgba(var(--crit-violet), 0.45);
   color: rgba(var(--crit-violet), 0.85);
@@ -13985,29 +13712,18 @@ textarea.sb-ctrl{
 
 /* Badge Domaine (pill) */
 .sb-badge-domaine {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 
-  padding: 5px 10px;
-  border-radius: 999px;
 
   background: #ffffff;
   border: 1px solid #e5e7eb;
 
   color: #111827;
-  font-size: var(--ns-text-xs, 0.75rem);
-  font-weight: var(--ns-weight-medium, 500); /* moins épais */
-  line-height: var(--ns-leading-tight, 1.15);
-  white-space: nowrap;
 }
 
 /* Point couleur: alimenté par data-color (DB) */
 .sb-badge-domaine::before {
   content: "";
   width: 8px;
-  height: 8px;
-  border-radius: 999px;
   background: var(--dom-color, #9ca3af); /* fallback gris */
   flex: 0 0 8px;
 }
@@ -14017,32 +13733,16 @@ textarea.sb-ctrl{
   border-color:var(--dom-color, var(--sb-gray-300));
   background:color-mix(in srgb, var(--dom-color, #9ca3af) 10%, #ffffff);
   color:var(--sb-gray-900);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 .sb-badge-domaine--soft::before{
   background:var(--dom-color, #9ca3af);
 }
 
-
-/* -------- Badges: group (alignement + spacing) -------- */
-.sb-badges{
-  display:inline-flex;
-  gap:6px;
-  align-items:center;
-  justify-content:center;
-}
-
 /* -------- Badges: carré (écarts / indicateurs courts) -------- */
 .sb-badge--sq{
   width:22px;
   min-width:22px;
-  height:22px;
-  padding:0;
-  border-radius:6px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
-  line-height:var(--ns-leading-tight, 1.15);
   color:#ffffff;
   background:#9ca3af;
   border-color: rgba(0,0,0,.12);
@@ -14051,42 +13751,13 @@ textarea.sb-ctrl{
 .sb-badge--sq-sm{
   width:18px;
   min-width:18px;
-  height:18px;
-  border-radius:4px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
 }
-
-/* Ancien nom: sb-gap-badges / sb-gap-badge */
-.sb-gap-badges{
-  display:inline-flex;
-  gap:6px;
-  align-items:center;
-  justify-content:center;
-}
-
-.sb-gap-badges--sm{ gap:4px; }
 
 .sb-gap-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   width:22px;
-  height:22px;
-  border-radius:6px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
-  line-height:var(--ns-leading-tight, 1.15);
   border:1px solid rgba(0,0,0,.12);
   color:#ffffff;
   background:#9ca3af;
-}
-
-.sb-gap-badge--sm{
-  height:18px;
-  border-radius:4px;
-  font-weight:var(--ns-weight-bold, 700);
-  font-size:var(--ns-text-xs, 0.75rem);
 }
 
 /* -------- Legend (écarts / matching) -------- */
@@ -14309,16 +13980,12 @@ textarea.sb-ctrl{
 
 .sb-coverbar-badge{
   min-width:56px;
-  justify-content:center;
   text-align:center;
 }
 
 
 /* -------- Modal title line (badge + texte sur 1 ligne) -------- */
 .sb-modal-titleline{
-  display:flex;
-  align-items:center;
-  gap:10px;
   min-width:0;
 }
 
@@ -14529,7 +14196,6 @@ textarea.sb-ctrl{
   background: var(--sb-comp);
   border-color: var(--sb-comp);
   color:#fff;
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 /* Badge code poste (si tu gardes ce nom au lieu de sb-badge--success) */
@@ -14537,7 +14203,6 @@ textarea.sb-ctrl{
   background: var(--sb-poste);
   border-color: var(--sb-poste);
   color:#fff;
-  font-weight: var(--ns-weight-semibold, 600);
 }
 
 /* =========================
@@ -14914,17 +14579,6 @@ textarea.sb-ctrl{
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--reading-accent) 30%, transparent);
 }
 
-/* ============================
-   Sidebar header: badge produit
-   ============================ */
-
-.sidebar-header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  line-height:var(--ns-leading-tight, 1.15);
-}
-
 .sidebar-header .brand{
   font-weight:var(--ns-weight-semibold, 600);
   letter-spacing:0;
@@ -14933,17 +14587,10 @@ textarea.sb-ctrl{
 }
 
 .sidebar-header .product-badge{
-  display:inline-flex;
-  align-items:center;
-  height:24px;
-  padding:0 14px;
-  border-radius:999px;
 
   background: var(--accent);
   color:#fff;
 
-  font-weight:var(--ns-weight-semibold, 600);
-  font-size:var(--ns-text-md, 0.875rem);
   letter-spacing:0;
   text-transform:none; /* "Insights" > "INSIGHTS" */
 
@@ -15194,18 +14841,9 @@ textarea.sb-ctrl{
 
 /* Analyse compétences — badge code poste */
 #view-analyse-competences .sb-badge-poste-code{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:2px 8px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-bold, 700);
   background: rgb(62,190,73);
   color:#fff;
   border:1px solid rgb(62,190,73);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
 }
 
 
@@ -15330,7 +14968,6 @@ body{
   border-color:var(--dom-color, var(--sb-gray-300));
   background:color-mix(in srgb, var(--dom-color, #9ca3af) 10%, #ffffff);
   color:var(--sb-gray-900);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #modalCollaborateur .sb-badge-domaine--soft::before{
@@ -16816,17 +16453,11 @@ body{
 }
 
 #view-dashboard .sb-dashboard-rule-chip{
-  display:inline-flex;
   width:max-content;
   margin-left:6px;
   border:1px solid #e5e7eb;
-  border-radius:999px;
-  padding:2px 8px;
   color:#64748b;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   background:#fff;
-  white-space:nowrap;
 }
 
 #view-dashboard .sb-dashboard-attention-wrap{
@@ -17293,19 +16924,10 @@ body{
 }
 
 #view-besoins-formations .bf-skill-chip{
-  display:inline-flex;
-  align-items:center;
   max-width:230px;
-  min-height:22px;
-  padding:0 8px;
   border:1px solid var(--sb-gray-200);
-  border-radius:999px;
   background:#fff;
   color:var(--sb-gray-700);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
@@ -17338,11 +16960,6 @@ body{
   font-size:var(--ns-text-xs, 0.75rem);
   font-weight:var(--ns-weight-semibold, 600);
   line-height:var(--ns-leading-tight, 1.15);
-}
-
-#view-besoins-formations .bf-cell--status .sb-badge{
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-besoins-formations .bf-cell--comment{
@@ -20503,7 +20120,6 @@ body{
 @media (max-width: 1050px){ .analyse-summary-grid{ grid-template-columns:repeat(2, minmax(160px, 1fr)); } }
 @media (max-width: 640px){ .analyse-summary-grid{ grid-template-columns:1fr; } }
 .analyse-summary-chip{ border:1px solid var(--sb-gray-200); border-radius:12px; padding:8px 11px; background:#fff; min-height:52px; display:flex; flex-direction:column; justify-content:center; }
-.analyse-summary-chip .label{ font-size:var(--ns-text-xs, 0.75rem); line-height:var(--ns-leading-tight, 1.15); color:var(--sb-gray-500); font-weight:var(--ns-weight-semibold, 600); letter-spacing:0; }
 .analyse-summary-chip .value{ margin-top:3px; font-size:var(--ns-text-lg, 0.9375rem); line-height:var(--ns-leading-tight, 1.15); font-weight:var(--ns-weight-bold, 700); color:var(--sb-gray-900); }
 .analyse-risk-summary-list{ display:grid; grid-template-columns:1fr; gap:10px; }
 .analyse-risk-effect-card{ border:1px solid var(--sb-gray-200); border-radius:14px; padding:12px; background:#fff; }
@@ -20650,7 +20266,6 @@ body{
 .sim2-builder-actions{ margin-top:14px; }
 .sim2-preview-title{ font-weight:var(--ns-weight-bold, 700); color:var(--sb-gray-900); font-size:var(--ns-text-lg, 0.9375rem); }
 .sim2-preview-text{ color:var(--sb-gray-700); line-height:var(--ns-leading-body, 1.5); margin-top:8px; }
-.sim2-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
 .sim2-read-row{ display:flex; justify-content:space-between; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--sb-gray-100); }
 .sim2-read-row:last-child{ border-bottom:0; }
 .sim2-read-row strong{ color:var(--sb-gray-900); }
@@ -20701,20 +20316,10 @@ body{
 .sb-badge.sb-badge--niv,
 .pp-badge.pp-badge--niv{
   --ns-level-orange: 226,114,9;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:96px;
-  height:22px;
-  padding:0 10px;
   border:1.5px solid rgba(var(--ns-level-orange), .45);
-  border-radius:999px;
   background:transparent !important;
   color:rgba(var(--ns-level-orange), .45);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
-  white-space:nowrap;
   box-sizing:border-box;
 }
 .sb-badge-niv-a,
@@ -20752,8 +20357,6 @@ body{
 .sb-badge-niv,
 .sb-badge--niv{
   background: transparent !important;
-  font-weight: var(--ns-weight-semibold, 600);
-  white-space: nowrap;
 }
 .sb-badge-niv-a, .sb-badge--niv-a{
   border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
@@ -20943,18 +20546,10 @@ body{
 }
 
 #modalAnalysePrevPosteRed .sb-prev-impact-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   flex:0 0 auto;
   border:1px solid var(--sb-gray-300);
-  border-radius:999px;
-  padding:3px 8px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   color:var(--sb-gray-700);
   background:#fff;
-  white-space:nowrap;
 }
 
 #modalAnalysePrevPosteRed .sb-prev-impact-badge--critical{
@@ -21426,12 +21021,6 @@ body{
   font-weight:var(--ns-weight-semibold, 600);
   color:var(--sb-gray-900);
   line-height:var(--ns-leading-title, 1.25);
-}
-.sim-lego-focus-title .sb-badge-ref-poste-code{
-  height:20px;
-  padding:0 8px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 .sim-lego-focus-label{
   min-width:0;
@@ -22016,32 +21605,22 @@ body{
 }
 
 .sim-result-pill-row{
-  display:grid;
   grid-template-columns:repeat(5, minmax(130px, 1fr));
-  gap:8px;
   margin-top:14px;
 }
 
 .sim-result-pill{
   border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  padding:9px 10px;
   background:#fff;
 }
 
 .sim-result-pill span{
-  display:block;
   color:var(--sb-gray-500);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 .sim-result-pill strong{
-  display:block;
   margin-top:4px;
   color:var(--sb-gray-900);
-  font-size:var(--ns-title-sm, 1.0625rem);
-  font-weight:var(--ns-weight-bold, 700);
 }
 
 .sim-result-pill.is-good{
@@ -23131,18 +22710,9 @@ body{
 }
 
 .sim-result-priority-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:20px;
-  padding:0 8px;
-  border-radius:999px;
   border:1px solid color-mix(in srgb,var(--sb-warning) 40%,#ffffff);
   background:color-mix(in srgb,var(--sb-warning) 12%,#ffffff);
   color:#b45309;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  white-space:nowrap;
 }
 
 .sim-result-priority-badge.is-priority{
@@ -23806,11 +23376,6 @@ body{
   width: 220px;
 }
 
-#modalOrgPoste #orgPosteCompTable .sb-badge-ref-comp-code,
-#modalOrgPoste #orgPosteModalBadge{
-  border-radius: 999px;
-}
-
 #modalOrgPoste .sb-form-grid select,
 #modalOrgPoste .sb-form-grid input,
 #modalOrgPoste .sb-form-grid textarea{
@@ -24207,15 +23772,7 @@ body{
 }
 
 #modalOrgPoste .org-cert-req-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   min-width:82px;
-  height:23px;
-  padding:0 10px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
   box-sizing:border-box;
 }
 
@@ -25629,21 +25186,13 @@ body{
 }
 
 #view-referentiel-competences .domain-pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:4px 10px;
   border:1px solid #d1d5db;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
   color:#374151;
   background:#fff;
 }
 
 #view-referentiel-competences .domain-pill .domain-dot{
   width:10px;
-  height:10px;
-  border-radius:999px;
 }
 
 #view-referentiel-competences .ref-table-footer{
@@ -25956,7 +25505,6 @@ body{
 
 #modalRefDetail .ref-level-row .sb-badge{
   width:100%;
-  justify-content:center;
 }
 
 #modalRefDetail .ref-level-text{
@@ -27138,44 +26686,27 @@ body{
 
 #modalMapAdvancedSearch .map-advanced-chip{
   max-width:100%;
-  min-height:28px;
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  padding:3px 8px 3px 10px;
   border:1px solid color-mix(in srgb, var(--accent) 34%, #d8dee8);
-  border-radius:999px;
   background:color-mix(in srgb, var(--accent) 6%, #ffffff);
   color:#0f172a;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #modalMapAdvancedSearch .map-advanced-chip strong{
   color:var(--accent);
-  font-weight:var(--ns-weight-bold, 700);
 }
 
 #modalMapAdvancedSearch .map-advanced-chip > span{
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
-  white-space:nowrap;
 }
 
 #modalMapAdvancedSearch .map-advanced-chip button,
 #modalMapAdvancedSearch .map-advanced-chip-x{
   width:20px;
-  height:20px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   border:0;
-  border-radius:999px;
   background:transparent;
   color:#64748b;
-  font-size:var(--ns-title-sm, 1.0625rem);
-  line-height:var(--ns-leading-tight, 1.15);
   cursor:pointer;
 }
 
@@ -27464,8 +26995,6 @@ body{
 #view-analyse-competences .analyse-summary-chip__icon svg,
 #view-analyse-competences .analyse-summary-btn svg{
   width:20px;
-  height:20px;
-  display:block;
   fill:none;
   stroke:currentColor;
   stroke-width:1.9;
@@ -27479,23 +27008,12 @@ body{
 }
 
 #view-analyse-competences .analyse-summary-chip{
-  min-height:58px;
   flex-direction:row;
-  align-items:center;
-  justify-content:flex-start;
-  gap:12px;
-  padding:12px 14px;
   border-color:#edf0f4;
-  border-radius:14px;
 }
 
 #view-analyse-competences .analyse-summary-chip__icon{
   width:34px;
-  height:34px;
-  border-radius:11px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
   flex:0 0 34px;
   background:#f8fafc;
   color:#334155;
@@ -28380,26 +27898,15 @@ body{
 
 #view-calendrier .cal-suggestion-top,
 #view-calendrier .cal-detail-badges{
-  display:flex;
-  align-items:center;
-  gap:6px;
   flex-wrap:wrap;
 }
 
 #view-calendrier .cal-type-pill,
 #view-calendrier .cal-status-pill,
 #view-calendrier .cal-priority{
-  display:inline-flex;
-  align-items:center;
-  min-height:21px;
-  padding:3px 8px;
-  border-radius:999px;
   border:1px solid var(--cal-border-soft);
   background:#fff;
   color:#475467;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
 }
 
 #view-calendrier .cal-type-pill{
@@ -28632,18 +28139,11 @@ body{
 
 #view-calendrier .cal-event-chip{
   width:auto;
-  min-height:24px;
-  display:flex;
-  align-items:center;
-  gap:5px;
   margin:31px 8px 0;
   border:0;
-  border-radius:8px;
   background:#f8fafc;
   color:#344054;
-  padding:3px 8px;
   cursor:pointer;
-  font-size:var(--ns-text-xs, 0.75rem);
   text-align:left;
   overflow:hidden;
   pointer-events:auto;
@@ -28658,7 +28158,6 @@ body{
 #view-calendrier .cal-event-chip span{
   flex:0 0 auto;
   min-width:18px;
-  font-weight:var(--ns-weight-semibold, 600);
   color:inherit;
 }
 
@@ -28666,8 +28165,6 @@ body{
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
-  white-space:nowrap;
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-calendrier .cal-event-chip--default{
@@ -28972,8 +28469,6 @@ body{
   }
   #view-calendrier .cal-event-chip{
     margin:28px 5px 0;
-    font-size:var(--ns-text-xs, 0.75rem);
-    padding:3px 6px;
   }
   #view-calendrier .cal-form-grid{
     grid-template-columns:1fr;
@@ -29036,18 +28531,11 @@ body{
 
 #view-entretien-performance .ep-collab-service-pill{
   margin-top:8px;
-  display:inline-flex;
-  align-items:center;
   width:max-content;
   max-width:100%;
-  min-height:24px;
-  padding:0 9px;
-  border-radius:999px;
   background:#f8fafc;
   border:1px solid var(--sb-gray-200);
   color:var(--sb-gray-700);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-entretien-performance .ep-collab-summary-grid{
@@ -29068,11 +28556,7 @@ body{
 }
 
 #view-entretien-performance .ep-collab-summary-item span:not(.sb-badge){
-  display:block;
   color:var(--sb-gray-700);
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-title, 1.25);
 }
 
 #view-entretien-performance .ep-collab-summary-item strong{
@@ -29258,23 +28742,13 @@ body{
   right:-2px;
   bottom:-2px;
   width:20px;
-  height:20px;
-  border-radius:999px;
-  display:none;
-  align-items:center;
-  justify-content:center;
   background:var(--sb-success);
   color:#fff;
   box-shadow:0 0 0 3px #fff;
 }
 
-#view-entretien-performance .ep-annual-step.is-done .ep-step-done-badge{
-  display:inline-flex;
-}
-
 #view-entretien-performance .ep-step-done-badge svg{
   width:12px;
-  height:12px;
   fill:none;
   stroke:currentColor;
   stroke-width:2.4;
@@ -29965,18 +29439,6 @@ body{
   text-overflow:ellipsis;
 }
 
-#view-entretien-performance .ep-status-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:22px;
-  padding:0 9px;
-  border-radius:999px;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  white-space:nowrap;
-}
-
 #view-entretien-performance .ep-status-badge--success{
   color:#166534;
   background:rgba(22,163,74,.10);
@@ -30328,7 +29790,6 @@ body{
 }
 
 #view-entretien-performance .ep-annual-step.is-in-progress .ep-step-done-badge{
-  display:inline-flex;
   background:var(--sb-info);
 }
 
@@ -30865,22 +30326,8 @@ body{
 }
 
 #view-besoins-formations .bf-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:22px;
-  padding:0 8px;
   border:1px solid #e5e7eb;
-  border-radius:999px;
   background:#fff;
-  font-size:var(--ns-text-xs, 0.75rem);
-  line-height:var(--ns-leading-tight, 1.15);
-  font-weight:var(--ns-weight-semibold, 600);
-  white-space:nowrap;
-}
-
-#view-besoins-formations .bf-status-cell .bf-badge{
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-besoins-formations .bf-badge--red{ background:rgba(220,38,38,.08); border-color:rgba(220,38,38,.20); color:#dc2626; }
@@ -31116,12 +30563,7 @@ body{
 }
 
 #view-besoins-formations .bf-detail-chips{
-  display:flex;
-  align-items:center;
-  gap:8px;
   color:#334155;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
 }
 
 #view-besoins-formations .bf-detail-grid{

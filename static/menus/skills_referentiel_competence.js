@@ -61,8 +61,8 @@
 
   function refLevelBadge(value) {
     const k = refLevelKey(value);
-    if (!k) return `<span class="sb-badge">—</span>`;
-    return `<span class="sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(refLevelLabel(k))}</span>`;
+    if (!k) return `<span class="ns-badge sb-badge">—</span>`;
+    return `<span class="ns-badge sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(refLevelLabel(k))}</span>`;
   }
 
   function normalizeColor(raw) {
@@ -146,16 +146,16 @@
 
   function iconSvg(name) {
     const icons = {
-      description: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>`,
-      levels: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M9 19v-6"/><path d="M14 19V9"/><path d="M19 19V3"/></svg>`,
-      grid: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
-      postes: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M4 12h16"/></svg>`,
-      collabs: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-      domain: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
-      criteria: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
-      users: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-      eye: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
-      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8.5 15.5h7"></path><path d="M8.5 18.5h5"></path></svg>`,
+      description: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-a5119176838c"></use></svg>`,
+      levels: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7f7de73219f7"></use></svg>`,
+      grid: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-896fd277674b"></use></svg>`,
+      postes: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-4794407f51c2"></use></svg>`,
+      collabs: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-971e031d8a28"></use></svg>`,
+      domain: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-092d9b0f7a9d"></use></svg>`,
+      criteria: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-896fd277674b"></use></svg>`,
+      users: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-971e031d8a28"></use></svg>`,
+      eye: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-93eed862ba51"></use></svg>`,
+      doc: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9f82b7a935f3"></use></svg>`,
     };
     return icons[name] || "";
   }
@@ -198,8 +198,8 @@
   }
 
   function qualityCell(item) {
-    const niv = item.niveaux_complets ? `<span class="sb-badge sb-badge-accent">A/B/C/D ok</span>` : `<span class="sb-badge">Niveaux incomplets</span>`;
-    const grid = item.grille_presente ? `<span class="sb-badge sb-badge-accent">Grille ok</span>` : `<span class="sb-badge">Sans grille</span>`;
+    const niv = item.niveaux_complets ? `<span class="ns-badge sb-badge sb-badge-accent">A/B/C/D ok</span>` : `<span class="ns-badge sb-badge">Niveaux incomplets</span>`;
+    const grid = item.grille_presente ? `<span class="ns-badge sb-badge sb-badge-accent">Grille ok</span>` : `<span class="ns-badge sb-badge">Sans grille</span>`;
     return `<div style="display:flex; gap:6px; flex-wrap:wrap;">${niv}${grid}</div>`;
   }
 
@@ -207,7 +207,7 @@
     const label = (item.domaine_titre_court || item.domaine_titre || item.id_domaine_competence || "Domaine").toString();
     const c = normalizeColor(item.domaine_couleur);
     const style = c ? ` style="--dom-color:${escapeHtml(c)}"` : "";
-    return `<span class="sb-badge-domaine sb-badge-domaine--soft"${style}>${escapeHtml(label)}</span>`;
+    return `<span class="ns-badge sb-badge-domaine sb-badge-domaine--soft"${style}>${escapeHtml(label)}</span>`;
   }
 
   function levelLabelOnly(value) {
@@ -239,7 +239,7 @@
       tr.innerHTML = `
         <td class="col-title">
           <div class="ref-comp-titleline">
-            ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
+            ${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
             <span class="ref-comp-title">${escapeHtml(title || "Compétence")}</span>
           </div>
         </td>
@@ -248,18 +248,10 @@
         <td class="col-center col-detail">
           <div class="sb-icon-actions ref-row-actions">
             <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>
             </button>
             <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="pdf" title="Ouvrir la fiche compétence PDF" aria-label="Ouvrir la fiche compétence PDF">
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
-                <path d="M14 2v6h6"></path>
-                <path d="M8.5 15.5h7"></path>
-                <path d="M8.5 18.5h5"></path>
-              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
             </button>
           </div>
         </td>
@@ -280,14 +272,14 @@
     const normalized = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
     if (normalized === "requis") {
-      return `<span class="sb-badge sb-badge-certif-requis">Requis</span>`;
+      return `<span class="ns-badge sb-badge sb-badge-certif-requis">Requis</span>`;
     }
 
     if (normalized === "souhaite" || normalized === "souhaitee") {
-      return `<span class="sb-badge sb-badge-certif-souhaite">Souhaité</span>`;
+      return `<span class="ns-badge sb-badge sb-badge-certif-souhaite">Souhaité</span>`;
     }
 
-    return `<span class="sb-badge">${escapeHtml(raw || "—")}</span>`;
+    return `<span class="ns-badge sb-badge">${escapeHtml(raw || "—")}</span>`;
   }
 
   function renderCertifs(list) {
@@ -338,10 +330,7 @@
         <td class="col-center col-detail">
           <div class="sb-icon-actions ref-row-actions">
             <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>
             </button>
           </div>
         </td>
@@ -514,14 +503,14 @@
 
     host.innerHTML = `
       <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="prev" title="Page précédente" aria-label="Page précédente"${prevDisabled}>
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-chevron"></use></svg>
       </button>
       ${tokens.map(t => {
         if (typeof t === "string") return `<span class="ref-page-ellipsis" aria-hidden="true">…</span>`;
         return `<button type="button" class="ref-page-btn${t === page ? ' is-active' : ''}" data-page="${t}" aria-label="Page ${t}" aria-current="${t === page ? 'page' : 'false'}">${t}</button>`;
       }).join("")}
       <button type="button" class="sb-icon-btn ref-page-nav" data-page-nav="next" title="Page suivante" aria-label="Page suivante"${nextDisabled}>
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-chevron"></use></svg>
       </button>
     `;
   }
@@ -685,7 +674,7 @@
           <button type="button" class="sb-acc-head ref-criteria-head${isOpen ? " is-open" : ""}" data-ref-criteria-toggle aria-expanded="${isOpen ? "true" : "false"}">
             <span class="ref-criteria-title">${escapeHtml(item.title)}</span>
             <span class="ref-criteria-meta">
-              <span class="sb-badge sb-badge-critere">Critère ${idx + 1}</span>
+              <span class="ns-badge sb-badge sb-badge-critere">Critère ${idx + 1}</span>
               <span class="sb-acc-chevron">▾</span>
             </span>
           </button>
@@ -727,7 +716,7 @@
 
     const lvl = critLevel(n);
     const safe = escapeHtml(String(n));
-    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${safe}">${safe}</span>`;
+    return `<span class="ns-badge sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${safe}">${safe}</span>`;
   }
 
 
@@ -737,8 +726,8 @@
     const k = raw.toUpperCase();
     const map = { A: ["Débutant", "sb-badge-niv-a"], B: ["Intermédiaire", "sb-badge-niv-b"], C: ["Avancé", "sb-badge-niv-c"], D: ["Expert", "sb-badge-niv-d"] };
     const item = map[k];
-    if (!item) return `<span class="sb-badge sb-badge-niv">${escapeHtml(raw || "—")}</span>`;
-    return `<span class="sb-badge sb-badge-niv ${item[1]}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(item[0])}</span>`;
+    if (!item) return `<span class="ns-badge sb-badge sb-badge-niv">${escapeHtml(raw || "—")}</span>`;
+    return `<span class="ns-badge sb-badge sb-badge-niv ${item[1]}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(item[0])}</span>`;
   }
 
   function renderPostesTable(postes, isCertif, baseValidite) {
@@ -810,7 +799,7 @@
         const crit = renderCritBadge(p.poids_criticite);
 
         html += `<tr data-ref-id-poste="${idPoste}">
-          <td class="ref-col-poste"><div class="ref-poste-titleline">${code ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}<span class="ref-poste-title">${escapeHtml(title)}</span></div></td>
+          <td class="ref-col-poste"><div class="ref-poste-titleline">${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span>` : ""}<span class="ref-poste-title">${escapeHtml(title)}</span></div></td>
           <td class="ref-col-service">${service}</td>
           <td class="col-center ref-col-niveau">${niv}</td>
           <td class="col-center ref-col-criticite">${crit}</td>
@@ -869,7 +858,7 @@
     _lastDetailCollaborateurs = collabsList;
 
     const title = code
-      ? { html: `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span><span class="sb-ref-title-text">${escapeHtml(label)}</span>` }
+      ? { html: `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span><span class="sb-ref-title-text">${escapeHtml(label)}</span>` }
       : label;
     const sub = "";
 

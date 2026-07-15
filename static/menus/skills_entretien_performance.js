@@ -393,7 +393,7 @@
       const tdComp = document.createElement("td");
       tdComp.innerHTML = `
         <div>
-          <div><span class="sb-badge sb-badge-accent">${code || "—"}</span></div>
+          <div><span class="ns-badge sb-badge sb-badge-accent">${code || "—"}</span></div>
           <div style="margin-top:4px; font-size:var(--ns-text-sm, 0.8125rem);">${intitule || "—"}</div>
         </div>
       `;
@@ -404,11 +404,11 @@
 
       const tdReq = document.createElement("td");
       tdReq.className = "col-center";
-      tdReq.innerHTML = niveauRequis ? `<span class="sb-badge">${niveauRequis}</span>` : "—";
+      tdReq.innerHTML = niveauRequis ? `<span class="ns-badge sb-badge">${niveauRequis}</span>` : "—";
 
       const tdSal = document.createElement("td");
       tdSal.className = "col-center";
-      tdSal.innerHTML = (niveauSalarie && niveauSalarie !== "—") ? `<span class="sb-badge">${niveauSalarie}</span>` : "—";
+      tdSal.innerHTML = (niveauSalarie && niveauSalarie !== "—") ? `<span class="ns-badge sb-badge">${niveauSalarie}</span>` : "—";
 
       tr.appendChild(tdComp);
       tr.appendChild(tdPoids);
@@ -1243,7 +1243,7 @@
 
   function epBadgeLevelHtml(niveau) {
     const txt = _nsLevelLabel4(niveau || "—");
-    return `<span class="sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(txt)}</span>`;
+    return `<span class="ns-badge sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(txt)}</span>`;
   }
 
   async function epFetchCompetencePdfBlobFromPunctual(item) {
@@ -1401,9 +1401,9 @@
 
   function epStepBadgeSvg(kind) {
     if (kind === "progress") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2"/><path d="M3 12A9 9 0 0 1 18.5 5.8"/><path d="M18 2v5h-5"/><path d="M6 22v-5h5"/></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b0cc7c2b1374"></use></svg>`;
     }
-    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-84cf81f999cc"></use></svg>`;
   }
 
   function epSetAnnualStepState(el, stepState) {
@@ -1561,7 +1561,7 @@
       tr.dataset.searchText = `${x.code || ""} ${x.intitule || ""}`;
 
       tr.innerHTML = `
-        <td class="ep-punctual-code-cell"><span class="sb-badge sb-badge-ref-comp-code ep-comp-code">${epEsc(x.code || "—")}</span></td>
+        <td class="ep-punctual-code-cell"><span class="ns-badge sb-badge sb-badge-ref-comp-code ep-comp-code">${epEsc(x.code || "—")}</span></td>
         <td><div class="ep-punctual-comp-title" title="${epEsc(x.intitule || "")}">${epEsc(x.intitule || "—")}</div></td>
         <td class="ep-punctual-date-cell">${epEsc(epFormatDateFR(x.date_derniere_eval) || "—")}</td>
         <td class="ep-punctual-level-cell">${epBadgeLevelHtml(x.niveau_actuel || "—")}</td>
@@ -1569,10 +1569,10 @@
         <td class="ep-punctual-actions-cell">
           <div class="ep-punctual-actions">
             <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--eval" data-eval="1" title="Évaluer" aria-label="Évaluer">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-071cae759dab"></use></svg>
             </button>
             <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--pdf" data-pdf="1" title="Fiche compétence PDF" aria-label="Fiche compétence PDF">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
             </button>
           </div>
         </td>
@@ -1905,22 +1905,13 @@
 
   function epIconEyeSvg() {
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
     `;
   }
 
   function epIconPdfSvg() {
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-        <path d="M14 2v6h6"></path>
-        <path d="M8 13h2.2a1.8 1.8 0 0 1 0 3.6H8V11"></path>
-        <path d="M14 11v6"></path>
-        <path d="M14 11h2a2 2 0 0 1 0 4h-2"></path>
-      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
     `;
   }
 
@@ -1950,7 +1941,7 @@
       tr.innerHTML = `
         <td>${epEsc(year)}</td>
         <td>${epEsc(epFormatDateFR(epEntretienDateValue(e)) || "—")}</td>
-        <td class="ep-annual-history-status-cell"><span class="sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(e.statut)}">${epEsc(e.statut || "—")}</span></td>
+        <td class="ep-annual-history-status-cell"><span class="ns-badge sb-badge ep-entretien-status ep-entretien-status--${epStatusSlug(e.statut)}">${epEsc(e.statut || "—")}</span></td>
         <td class="ep-annual-history-actions">
           <button type="button" class="sb-icon-btn ep-square-action-btn" data-act="open" title="Voir l’entretien" aria-label="Voir l’entretien">${epIconEyeSvg()}</button>
           <button type="button" class="sb-icon-btn ep-square-action-btn" data-act="pdf" title="Rapport PDF" aria-label="Rapport PDF">${epIconPdfSvg()}</button>
@@ -2129,7 +2120,7 @@
       acc.innerHTML = `
         <button type="button" class="ep-punctual-history-acc-head${open ? " is-open" : ""}" aria-expanded="${open ? "true" : "false"}">
           <span class="ep-punctual-history-acc-main">
-            <span class="sb-badge sb-badge-ref-comp-code ep-punctual-history-code">${epEsc(group.code || "—")}</span>
+            <span class="ns-badge sb-badge sb-badge-ref-comp-code ep-punctual-history-code">${epEsc(group.code || "—")}</span>
             <span class="ep-punctual-history-acc-title">
               <span class="ep-punctual-history-acc-name" title="${epEsc(group.intitule || "")}">${epEsc(group.intitule || "Compétence sans intitulé")}</span>
               <span class="ep-punctual-history-acc-meta">
@@ -2154,7 +2145,7 @@
               <div class="ep-punctual-history-eval-row${auditIndex >= 4 ? " ep-punctual-history-eval-extra" : ""}">
                 <span class="ep-punctual-history-date">${epEsc(epFormatDateFR(audit.date_audit) || "—")}</span>
                 <span class="ep-punctual-history-source" title="${epEsc(audit._sourceLabel || "")}">${epEsc(audit._sourceLabel || "—")}</span>
-                <span class="sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
+                <span class="ns-badge sb-badge ${getEpLevelBadgeClass(audit._levelLabel)}">${epEsc(audit._levelLabel || "—")}</span>
                 <span class="ep-punctual-history-evaluator" title="${epEsc(audit.nom_evaluateur || "Non affecté")}">${epEsc(audit.nom_evaluateur || "Non affecté")}</span>
                 <button type="button" class="sb-icon-btn ep-square-action-btn ep-punctual-history-view" data-ep-history-view="${auditIndex}" title="Voir l’évaluation" aria-label="Voir l’évaluation">${epIconEyeSvg()}</button>
               </div>
@@ -3577,29 +3568,22 @@ function getCollaborateurInitials(c) {
         row.innerHTML = `
           <label class="ep-entretien-comp-main">
             <input type="checkbox" data-check="1" ${checked ? "checked" : ""} />
-            <span class="sb-badge sb-badge-ref-comp-code">${epEsc(item.code || "—")}</span>
+            <span class="ns-badge sb-badge sb-badge-ref-comp-code">${epEsc(item.code || "—")}</span>
             <span class="ep-entretien-comp-title" title="${epEsc(item.intitule || "")}">${epEsc(item.intitule || "—")}</span>
           </label>
 
           <div class="ep-entretien-comp-meta">
-            ${role === "poste" ? `<span class="sb-badge">${Math.round(Number(item.poids_criticite_pct || 0))}%</span>` : ""}
-            ${niveau ? `<span class="sb-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(_nsLevelLabel4(niveau))}</span>` : ""}
+            ${role === "poste" ? `<span class="ns-badge sb-badge">${Math.round(Number(item.poids_criticite_pct || 0))}%</span>` : ""}
+            ${niveau ? `<span class="ns-badge sb-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(_nsLevelLabel4(niveau))}</span>` : ""}
             ${checked ? `
             ${item.source === "catalogue" ? `
               <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-remove="1" title="Retirer" aria-label="Retirer">
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 6h18"></path>
-                  <path d="M8 6V4h8v2"></path>
-                  <path d="M19 6l-1 14H6L5 6"></path>
-                </svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-9d3e468a25e4"></use></svg>
               </button>
             ` : ""}
             ${canEvaluate ? `
               <button type="button" class="sb-icon-btn ep-entretien-eval-btn" data-eval="1" title="Évaluer" aria-label="Évaluer">
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 20h9"/>
-                  <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                </svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-549b72dbbe42"></use></svg>
               </button>
             ` : ""}
             ` : ""}
@@ -3898,13 +3882,10 @@ function getCollaborateurInitials(c) {
         </div>
 
         <div class="ep-entretien-row-actions">
-          <span class="sb-badge ep-entretien-status ep-entretien-status--${epEsc(statusClass)}">${epEsc(statut)}</span>
+          <span class="ns-badge sb-badge ep-entretien-status ep-entretien-status--${epEsc(statusClass)}">${epEsc(statut)}</span>
           <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="open">Ouvrir</button>
           <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-act="pdf" title="Rapport PDF" aria-label="Rapport PDF">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <path d="M14 2v6h6"></path>
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
           </button>
         </div>
       `;
@@ -4078,7 +4059,7 @@ function getCollaborateurInitials(c) {
       const title = document.createElement("div");
       title.className = "ep-catalogue-row-title";
       title.innerHTML = `
-        <span class="sb-badge sb-badge-ref-comp-code">${epEsc(c.code || "—")}</span>
+        <span class="ns-badge sb-badge sb-badge-ref-comp-code">${epEsc(c.code || "—")}</span>
         <span>${epEsc(c.intitule || "—")}</span>
       `;
 
@@ -5623,22 +5604,19 @@ function getCollaborateurInitials(c) {
               const niveau = scoreInfo.levelLabel;
 
                   const iconEye = `
-                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
-                      <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>
                   `;
 
                   const row = document.createElement("div");
                   row.className = "ep-history-comp-row";
                   row.innerHTML = `
                     <div class="ep-history-comp-main">
-                      ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
+                      ${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
                       <span class="ep-history-comp-title" title="${esc(intitule)}">${esc(intitule || "—")}</span>
                     </div>
 
                     <div class="ep-history-comp-result">
-                      <span class="sb-badge ${esc(getEpLevelBadgeClass(niveau))}">${esc(niveau)}</span>
+                      <span class="ns-badge sb-badge ${esc(getEpLevelBadgeClass(niveau))}">${esc(niveau)}</span>
                       <button type="button" class="sb-icon-btn ep-history-view-btn" title="Voir la grille d'évaluation" aria-label="Voir la grille d'évaluation" data-view="1">
                         ${iconEye}
                       </button>
