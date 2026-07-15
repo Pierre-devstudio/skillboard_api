@@ -1,12 +1,12 @@
-<!-- Composant commun : validation électronique -->
+<!-- Composant commun : validation Ã©lectronique -->
 <div class="modal" id="modalValidationElectronique" aria-hidden="true">
   <div class="modal-card sb-modal-card--medium ve-modal-card">
     <div class="modal-header">
       <div style="min-width:0;">
-        <div class="sb-modal-title" id="ve_modalTitle">Validation électronique</div>
-        <div class="card-sub" id="ve_modalSub" style="margin-top:2px;">—</div>
+        <div class="sb-modal-title" id="ve_modalTitle">Validation Ã©lectronique</div>
+        <div class="card-sub" id="ve_modalSub" style="margin-top:2px;">â€”</div>
       </div>
-      <button type="button" class="modal-x" id="btnCloseValidationElectroniqueX" aria-label="Fermer">×</button>
+      <button type="button" class="modal-x" id="btnCloseValidationElectroniqueX" aria-label="Fermer">Ã—</button>
     </div>
 
     <div class="modal-body ve-modal-body">
@@ -18,8 +18,8 @@
       </div>
 
       <div class="ve-toggle" role="group" aria-label="Mode de signature">
-        <button type="button" class="ve-toggle-btn is-active" id="ve_btnModeTracee" data-mode="signature_tracee">Signature tracée</button>
-        <button type="button" class="ve-toggle-btn" id="ve_btnModeGeneree" data-mode="signature_generee">Signature générée</button>
+        <button type="button" class="ve-toggle-btn is-active" id="ve_btnModeTracee" data-mode="signature_tracee">Signature tracÃ©e</button>
+        <button type="button" class="ve-toggle-btn" id="ve_btnModeGeneree" data-mode="signature_generee">Signature gÃ©nÃ©rÃ©e</button>
       </div>
 
       <div class="ve-panel is-active" id="ve_panelTracee">
@@ -31,12 +31,12 @@
       </div>
 
       <div class="ve-panel" id="ve_panelGeneree">
-        <div class="sb-label">Aperçu de la signature générée</div>
-        <div class="ve-generated-sign" id="ve_generatedSign">—</div>
+        <div class="sb-label">AperÃ§u de la signature gÃ©nÃ©rÃ©e</div>
+        <div class="ve-generated-sign" id="ve_generatedSign">â€”</div>
       </div>
 
       <div class="ve-slider-box">
-        <label class="sb-label" for="ve_confirmSlider">Glisser pour confirmer la validation électronique</label>
+        <label class="sb-label" for="ve_confirmSlider">Glisser pour confirmer la validation Ã©lectronique</label>
         <input type="range" id="ve_confirmSlider" min="0" max="100" step="1" value="0" />
       </div>
     </div>

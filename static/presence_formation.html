@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <link rel="stylesheet" href="novoskill_typography.css">
+  <link rel="stylesheet" href="/novoskill_typography.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Validation de présence</title>
+<title>Validation de prÃ©sence</title>
 <style>
 #logo {
     display: block;
@@ -145,16 +145,16 @@ button:disabled {
 
 <img id="logo" src="logo.png" alt="logo">
 
-<h2>Validation de présence</h2>
+<h2>Validation de prÃ©sence</h2>
 
-<div id="formationInfo">Chargement en cours…</div>
+<div id="formationInfo">Chargement en coursâ€¦</div>
 
 <!-- ETAPE 1 : IDENTIFICATION -->
 <div id="step1">
     <label class="label">Nom</label>
     <input id="nom">
 
-    <label class="label">Prénom</label>
+    <label class="label">PrÃ©nom</label>
     <input id="prenom">
 
     <button onclick="checkParticipant()">Continuer</button>
@@ -163,7 +163,7 @@ button:disabled {
 
 <!-- ETAPE 1B : ENTREPRISE si homonyme -->
 <div id="step1b" style="display:none;">
-    <p>Sélectionnez votre entreprise :</p>
+    <p>SÃ©lectionnez votre entreprise :</p>
     <select id="selectEntreprise"></select>
     <button onclick="resolveEntreprise()">Valider</button>
 </div>
@@ -175,7 +175,7 @@ button:disabled {
 
 
     <div id="sliderContainer">
-        <p><b>Glissez pour valider votre présence</b></p>
+        <p><b>Glissez pour valider votre prÃ©sence</b></p>
         <input type="range" id="slider" value="0" min="0" max="100">
         <button id="btnValider" onclick="validatePresence()" disabled>Valider</button>
     </div>
@@ -221,8 +221,8 @@ async function loadFormation() {
     document.getElementById("formationInfo").innerHTML = `
         <b>${f.code_action}</b><br>
         ${f.titre}<br>
-        Modalité : ${f.modalite}<br>
-        Dates : ${formatDate(f.date_debut)} → ${formatDate(f.date_fin)}<br>
+        ModalitÃ© : ${f.modalite}<br>
+        Dates : ${formatDate(f.date_debut)} â†’ ${formatDate(f.date_fin)}<br>
         Consultant : ${f.consultant}
     `;
 }
@@ -268,7 +268,7 @@ async function checkParticipant() {
                 "Participant introuvable dans cette action.";
     } else {
         document.getElementById("errorMsg").textContent =
-                "Une erreur est survenue. Merci de réessayer.";
+                "Une erreur est survenue. Merci de rÃ©essayer.";
     }
 
     return;
@@ -331,7 +331,7 @@ async function resolveEntreprise() {
 
 
 // ---------------------------
-// AFFICHER ÉTAPE VALIDATION
+// AFFICHER Ã‰TAPE VALIDATION
 // ---------------------------
 function showValidationScreen(entreprise = "") {
 
@@ -382,7 +382,7 @@ async function validatePresence() {
         document.getElementById("step2").style.display = "none";
         const c = document.getElementById("confirmation");
         c.style.display = "block";
-        c.innerHTML = "✔ Votre présence a été enregistrée.";
+        c.innerHTML = "âœ” Votre prÃ©sence a Ã©tÃ© enregistrÃ©e.";
     } else {
         alert(data.detail || "Erreur de validation.");
     }

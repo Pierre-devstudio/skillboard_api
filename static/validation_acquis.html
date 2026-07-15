@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <link rel="stylesheet" href="novoskill_typography.css">
+  <link rel="stylesheet" href="/novoskill_typography.css">
   <meta charset="utf-8" />
-  <title>Validation des acquis — Skillboard</title>
+  <title>Validation des acquis â€” Skillboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { font-family: var(--ns-font-ui); }
@@ -243,7 +243,7 @@
   <h1>Validation des acquis</h1>
 
   <p class="muted" id="introText">
-    Cette interface permet au consultant de valider les compétences acquises par chaque stagiaire
+    Cette interface permet au consultant de valider les compÃ©tences acquises par chaque stagiaire
     au terme de la formation, lors des entretiens individuels.
   </p>
 
@@ -266,14 +266,14 @@
         <div class="section-sub" id="stagiaireHeaderSub"></div>
       </div>
       <div>
-        <button class="btn secondary" id="btnBackList">← Retour à la liste</button>
+        <button class="btn secondary" id="btnBackList">â† Retour Ã  la liste</button>
       </div>
     </div>
 
     <div class="stagiaire-detail" id="stagiaireDetail"></div>
 
     <fieldset id="competenceFieldset">
-      <legend id="competenceLegend">Compétences</legend>
+      <legend id="competenceLegend">CompÃ©tences</legend>
       <div id="competenceContainer"></div>
     </fieldset>
 
@@ -281,7 +281,7 @@
   </section>
 
   <script>
-    // Backend unifié
+    // Backend unifiÃ©
     const API_BASE = "https://skillboard-services.onrender.com";
 
     // --- Helpers UI ---
@@ -325,7 +325,7 @@
 
       const globalStatus = document.getElementById("globalStatus");
       if (ctx.tous_stagiaires_evalues) {
-        globalStatus.textContent = "Vous avez validé les compétences de tous les stagiaires présents.";
+        globalStatus.textContent = "Vous avez validÃ© les compÃ©tences de tous les stagiaires prÃ©sents.";
       } else {
         globalStatus.textContent = "";
       }
@@ -334,7 +334,7 @@
       cont.innerHTML = "";
 
       if (!ctx.stagiaires || ctx.stagiaires.length === 0) {
-        cont.innerHTML = `<div class="muted">Aucun stagiaire trouvé pour cette action de formation.</div>`;
+        cont.innerHTML = `<div class="muted">Aucun stagiaire trouvÃ© pour cette action de formation.</div>`;
         return;
       }
 
@@ -367,11 +367,11 @@
           status.appendChild(badge);
         } else if (s.est_evalue) {
           badge.classList.add("badge-fait");
-          badge.textContent = "Évalué";
+          badge.textContent = "Ã‰valuÃ©";
           status.appendChild(badge);
         } else {
           badge.classList.add("badge-evaluer");
-          badge.textContent = "À évaluer";
+          badge.textContent = "Ã€ Ã©valuer";
           status.appendChild(badge);
         }
 
@@ -425,7 +425,7 @@
         currentCompetenceIndex = 0;
         answers = {};
 
-        // Pré-remplir answers si une évaluation existe déjà
+        // PrÃ©-remplir answers si une Ã©valuation existe dÃ©jÃ 
         if (body.competences && body.competences.length > 0) {
           body.competences.forEach(comp => {
             if (!comp.criteres) return;
@@ -443,11 +443,11 @@
         // Affichage header stagiaire
         const stagiaireHeaderSub = document.getElementById("stagiaireHeaderSub");
         const todayStr = formatDateFR(new Date());
-        stagiaireHeaderSub.textContent = `Entretien de validation des acquis — ${todayStr}`;
+        stagiaireHeaderSub.textContent = `Entretien de validation des acquis â€” ${todayStr}`;
 
         const detail = document.getElementById("stagiaireDetail");
         const nomComplet = `${body.civilite ? body.civilite + " " : ""}${body.prenom} ${body.nom}`;
-        detail.textContent = `${nomComplet} — ${body.entreprise ? body.entreprise + " — " : ""}${body.titre_formation}`;
+        detail.textContent = `${nomComplet} â€” ${body.entreprise ? body.entreprise + " â€” " : ""}${body.titre_formation}`;
 
         // Bascule sections
         document.getElementById("listeSection").classList.add("hidden");
@@ -459,7 +459,7 @@
       }
     }
 
-    // --- Rendu d'une étape de compétence ou du récap ---
+    // --- Rendu d'une Ã©tape de compÃ©tence ou du rÃ©cap ---
     function renderCompetenceStep() {
       const cont = document.getElementById("competenceContainer");
       const actionsDiv = document.getElementById("validationActions");
@@ -468,7 +468,7 @@
 
       const data = currentStagiaireData;
       if (!data || !data.competences || data.competences.length === 0) {
-        cont.innerHTML = `<div class="muted">Aucune compétence à évaluer pour ce stagiaire.</div>`;
+        cont.innerHTML = `<div class="muted">Aucune compÃ©tence Ã  Ã©valuer pour ce stagiaire.</div>`;
         return;
       }
 
@@ -484,7 +484,7 @@
       const headerDiv = document.createElement("div");
       headerDiv.className = "comp-header";
       const h2 = document.createElement("h2");
-      h2.textContent = `Compétence ${currentCompetenceIndex + 1} / ${total}`;
+      h2.textContent = `CompÃ©tence ${currentCompetenceIndex + 1} / ${total}`;
       const p = document.createElement("div");
       p.className = "comp-progress";
       p.textContent = comp.titre_competence;
@@ -492,11 +492,11 @@
       headerDiv.appendChild(p);
       cont.appendChild(headerDiv);
 
-      // Critères
+      // CritÃ¨res
       if (!comp.criteres || comp.criteres.length === 0) {
         cont.insertAdjacentHTML(
           "beforeend",
-          `<div class="muted">Aucun critère défini pour cette compétence.</div>`
+          `<div class="muted">Aucun critÃ¨re dÃ©fini pour cette compÃ©tence.</div>`
         );
       } else {
         comp.criteres.forEach(crit => {
@@ -551,7 +551,7 @@
       sliderWrap.className = "slider-wrapper";
       sliderWrap.innerHTML = `
         <div class="slider-label">
-          Faites glisser le curseur à droite pour valider cette compétence une fois tous les critères notés.
+          Faites glisser le curseur Ã  droite pour valider cette compÃ©tence une fois tous les critÃ¨res notÃ©s.
         </div>
         <input type="range" id="compSlider" min="0" max="100" value="0">
       `;
@@ -562,7 +562,7 @@
       btnValider.id = "btnValiderCompetence";
       btnValider.disabled = true;
       btnValider.textContent =
-        currentCompetenceIndex === total - 1 ? "Passer au récapitulatif" : "Valider cette compétence";
+        currentCompetenceIndex === total - 1 ? "Passer au rÃ©capitulatif" : "Valider cette compÃ©tence";
 
       actionsDiv.appendChild(btnValider);
 
@@ -589,7 +589,7 @@
       document.getElementById("compSlider").addEventListener("input", refreshButtonState);
 
       btnValider.addEventListener("click", () => {
-        // Sauvegarde des réponses pour cette compétence
+        // Sauvegarde des rÃ©ponses pour cette compÃ©tence
         if (!answers[comp.id_comp]) {
           answers[comp.id_comp] = {};
         }
@@ -606,7 +606,7 @@
       });
     }
 
-    // --- Rendu récapitulatif + envoi ---
+    // --- Rendu rÃ©capitulatif + envoi ---
     function renderRecap() {
       const cont = document.getElementById("competenceContainer");
       const actionsDiv = document.getElementById("validationActions");
@@ -619,10 +619,10 @@
       const titleDiv = document.createElement("div");
       titleDiv.className = "comp-header";
       const h2 = document.createElement("h2");
-      h2.textContent = "Récapitulatif des niveaux par compétence";
+      h2.textContent = "RÃ©capitulatif des niveaux par compÃ©tence";
       const p = document.createElement("div");
       p.className = "comp-progress";
-      p.textContent = "Merci de vérifier les évaluations avant validation finale.";
+      p.textContent = "Merci de vÃ©rifier les Ã©valuations avant validation finale.";
       titleDiv.appendChild(h2);
       titleDiv.appendChild(p);
       cont.appendChild(titleDiv);
@@ -653,8 +653,8 @@
 
             line.innerHTML = `
               <span>${crit.nom_critere} :</span>
-              <span class="recap-level"> niveau ${niveauChoisi != null ? niveauChoisi : "–"}</span>
-              ${libelle ? " — " + libelle : ""}
+              <span class="recap-level"> niveau ${niveauChoisi != null ? niveauChoisi : "â€“"}</span>
+              ${libelle ? " â€” " + libelle : ""}
             `;
             compBlock.appendChild(line);
           });
@@ -674,7 +674,7 @@
       const commentArea = document.createElement("textarea");
       commentArea.id = "commentaireConsultant";
       if (currentStagiaireData.commentaire_consultant) {
-        // si stocké avec des <br>, on les remplace grossièrement par des retours à la ligne
+        // si stockÃ© avec des <br>, on les remplace grossiÃ¨rement par des retours Ã  la ligne
         commentArea.value = currentStagiaireData.commentaire_consultant.replace(/<br\s*\/?>/gi, "\n");
       }
 
@@ -687,7 +687,7 @@
       sliderWrap.style.marginTop = "12px";
       sliderWrap.innerHTML = `
         <div class="slider-label">
-          Faites glisser le curseur à droite pour confirmer l'ensemble de l'évaluation de ce stagiaire.
+          Faites glisser le curseur Ã  droite pour confirmer l'ensemble de l'Ã©valuation de ce stagiaire.
         </div>
         <input type="range" id="finalSlider" min="0" max="100" value="0">
       `;
@@ -697,7 +697,7 @@
       btnSubmit.className = "btn";
       btnSubmit.id = "btnSubmitEvaluation";
       btnSubmit.disabled = true;
-      btnSubmit.textContent = "Valider et enregistrer cette évaluation";
+      btnSubmit.textContent = "Valider et enregistrer cette Ã©valuation";
       actionsDiv.appendChild(btnSubmit);
 
       function refreshSubmitState() {
@@ -747,7 +747,7 @@
       });
 
       if (!payload.competences.length) {
-        alertBox("error", "Aucun critère n'a été évalué. Impossible d'enregistrer.");
+        alertBox("error", "Aucun critÃ¨re n'a Ã©tÃ© Ã©valuÃ©. Impossible d'enregistrer.");
         return;
       }
 
@@ -766,8 +766,8 @@
           throw new Error(detail);
         }
 
-        alertBox("success", "L'évaluation de ce stagiaire a bien été enregistrée.");
-        // Retour à la liste + rechargement du contexte pour mettre à jour les statuts
+        alertBox("success", "L'Ã©valuation de ce stagiaire a bien Ã©tÃ© enregistrÃ©e.");
+        // Retour Ã  la liste + rechargement du contexte pour mettre Ã  jour les statuts
         document.getElementById("validationSection").classList.add("hidden");
         document.getElementById("listeSection").classList.remove("hidden");
         currentStagiaireData = null;
@@ -779,7 +779,7 @@
       }
     }
 
-    // --- Wiring événements globaux ---
+    // --- Wiring Ã©vÃ©nements globaux ---
     document.getElementById("btnBackList").addEventListener("click", () => {
       document.getElementById("validationSection").classList.add("hidden");
       document.getElementById("listeSection").classList.remove("hidden");

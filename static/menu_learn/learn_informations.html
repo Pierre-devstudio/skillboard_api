@@ -3,7 +3,7 @@
     <div class="sb-card-head">
       <div>
         <div class="card-title">Vos informations</div>
-        <div class="card-sub">Paramétrez les informations Learn liées à votre organisation.</div>
+        <div class="card-sub">ParamÃ©trez les informations Learn liÃ©es Ã  votre organisation.</div>
       </div>
     </div>
   </div>
@@ -11,12 +11,12 @@
   <div class="card lf-lms-card">
     <div class="sb-card-head">
       <div>
-        <div class="card-title">Intégration LMS</div>
+        <div class="card-title">IntÃ©gration LMS</div>
         <div class="card-sub">
-          Configurez le connecteur utilisé pour publier les fiches formation dans votre LMS.
+          Configurez le connecteur utilisÃ© pour publier les fiches formation dans votre LMS.
         </div>
       </div>
-      <span class="sb-badge sb-badge--state" id="lmsConfigBadge">Non configuré</span>
+      <span class="sb-badge sb-badge--state" id="lmsConfigBadge">Non configurÃ©</span>
     </div>
 
     <div class="lf-lms-grid">
@@ -24,12 +24,12 @@
         <div class="label">Connecteur LMS</div>
         <select id="lmsProvider">
           <option value="manual">Aucun / export HTML manuel</option>
-          <option value="lara">Lära</option>
+          <option value="lara">LÃ¤ra</option>
         </select>
       </div>
 
       <div class="info-item lf-lms-lara-field">
-        <div class="label">URL API Lära</div>
+        <div class="label">URL API LÃ¤ra</div>
         <input type="text" id="lmsBaseUrl" placeholder="https://votre-lms.classilio.com/lmsapi" />
       </div>
 
@@ -50,7 +50,7 @@
               id="lmsApiId"
               class="lf-lms-secret-input"
               autocomplete="new-password"
-              placeholder="Coller une nouvelle clé ou laisser vide pour conserver"
+              placeholder="Coller une nouvelle clÃ© ou laisser vide pour conserver"
             />
             <div class="lf-lms-secret-hint" id="lmsSecretHint"></div>
           </div>
@@ -58,9 +58,9 @@
       </div>
 
       <div class="info-item lf-lms-lara-field">
-        <div class="label">Visibilité par défaut</div>
+        <div class="label">VisibilitÃ© par dÃ©faut</div>
         <select id="lmsVisibilityType">
-          <option value="3">Masquée</option>
+          <option value="3">MasquÃ©e</option>
           <option value="1">Visible</option>
         </select>
       </div>
@@ -68,27 +68,27 @@
       <div class="info-item lf-lms-lara-field">
         <div class="label">Langue</div>
         <select id="lmsLanguage">
-          <option value="3">Français</option>
+          <option value="3">FranÃ§ais</option>
         </select>
       </div>
 
       <div class="info-item lf-lms-lara-field lf-lms-types-field">
-        <div class="label">Types Lära à récupérer</div>
+        <div class="label">Types LÃ¤ra Ã  rÃ©cupÃ©rer</div>
         <div class="card-sub" style="margin:0 0 6px 0;">
-          Si aucun type n’est sélectionné, Novoskill récupère tous les types exploitables.
+          Si aucun type nâ€™est sÃ©lectionnÃ©, Novoskill rÃ©cupÃ¨re tous les types exploitables.
         </div>
 
         <div class="lf-lms-types-actions">
           <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnLmsLoadTypes">
-            Charger les types Lära
+            Charger les types LÃ¤ra
           </button>
           <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnLmsClearTypes">
-            Tout récupérer
+            Tout rÃ©cupÃ©rer
           </button>
         </div>
 
         <div class="lf-lms-types-list" id="lmsRecoveryTypesList">
-          <div class="card-sub">Cliquez sur “Tester la connexion” ou “Charger les types Lära”.</div>
+          <div class="card-sub">Cliquez sur â€œTester la connexionâ€ ou â€œCharger les types LÃ¤raâ€.</div>
         </div>
       </div>      
     </div>

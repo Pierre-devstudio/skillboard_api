@@ -9,25 +9,25 @@
     </div>
 
     <div class="sb-dashboard-scope" id="dashboardScopeWrap">
-      <!-- Mode embarqué Studio : ce sélecteur est alimenté par studio_client_space.js.
-           En console Insights classique, il reste masqué. -->
+      <!-- Mode embarquÃ© Studio : ce sÃ©lecteur est alimentÃ© par studio_client_space.js.
+           En console Insights classique, il reste masquÃ©. -->
       <div class="sb-dashboard-scope-field sb-dashboard-org-field" id="dashboardOrganisationWrap" style="display:none;">
-        <label for="dashboardOrganisationFilter">Organisation analysée :</label>
-        <select id="dashboardOrganisationFilter" class="sb-dashboard-service-select" aria-label="Organisation analysée">
+        <label for="dashboardOrganisationFilter">Organisation analysÃ©e :</label>
+        <select id="dashboardOrganisationFilter" class="sb-dashboard-service-select" aria-label="Organisation analysÃ©e">
           <option value="">Structure courante</option>
         </select>
       </div>
 
       <div class="sb-dashboard-scope-field">
-        <label for="dashboardServiceFilter">Données prises en compte :</label>
-        <select id="dashboardServiceFilter" class="sb-dashboard-service-select" aria-label="Données prises en compte">
+        <label for="dashboardServiceFilter">DonnÃ©es prises en compte :</label>
+        <select id="dashboardServiceFilter" class="sb-dashboard-service-select" aria-label="DonnÃ©es prises en compte">
           <option value="">Tout</option>
         </select>
       </div>
 
       <div class="sb-dashboard-crit-field">
-        <label for="dashboardCriticiteFilter">Criticité prise en compte : <strong id="dashboardCriticiteValue">≥ 70</strong></label>
-        <input id="dashboardCriticiteFilter" class="sb-dashboard-crit-range" type="range" min="0" max="100" step="5" value="70" aria-label="Criticité minimale prise en compte">
+        <label for="dashboardCriticiteFilter">CriticitÃ© prise en compte : <strong id="dashboardCriticiteValue">â‰¥ 70</strong></label>
+        <input id="dashboardCriticiteFilter" class="sb-dashboard-crit-range" type="range" min="0" max="100" step="5" value="70" aria-label="CriticitÃ© minimale prise en compte">
       </div>
     </div>
   </div>
@@ -36,12 +36,12 @@
     <div class="card sb-risk-card sb-risk-card--health">
       <div class="sb-risk-card-head">
         <div>
-          <div class="sb-risk-title">Santé globale</div>
-          <div class="sb-risk-sub" id="dashHealthScope">Périmètre : —</div>
+          <div class="sb-risk-title">SantÃ© globale</div>
+          <div class="sb-risk-sub" id="dashHealthScope">PÃ©rimÃ¨tre : â€”</div>
         </div>
         <div class="sb-risk-card-actions">
-          <button type="button" class="sb-dash-round-btn" data-dash-help="health" aria-label="Comprendre Santé globale">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-detail="health" aria-label="Voir le détail Santé globale">
+          <button type="button" class="sb-dash-round-btn" data-dash-help="health" aria-label="Comprendre SantÃ© globale">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-detail="health" aria-label="Voir le dÃ©tail SantÃ© globale">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block;">
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
               <circle cx="12" cy="12" r="3"></circle>
@@ -51,54 +51,54 @@
       </div>
 
       <div class="sb-health-gauge-wrap">
-        <svg id="dashHealthGauge" class="sb-health-gauge" viewBox="0 0 260 170" aria-label="Jauge santé globale"></svg>
-        <div class="sb-health-pct" id="dashHealthPct">—%</div>
+        <svg id="dashHealthGauge" class="sb-health-gauge" viewBox="0 0 260 170" aria-label="Jauge santÃ© globale"></svg>
+        <div class="sb-health-pct" id="dashHealthPct">â€”%</div>
       </div>
-      <div class="sb-health-status" id="dashHealthStatus">—</div>
+      <div class="sb-health-status" id="dashHealthStatus">â€”</div>
       <div class="sb-risk-note is-empty" id="dashHealthNote"></div>
     </div>
 
     <div class="card sb-risk-card sb-risk-card--timeline">
       <div class="sb-risk-card-head">
         <div>
-          <div class="sb-risk-title">Évolution des risques</div>
-          <div class="sb-risk-sub">Indice de fragilité, mois par mois</div>
+          <div class="sb-risk-title">Ã‰volution des risques</div>
+          <div class="sb-risk-sub">Indice de fragilitÃ©, mois par mois</div>
         </div>
         <div class="sb-risk-card-actions">
-          <button type="button" class="sb-dash-round-btn" data-dash-help="timeline" aria-label="Comprendre Évolution des risques">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir l’analyse des risques">▦</button>
+          <button type="button" class="sb-dash-round-btn" data-dash-help="timeline" aria-label="Comprendre Ã‰volution des risques">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir lâ€™analyse des risques">â–¦</button>
         </div>
       </div>
       <div class="sb-risk-timeline" id="dashRiskTimeline">
-        <div class="sb-risk-loading">Chargement…</div>
+        <div class="sb-risk-loading">Chargementâ€¦</div>
       </div>
     </div>
 
     <div class="card sb-risk-card">
       <div class="sb-risk-card-head">
         <div>
-          <div class="sb-risk-title">Postes à surveiller</div>
+          <div class="sb-risk-title">Postes Ã  surveiller</div>
         </div>
         <div class="sb-risk-card-actions">
-          <button type="button" class="sb-dash-round-btn" data-dash-help="postes" aria-label="Comprendre Postes à surveiller">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir l’analyse des postes">▦</button>
+          <button type="button" class="sb-dash-round-btn" data-dash-help="postes" aria-label="Comprendre Postes Ã  surveiller">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir lâ€™analyse des postes">â–¦</button>
         </div>
       </div>
       <div class="sb-watch-wrap">
-        <svg id="dashPostesPie" class="sb-watch-pie" viewBox="0 0 160 160" aria-label="Répartition des postes à surveiller"></svg>
+        <svg id="dashPostesPie" class="sb-watch-pie" viewBox="0 0 160 160" aria-label="RÃ©partition des postes Ã  surveiller"></svg>
         <div class="sb-watch-legend" id="dashPostesLegend"></div>
       </div>
-      <div class="sb-risk-note sb-risk-note--strong" id="dashCriticalDanger">—</div>
+      <div class="sb-risk-note sb-risk-note--strong" id="dashCriticalDanger">â€”</div>
     </div>
 
     <div class="card sb-risk-card">
       <div class="sb-risk-card-head">
         <div>
-          <div class="sb-risk-title">Capacité de transmission</div>
+          <div class="sb-risk-title">CapacitÃ© de transmission</div>
         </div>
         <div class="sb-risk-card-actions">
-          <button type="button" class="sb-dash-round-btn" data-dash-help="transmission" aria-label="Comprendre Capacité de transmission">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-detail="transmission" aria-label="Voir le détail Capacité de transmission">
+          <button type="button" class="sb-dash-round-btn" data-dash-help="transmission" aria-label="Comprendre CapacitÃ© de transmission">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-detail="transmission" aria-label="Voir le dÃ©tail CapacitÃ© de transmission">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block;">
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
               <circle cx="12" cy="12" r="3"></circle>
@@ -107,10 +107,10 @@
         </div>
       </div>
       <div class="sb-ring-risk-wrap">
-        <svg id="dashTransmissionRing" class="sb-risk-ring" viewBox="0 0 150 150" aria-label="Capacité de transmission"></svg>
+        <svg id="dashTransmissionRing" class="sb-risk-ring" viewBox="0 0 150 150" aria-label="CapacitÃ© de transmission"></svg>
         <div class="sb-ring-risk-center">
-          <div class="sb-ring-risk-pct" id="dashTransmissionPct">—%</div>
-          <div class="sb-ring-risk-label">capacité</div>
+          <div class="sb-ring-risk-pct" id="dashTransmissionPct">â€”%</div>
+          <div class="sb-ring-risk-label">capacitÃ©</div>
         </div>
       </div>
     </div>
@@ -118,16 +118,16 @@
     <div class="card sb-risk-card">
       <div class="sb-risk-card-head">
         <div>
-          <div class="sb-risk-title">Fiabilité des données analysées</div>
+          <div class="sb-risk-title">FiabilitÃ© des donnÃ©es analysÃ©es</div>
         </div>
         <div class="sb-risk-card-actions">
-          <button type="button" class="sb-dash-round-btn" data-dash-help="reliability" aria-label="Comprendre Fiabilité des données analysées">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="entretien" aria-label="Voir les évaluations">▦</button>
+          <button type="button" class="sb-dash-round-btn" data-dash-help="reliability" aria-label="Comprendre FiabilitÃ© des donnÃ©es analysÃ©es">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="entretien" aria-label="Voir les Ã©valuations">â–¦</button>
         </div>
       </div>
       <div class="sb-reliability-wrap">
-        <div class="sb-reliability-bars" id="dashReliabilityBars" aria-label="Fiabilité des données"></div>
-        <div class="sb-reliability-pct" id="dashReliabilityPct">—%</div>
+        <div class="sb-reliability-bars" id="dashReliabilityBars" aria-label="FiabilitÃ© des donnÃ©es"></div>
+        <div class="sb-reliability-pct" id="dashReliabilityPct">â€”%</div>
       </div>
     </div>
 
@@ -135,16 +135,16 @@
       <div class="sb-risk-card-head">
         <div>
           <div class="sb-risk-title">Risques sans action</div>
-          <div class="sb-risk-sub">Postes en danger sans formation planifiée ni entretien préparé</div>
+          <div class="sb-risk-sub">Postes en danger sans formation planifiÃ©e ni entretien prÃ©parÃ©</div>
         </div>
         <div class="sb-risk-card-actions">
-          <div class="sb-risk-count" id="dashNoActionCount">—</div>
+          <div class="sb-risk-count" id="dashNoActionCount">â€”</div>
           <button type="button" class="sb-dash-round-btn" data-dash-help="noaction" aria-label="Comprendre Risques sans action">?</button>
-          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="noaction" aria-label="Voir le détail des risques sans action">▦</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="noaction" aria-label="Voir le dÃ©tail des risques sans action">â–¦</button>
         </div>
       </div>
       <div class="sb-noaction-list" id="dashNoActionList">
-        <div class="sb-risk-loading">Chargement…</div>
+        <div class="sb-risk-loading">Chargementâ€¦</div>
       </div>
     </div>
   </div>
@@ -153,7 +153,7 @@
     <div class="modal-card sb-modal-card--medium">
       <div class="modal-header">
         <div class="sb-modal-title" id="dashboardInfoTitle">Information</div>
-        <button type="button" class="modal-x" id="dashboardInfoClose" aria-label="Fermer">×</button>
+        <button type="button" class="modal-x" id="dashboardInfoClose" aria-label="Fermer">Ã—</button>
       </div>
       <div class="modal-body">
         <div class="sb-dashboard-info-text" id="dashboardInfoBody"></div>
@@ -167,10 +167,10 @@
     <div class="modal-card sb-modal-card--dashboard-health">
       <div class="modal-header">
         <div>
-          <div class="sb-modal-title">Détail santé globale</div>
-          <div class="card-sub">Lecture de la jauge affichée sur le dashboard.</div>
+          <div class="sb-modal-title">DÃ©tail santÃ© globale</div>
+          <div class="card-sub">Lecture de la jauge affichÃ©e sur le dashboard.</div>
         </div>
-        <button type="button" class="modal-x" id="dashboardHealthDetailClose" aria-label="Fermer">×</button>
+        <button type="button" class="modal-x" id="dashboardHealthDetailClose" aria-label="Fermer">Ã—</button>
       </div>
       <div class="modal-body">
         <div id="dashboardHealthDetailBody" class="sb-dashboard-info-text"></div>
@@ -185,10 +185,10 @@
     <div class="modal-card sb-modal-card--wide">
       <div class="modal-header">
         <div>
-          <div class="sb-modal-title">Détail capacité de transmission</div>
-          <div class="card-sub">Justification du taux affiché sur le dashboard.</div>
+          <div class="sb-modal-title">DÃ©tail capacitÃ© de transmission</div>
+          <div class="card-sub">Justification du taux affichÃ© sur le dashboard.</div>
         </div>
-        <button type="button" class="modal-x" id="dashboardTransmissionDetailClose" aria-label="Fermer">×</button>
+        <button type="button" class="modal-x" id="dashboardTransmissionDetailClose" aria-label="Fermer">Ã—</button>
       </div>
       <div class="modal-body">
         <div id="dashboardTransmissionDetailBody" class="sb-dashboard-info-text"></div>
@@ -204,9 +204,9 @@
       <div class="modal-header">
         <div>
           <div class="sb-modal-title">Risques sans action</div>
-          <div class="card-sub">Postes en danger sans action de sécurisation identifiée sur le périmètre affiché.</div>
+          <div class="card-sub">Postes en danger sans action de sÃ©curisation identifiÃ©e sur le pÃ©rimÃ¨tre affichÃ©.</div>
         </div>
-        <button type="button" class="modal-x" id="dashboardNoActionClose" aria-label="Fermer">×</button>
+        <button type="button" class="modal-x" id="dashboardNoActionClose" aria-label="Fermer">Ã—</button>
       </div>
       <div class="modal-body">
         <div class="sb-dashboard-table-wrap">
@@ -215,14 +215,14 @@
               <tr>
                 <th>Poste</th>
                 <th>Service</th>
-                <th class="col-center">Criticité poste</th>
+                <th class="col-center">CriticitÃ© poste</th>
                 <th class="col-center">Titulaires</th>
                 <th class="col-center">Indice</th>
-                <th>Points d’attention</th>
+                <th>Points dâ€™attention</th>
               </tr>
             </thead>
             <tbody id="dashboardNoActionRows">
-              <tr><td colspan="6" class="sb-muted">Aucune donnée.</td></tr>
+              <tr><td colspan="6" class="sb-muted">Aucune donnÃ©e.</td></tr>
             </tbody>
           </table>
         </div>

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <link rel="stylesheet" href="novoskill_typography.css">
+  <link rel="stylesheet" href="/novoskill_typography.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Présence consultant</title>
+<title>PrÃ©sence consultant</title>
 <style>
 body {
     font-family: var(--ns-font-ui);
@@ -118,14 +118,14 @@ button:disabled {
 
     <img id="logo" src="logo.png" alt="logo">
 
-    <h2>Validation de présence – Consultant</h2>
+    <h2>Validation de prÃ©sence â€“ Consultant</h2>
 
-    <div id="formationInfo">Chargement…</div>
+    <div id="formationInfo">Chargementâ€¦</div>
 
     <div id="listeStagiaires"></div>
 
     <div id="sliderContainer">
-        <p><b>Glissez pour valider votre présence</b></p>
+        <p><b>Glissez pour valider votre prÃ©sence</b></p>
         <input type="range" id="slider" value="0" min="0" max="100">
         <button id="btnValider" onclick="validerConsultant()" disabled>Valider</button>
     </div>
@@ -172,7 +172,7 @@ async function loadData() {
 
     const f = data.formation;
 
-    // RÉCUP INFOS CONSULTANT
+    // RÃ‰CUP INFOS CONSULTANT
     ID_CONSULTANT = f.id_consultant;
     NOM_CONSULTANT = f.nom_consultant;
     PRENOM_CONSULTANT = f.prenom_consultant;
@@ -180,14 +180,14 @@ async function loadData() {
     // AFFICHAGE FORMATION
     document.getElementById("formationInfo").innerHTML = `
         <div style="font-size:var(--ns-text-md, 0.875rem);color:#777;">
-            <i>Référence : ${f.code_action_formation}</i>
+            <i>RÃ©fÃ©rence : ${f.code_action_formation}</i>
         </div>
         <div style="margin-top:5px;">
             <b>Bienvenue dans votre formation :</b><br>
             <span style="font-size:var(--ns-title-sm, 1.0625rem);font-weight:var(--ns-weight-semibold, 600);">${f.titre}</span>
         </div>
         <div style="margin-top:5px;">
-            Animée par : <b>${f.prenom_consultant} ${f.nom_consultant}</b>
+            AnimÃ©e par : <b>${f.prenom_consultant} ${f.nom_consultant}</b>
         </div>
     `;
 
@@ -251,11 +251,11 @@ async function validerConsultant() {
 
     if (data.ok) {
         document.getElementById("confirmation").style.display = "block";
-        document.getElementById("confirmation").innerHTML = "✔ Validation enregistrée.";
+        document.getElementById("confirmation").innerHTML = "âœ” Validation enregistrÃ©e.";
         document.getElementById("listeStagiaires").style.display = "none";
         document.getElementById("sliderContainer").style.display = "none";
     } else {
-        alert(data.detail || "Erreur lors de l’enregistrement.");
+        alert(data.detail || "Erreur lors de lâ€™enregistrement.");
     }
 }
 </script>

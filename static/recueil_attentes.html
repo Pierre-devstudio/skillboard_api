@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <link rel="stylesheet" href="novoskill_typography.css">
+  <link rel="stylesheet" href="/novoskill_typography.css">
   <meta charset="utf-8" />
-  <title>Recueil des Attentes — Skillboard</title>
+  <title>Recueil des Attentes â€” Skillboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { font-family: var(--ns-font-ui); }
@@ -40,13 +40,13 @@
     <div id="formationTitle" style="margin-top:8px; font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-title-md, 1.25rem);"></div>
   </header>
 
-  <h1>Recueil des attentes et autoévaluation</h1>
+  <h1>Recueil des attentes et autoÃ©valuation</h1>
 
   <div id="participantInfo" style="font-weight: var(--ns-weight-semibold, 600); margin-bottom: 10px;"></div>
 
   <p class="muted" id="introText">
-    Vous êtes inscrit(e) à une formation organisée par JMB Consultant.
-    Merci de décrire vos attentes vis-à-vis de cette formation et d’évaluer votre niveau sur les prérequis indiqués ci-dessous.
+    Vous Ãªtes inscrit(e) Ã  une formation organisÃ©e par JMB Consultant.
+    Merci de dÃ©crire vos attentes vis-Ã -vis de cette formation et dâ€™Ã©valuer votre niveau sur les prÃ©requis indiquÃ©s ci-dessous.
   </p>
 
   <div id="alert"></div>
@@ -54,14 +54,14 @@
   <!-- Bloc attentes -->
   <fieldset>
     <legend>Vos attentes personnelles</legend>
-    <textarea id="attentes" placeholder="Décrivez ici ce que vous attendez de cette formation..."></textarea>
+    <textarea id="attentes" placeholder="DÃ©crivez ici ce que vous attendez de cette formation..."></textarea>
   </fieldset>
 
   <div style="height:1px; background:#eee; margin:16px 0;"></div>
 
-  <!-- Bloc autoévaluation -->
+  <!-- Bloc autoÃ©valuation -->
   <fieldset>
-    <legend>Autoévaluation des prérequis</legend>
+    <legend>AutoÃ©valuation des prÃ©requis</legend>
     <div id="listePrerequis"></div>
   </fieldset>
 
@@ -71,10 +71,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-  // Backend unifié
+  // Backend unifiÃ©
   const API_BASE = "https://skillboard-services.onrender.com";
 
-  // Supabase (inchangé)
+  // Supabase (inchangÃ©)
   const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -106,14 +106,14 @@
     }
   }
 
-  // -------------------- Chargement prérequis --------------------
+  // -------------------- Chargement prÃ©requis --------------------
   async function chargerPrerequis(id_effectif) {
     const { data, error } = await sb.rpc("rpc_get_prerequis_from_effectif", {
       p_id_effectif: id_effectif,
     });
 
     if (error) {
-      alertBox("error", "Erreur de chargement des prérequis : " + error.message);
+      alertBox("error", "Erreur de chargement des prÃ©requis : " + error.message);
       return;
     }
 
@@ -184,10 +184,10 @@
 
       if (!response.ok) {
         if (response.status === 409) {
-          // cas géré côté API (doublon)
+          // cas gÃ©rÃ© cÃ´tÃ© API (doublon)
           alertBox(
             "error",
-            "Un recueil d'attentes a déjà été enregistré pour ce participant."
+            "Un recueil d'attentes a dÃ©jÃ  Ã©tÃ© enregistrÃ© pour ce participant."
           );
           return;
         }
@@ -200,14 +200,14 @@
       }
 
       // OK
-      alertBox("success", "Merci ! Votre réponse a bien été enregistrée.");
+      alertBox("success", "Merci ! Votre rÃ©ponse a bien Ã©tÃ© enregistrÃ©e.");
       document.getElementById("submitBtn").disabled = true;
     } catch (e) {
       alertBox("error", "Erreur : " + e.message);
     }
   }
 
-  // -------------------- Wiring évènements --------------------
+  // -------------------- Wiring Ã©vÃ¨nements --------------------
   document.getElementById("submitBtn").addEventListener("click", (e) => {
     e.preventDefault();
     soumettreFormulaire();

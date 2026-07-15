@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <link rel="stylesheet" href="novoskill_typography.css">
+  <link rel="stylesheet" href="/novoskill_typography.css">
   <meta charset="utf-8" />
-  <title>Adaptations en cours de formation — Skillboard</title>
+  <title>Adaptations en cours de formation â€” Skillboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { font-family: var(--ns-font-ui); }
@@ -195,7 +195,7 @@
 
   <div id="alert"></div>
 
-  <!-- ÉTAPE 1 : accueil + liste -->
+  <!-- Ã‰TAPE 1 : accueil + liste -->
   <section class="section" id="sectionAccueil">
     <h1>Adaptations en cours de formation</h1>
     <p id="introText" class="muted">
@@ -204,8 +204,8 @@
   </section>
 
   <section class="section" id="sectionListe">
-    <h2>Adaptations déjà saisies</h2>
-    <p class="small" id="noAdaptMessage">Aucune adaptation n’a encore été enregistrée pour cette action de formation.</p>
+    <h2>Adaptations dÃ©jÃ  saisies</h2>
+    <p class="small" id="noAdaptMessage">Aucune adaptation nâ€™a encore Ã©tÃ© enregistrÃ©e pour cette action de formation.</p>
     <div id="adaptationsList"></div>
 
     <div class="actions" style="margin-top:16px;">
@@ -213,19 +213,19 @@
     </div>
   </section>
 
-  <!-- ÉTAPE 2 : formulaire (masqué au début) -->
+  <!-- Ã‰TAPE 2 : formulaire (masquÃ© au dÃ©but) -->
   <section class="section hidden" id="sectionForm">
     <h2>Nouvelle adaptation</h2>
     <p class="small">
-      Utilisez ce formulaire pour tracer toute adaptation significative du déroulé de la formation
-      (contenu, durée, supports, objectifs, organisation, etc.).
+      Utilisez ce formulaire pour tracer toute adaptation significative du dÃ©roulÃ© de la formation
+      (contenu, durÃ©e, supports, objectifs, organisation, etc.).
     </p>
 
     <fieldset>
       <legend>Adaptation</legend>
 
       <div class="form-row">
-        <div class="form-label">Portée de l'adaptation *</div>
+        <div class="form-label">PortÃ©e de l'adaptation *</div>
         <div class="radio-row">
           <label><input type="radio" name="portee_adaptation" value="GROUPE"> Pour le groupe</label>
           <label><input type="radio" name="portee_adaptation" value="INDIVIDUEL"> Pour un stagiaire</label>
@@ -233,9 +233,9 @@
       </div>
 
       <div class="form-row hidden" id="rowStagiaire">
-        <div class="form-label">Stagiaire concerné *</div>
+        <div class="form-label">Stagiaire concernÃ© *</div>
         <select id="stagiaire_select" class="select-inline">
-          <option value="">Sélectionnez un stagiaire…</option>
+          <option value="">SÃ©lectionnez un stagiaireâ€¦</option>
         </select>
       </div>
 
@@ -247,10 +247,10 @@
       <div class="form-row">
         <div class="form-label">Type d'adaptation *</div>
         <select id="type_adaptation" class="select-inline">
-          <option value="">Sélectionnez un type…</option>
+          <option value="">SÃ©lectionnez un typeâ€¦</option>
           <option value="CONTENU">Contenu</option>
-          <option value="DUREE">Durée</option>
-          <option value="SUPPORTS">Supports pédagogiques</option>
+          <option value="DUREE">DurÃ©e</option>
+          <option value="SUPPORTS">Supports pÃ©dagogiques</option>
           <option value="OBJECTIFS">Objectifs de la formation</option>
           <option value="ORGANISATION">Organisation / logistique</option>
           <option value="PUBLIC">Public / composition du groupe</option>
@@ -259,27 +259,27 @@
       </div>
 
       <div class="form-row">
-        <div class="form-label">Motif (résumé court)</div>
-        <div class="form-help">Exemples : “Niveau groupe hétérogène”, “Demande spécifique du client”, “Problème matériel”…</div>
-        <input type="text" id="motif_court" placeholder="Résumé en quelques mots (facultatif)">
+        <div class="form-label">Motif (rÃ©sumÃ© court)</div>
+        <div class="form-help">Exemples : â€œNiveau groupe hÃ©tÃ©rogÃ¨neâ€, â€œDemande spÃ©cifique du clientâ€, â€œProblÃ¨me matÃ©rielâ€â€¦</div>
+        <input type="text" id="motif_court" placeholder="RÃ©sumÃ© en quelques mots (facultatif)">
       </div>
 
       <div class="form-row">
-        <div class="form-label">Situation prévue (avant adaptation)</div>
-        <div class="form-help">Décrivez brièvement ce qui était initialement prévu (facultatif).</div>
-        <textarea id="description_avant" placeholder="Exemple : activité d’étude de cas sur 2h, séquence prévue sur le chapitre X…"></textarea>
+        <div class="form-label">Situation prÃ©vue (avant adaptation)</div>
+        <div class="form-help">DÃ©crivez briÃ¨vement ce qui Ã©tait initialement prÃ©vu (facultatif).</div>
+        <textarea id="description_avant" placeholder="Exemple : activitÃ© dâ€™Ã©tude de cas sur 2h, sÃ©quence prÃ©vue sur le chapitre Xâ€¦"></textarea>
       </div>
 
       <div class="form-row">
-        <div class="form-label">Adaptation réalisée *</div>
-        <div class="form-help">Décrivez concrètement ce que vous avez fait à la place (obligatoire).</div>
-        <textarea id="description_apres" placeholder="Exemple : activité remplacée par un quiz interactif, réduction du temps sur le chapitre X, ajout d’exemples terrain…"></textarea>
+        <div class="form-label">Adaptation rÃ©alisÃ©e *</div>
+        <div class="form-help">DÃ©crivez concrÃ¨tement ce que vous avez fait Ã  la place (obligatoire).</div>
+        <textarea id="description_apres" placeholder="Exemple : activitÃ© remplacÃ©e par un quiz interactif, rÃ©duction du temps sur le chapitre X, ajout dâ€™exemples terrainâ€¦"></textarea>
       </div>
 
       <div class="form-row">
-        <div class="form-label">Impact sur les objectifs pédagogiques</div>
+        <div class="form-label">Impact sur les objectifs pÃ©dagogiques</div>
         <select id="impact_objectifs" class="select-inline">
-          <option value="">Sélectionnez une option…</option>
+          <option value="">SÃ©lectionnez une optionâ€¦</option>
           <option value="AUCUN">Aucun impact</option>
           <option value="PARTIEL">Impact partiel sur certains objectifs</option>
           <option value="MAJEUR">Impact majeur sur les objectifs</option>
@@ -287,7 +287,7 @@
       </div>
 
       <div class="form-row">
-        <div class="form-label">Impact sur l'évaluation / la validation des acquis</div>
+        <div class="form-label">Impact sur l'Ã©valuation / la validation des acquis</div>
         <div class="radio-row">
           <label><input type="radio" name="impact_evaluation" value="oui"> Oui</label>
           <label><input type="radio" name="impact_evaluation" value="non"> Non</label>
@@ -295,18 +295,18 @@
       </div>
 
       <div class="form-row hidden" id="rowImpactEvalComment">
-        <div class="form-label">Précisions en cas d'impact sur l'évaluation</div>
-        <textarea id="impact_eval_commentaire" placeholder="Précisez comment l’adaptation peut influencer l’évaluation ou la validation des acquis."></textarea>
+        <div class="form-label">PrÃ©cisions en cas d'impact sur l'Ã©valuation</div>
+        <textarea id="impact_eval_commentaire" placeholder="PrÃ©cisez comment lâ€™adaptation peut influencer lâ€™Ã©valuation ou la validation des acquis."></textarea>
       </div>
 
       <div class="form-row">
-        <div class="form-label">Commentaire complémentaire</div>
-        <textarea id="commentaire_libre" placeholder="Toute information complémentaire utile (facultatif)."></textarea>
+        <div class="form-label">Commentaire complÃ©mentaire</div>
+        <textarea id="commentaire_libre" placeholder="Toute information complÃ©mentaire utile (facultatif)."></textarea>
       </div>
 
       <div class="form-row" style="margin-top:14px;">
         <div class="small" style="margin-bottom:4px;">
-          Faites glisser le curseur à droite pour confirmer l'enregistrement de cette adaptation.
+          Faites glisser le curseur Ã  droite pour confirmer l'enregistrement de cette adaptation.
         </div>
         <div class="slider-row">
           <input type="range" id="confirmSlider" min="0" max="100" step="10" value="0">
@@ -315,7 +315,7 @@
       </div>
 
       <div class="actions">
-        <button class="btn secondary" type="button" id="btnReset">Réinitialiser le formulaire</button>
+        <button class="btn secondary" type="button" id="btnReset">RÃ©initialiser le formulaire</button>
         <button class="btn" type="button" id="btnSave" disabled>Enregistrer l'adaptation</button>
       </div>
 
@@ -323,7 +323,7 @@
   </section>
 
   <footer>
-    Outil de recueil des adaptations développé avec Skillboard par<br>
+    Outil de recueil des adaptations dÃ©veloppÃ© avec Skillboard par<br>
     <a href="https://www.jmbconsultant.fr" target="_blank" rel="noopener noreferrer">JMB CONSULTANT</a>.
   </footer>
 
@@ -375,7 +375,7 @@
     }
 
     function fillHeaderAndIntro(ctx) {
-      // plus de code_formation dans le titre, uniquement l'intitulé
+      // plus de code_formation dans le titre, uniquement l'intitulÃ©
       const titre = ctx.titre_formation;
 
       document.getElementById("formationTitle").textContent = titre;
@@ -395,21 +395,21 @@
 
       const intro = document.getElementById("introText");
       intro.innerHTML =
-        `${nomComplet}, ce formulaire vous permet de tracer les adaptations réalisées en cours de formation ` +
-        `pour l'action <strong>${titre}</strong> organisée par JMB CONSULTANT.<br><br>` +
-        `Merci de saisir chaque adaptation significative (contenu, durée, supports, organisation...) afin d'assurer la traçabilité ` +
-        `dans le cadre de notre démarche d'amélioration continue et des exigences de suivi pédagogique.`;
+        `${nomComplet}, ce formulaire vous permet de tracer les adaptations rÃ©alisÃ©es en cours de formation ` +
+        `pour l'action <strong>${titre}</strong> organisÃ©e par JMB CONSULTANT.<br><br>` +
+        `Merci de saisir chaque adaptation significative (contenu, durÃ©e, supports, organisation...) afin d'assurer la traÃ§abilitÃ© ` +
+        `dans le cadre de notre dÃ©marche d'amÃ©lioration continue et des exigences de suivi pÃ©dagogique.`;
     }
 
     function fillStagiaires(ctx) {
       const select = document.getElementById("stagiaire_select");
-      select.innerHTML = '<option value="">Sélectionnez un stagiaire…</option>';
+      select.innerHTML = '<option value="">SÃ©lectionnez un stagiaireâ€¦</option>';
 
       (ctx.stagiaires || []).forEach(s => {
         const opt = document.createElement("option");
         let label = s.nom_complet;
         if (s.entreprise) {
-          label += " — " + s.entreprise;
+          label += " â€” " + s.entreprise;
         }
         opt.value = s.id_action_formation_effectif;
         opt.textContent = label;
@@ -472,7 +472,7 @@
         }
 
         const descLine = document.createElement("div");
-        descLine.innerHTML = `<strong>Adaptation réalisée :</strong> ${a.description_apres}`;
+        descLine.innerHTML = `<strong>Adaptation rÃ©alisÃ©e :</strong> ${a.description_apres}`;
         body.appendChild(descLine);
 
         card.appendChild(header);
@@ -535,12 +535,12 @@
 
     function collectPayload() {
       if (!contextData) {
-        throw new Error("Contexte non chargé.");
+        throw new Error("Contexte non chargÃ©.");
       }
 
       const radiosPortee = document.querySelectorAll('input[name="portee_adaptation"]:checked');
       if (radiosPortee.length === 0) {
-        throw new Error("Merci de préciser si l'adaptation concerne le groupe ou un stagiaire.");
+        throw new Error("Merci de prÃ©ciser si l'adaptation concerne le groupe ou un stagiaire.");
       }
       const portee = radiosPortee[0].value;
 
@@ -549,7 +549,7 @@
         const sel = document.getElementById("stagiaire_select");
         idEffectif = sel.value || null;
         if (!idEffectif) {
-          throw new Error("Merci de sélectionner le stagiaire concerné.");
+          throw new Error("Merci de sÃ©lectionner le stagiaire concernÃ©.");
         }
       }
 
@@ -561,12 +561,12 @@
 
       const typeAdapt = document.getElementById("type_adaptation").value;
       if (!typeAdapt) {
-        throw new Error("Merci de sélectionner le type d'adaptation.");
+        throw new Error("Merci de sÃ©lectionner le type d'adaptation.");
       }
 
       const descApres = (document.getElementById("description_apres").value || "").trim();
       if (!descApres) {
-        throw new Error("Merci de décrire l'adaptation réalisée.");
+        throw new Error("Merci de dÃ©crire l'adaptation rÃ©alisÃ©e.");
       }
 
       const motif = (document.getElementById("motif_court").value || "").trim() || null;
@@ -582,7 +582,7 @@
         if (v === "oui") {
           impactEval = true;
           if (!impactEvalComment) {
-            throw new Error("Merci de préciser l'impact sur l'évaluation / validation des acquis.");
+            throw new Error("Merci de prÃ©ciser l'impact sur l'Ã©valuation / validation des acquis.");
           }
         } else {
           impactEval = false;
@@ -614,7 +614,7 @@
         const slider = document.getElementById("confirmSlider");
         const vSlider = parseInt(slider.value || "0", 10);
         if (vSlider < 100) {
-          throw new Error("Merci de confirmer l'enregistrement de l'adaptation en amenant le curseur à 100 %.");
+          throw new Error("Merci de confirmer l'enregistrement de l'adaptation en amenant le curseur Ã  100 %.");
         }
 
         const payload = collectPayload();
@@ -633,7 +633,7 @@
           throw new Error(detail);
         }
 
-        alertBox("success", "L'adaptation a bien été enregistrée.");
+        alertBox("success", "L'adaptation a bien Ã©tÃ© enregistrÃ©e.");
         resetForm();
         document.getElementById("sectionForm").classList.add("hidden");
         await loadContext(contextData.id_action_formation);
@@ -646,7 +646,7 @@
     window.addEventListener("DOMContentLoaded", () => {
       const id = getQueryParam("id");
       if (!id) {
-        alertBox("error", "Identifiant de l'action de formation manquant dans l'URL. Le lien utilisé n'est pas valide.");
+        alertBox("error", "Identifiant de l'action de formation manquant dans l'URL. Le lien utilisÃ© n'est pas valide.");
         return;
       }
 
