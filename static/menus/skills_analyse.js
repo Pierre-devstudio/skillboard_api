@@ -1761,7 +1761,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return `
       <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
         <div style="position:relative; width:${size}px; height:${size}px;">
-          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b788c288e596"></use></svg>
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                    stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                    transform="rotate(-90 ${size / 2} ${size / 2})" />
+          </svg>
           <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
             <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">
               ${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span>
@@ -2895,7 +2900,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
           <div style="position:relative; width:${size}px; height:${size}px;">
-            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b788c288e596"></use></svg>
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                      transform="rotate(-90 ${size / 2} ${size / 2})" />
+            </svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
               <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">
                 ${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span>
@@ -4220,7 +4230,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
           <div style="position:relative; width:${size}px; height:${size}px;">
-            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b788c288e596"></use></svg>
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                      transform="rotate(-90 ${size / 2} ${size / 2})" />
+            </svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
               <div style="font-weight:var(--ns-weight-bold, 700); font-size:var(--ns-kpi, 1.75rem); line-height:var(--ns-leading-tight, 1.15);">${s}<span style="font-size:var(--ns-text-xs, 0.75rem); font-weight:var(--ns-weight-bold, 700);">%</span></div>
             </div>
