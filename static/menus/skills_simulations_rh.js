@@ -684,8 +684,8 @@
         <div class="sim-lego-person-score">
           <span class="ns-badge sb-badge ${idx === 0 ?"sb-badge--success" : ""}">${esc(r.score_pct || 0)}%</span>
           <div class="sim-lego-person-actions">
-            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-sim-add-move="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg></span><span>Tester mobilité</span></button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-prepare-training="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg></span><span>Projeter niveau</span></button>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-sim-add-move="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-2020cde8c7f6"></use></svg></span><span>Tester mobilité</span></button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-prepare-training="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-0fdedc5844b6"></use></svg></span><span>Projeter niveau</span></button>
           </div>
         </div>
       </div>
