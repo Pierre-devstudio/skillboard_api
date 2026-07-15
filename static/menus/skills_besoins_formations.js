@@ -73,16 +73,16 @@
   function icon(name, size = 16) {
     const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
     const map = {
-      eye: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-df19286f4a85"></use></svg>`,
-      edit: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-30288fbd4071"></use></svg>`,
-      send: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg>`,
-      check: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      close: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      pdf: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      list: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      group: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-dc4823216183"></use></svg>`,
-      chevronDown: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7657ca7d06ee"></use></svg>`,
-      chevronUp: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-cac11ad74a93"></use></svg>`
+      eye: `<svg ${attrs}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
+      edit: `<svg ${attrs}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+      send: `<svg ${attrs}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`,
+      check: `<svg ${attrs}><path d="M20 6 9 17l-5-5"/></svg>`,
+      close: `<svg ${attrs}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+      pdf: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`,
+      list: `<svg ${attrs}><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>`,
+      group: `<svg ${attrs}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      chevronDown: `<svg ${attrs}><path d="m6 9 6 6 6-6"/></svg>`,
+      chevronUp: `<svg ${attrs}><path d="m18 15-6-6-6 6"/></svg>`
     };
     return map[name] || "";
   }
@@ -173,12 +173,12 @@
     const el = byId("bfDestinationText");
     if (!el) return;
     const dbBadge = tableReady === false
-      ? `<span class="ns-badge sb-badge sb-badge--warning">Migration SQL à appliquer</span>`
+      ? `<span class="sb-badge sb-badge--warning">Migration SQL à appliquer</span>`
       : "";
     if (dest && dest.can_send) {
       el.innerHTML = `
         <span class="bf-destination-label">Destination</span>
-        <span class="ns-badge sb-badge sb-badge--success">Studio actif</span>
+        <span class="sb-badge sb-badge--success">Studio actif</span>
         <span>${escapeHtml(dest.nom_owner || dest.id_owner || "Studio")}</span>
         ${dbBadge}
       `;
@@ -186,7 +186,7 @@
     }
     el.innerHTML = `
       <span class="bf-destination-label">Destination</span>
-      <span class="ns-badge sb-badge sb-badge--danger">Envoi bloqué</span>
+      <span class="sb-badge sb-badge--danger">Envoi bloqué</span>
       <span>${escapeHtml(dest?.reason || "Aucun Studio destinataire configuré.")}</span>
       ${dbBadge}
     `;
@@ -483,13 +483,13 @@
                 <small>${escapeHtml(item.intitule_poste || "Poste non précisé")} · ${escapeHtml(item.nom_service || "Service non précisé")}</small>
               </div>
             </div>
-            <div class="bf-cell--center"><span class="ns-badge bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
-            <div class="bf-cell--center"><span class="ns-badge bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span></div>
+            <div class="bf-cell--center"><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
+            <div class="bf-cell--center"><span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span></div>
             <div class="bf-object">
               <strong>${escapeHtml(objectTitle(item))}</strong>
               <small>${escapeHtml(objectSub(item))}</small>
             </div>
-            <div class="bf-cell--center bf-status-cell"><span class="ns-badge bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
+            <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
             <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
             <div class="bf-row-actions">
               <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${idx}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
@@ -524,7 +524,7 @@
                   <strong>${group.items.length}</strong>
                   <small>${group.items.every(x => isAnalyseProposal(x.item)) ? (group.items.length > 1 ? "propositions" : "proposition") : (group.items.length > 1 ? "demandes" : "demande")}</small>
                 </div>
-                <div class="bf-cell--center"><span class="ns-badge bf-badge ${badgeClass("statut", mainStatus)}">${escapeHtml(groupMainStatusLabel(group))}</span></div>
+                <div class="bf-cell--center"><span class="bf-badge ${badgeClass("statut", mainStatus)}">${escapeHtml(groupMainStatusLabel(group))}</span></div>
                 <div class="bf-date bf-cell--center"><span>${escapeHtml(groupMainEcheance(group))}</span><small>${escapeHtml(priorityLabel(mainPriority))}</small></div>
                 <span class="bf-group-chevron" aria-hidden="true">${isOpen ? icon("chevronUp", 15) : icon("chevronDown", 15)}</span>
               </button>
@@ -540,13 +540,13 @@
                   </div>
                   ${group.items.map(({ item, index }) => `
                     <div class="bf-group-demand-row" data-bf-row="${index}" data-bf-key="${escapeHtml(itemStableKey(item, index))}">
-                      <div class="bf-cell--center"><span class="ns-badge bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
-                      <div class="bf-cell--center"><span class="ns-badge bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span></div>
+                      <div class="bf-cell--center"><span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span></div>
+                      <div class="bf-cell--center"><span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span></div>
                       <div class="bf-object">
                         <strong>${escapeHtml(objectTitle(item))}</strong>
                         <small>${escapeHtml(objectSub(item))}</small>
                       </div>
-                      <div class="bf-cell--center bf-status-cell"><span class="ns-badge bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
+                      <div class="bf-cell--center bf-status-cell"><span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span></div>
                       <div class="bf-date bf-cell--center"><span>${escapeHtml(echeanceLabel(item))}</span><small>${escapeHtml(priorityLabel(item.priorite))}</small></div>
                       <div class="bf-row-actions">
                         <button type="button" class="sb-icon-btn bf-square-action-btn" data-bf-view="${index}" title="Voir le détail" aria-label="Voir le détail">${icon("eye")}</button>
@@ -663,9 +663,9 @@
     body.innerHTML = `
       <div class="bf-detail-section">
         <div class="bf-detail-topline">
-          <span class="ns-badge bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span>
-          <span class="ns-badge bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span>
-          <span class="ns-badge bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span>
+          <span class="bf-badge ${badgeClass("statut", item.statut)}">${escapeHtml(item.statut_label || "À qualifier")}</span>
+          <span class="bf-badge ${badgeClass("origin", item.origine)}">${escapeHtml(originLabel(item.origine))}</span>
+          <span class="bf-badge bf-badge--blue">${escapeHtml(finalityLabel(item))}</span>
         </div>
         <h3>${escapeHtml(objectTitle(item))}</h3>
         <p>${escapeHtml(objectSub(item))}</p>
@@ -688,7 +688,7 @@
       <div class="bf-detail-section">
         <h4>Compétence ou sujet concerné</h4>
         <div class="bf-detail-chips">
-          ${item.code_competence ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(item.code_competence)}</span>` : ""}
+          ${item.code_competence ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(item.code_competence)}</span>` : ""}
           <span>${escapeHtml(item.intitule_competence || "Aucune compétence directement rattachée")}</span>
         </div>
       </div>

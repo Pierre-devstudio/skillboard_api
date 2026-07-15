@@ -539,8 +539,8 @@
   function renderSingleDayEvent(ev, dayKey){
     const id = clean(ev.id_evenement || ev.id);
     return `
-      <button type="button" class="ns-badge studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)}" draggable="true" data-event-id="${esc(id)}" data-event-day="${esc(dayKey)}">
-        <span class="ns-badge studio-rh-event-chip-main">
+      <button type="button" class="studio-rh-event-chip studio-rh-row--${esc(ev.type_evenement)}" draggable="true" data-event-id="${esc(id)}" data-event-day="${esc(dayKey)}">
+        <span class="studio-rh-event-chip-main">
           <span class="studio-rh-event-dot" aria-hidden="true"></span>
           <span class="studio-rh-event-title">${esc(eventTitle(ev))}</span>
         </span>
@@ -686,7 +686,7 @@
     const label = `Voir le détail du ${dateOnlyFr(dayKey, true)} : ${total} événement${total > 1 ? "s" : ""}`;
     return `
       <button type="button" class="studio-rh-day-detail-btn" data-day-total="${esc(dayKey)}" aria-label="${esc(label)}" title="${esc(label)}">
-        <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>`;
   }
 
@@ -820,7 +820,7 @@
     }
     return `
       <div class="studio-rh-detail-day-head">
-        <span class="ns-badge studio-rh-detail-date-pill">${esc(dateOnlyFr(dayKey, true))}</span>
+        <span class="studio-rh-detail-date-pill">${esc(dateOnlyFr(dayKey, true))}</span>
         <span>${events.length} événement${events.length > 1 ? "s" : ""} visible${events.length > 1 ? "s" : ""}</span>
       </div>
       ${groupedEvents(events).map(group => `
@@ -943,15 +943,15 @@
       ${commentaire ? `<div class="studio-rh-detail-note"><span>Commentaire / consigne</span><p>${esc(commentaire)}</p></div>` : ""}
       <div class="studio-rh-detail-actions">
         <button type="button" class="sb-btn sb-btn--soft" data-cal-rh-detail-action="edit" data-event-id="${esc(id)}">
-          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg></span>
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
           <span class="sb-btn-label">Modifier</span>
         </button>
         <button type="button" class="sb-btn sb-btn--soft" data-cal-rh-detail-action="cancel" data-event-id="${esc(id)}">
-          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg></span>
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
           <span class="sb-btn-label">Annuler</span>
         </button>
         <button type="button" class="sb-btn sb-btn--soft" data-cal-rh-detail-action="archive" data-event-id="${esc(id)}">
-          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg></span>
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></span>
           <span class="sb-btn-label">Archiver</span>
         </button>
       </div>`;

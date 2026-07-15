@@ -813,8 +813,8 @@
       return;
     }
 
-    const iconEye = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
-    const iconPdf = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
+    const iconEye = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const iconPdf = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
 
     list.forEach(p => {
       const row = document.createElement("div");
@@ -1458,7 +1458,7 @@
       const critTxt = (crit === null || crit === undefined || crit === "") ? "" : String(crit).trim();
 
       const nivLbl = _nivLabel(niv);
-      const nivCell = (!nivLbl) ? "—" : `<span class="ns-badge sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
+      const nivCell = (!nivLbl) ? "—" : `<span class="sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
 
       const tr = document.createElement("tr");
       const critVal = Number(critTxt);
@@ -1470,11 +1470,11 @@
         critVal >= 20 ? 2 : 1);
 
       const critHtml = isFinite(critVal)
-        ? `<span class="ns-badge sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${escapeHtml(String(critVal))}">${escapeHtml(String(critVal))}</span>`
+        ? `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${escapeHtml(String(critVal))}">${escapeHtml(String(critVal))}</span>`
         : "—";
 
       tr.innerHTML = `
-        <td class="col-center">${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
+        <td class="col-center">${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
         <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
         <td class="col-center">${nivCell}</td>
         <td class="col-center">${critHtml}</td>
@@ -1488,7 +1488,7 @@
         btnCrit.className = "sb-icon-btn";
         btnCrit.title = "Évaluer la criticité";
         btnCrit.setAttribute("aria-label", "Évaluer la criticité");
-        btnCrit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-criticality"></use></svg>';
+        btnCrit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>';
         btnCrit.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -1501,7 +1501,7 @@
         btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
         btnPdf.title = "Ouvrir la fiche compétence PDF";
         btnPdf.setAttribute("aria-label", "Ouvrir la fiche compétence PDF");
-        btnPdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
+        btnPdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
         btnPdf.addEventListener("click", async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -1568,7 +1568,7 @@
         btnEdit.className = "sb-icon-btn";
         btnEdit.title = "Modifier le paramétrage de la certification";
         btnEdit.setAttribute("aria-label", "Modifier le paramétrage de la certification");
-        btnEdit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>';
+        btnEdit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
         btnEdit.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();

@@ -61,10 +61,10 @@
 
   function iconSvg(kind){
     if (kind === "edit") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.5L19 9.5a2.1 2.1 0 0 0-3-3L5.5 17H4v3Z"></path><path d="M14.5 7 17 9.5"></path></svg>`;
     }
     if (kind === "archive") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M6 7l1 13h10l1-13"></path><path d="M9 7V4h6v3"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>`;
     }
     return "";
   }

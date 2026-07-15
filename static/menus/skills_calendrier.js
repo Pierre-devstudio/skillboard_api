@@ -199,15 +199,15 @@
 
   function calIcon(name) {
     const icons = {
-      calendar: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-db8be7de0c2c"></use></svg>',
-      eye: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-648638a7cb8b"></use></svg>',
-      ignore: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-4784cb8bb86c"></use></svg>',
-      edit: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-30288fbd4071"></use></svg>',
-      done: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3b61e5de9520"></use></svg>',
-      report: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7626fc83e2b2"></use></svg>',
-      cancel: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-5865e60d8ea5"></use></svg>',
-      expand: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-fdef5ac26e01"></use></svg>',
-      reduce: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3d6f6584080d"></use></svg>'
+      calendar: '<svg viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M12 14v4"/><path d="M10 16h4"/></svg>',
+      eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+      ignore: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
+      edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      done: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>',
+      report: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+      cancel: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>',
+      expand: '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/></svg>',
+      reduce: '<svg viewBox="0 0 24 24"><path d="M9 9H5V5"/><path d="m15 9 4-4"/><path d="M9 15H5v4"/><path d="m15 15 4 4"/></svg>'
     };
     return `<span class="sb-btn-icon" aria-hidden="true">${icons[name] || icons.eye}</span>`;
   }
@@ -362,7 +362,7 @@
            draggable="true"
            data-suggestion-id="${escapeHtml(s.id_suggestion || "")}">
         <div class="cal-suggestion-top">
-          <span class="ns-badge cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
+          <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
           <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
         </div>
         <div class="cal-suggestion-title">${escapeHtml(s.titre || "Action à planifier")}</div>
@@ -506,7 +506,7 @@
       const cls = `${chipClass(seg.event)} ${seg.event.is_overdue ? "is-overdue" : ""}`.trim();
       return `
         <button type="button"
-                class="ns-badge cal-event-chip ${cls}"
+                class="cal-event-chip ${cls}"
                 style="grid-column:${seg.startCol + 1} / ${seg.endCol + 2}; grid-row:${seg.weekIndex + 1}; --lane:${seg.lane};"
                 data-event-id="${escapeHtml(seg.event.id_evenement || "")}" title="${escapeHtml(seg.event.titre || "Événement")}">
           <span>${escapeHtml(eventTypeIcon(seg.event.type_evenement))}</span>
@@ -541,8 +541,8 @@
     host.innerHTML = `
       <div class="cal-detail-title">${escapeHtml(event.titre || "Événement RH")}</div>
       <div class="cal-detail-badges">
-        <span class="ns-badge cal-type-pill ${typeClass(event)}">${escapeHtml(typeLabel(event))}</span>
-        <span class="ns-badge cal-status-pill">${escapeHtml(event.statut || "planifie")}</span>
+        <span class="cal-type-pill ${typeClass(event)}">${escapeHtml(typeLabel(event))}</span>
+        <span class="cal-status-pill">${escapeHtml(event.statut || "planifie")}</span>
       </div>
       <div class="cal-detail-list">
         <div><span>Début</span><strong>${escapeHtml(formatDateTimeFr(event.date_debut))}</strong></div>
@@ -571,7 +571,7 @@
     host.innerHTML = `
       <div class="cal-detail-title">${escapeHtml(s.titre || "Action RH à planifier")}</div>
       <div class="cal-detail-badges">
-        <span class="ns-badge cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
+        <span class="cal-type-pill ${typeClass(s)}">${escapeHtml(typeLabel(s))}</span>
         <span class="cal-priority ${pr.cls}">${escapeHtml(pr.label)}</span>
       </div>
       <div class="cal-detail-list">

@@ -56,7 +56,7 @@
     }).join("");
 
     const labels = series.map((s, idx) => `<span class="pp-legend"><i style="background:${colors[idx % colors.length]}"></i>${P.escapeHtml(s.label)}</span>`).join("");
-    el.innerHTML = `<div class="pp-chart-scroll"><svg viewBox="0 0 ${w} ${h}" class="pp-svg-chart ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-0bdc4a8f40ba"></use></svg></div><div class="pp-chart-legend">${labels}</div>`;
+    el.innerHTML = `<div class="pp-chart-scroll"><svg viewBox="0 0 ${w} ${h}" class="pp-svg-chart"><line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#e5e7eb"/><line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="#e5e7eb"/>${paths}</svg></div><div class="pp-chart-legend">${labels}</div>`;
   }
 
   async function load() {

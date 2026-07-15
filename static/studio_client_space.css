@@ -188,11 +188,20 @@ a{
 }
 
 .cs-badges{
+  display:flex;
+  gap:8px;
   flex-wrap:wrap;
   margin:8px 0 14px 0;
 }
 
 .cs-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:var(--ns-text-xs, 0.75rem);
+  font-weight:var(--ns-weight-semibold, 600);
   border:1px solid transparent;
 }
 
@@ -589,6 +598,7 @@ a{
 
 .cs-org-badge{
   min-width:86px;
+  justify-content:center;
 }
 
 .cs-org-badge--entreprise{

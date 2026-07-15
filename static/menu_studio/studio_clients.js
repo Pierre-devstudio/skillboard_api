@@ -531,7 +531,7 @@
     body.innerHTML = _clientContacts.map(c => {
       const telParts = [c.tel_ca, c.tel2_ca].filter(Boolean).map(esc);
       const coord = [c.mail_ca ? esc(c.mail_ca) : "", telParts.join(" / ")].filter(Boolean).join("<br>") || "—";
-      const principal = c.est_principal ? `<span class="ns-badge sb-badge sb-badge--accent-soft">Contact principal</span>` : `<span class="muted">—</span>`;
+      const principal = c.est_principal ? `<span class="sb-badge sb-badge--accent-soft">Contact principal</span>` : `<span class="muted">—</span>`;
       return `
         <tr data-contact-id="${esc(c.id_contact)}">
           <td><div class="sb-client-contact-name">${esc(fullContactName(c))}</div></td>
@@ -811,25 +811,43 @@
 
   function getPdfIconSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-23038fa6597c"></use></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
+        <path d="M14 2v6h6"></path>
+        <path d="M8.5 15.5h7"></path>
+        <path d="M8.5 18.5h5"></path>
+      </svg>
     `;
   }
 
   function getPencilIconSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"></path>
+        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+      </svg>
     `;
   }
 
   function getTrashIconSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14H6L5 6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
+        <path d="M9 6V4h6v2"></path>
+      </svg>
     `;
   }
 
   function getCommercialIconSvg(){
     return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-113b1285cbee"></use></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+        <path d="M7 9h10"></path>
+        <path d="M7 13h4"></path>
+      </svg>
     `;
   }
 

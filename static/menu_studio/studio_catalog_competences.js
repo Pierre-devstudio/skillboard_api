@@ -436,13 +436,13 @@
 
   function iconSvg(kind){
     if (kind === "edit") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
     }
     if (kind === "archive") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
     }
     if (kind === "pdf") {
-      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`;
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/><path d="M13 13v3"/><path d="M13 13h3"/><path d="M16 13v3"/></svg>`;
     }
     return "";
   }
@@ -825,7 +825,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     prev.title = "Page précédente";
     prev.setAttribute("aria-label", "Page précédente");
     prev.disabled = page <= 1;
-    prev.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-chevron"></use></svg>`;
+    prev.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>`;
     pagination.appendChild(prev);
 
     buildPaginationTokens(totalPages, page).forEach(t => {
@@ -855,7 +855,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
     next.title = "Page suivante";
     next.setAttribute("aria-label", "Page suivante");
     next.disabled = page >= totalPages;
-    next.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-chevron"></use></svg>`;
+    next.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>`;
     pagination.appendChild(next);
 
     const range = document.createElement("div");
@@ -1175,11 +1175,11 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
             ${links.map(l => `
               <div class="studio-catalog-comp-map-detail-row">
                 <div class="studio-catalog-comp-map-detail-main">
-                  <span class="ns-badge sb-badge sb-badge--comp">${htmlEsc(l.code || "—")}</span>
+                  <span class="sb-badge sb-badge--comp">${htmlEsc(l.code || "—")}</span>
                   <div class="studio-catalog-comp-map-detail-title">${htmlEsc(l.intitule || "")}</div>
                 </div>
                 <div class="studio-catalog-comp-map-detail-side">
-                  ${l.niveau_requis ? `<span class="ns-badge sb-badge sb-badge-niv sb-badge-niv-${htmlEsc(String(l.niveau_requis).toLowerCase())}">${htmlEsc(l.niveau_requis)}</span>` : ""}
+                  ${l.niveau_requis ? `<span class="sb-badge sb-badge-niv sb-badge-niv-${htmlEsc(String(l.niveau_requis).toLowerCase())}">${htmlEsc(l.niveau_requis)}</span>` : ""}
                   <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-cat-comp-map-pdf="${htmlEsc(l.id_comp || "")}" title="Exporter la fiche compétence" aria-label="Exporter la fiche compétence">${iconSvg("pdf")}</button>
                 </div>
               </div>
@@ -1257,7 +1257,7 @@ iframe{width:100%;height:100%;border:0;background:#fff;}
         <tr>
           <td class="hb-rowhead">
             <div class="hb-poste-line">
-              ${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code hb-poste-code">${htmlEsc(code)}</span>` : ""}
+              ${code ? `<span class="sb-badge sb-badge-ref-poste-code hb-poste-code">${htmlEsc(code)}</span>` : ""}
               <span class="hb-poste-title">${htmlEsc(intitule || "—")}</span>
             </div>
           </td>

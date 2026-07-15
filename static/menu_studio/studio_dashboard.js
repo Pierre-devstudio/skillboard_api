@@ -93,7 +93,7 @@
     const el = byId(id);
     if (!el) return;
     el.className = `studio-dash-spark studio-dash-spark--${tone || "neutral"}`;
-    el.innerHTML = `<svg viewBox="0 0 110 42" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b49923bd1346"></use></svg>`;
+    el.innerHTML = `<svg viewBox="0 0 110 42" aria-hidden="true"><path d="M4 30 L16 24 L27 28 L38 16 L50 22 L61 12 L72 21 L84 17 L96 24 L106 14"/></svg>`;
   }
 
   function renderDonut(rows){
@@ -268,7 +268,7 @@
     el.innerHTML = rows.map(r => {
       const label = esc(r.nom_ent || "Structure");
       const sub = `${Math.round(n(r.risk_pct))}% risque · ${n(r.postes_danger)} poste(s) en danger`;
-      return `<div class="studio-dash-mini-row studio-dash-mini-row--click" data-client="${esc(r.id_ent)}"><div><strong>${label}</strong><span>${esc(sub)}</span></div><span class="ns-badge studio-dash-badge ${badgeClass(r.priority)}">${esc(r.priority_label || "")}</span></div>`;
+      return `<div class="studio-dash-mini-row studio-dash-mini-row--click" data-client="${esc(r.id_ent)}"><div><strong>${label}</strong><span>${esc(sub)}</span></div><span class="studio-dash-badge ${badgeClass(r.priority)}">${esc(r.priority_label || "")}</span></div>`;
     }).join("");
     el.querySelectorAll("[data-client]").forEach(row => row.addEventListener("click", () => {
       if (window.portal?.switchView) window.portal.switchView("clients");

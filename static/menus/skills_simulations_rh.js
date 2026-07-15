@@ -240,7 +240,7 @@
     const good = inverse ? n > 0 : n < 0;
     const bad = inverse ? n < 0 : n > 0;
     const cls = good ? "sb-badge--success" : bad ? "sb-badge--warning" : "";
-    return `<span class="ns-badge sb-badge ${cls}">${esc(deltaText(n))}</span>`;
+    return `<span class="sb-badge ${cls}">${esc(deltaText(n))}</span>`;
   }
 
   function trendWord(delta, inverse) {
@@ -342,7 +342,10 @@
     return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
         <div style="position:relative;width:${size}px;height:${size}px;">
-          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute;inset:0;" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-8dbc7e6cfc64"></use></svg>
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute;inset:0;">
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}" transform="rotate(-90 ${size / 2} ${size / 2})" />
+          </svg>
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
             <div style="font-weight:var(--ns-weight-bold, 700);font-size:var(--ns-kpi, 1.75rem);line-height:var(--ns-leading-tight, 1.15);">${s}<span style="font-size:var(--ns-text-xs, 0.75rem);font-weight:var(--ns-weight-semibold, 600);">%</span></div>
           </div>
@@ -355,7 +358,7 @@
     const raw = (level || "").toString().trim().toUpperCase();
     const rank = ({ A: 1, B: 2, C: 3, D: 4 }[raw]) || 0;
     if (!rank) return `<span class="sim-cv-undemonstrated">Non démontré</span>`;
-    return `<span class="ns-badge sb-badge sb-badge-niv sb-badge-niv-${raw.toLowerCase()}">${esc(levelLabel(raw))}</span>`;
+    return `<span class="sb-badge sb-badge-niv sb-badge-niv-${raw.toLowerCase()}">${esc(levelLabel(raw))}</span>`;
   }
 
   function ensureCvAnalysisModal() {
@@ -369,10 +372,10 @@
             <div class="sim-cv-modal-title-stack">
               <div class="sim-cv-modal-title-line">
                 <span id="simCvAnalysisModalTitle" style="font-weight:var(--ns-weight-semibold, 600);">Analyse CV</span>
-                <span class="ns-badge sb-badge sb-badge--candidat" id="simCvAnalysisModalBadge">Candidat CV</span>
+                <span class="sb-badge sb-badge--candidat" id="simCvAnalysisModalBadge">Candidat CV</span>
               </div>
               <div class="sim-cv-modal-title-sub">
-                <span class="ns-badge sb-badge sb-badge-ref-poste-code" id="simCvAnalysisPosteCode" style="display:none;"></span>
+                <span class="sb-badge sb-badge-ref-poste-code" id="simCvAnalysisPosteCode" style="display:none;"></span>
                 <span id="simCvAnalysisPosteText" style="font-weight:var(--ns-weight-semibold, 600);"></span>
               </div>
             </div>
@@ -451,7 +454,7 @@
                 <tr>
                   <td>
                     <div class="sim-cv-comp-cell">
-                      <span class="ns-badge sb-badge sb-badge-ref-comp-code">${esc(row.code || "—")}</span>
+                      <span class="sb-badge sb-badge-ref-comp-code">${esc(row.code || "—")}</span>
                       <span class="sim-cv-comp-title">${esc(row.intitule || "Compétence")}</span>
                     </div>
                   </td>
@@ -648,7 +651,7 @@
       const code = posteCode(p);
       meta.innerHTML = p ? `
         <div class="sim-lego-focus-title">
-          ${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
+          ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
           <span class="sim-lego-focus-label">${esc(p.intitule_poste || "Poste")}</span>
         </div>
         <div class="sim-workshop-meta-row">
@@ -682,10 +685,10 @@
           <div class="card-sub sim-lego-person-sub">${esc(r.poste_actuel || "Poste actuel non renseigné")} · ${esc(r.nom_service || "")}</div>
         </div>
         <div class="sim-lego-person-score">
-          <span class="ns-badge sb-badge ${idx === 0 ? "sb-badge--success" : ""}">${esc(r.score_pct || 0)}%</span>
+          <span class="sb-badge ${idx === 0 ? "sb-badge--success" : ""}">${esc(r.score_pct || 0)}%</span>
           <div class="sim-lego-person-actions">
-            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-sim-add-move="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg></span><span>Tester mobilité</span></button>
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-prepare-training="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg></span><span>Projeter niveau</span></button>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-sim-add-move="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg></span><span>Tester mobilité</span></button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-sim-prepare-training="${esc(r.id_effectif)}"><span class="sim-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/><path d="M4 20h16"/></svg></span><span>Projeter niveau</span></button>
           </div>
         </div>
       </div>
@@ -1002,7 +1005,7 @@
               <div class="card-sub" style="margin-top:2px;">Adéquation estimée : ${esc(data?.adequation_pct || 0)}% · ${esc(needs.length)} besoin${needs.length > 1 ? "s" : ""} détecté${needs.length > 1 ? "s" : ""}</div>
             </div>
             <div class="sim-lego-person-score">
-              <span class="ns-badge sb-badge sb-badge--success">CV analysé</span>
+              <span class="sb-badge sb-badge--success">CV analysé</span>
             </div>
           </div>
           ${(data?.points_vigilance || []).length ? `<div class="card-sub sim2-muted-top">À vérifier : ${esc((data.points_vigilance || []).slice(0, 2).join(" · "))}</div>` : ""}
@@ -1263,7 +1266,7 @@
             <span>${esc(after)}<small>%</small></span>
           </div>
           <div class="sim-result-focus-copy">
-            <div class="sim-result-focus-title">${code ? `<span class="ns-badge sb-badge sb-badge--code">${esc(code)}</span> ` : ""}${esc(name)}</div>
+            <div class="sim-result-focus-title">${code ? `<span class="sb-badge sb-badge--code">${esc(code)}</span> ` : ""}${esc(name)}</div>
             <div class="sim-result-focus-meta">Fragilité ${esc(before)} → ${esc(after)} · ${esc(deltaText(delta))}</div>
             <div class="sim-result-focus-note">${hasFocus ? "Lecture centrée sur le poste de départ." : "Lecture moyenne du périmètre."}</div>
           </div>
@@ -1295,7 +1298,7 @@
         <div class="sim-impact-bar-card ${tone}">
           <div class="sim-impact-bar-head">
             <div>
-              <div class="sim-impact-title">${kind === "service" ? esc(title) : `${code ? `<span class="ns-badge sb-badge sb-badge--code">${esc(code)}</span> ` : ""}${esc(title)}`}</div>
+              <div class="sim-impact-title">${kind === "service" ? esc(title) : `${code ? `<span class="sb-badge sb-badge--code">${esc(code)}</span> ` : ""}${esc(title)}`}</div>
               <div class="card-sub" style="margin:4px 0 0 0;">${esc(sub)}</div>
             </div>
             <div class="sim-impact-bar-side">
@@ -1328,7 +1331,7 @@
           <div class="sim-impact-title">${esc(n.nom_complet || "Collaborateur")}</div>
           <div class="card-sub" style="margin:3px 0 0 0;">${esc(n.code ? n.code + " · " : "")}${esc(n.intitule || "Compétence")} · niveau attendu ${esc(n.niveau_requis || "—")}</div>
         </div>
-        <span class="ns-badge sb-badge ${Number(n.couverture_pct || 0) < 60 ? "sb-badge--warning" : ""}">${esc(n.lecture || "À renforcer")}</span>
+        <span class="sb-badge ${Number(n.couverture_pct || 0) < 60 ? "sb-badge--warning" : ""}">${esc(n.lecture || "À renforcer")}</span>
       </div>
     `).join("");
   }
@@ -1450,7 +1453,7 @@
         <div class="sim-result-focus-ui">
           <div class="sim-result-modern-ring" style="--sim-ring:${pct};"><span>${esc(after)}<small>%</small></span></div>
           <div class="sim-result-focus-text">
-            <div>${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<strong>${esc(name)}</strong></div>
+            <div>${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<strong>${esc(name)}</strong></div>
             <p>Fragilité ${esc(before)} → ${esc(after)} ${deltaBadge(delta)}</p>
             <small>Lecture centrée sur le poste de départ.</small>
           </div>
@@ -1490,7 +1493,7 @@
         <div class="sim-result-impact-modern ${tone}">
           <div class="sim-result-impact-modern-head">
             <div>
-              <div class="sim-result-impact-modern-title">${kind === "service" ? esc(title) : `${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<strong>${esc(title)}</strong>`}</div>
+              <div class="sim-result-impact-modern-title">${kind === "service" ? esc(title) : `${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}<strong>${esc(title)}</strong>`}</div>
               <div class="sim-result-impact-modern-sub">${esc(sub)}</div>
             </div>
             <div class="sim-result-impact-modern-delta"><span>${esc(before)} → ${esc(after)}</span>${deltaBadge(delta)}</div>
@@ -1515,15 +1518,15 @@
   }
 
   function simPdfIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3290e7472719"></use></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 14h6M9 17h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
   }
 
   function simEyeIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
   }
 
   function simTrashIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M9 7l1-3h4l1 3M6 7l1 14h10l1-14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
 
   async function simApiBlob(url) {
@@ -1613,11 +1616,11 @@
                 return `
                   <div class="sim-result-need-line">
                     <div class="sim-result-need-line-main">
-                      <span class="ns-badge sb-badge sb-badge-ref-comp-code">${esc(n.code || "—")}</span>
+                      <span class="sb-badge sb-badge-ref-comp-code">${esc(n.code || "—")}</span>
                       <span>${esc(n.intitule || "Compétence à renforcer")}</span>
                     </div>
                     <div class="sim-result-need-line-actions">
-                      <span class="ns-badge sim-result-priority-badge ${priority === "Prioritaire" ? "is-priority" : ""}">${esc(priority)}</span>
+                      <span class="sim-result-priority-badge ${priority === "Prioritaire" ? "is-priority" : ""}">${esc(priority)}</span>
                       ${compKey ? `<button type="button" class="sb-icon-btn sb-icon-btn--doc" data-sim-need-comp-pdf="${esc(compKey)}" title="Voir la fiche compétence PDF" aria-label="Voir la fiche compétence PDF">${simPdfIconSvg()}</button>` : ""}
                     </div>
                   </div>`;
@@ -2151,7 +2154,7 @@
           <div class="card-sub" style="margin-top:3px;">${esc(fmtDateTime(item.created_at))}</div>
         </div>
         <div class="sim-history-poste">
-          ${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
+          ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
           <div><strong>${esc(p.intitule_poste || "Poste non renseigné")}</strong><small>${esc(service)}</small></div>
         </div>
         <div class="sim-history-metrics">
@@ -2258,7 +2261,7 @@
           <button type="button" class="sb-icon-btn" data-remove-compare="${esc(detail.id_scenario)}" title="Retirer du comparateur" aria-label="Retirer du comparateur">×</button>
         </div>
         <div class="sim-compare-poste-line">
-          ${code ? `<span class="ns-badge sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
+          ${code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : ""}
           <span>${esc(poste)}</span>
         </div>
         <div class="sim-compare-section-label">Hypothèses</div>
