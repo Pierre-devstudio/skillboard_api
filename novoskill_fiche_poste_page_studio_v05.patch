@@ -1,0 +1,737 @@
+diff --git a/static/menu_studio/studio_organisation.html b/static/menu_studio/studio_organisation.html
+index cc623b5..7875d5e 100644
+--- a/static/menu_studio/studio_organisation.html
++++ b/static/menu_studio/studio_organisation.html
+@@ -210,7 +210,7 @@
+               <span>Définition</span>
+             </button>
+             <button type="button" class="studio-poste-nav-btn" data-tab="exi" role="tab" aria-selected="false">
+-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
++              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/><path d="M4 12h5"/><path d="M13 12h7"/><circle cx="11" cy="12" r="2"/></svg>
+               <span>Exigences</span>
+             </button>
+             <button type="button" class="studio-poste-nav-btn" data-tab="rh" role="tab" aria-selected="false">
+@@ -218,7 +218,7 @@
+               <span>Paramétrage RH</span>
+             </button>
+             <button type="button" class="studio-poste-nav-btn" data-tab="ccn" role="tab" aria-selected="false">
+-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M5 6h14"/><path d="M6 6l-4 7h8L6 6z"/><path d="M18 6l-4 7h8l-4-7z"/></svg>
++              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="12" cy="15" r="3"/><path d="m10.5 17.5-1 3 2.5-1 2.5 1-1-3"/></svg>
+               <span>Cotation conventionnelle</span>
+             </button>
+           </div>
+@@ -227,17 +227,19 @@
+         <div class="studio-poste-page-actions" id="postePageActions" style="display:none;">
+           <div class="studio-poste-actions-menu">
+             <button type="button" class="sb-btn sb-btn--secondary" id="btnPostePageActions" aria-expanded="false">
++              <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></span>
+               <span>Actions</span><span aria-hidden="true">⌄</span>
+             </button>
+             <div class="studio-poste-actions-dropdown" id="postePageActionsDropdown" style="display:none;">
+-              <button type="button" id="btnPostePageArchive">Archiver</button>
+-              <button type="button" id="btnPostePageDuplicate">Dupliquer</button>
+-              <button type="button" id="btnPostePagePdf">Imprimer en PDF</button>
++              <button type="button" id="btnPostePageArchive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg><span>Archiver</span></button>
++              <button type="button" id="btnPostePageDuplicate"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Dupliquer</span></button>
++              <button type="button" id="btnPostePagePdf"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 15h8"/><path d="M8 18h5"/></svg><span>Imprimer en PDF</span></button>
+             </div>
+           </div>
+-          <button type="button" class="sb-btn sb-btn--ai" id="btnPostePageAi">Générer avec l’IA</button>
+-          <button type="button" class="sb-btn sb-btn--accent" id="btnPostePageSave">Enregistrer</button>
+-          <button type="button" class="sb-btn sb-btn--soft" id="btnPostePageBack">Retour à l’organisation</button>
++          <button type="button" class="sb-btn sb-btn--accent" id="btnPostePageSave">
++            <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></span>
++            <span>Enregistrer</span>
++          </button>
+         </div>
+         <button type="button" class="sb-modal-x" id="btnClosePoste" aria-label="Fermer">&times;</button>
+       </div>
+@@ -259,20 +261,30 @@
+               <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Certifications requises</span><strong id="posteOverviewCertifications">—</strong><small id="posteOverviewCertificationsMeta">Exigences du poste</small></span>
+             </div>
+             <div class="studio-poste-kpi studio-poste-kpi--criticite">
+-              <span class="studio-poste-kpi__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
++              <span class="studio-poste-kpi__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span>
+               <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Criticité</span><strong id="posteOverviewCriticite">—</strong><small id="posteOverviewCriticiteMeta">Impact sur l’activité</small></span>
+             </div>
+           </div>
+           <div class="studio-poste-overview-grid">
+             <div class="studio-poste-overview-main">
+-              <section class="studio-rh-panel studio-poste-overview-card">
+-                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">◎</span><div class="studio-rh-panel-title">Mission principale</div></div>
+-                <div class="studio-poste-overview-text" id="posteOverviewMission">—</div>
+-              </section>
+-              <section class="studio-rh-panel studio-poste-overview-card">
+-                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">≡</span><div class="studio-rh-panel-title">Activités principales</div></div>
+-                <ol class="studio-poste-activities" id="posteOverviewActivities"></ol>
+-              </section>
++              <div class="studio-poste-overview-highlight-grid">
++                <section class="studio-rh-panel studio-poste-overview-card studio-poste-overview-card--mission">
++                  <div class="studio-poste-overview-card__head">
++                    <span class="studio-poste-overview-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg></span>
++                    <div class="studio-rh-panel-title">Mission principale</div>
++                    <button type="button" class="studio-poste-card-more" data-go-tab="def" data-focus-target="posteMission" title="Modifier dans l’onglet Définition" aria-label="Modifier la mission principale">•••</button>
++                  </div>
++                  <div class="studio-poste-overview-text" id="posteOverviewMission">—</div>
++                </section>
++                <section class="studio-rh-panel studio-poste-overview-card studio-poste-overview-card--activities">
++                  <div class="studio-poste-overview-card__head">
++                    <span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--activities" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12"/><path d="M8 12h12"/><path d="M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg></span>
++                    <div class="studio-rh-panel-title">Activités principales</div>
++                    <button type="button" class="studio-poste-card-more" data-go-tab="def" data-focus-target="posteResp" title="Modifier dans l’onglet Définition" aria-label="Modifier les activités principales">•••</button>
++                  </div>
++                  <ol class="studio-poste-activities" id="posteOverviewActivities"></ol>
++                </section>
++              </div>
+               <section class="studio-rh-panel studio-poste-overview-card">
+                 <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet" aria-hidden="true">◇</span><div class="studio-rh-panel-title">Compétences requises</div></div>
+                 <div id="posteOverviewCompList" class="studio-poste-overview-list"></div>
+@@ -285,10 +297,20 @@
+               </section>
+             </div>
+             <aside class="studio-poste-overview-side">
+-              <section class="studio-rh-panel studio-poste-overview-card"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">i</span><div class="studio-rh-panel-title">Informations clés</div></div><dl id="posteOverviewInfo"></dl></section>
+-              <section class="studio-rh-panel studio-poste-overview-card"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--orange" aria-hidden="true">!</span><div class="studio-rh-panel-title">Contraintes</div></div><dl id="posteOverviewConstraints"></dl></section>
+-              <section class="studio-rh-panel studio-poste-overview-card"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet" aria-hidden="true">□</span><div class="studio-rh-panel-title">Commentaire RH</div></div><div class="studio-poste-overview-text" id="posteOverviewComment">—</div></section>
+-              <section class="studio-rh-panel studio-poste-overview-card studio-poste-overview-card--ccn"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true">⚖</span><div class="studio-rh-panel-title">Cotation conventionnelle</div></div><div id="posteOverviewCcnSummary" class="studio-poste-overview-text">Consultez l’onglet dédié pour le résultat et sa justification.</div><div class="studio-poste-overview-note">La justification détaillée est disponible dans l’onglet dédié.</div><button type="button" class="studio-poste-overview-link studio-poste-overview-link--block" data-go-tab="ccn">Accéder au détail de la cotation</button></section>
++              <section class="studio-rh-panel studio-poste-overview-card">
++                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span><div class="studio-rh-panel-title">Informations clés</div></div>
++                <dl id="posteOverviewInfo"></dl>
++              </section>
++              <section class="studio-rh-panel studio-poste-overview-card">
++                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--constraints" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/><path d="M4 12h5"/><path d="M13 12h7"/><circle cx="11" cy="12" r="2"/></svg></span><div class="studio-rh-panel-title">Contraintes</div></div>
++                <dl id="posteOverviewConstraints"></dl>
++              </section>
++              <section class="studio-rh-panel studio-poste-overview-card"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg></span><div class="studio-rh-panel-title">Commentaire RH</div></div><div class="studio-poste-overview-text" id="posteOverviewComment">—</div></section>
++              <section class="studio-rh-panel studio-poste-overview-card studio-poste-overview-card--ccn"><div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--ccn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="12" cy="15" r="3"/><path d="m10.5 17.5-1 3 2.5-1 2.5 1-1-3"/></svg></span><div class="studio-rh-panel-title">Cotation conventionnelle</div></div><div id="posteOverviewCcnSummary" class="studio-poste-overview-text">Consultez l’onglet dédié pour le résultat et sa justification.</div><div class="studio-poste-overview-note">La justification détaillée est disponible dans l’onglet dédié.</div><button type="button" class="studio-poste-overview-link studio-poste-overview-link--block" data-go-tab="ccn">Accéder au détail de la cotation</button></section>
++              <section class="studio-rh-panel studio-poste-overview-card studio-poste-overview-card--collaborators">
++                <div class="studio-poste-overview-card__head"><span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--collaborators" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a3 3 0 0 1 0 5.74"/></svg></span><div class="studio-rh-panel-title">Collaborateurs au poste</div></div>
++                <div id="posteOverviewCollaborators" class="studio-poste-collaborators"><div class="studio-poste-collaborators__empty">Chargement…</div></div>
++              </section>
+             </aside>
+           </div>
+         </div>
+@@ -296,14 +318,20 @@
+         <!-- Définition -->
+         <div class="sb-tab-panel" data-panel="def">
+           <div class="card sb-card-compact studio-poste-card studio-poste-def-card">
+-            <div class="studio-section-titleline">
+-              <span class="studio-section-titleline__icon" aria-hidden="true">
+-                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
+-              </span>
+-              <div>
+-                <div class="card-title" style="margin:0;">Définition du poste</div>
+-                <div class="card-sub" style="margin:4px 0 0 0;">Rattachement, intitulé, mission et responsabilités.</div>
++            <div class="studio-section-titleline studio-section-titleline--split">
++              <div class="studio-section-titleline__main">
++                <span class="studio-section-titleline__icon" aria-hidden="true">
++                  <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>
++                </span>
++                <div>
++                  <div class="card-title" style="margin:0;">Définition du poste</div>
++                  <div class="card-sub" style="margin:4px 0 0 0;">Rattachement, intitulé, mission et responsabilités.</div>
++                </div>
+               </div>
++              <button type="button" class="sb-btn sb-btn--ai sb-btn--xs" id="btnPosteReviewAi" style="display:none;">
++                <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16z"/></svg></span>
++                <span>Revoir avec l’IA</span>
++              </button>
+             </div>
+ 
+             <div class="sb-form-grid studio-poste-def-grid">
+diff --git a/static/menu_studio/studio_organisation.js b/static/menu_studio/studio_organisation.js
+index 82edc48..e5932b9 100644
+--- a/static/menu_studio/studio_organisation.js
++++ b/static/menu_studio/studio_organisation.js
+@@ -25,6 +25,8 @@
+     let _posteModalMode = "create"; // create | edit
+     let _editingPosteId = null;
+     let _editingPosteListItem = null;
++    let _posteHistoryActive = false;
++    let _posteHistoryBound = false;
+ 
+     // --- Poste > Compétences (Exigences)
+     let _posteCompItems = [];
+@@ -5190,6 +5192,40 @@ function refreshPosteCompEditCritDisplay(){
+         sel.value = selectedId || "";
+     }
+ 
++    function setOrganisationHistoryState(){
++        try {
++            const current = history.state || {};
++            history.replaceState({ ...current, novoskillView: "organisation", posteId: null }, "", window.location.href);
++        } catch (_) {}
++    }
++
++    function pushPosteHistoryState(posteId){
++        if (_posteHistoryActive) return;
++        try {
++            setOrganisationHistoryState();
++            history.pushState({ novoskillView: "organisation", posteId: String(posteId || "") }, "", window.location.href);
++            _posteHistoryActive = true;
++        } catch (_) {}
++    }
++
++    function closePostePageFromNavigation(){
++        if (!_posteHistoryActive && !byId("modalPoste")?.classList.contains("is-poste-page")) return;
++        _posteHistoryActive = false;
++        closePosteModal({ fromHistory: true });
++        setOrganisationHistoryState();
++    }
++
++    function bindPosteHistoryOnce(){
++        if (_posteHistoryBound) return;
++        _posteHistoryBound = true;
++        window.addEventListener("popstate", () => {
++            if (_posteHistoryActive || byId("modalPoste")?.classList.contains("is-poste-page")) {
++                _posteHistoryActive = false;
++                closePosteModal({ fromHistory: true });
++            }
++        });
++    }
++
+     function setPostePageMode(enabled){
+         const root = getOrganisationRoot();
+         const modal = byId("modalPoste");
+@@ -5201,6 +5237,8 @@ function refreshPosteCompEditCritDisplay(){
+         if (actions) actions.style.display = enabled ? "flex" : "none";
+         const close = byId("btnClosePoste");
+         if (close) close.style.display = enabled ? "none" : "";
++        const reviewAi = byId("btnPosteReviewAi");
++        if (reviewAi) reviewAi.style.display = enabled ? "inline-flex" : "none";
+     }
+ 
+     function textFromHtml(html){
+@@ -5221,17 +5259,105 @@ function refreshPosteCompEditCritDisplay(){
+         return textFromHtml(html).split(/(?:\n|\r|•)/).map(x => x.trim()).filter(Boolean).slice(0, 8);
+     }
+ 
+-    function setOverviewDl(id, rows){
++    function overviewStatusClass(value){
++        const raw = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
++        if (raw.includes("actif")) return "is-success";
++        if (raw.includes("temp")) return "is-warning";
++        if (raw.includes("gele") || raw.includes("inactif")) return "is-neutral";
++        if (raw.includes("archive")) return "is-dark";
++        return "is-neutral";
++    }
++
++    function constraintLevelClass(value){
++        const raw = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
++        if (!raw || raw === "—" || raw.includes("aucun")) return "is-low";
++        if (raw.includes("faible") || raw.includes("locale")) return "is-low";
++        if (raw.includes("modere") || raw.includes("moyen") || raw.includes("frequent")) return "is-medium";
++        if (raw.includes("eleve") || raw.includes("fort") || raw.includes("critique")) return "is-high";
++        return "is-neutral";
++    }
++
++    function setOverviewDl(id, rows, options){
+         const host = byId(id);
+         if (!host) return;
++        const opts = options || {};
+         host.innerHTML = "";
+         (rows || []).forEach(([label, value]) => {
+             const dt = document.createElement("dt"); dt.textContent = label;
+-            const dd = document.createElement("dd"); dd.textContent = value || "—";
++            const dd = document.createElement("dd");
++            const shown = value || "—";
++            if (opts.statusLabel === label){
++                const badge = document.createElement("span");
++                badge.className = `studio-poste-status-badge ${overviewStatusClass(shown)}`;
++                badge.textContent = shown;
++                dd.appendChild(badge);
++            } else if (opts.constraintBadges){
++                const badge = document.createElement("span");
++                badge.className = `studio-poste-constraint-badge ${constraintLevelClass(shown)}`;
++                const dot = document.createElement("span"); dot.className = "studio-poste-constraint-badge__dot";
++                const text = document.createElement("span"); text.textContent = shown;
++                badge.append(dot, text);
++                dd.appendChild(badge);
++            } else {
++                dd.textContent = shown;
++            }
+             host.append(dt, dd);
+         });
+     }
+ 
++    function initialsForCollaborator(item){
++        const first = String(item?.prenom || "").trim().charAt(0);
++        const last = String(item?.nom || "").trim().charAt(0);
++        return `${first}${last}`.toUpperCase() || "?";
++    }
++
++    function renderPosteCollaborators(items){
++        const host = byId("posteOverviewCollaborators");
++        if (!host) return;
++        host.innerHTML = "";
++        const rows = (items || []).filter(x => !x?.archive);
++        if (!rows.length){
++            const empty = document.createElement("div");
++            empty.className = "studio-poste-collaborators__empty";
++            empty.textContent = "Aucun collaborateur affecté à ce poste.";
++            host.appendChild(empty);
++            return;
++        }
++        rows.forEach(item => {
++            const row = document.createElement("div");
++            row.className = "studio-poste-collaborator-row";
++            const avatar = document.createElement("span");
++            avatar.className = "studio-poste-collaborator-avatar";
++            avatar.textContent = initialsForCollaborator(item);
++            const name = document.createElement("span");
++            name.className = "studio-poste-collaborator-name";
++            name.textContent = `${String(item?.prenom || "").trim()} ${String(item?.nom || "").trim()}`.trim() || "Collaborateur";
++            const status = document.createElement("span");
++            status.className = `studio-poste-collaborator-status ${item?.actif === false ? "is-unavailable" : "is-active"}`;
++            const dot = document.createElement("span"); dot.className = "studio-poste-collaborator-status__dot";
++            const text = document.createElement("span"); text.textContent = item?.actif === false ? "Indisponible" : "Actif";
++            status.append(dot, text);
++            row.append(avatar, name, status);
++            host.appendChild(row);
++        });
++    }
++
++    async function loadPosteCollaborators(portal){
++        if (!_editingPosteId) return;
++        const host = byId("posteOverviewCollaborators");
++        if (host) host.innerHTML = '<div class="studio-poste-collaborators__empty">Chargement…</div>';
++        try {
++            const ownerId = getOwnerId();
++            const qs = new URLSearchParams({ poste: _editingPosteId, active: "all", include_archived: "0" });
++            const url = appendOrgScope(`${portal.apiBase}/studio/collaborateurs/list/${encodeURIComponent(ownerId)}?${qs.toString()}`);
++            const data = await portal.apiJson(url);
++            renderPosteCollaborators(data?.items || []);
++        } catch (e) {
++            if (host) host.innerHTML = '<div class="studio-poste-collaborators__empty">Impossible de charger les collaborateurs.</div>';
++            console.error("Chargement collaborateurs du poste", e);
++        }
++    }
++
+     function renderPosteOverview(detail){
+         const d = detail || {};
+         const collabs = _editingPosteListItem?.nb_collabs ?? _editingPosteListItem?.nb_collaborateurs ?? "—";
+@@ -5269,7 +5395,8 @@ function refreshPosteCompEditCritDisplay(){
+             (_posteCompItems || []).slice(0, 6).forEach(it => {
+                 const row = document.createElement("div");
+                 const levelKey = nsLevelKey(it.niveau_requis || it.niveau || "").toLowerCase();
+-                row.innerHTML = `<span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
++                const code = String(it.code_competence || it.code || "").trim();
++                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="studio-poste-overview-code"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                 compHost.appendChild(row);
+             });
+             if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
+@@ -5295,13 +5422,13 @@ function refreshPosteCompEditCritDisplay(){
+             ["Nb titulaires cible", String(d.nb_titulaires_cible ?? "—")],
+             ["Début de validité", d.date_debut_validite],
+             ["Fin de validité", d.date_fin_validite]
+-        ]);
++        ], { statusLabel: "Statut du poste" });
+         setOverviewDl("posteOverviewConstraints", [
+             ["Mobilité", d.mobilite],
+             ["Risques physiques", d.risque_physique],
+             ["Perspectives d’évolution", d.perspectives_evolution],
+             ["Niveau de contraintes", d.niveau_contrainte]
+-        ]);
++        ], { constraintBadges: true });
+     }
+ 
+     function openCreatePosteModal(portal){
+@@ -5313,6 +5440,7 @@ function refreshPosteCompEditCritDisplay(){
+         _posteModalMode = "create";
+         _editingPosteId = null;
+         _editingPosteListItem = null;
++        _posteHistoryActive = false;
+         setPostePageMode(false);
+         resetPosteSaveInlineMsg();
+ 
+@@ -5389,6 +5517,8 @@ function refreshPosteCompEditCritDisplay(){
+ 
+         _posteModalMode = "edit";
+         _editingPosteId = pid;
++        bindPosteHistoryOnce();
++        pushPosteHistoryState(pid);
+ 
+         const modal = byId("modalPoste");
+         if (modal) modal.setAttribute("data-id-poste", _editingPosteId || "");
+@@ -5447,6 +5577,7 @@ function refreshPosteCompEditCritDisplay(){
+             await loadPosteCcnContext(portal);
+             await loadPosteCompetences(portal);
+             await loadPosteCertifications(portal);
++            await loadPosteCollaborators(portal);
+             renderPosteOverview(d);
+ 
+             // --- Définition (remplissage robuste: si champ supprimé, pas d'erreur)
+@@ -5478,7 +5609,8 @@ function refreshPosteCompEditCritDisplay(){
+         })();
+     }
+ 
+-    function closePosteModal(){
++    function closePosteModal(options){
++        const opts = options || {};
+         abortPosteCompAiSearch();
+         closeIaBusyOverlay();
+         closeModal("modalPosteCompCreateFrame");
+@@ -5488,6 +5620,10 @@ function refreshPosteCompEditCritDisplay(){
+         resetPosteSaveInlineMsg();
+         resetPosteImportState();
+         setPostePageMode(false);
++        if (_posteHistoryActive && !opts.fromHistory){
++            _posteHistoryActive = false;
++            try { history.back(); } catch (_) { setOrganisationHistoryState(); }
++        }
+     }
+ 
+         function getPosteModalActif(){
+@@ -6116,9 +6252,8 @@ function refreshPosteCompEditCritDisplay(){
+             });
+         }
+ 
+-        byId("btnPostePageBack")?.addEventListener("click", () => closePosteModal());
+         byId("btnPostePageSave")?.addEventListener("click", () => byId("btnPosteSave")?.click());
+-        byId("btnPostePageAi")?.addEventListener("click", () => byId("btnPosteAi")?.click());
++        byId("btnPosteReviewAi")?.addEventListener("click", () => byId("btnPosteAi")?.click());
+         byId("btnPostePageArchive")?.addEventListener("click", () => { byId("postePageActionsDropdown").style.display = "none"; byId("btnPosteArchive")?.click(); });
+         byId("btnPostePageDuplicate")?.addEventListener("click", () => { byId("postePageActionsDropdown").style.display = "none"; byId("btnPosteDuplicate")?.click(); });
+         byId("btnPostePagePdf")?.addEventListener("click", async () => {
+@@ -6136,12 +6271,29 @@ function refreshPosteCompEditCritDisplay(){
+         });
+         getOrganisationRoot()?.addEventListener("click", (e) => {
+             const go = e.target.closest("[data-go-tab]");
+-            if (go){ e.preventDefault(); setPosteTab(go.getAttribute("data-go-tab")); }
++            if (go){
++                e.preventDefault();
++                setPosteTab(go.getAttribute("data-go-tab"));
++                const focusTarget = go.getAttribute("data-focus-target");
++                if (focusTarget){
++                    window.setTimeout(() => {
++                        const target = byId(focusTarget);
++                        target?.scrollIntoView({ behavior: "smooth", block: "center" });
++                        target?.focus?.();
++                    }, 80);
++                }
++            }
+             if (!e.target.closest(".studio-poste-actions-menu")){
+                 const menu = byId("postePageActionsDropdown"); if (menu) menu.style.display = "none";
+             }
+         });
+ 
++        const organisationMenuItem = document.querySelector('.menu-item[data-view="organisation"]');
++        if (organisationMenuItem && !organisationMenuItem.dataset.postePageResetBound){
++            organisationMenuItem.dataset.postePageResetBound = "1";
++            organisationMenuItem.addEventListener("click", () => closePostePageFromNavigation());
++        }
++
+         byId("btnPosteSave")?.addEventListener("click", async () => {
+             try {
+                 resetPosteSaveInlineMsg();
+diff --git a/static/studio_portal_theme.css b/static/studio_portal_theme.css
+index 243a055..51abfdd 100644
+--- a/static/studio_portal_theme.css
++++ b/static/studio_portal_theme.css
+@@ -12498,8 +12498,301 @@ body.studio-rh-calendar-expanded{
+ @media (max-width:1200px){
+   #modalPoste.is-poste-page .studio-poste-modal-head{ position:relative; margin:0; padding:4px 0 12px; }
+ }
+-
+-/* Studio > Fiche poste dédiée V04 : raccord direct sous la topbar */
+-.content.is-poste-page{
+-  padding-top:0;
+-}
++
++/* Studio > Fiche poste dédiée V04 : raccord direct sous la topbar */
++.content.is-poste-page{
++  padding-top:0;
++}
++
++/* ======================================================
++   Studio > Fiche poste dédiée V05
++   ====================================================== */
++#modalPoste.is-poste-page .studio-poste-titleline .sb-title-text{
++  font-size:18px;
++  font-weight:650;
++  letter-spacing:0;
++}
++
++#modalPoste.is-poste-page .studio-poste-page-actions .sb-btn{
++  gap:7px;
++}
++
++#modalPoste.is-poste-page .studio-poste-page-actions .sb-btn-icon,
++#modalPoste.is-poste-page .studio-poste-page-actions .sb-btn-icon svg{
++  width:16px;
++  height:16px;
++}
++
++#modalPoste .studio-poste-actions-dropdown button{
++  display:flex;
++  align-items:center;
++  gap:9px;
++}
++
++#modalPoste .studio-poste-actions-dropdown button svg{
++  flex:0 0 auto;
++  width:16px;
++  height:16px;
++  fill:none;
++  stroke:currentColor;
++  stroke-width:1.8;
++  stroke-linecap:round;
++  stroke-linejoin:round;
++}
++
++#modalPoste .studio-poste-kpi__icon{
++  padding:0;
++}
++
++#modalPoste .studio-poste-kpi__icon svg{
++  display:block;
++  margin:auto;
++}
++
++#modalPoste .studio-poste-overview-highlight-grid{
++  display:grid;
++  grid-template-columns:minmax(0, .9fr) minmax(0, 1.1fr);
++  gap:14px;
++}
++
++#modalPoste .studio-poste-overview-highlight-grid > .studio-poste-overview-card{
++  height:100%;
++}
++
++#modalPoste .studio-poste-overview-card__head{
++  min-width:0;
++}
++
++#modalPoste .studio-poste-overview-card__head .studio-rh-panel-title{
++  min-width:0;
++  flex:1 1 auto;
++}
++
++#modalPoste .studio-poste-overview-card__icon svg{
++  width:16px;
++  height:16px;
++  fill:none;
++  stroke:currentColor;
++  stroke-width:1.9;
++  stroke-linecap:round;
++  stroke-linejoin:round;
++}
++
++#modalPoste .studio-poste-overview-card__icon--activities{
++  background:#e9f4ff;
++  color:#2563eb;
++}
++
++#modalPoste .studio-poste-overview-card__icon--constraints{
++  background:#fff3e8;
++  color:#d97706;
++}
++
++#modalPoste .studio-poste-overview-card__icon--ccn{
++  background:#f2ecff;
++  color:#6d28d9;
++}
++
++#modalPoste .studio-poste-overview-card__icon--collaborators{
++  background:#eaf8ef;
++  color:#15803d;
++}
++
++#modalPoste .studio-poste-card-more{
++  display:inline-flex;
++  align-items:center;
++  justify-content:center;
++  flex:0 0 auto;
++  width:30px;
++  height:28px;
++  padding:0;
++  border:1px solid transparent;
++  border-radius:8px;
++  background:transparent;
++  color:#64748b;
++  font:inherit;
++  font-size:12px;
++  font-weight:800;
++  letter-spacing:1px;
++  cursor:pointer;
++}
++
++#modalPoste .studio-poste-card-more:hover{
++  border-color:#e2e8f0;
++  background:#f8fafc;
++  color:#111827;
++}
++
++#modalPoste .studio-poste-activities li{
++  font-weight:500;
++  line-height:1.45;
++}
++
++#modalPoste .studio-poste-overview-skill{
++  display:flex;
++  align-items:center;
++  gap:8px;
++  min-width:0;
++}
++
++#modalPoste .studio-poste-overview-skill > span:last-child{
++  min-width:0;
++  overflow:hidden;
++  text-overflow:ellipsis;
++  white-space:nowrap;
++}
++
++#modalPoste .studio-poste-overview-code{
++  display:inline-flex;
++  align-items:center;
++  flex:0 0 auto;
++  padding:2px 7px;
++  border-radius:999px;
++  background:#f3e8ff;
++  color:#7c3aed;
++  font-size:9px;
++  font-weight:800;
++  letter-spacing:.02em;
++}
++
++#modalPoste .studio-poste-status-badge,
++#modalPoste .studio-poste-constraint-badge{
++  display:inline-flex;
++  align-items:center;
++  gap:6px;
++  min-height:22px;
++  padding:3px 8px;
++  border:1px solid #dbe3ef;
++  border-radius:999px;
++  background:#fff;
++  color:#334155;
++  font-size:10.5px;
++  font-weight:750;
++  line-height:1;
++}
++
++#modalPoste .studio-poste-status-badge.is-success{
++  border-color:#bbf7d0;
++  background:#ecfdf3;
++  color:#15803d;
++}
++
++#modalPoste .studio-poste-status-badge.is-warning{
++  border-color:#fed7aa;
++  background:#fff7ed;
++  color:#c2410c;
++}
++
++#modalPoste .studio-poste-status-badge.is-dark{
++  border-color:#cbd5e1;
++  background:#334155;
++  color:#fff;
++}
++
++#modalPoste .studio-poste-status-badge.is-neutral{
++  background:#f8fafc;
++  color:#475569;
++}
++
++#modalPoste .studio-poste-constraint-badge__dot{
++  width:7px;
++  height:7px;
++  border-radius:999px;
++  background:#94a3b8;
++}
++
++#modalPoste .studio-poste-constraint-badge.is-low .studio-poste-constraint-badge__dot{ background:#22c55e; }
++#modalPoste .studio-poste-constraint-badge.is-medium .studio-poste-constraint-badge__dot{ background:#f59e0b; }
++#modalPoste .studio-poste-constraint-badge.is-high .studio-poste-constraint-badge__dot{ background:#ef4444; }
++#modalPoste .studio-poste-constraint-badge.is-neutral .studio-poste-constraint-badge__dot{ background:#94a3b8; }
++
++#modalPoste .studio-poste-collaborators{
++  margin-top:2px;
++}
++
++#modalPoste .studio-poste-collaborator-row{
++  display:grid;
++  grid-template-columns:34px minmax(0,1fr) auto;
++  align-items:center;
++  gap:10px;
++  min-height:48px;
++  padding:7px 0;
++  border-bottom:1px solid #eef2f7;
++}
++
++#modalPoste .studio-poste-collaborator-row:last-child{
++  border-bottom:0;
++}
++
++#modalPoste .studio-poste-collaborator-avatar{
++  display:flex;
++  align-items:center;
++  justify-content:center;
++  width:34px;
++  height:34px;
++  border-radius:999px;
++  background:linear-gradient(145deg, #fef3c7, #fde68a);
++  color:#713f12;
++  font-size:10px;
++  font-weight:850;
++}
++
++#modalPoste .studio-poste-collaborator-name{
++  min-width:0;
++  overflow:hidden;
++  color:#111827;
++  font-size:12px;
++  font-weight:650;
++  text-overflow:ellipsis;
++  white-space:nowrap;
++}
++
++#modalPoste .studio-poste-collaborator-status{
++  display:inline-flex;
++  align-items:center;
++  gap:6px;
++  color:#475569;
++  font-size:10.5px;
++  font-weight:700;
++}
++
++#modalPoste .studio-poste-collaborator-status__dot{
++  width:8px;
++  height:8px;
++  border-radius:999px;
++  background:#22c55e;
++}
++
++#modalPoste .studio-poste-collaborator-status.is-unavailable .studio-poste-collaborator-status__dot{
++  background:#f59e0b;
++}
++
++#modalPoste .studio-poste-collaborators__empty{
++  padding:8px 0 2px;
++  color:#64748b;
++  font-size:11.5px;
++}
++
++#modalPoste .studio-section-titleline--split{
++  justify-content:space-between;
++  align-items:flex-start;
++}
++
++#modalPoste .studio-section-titleline__main{
++  display:flex;
++  align-items:center;
++  gap:12px;
++  min-width:0;
++}
++
++@media (max-width:1050px){
++  #modalPoste .studio-poste-overview-highlight-grid{
++    grid-template-columns:1fr;
++  }
++}
++
++@media (max-width:700px){
++  #modalPoste .studio-section-titleline--split{
++    flex-direction:column;
++  }
++}

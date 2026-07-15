@@ -12503,3 +12503,296 @@ body.studio-rh-calendar-expanded{
 .content.is-poste-page{
   padding-top:0;
 }
+
+/* ======================================================
+   Studio > Fiche poste dédiée V05
+   ====================================================== */
+#modalPoste.is-poste-page .studio-poste-titleline .sb-title-text{
+  font-size:18px;
+  font-weight:650;
+  letter-spacing:0;
+}
+
+#modalPoste.is-poste-page .studio-poste-page-actions .sb-btn{
+  gap:7px;
+}
+
+#modalPoste.is-poste-page .studio-poste-page-actions .sb-btn-icon,
+#modalPoste.is-poste-page .studio-poste-page-actions .sb-btn-icon svg{
+  width:16px;
+  height:16px;
+}
+
+#modalPoste .studio-poste-actions-dropdown button{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+#modalPoste .studio-poste-actions-dropdown button svg{
+  flex:0 0 auto;
+  width:16px;
+  height:16px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalPoste .studio-poste-kpi__icon{
+  padding:0;
+}
+
+#modalPoste .studio-poste-kpi__icon svg{
+  display:block;
+  margin:auto;
+}
+
+#modalPoste .studio-poste-overview-highlight-grid{
+  display:grid;
+  grid-template-columns:minmax(0, .9fr) minmax(0, 1.1fr);
+  gap:14px;
+}
+
+#modalPoste .studio-poste-overview-highlight-grid > .studio-poste-overview-card{
+  height:100%;
+}
+
+#modalPoste .studio-poste-overview-card__head{
+  min-width:0;
+}
+
+#modalPoste .studio-poste-overview-card__head .studio-rh-panel-title{
+  min-width:0;
+  flex:1 1 auto;
+}
+
+#modalPoste .studio-poste-overview-card__icon svg{
+  width:16px;
+  height:16px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalPoste .studio-poste-overview-card__icon--activities{
+  background:#e9f4ff;
+  color:#2563eb;
+}
+
+#modalPoste .studio-poste-overview-card__icon--constraints{
+  background:#fff3e8;
+  color:#d97706;
+}
+
+#modalPoste .studio-poste-overview-card__icon--ccn{
+  background:#f2ecff;
+  color:#6d28d9;
+}
+
+#modalPoste .studio-poste-overview-card__icon--collaborators{
+  background:#eaf8ef;
+  color:#15803d;
+}
+
+#modalPoste .studio-poste-card-more{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:30px;
+  height:28px;
+  padding:0;
+  border:1px solid transparent;
+  border-radius:8px;
+  background:transparent;
+  color:#64748b;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:1px;
+  cursor:pointer;
+}
+
+#modalPoste .studio-poste-card-more:hover{
+  border-color:#e2e8f0;
+  background:#f8fafc;
+  color:#111827;
+}
+
+#modalPoste .studio-poste-activities li{
+  font-weight:500;
+  line-height:1.45;
+}
+
+#modalPoste .studio-poste-overview-skill{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+#modalPoste .studio-poste-overview-skill > span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalPoste .studio-poste-overview-code{
+  display:inline-flex;
+  align-items:center;
+  flex:0 0 auto;
+  padding:2px 7px;
+  border-radius:999px;
+  background:#f3e8ff;
+  color:#7c3aed;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+
+#modalPoste .studio-poste-status-badge,
+#modalPoste .studio-poste-constraint-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:22px;
+  padding:3px 8px;
+  border:1px solid #dbe3ef;
+  border-radius:999px;
+  background:#fff;
+  color:#334155;
+  font-size:10.5px;
+  font-weight:750;
+  line-height:1;
+}
+
+#modalPoste .studio-poste-status-badge.is-success{
+  border-color:#bbf7d0;
+  background:#ecfdf3;
+  color:#15803d;
+}
+
+#modalPoste .studio-poste-status-badge.is-warning{
+  border-color:#fed7aa;
+  background:#fff7ed;
+  color:#c2410c;
+}
+
+#modalPoste .studio-poste-status-badge.is-dark{
+  border-color:#cbd5e1;
+  background:#334155;
+  color:#fff;
+}
+
+#modalPoste .studio-poste-status-badge.is-neutral{
+  background:#f8fafc;
+  color:#475569;
+}
+
+#modalPoste .studio-poste-constraint-badge__dot{
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:#94a3b8;
+}
+
+#modalPoste .studio-poste-constraint-badge.is-low .studio-poste-constraint-badge__dot{ background:#22c55e; }
+#modalPoste .studio-poste-constraint-badge.is-medium .studio-poste-constraint-badge__dot{ background:#f59e0b; }
+#modalPoste .studio-poste-constraint-badge.is-high .studio-poste-constraint-badge__dot{ background:#ef4444; }
+#modalPoste .studio-poste-constraint-badge.is-neutral .studio-poste-constraint-badge__dot{ background:#94a3b8; }
+
+#modalPoste .studio-poste-collaborators{
+  margin-top:2px;
+}
+
+#modalPoste .studio-poste-collaborator-row{
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  min-height:48px;
+  padding:7px 0;
+  border-bottom:1px solid #eef2f7;
+}
+
+#modalPoste .studio-poste-collaborator-row:last-child{
+  border-bottom:0;
+}
+
+#modalPoste .studio-poste-collaborator-avatar{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:34px;
+  height:34px;
+  border-radius:999px;
+  background:linear-gradient(145deg, #fef3c7, #fde68a);
+  color:#713f12;
+  font-size:10px;
+  font-weight:850;
+}
+
+#modalPoste .studio-poste-collaborator-name{
+  min-width:0;
+  overflow:hidden;
+  color:#111827;
+  font-size:12px;
+  font-weight:650;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalPoste .studio-poste-collaborator-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  color:#475569;
+  font-size:10.5px;
+  font-weight:700;
+}
+
+#modalPoste .studio-poste-collaborator-status__dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:#22c55e;
+}
+
+#modalPoste .studio-poste-collaborator-status.is-unavailable .studio-poste-collaborator-status__dot{
+  background:#f59e0b;
+}
+
+#modalPoste .studio-poste-collaborators__empty{
+  padding:8px 0 2px;
+  color:#64748b;
+  font-size:11.5px;
+}
+
+#modalPoste .studio-section-titleline--split{
+  justify-content:space-between;
+  align-items:flex-start;
+}
+
+#modalPoste .studio-section-titleline__main{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+
+@media (max-width:1050px){
+  #modalPoste .studio-poste-overview-highlight-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width:700px){
+  #modalPoste .studio-section-titleline--split{
+    flex-direction:column;
+  }
+}

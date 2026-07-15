@@ -25,6 +25,8 @@
     let _posteModalMode = "create"; // create | edit
     let _editingPosteId = null;
     let _editingPosteListItem = null;
+    let _posteHistoryActive = false;
+    let _posteHistoryBound = false;
 
     // --- Poste > Compétences (Exigences)
     let _posteCompItems = [];
@@ -5190,6 +5192,40 @@ function refreshPosteCompEditCritDisplay(){
         sel.value = selectedId || "";
     }
 
+    function setOrganisationHistoryState(){
+        try {
+            const current = history.state || {};
+            history.replaceState({ ...current, novoskillView: "organisation", posteId: null }, "", window.location.href);
+        } catch (_) {}
+    }
+
+    function pushPosteHistoryState(posteId){
+        if (_posteHistoryActive) return;
+        try {
+            setOrganisationHistoryState();
+            history.pushState({ novoskillView: "organisation", posteId: String(posteId || "") }, "", window.location.href);
+            _posteHistoryActive = true;
+        } catch (_) {}
+    }
+
+    function closePostePageFromNavigation(){
+        if (!_posteHistoryActive && !byId("modalPoste")?.classList.contains("is-poste-page")) return;
+        _posteHistoryActive = false;
+        closePosteModal({ fromHistory: true });
+        setOrganisationHistoryState();
+    }
+
+    function bindPosteHistoryOnce(){
+        if (_posteHistoryBound) return;
+        _posteHistoryBound = true;
+        window.addEventListener("popstate", () => {
+            if (_posteHistoryActive || byId("modalPoste")?.classList.contains("is-poste-page")) {
+                _posteHistoryActive = false;
+                closePosteModal({ fromHistory: true });
+            }
+        });
+    }
+
     function setPostePageMode(enabled){
         const root = getOrganisationRoot();
         const modal = byId("modalPoste");
@@ -5201,6 +5237,8 @@ function refreshPosteCompEditCritDisplay(){
         if (actions) actions.style.display = enabled ? "flex" : "none";
         const close = byId("btnClosePoste");
         if (close) close.style.display = enabled ? "none" : "";
+        const reviewAi = byId("btnPosteReviewAi");
+        if (reviewAi) reviewAi.style.display = enabled ? "inline-flex" : "none";
     }
 
     function textFromHtml(html){
@@ -5221,15 +5259,103 @@ function refreshPosteCompEditCritDisplay(){
         return textFromHtml(html).split(/(?:\n|\r|•)/).map(x => x.trim()).filter(Boolean).slice(0, 8);
     }
 
-    function setOverviewDl(id, rows){
+    function overviewStatusClass(value){
+        const raw = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        if (raw.includes("actif")) return "is-success";
+        if (raw.includes("temp")) return "is-warning";
+        if (raw.includes("gele") || raw.includes("inactif")) return "is-neutral";
+        if (raw.includes("archive")) return "is-dark";
+        return "is-neutral";
+    }
+
+    function constraintLevelClass(value){
+        const raw = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        if (!raw || raw === "—" || raw.includes("aucun")) return "is-low";
+        if (raw.includes("faible") || raw.includes("locale")) return "is-low";
+        if (raw.includes("modere") || raw.includes("moyen") || raw.includes("frequent")) return "is-medium";
+        if (raw.includes("eleve") || raw.includes("fort") || raw.includes("critique")) return "is-high";
+        return "is-neutral";
+    }
+
+    function setOverviewDl(id, rows, options){
         const host = byId(id);
         if (!host) return;
+        const opts = options || {};
         host.innerHTML = "";
         (rows || []).forEach(([label, value]) => {
             const dt = document.createElement("dt"); dt.textContent = label;
-            const dd = document.createElement("dd"); dd.textContent = value || "—";
+            const dd = document.createElement("dd");
+            const shown = value || "—";
+            if (opts.statusLabel === label){
+                const badge = document.createElement("span");
+                badge.className = `studio-poste-status-badge ${overviewStatusClass(shown)}`;
+                badge.textContent = shown;
+                dd.appendChild(badge);
+            } else if (opts.constraintBadges){
+                const badge = document.createElement("span");
+                badge.className = `studio-poste-constraint-badge ${constraintLevelClass(shown)}`;
+                const dot = document.createElement("span"); dot.className = "studio-poste-constraint-badge__dot";
+                const text = document.createElement("span"); text.textContent = shown;
+                badge.append(dot, text);
+                dd.appendChild(badge);
+            } else {
+                dd.textContent = shown;
+            }
             host.append(dt, dd);
         });
+    }
+
+    function initialsForCollaborator(item){
+        const first = String(item?.prenom || "").trim().charAt(0);
+        const last = String(item?.nom || "").trim().charAt(0);
+        return `${first}${last}`.toUpperCase() || "?";
+    }
+
+    function renderPosteCollaborators(items){
+        const host = byId("posteOverviewCollaborators");
+        if (!host) return;
+        host.innerHTML = "";
+        const rows = (items || []).filter(x => !x?.archive);
+        if (!rows.length){
+            const empty = document.createElement("div");
+            empty.className = "studio-poste-collaborators__empty";
+            empty.textContent = "Aucun collaborateur affecté à ce poste.";
+            host.appendChild(empty);
+            return;
+        }
+        rows.forEach(item => {
+            const row = document.createElement("div");
+            row.className = "studio-poste-collaborator-row";
+            const avatar = document.createElement("span");
+            avatar.className = "studio-poste-collaborator-avatar";
+            avatar.textContent = initialsForCollaborator(item);
+            const name = document.createElement("span");
+            name.className = "studio-poste-collaborator-name";
+            name.textContent = `${String(item?.prenom || "").trim()} ${String(item?.nom || "").trim()}`.trim() || "Collaborateur";
+            const status = document.createElement("span");
+            status.className = `studio-poste-collaborator-status ${item?.actif === false ? "is-unavailable" : "is-active"}`;
+            const dot = document.createElement("span"); dot.className = "studio-poste-collaborator-status__dot";
+            const text = document.createElement("span"); text.textContent = item?.actif === false ? "Indisponible" : "Actif";
+            status.append(dot, text);
+            row.append(avatar, name, status);
+            host.appendChild(row);
+        });
+    }
+
+    async function loadPosteCollaborators(portal){
+        if (!_editingPosteId) return;
+        const host = byId("posteOverviewCollaborators");
+        if (host) host.innerHTML = '<div class="studio-poste-collaborators__empty">Chargement…</div>';
+        try {
+            const ownerId = getOwnerId();
+            const qs = new URLSearchParams({ poste: _editingPosteId, active: "all", include_archived: "0" });
+            const url = appendOrgScope(`${portal.apiBase}/studio/collaborateurs/list/${encodeURIComponent(ownerId)}?${qs.toString()}`);
+            const data = await portal.apiJson(url);
+            renderPosteCollaborators(data?.items || []);
+        } catch (e) {
+            if (host) host.innerHTML = '<div class="studio-poste-collaborators__empty">Impossible de charger les collaborateurs.</div>';
+            console.error("Chargement collaborateurs du poste", e);
+        }
     }
 
     function renderPosteOverview(detail){
@@ -5269,7 +5395,8 @@ function refreshPosteCompEditCritDisplay(){
             (_posteCompItems || []).slice(0, 6).forEach(it => {
                 const row = document.createElement("div");
                 const levelKey = nsLevelKey(it.niveau_requis || it.niveau || "").toLowerCase();
-                row.innerHTML = `<span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                const code = String(it.code_competence || it.code || "").trim();
+                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="studio-poste-overview-code"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
                 compHost.appendChild(row);
             });
             if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
@@ -5295,13 +5422,13 @@ function refreshPosteCompEditCritDisplay(){
             ["Nb titulaires cible", String(d.nb_titulaires_cible ?? "—")],
             ["Début de validité", d.date_debut_validite],
             ["Fin de validité", d.date_fin_validite]
-        ]);
+        ], { statusLabel: "Statut du poste" });
         setOverviewDl("posteOverviewConstraints", [
             ["Mobilité", d.mobilite],
             ["Risques physiques", d.risque_physique],
             ["Perspectives d’évolution", d.perspectives_evolution],
             ["Niveau de contraintes", d.niveau_contrainte]
-        ]);
+        ], { constraintBadges: true });
     }
 
     function openCreatePosteModal(portal){
@@ -5313,6 +5440,7 @@ function refreshPosteCompEditCritDisplay(){
         _posteModalMode = "create";
         _editingPosteId = null;
         _editingPosteListItem = null;
+        _posteHistoryActive = false;
         setPostePageMode(false);
         resetPosteSaveInlineMsg();
 
@@ -5389,6 +5517,8 @@ function refreshPosteCompEditCritDisplay(){
 
         _posteModalMode = "edit";
         _editingPosteId = pid;
+        bindPosteHistoryOnce();
+        pushPosteHistoryState(pid);
 
         const modal = byId("modalPoste");
         if (modal) modal.setAttribute("data-id-poste", _editingPosteId || "");
@@ -5447,6 +5577,7 @@ function refreshPosteCompEditCritDisplay(){
             await loadPosteCcnContext(portal);
             await loadPosteCompetences(portal);
             await loadPosteCertifications(portal);
+            await loadPosteCollaborators(portal);
             renderPosteOverview(d);
 
             // --- Définition (remplissage robuste: si champ supprimé, pas d'erreur)
@@ -5478,7 +5609,8 @@ function refreshPosteCompEditCritDisplay(){
         })();
     }
 
-    function closePosteModal(){
+    function closePosteModal(options){
+        const opts = options || {};
         abortPosteCompAiSearch();
         closeIaBusyOverlay();
         closeModal("modalPosteCompCreateFrame");
@@ -5488,6 +5620,10 @@ function refreshPosteCompEditCritDisplay(){
         resetPosteSaveInlineMsg();
         resetPosteImportState();
         setPostePageMode(false);
+        if (_posteHistoryActive && !opts.fromHistory){
+            _posteHistoryActive = false;
+            try { history.back(); } catch (_) { setOrganisationHistoryState(); }
+        }
     }
 
         function getPosteModalActif(){
@@ -6116,9 +6252,8 @@ function refreshPosteCompEditCritDisplay(){
             });
         }
 
-        byId("btnPostePageBack")?.addEventListener("click", () => closePosteModal());
         byId("btnPostePageSave")?.addEventListener("click", () => byId("btnPosteSave")?.click());
-        byId("btnPostePageAi")?.addEventListener("click", () => byId("btnPosteAi")?.click());
+        byId("btnPosteReviewAi")?.addEventListener("click", () => byId("btnPosteAi")?.click());
         byId("btnPostePageArchive")?.addEventListener("click", () => { byId("postePageActionsDropdown").style.display = "none"; byId("btnPosteArchive")?.click(); });
         byId("btnPostePageDuplicate")?.addEventListener("click", () => { byId("postePageActionsDropdown").style.display = "none"; byId("btnPosteDuplicate")?.click(); });
         byId("btnPostePagePdf")?.addEventListener("click", async () => {
@@ -6136,11 +6271,28 @@ function refreshPosteCompEditCritDisplay(){
         });
         getOrganisationRoot()?.addEventListener("click", (e) => {
             const go = e.target.closest("[data-go-tab]");
-            if (go){ e.preventDefault(); setPosteTab(go.getAttribute("data-go-tab")); }
+            if (go){
+                e.preventDefault();
+                setPosteTab(go.getAttribute("data-go-tab"));
+                const focusTarget = go.getAttribute("data-focus-target");
+                if (focusTarget){
+                    window.setTimeout(() => {
+                        const target = byId(focusTarget);
+                        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        target?.focus?.();
+                    }, 80);
+                }
+            }
             if (!e.target.closest(".studio-poste-actions-menu")){
                 const menu = byId("postePageActionsDropdown"); if (menu) menu.style.display = "none";
             }
         });
+
+        const organisationMenuItem = document.querySelector('.menu-item[data-view="organisation"]');
+        if (organisationMenuItem && !organisationMenuItem.dataset.postePageResetBound){
+            organisationMenuItem.dataset.postePageResetBound = "1";
+            organisationMenuItem.addEventListener("click", () => closePostePageFromNavigation());
+        }
 
         byId("btnPosteSave")?.addEventListener("click", async () => {
             try {
