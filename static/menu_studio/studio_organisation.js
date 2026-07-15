@@ -5396,7 +5396,7 @@ function refreshPosteCompEditCritDisplay(){
                 const row = document.createElement("div");
                 const levelKey = nsLevelKey(it.niveau_requis || it.niveau || "").toLowerCase();
                 const code = String(it.code_competence || it.code || "").trim();
-                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="studio-poste-overview-code"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="sb-badge sb-badge--comp studio-poste-overview-code"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey || "default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
                 compHost.appendChild(row);
             });
             if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
