@@ -73,16 +73,16 @@
   function icon(name, size = 16) {
     const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
     const map = {
-      eye: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d54a8d543d1f"></use></svg>`,
-      edit: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3df90b3a05b1"></use></svg>`,
-      send: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      check: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      close: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
+      eye: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>`,
+      edit: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>`,
+      send: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-a708db67a7a0"></use></svg>`,
+      check: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg>`,
+      close: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg>`,
       pdf: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      list: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`,
-      group: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3b584a1d8627"></use></svg>`,
-      chevronDown: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-2a1c6f77cc47"></use></svg>`,
-      chevronUp: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-analysis"></use></svg>`
+      list: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-activity"></use></svg>`,
+      group: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg>`,
+      chevronDown: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-chevron-down"></use></svg>`,
+      chevronUp: `<svg ${attrs} class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-0a28c918f271"></use></svg>`
     };
     return map[name] || "";
   }

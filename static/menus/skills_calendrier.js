@@ -199,13 +199,13 @@
 
   function calIcon(name) {
     const icons = {
-      calendar: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b1dc2d3d3665"></use></svg>',
-      eye: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-20100b7a115b"></use></svg>',
+      calendar: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg>',
+      eye: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>',
       ignore: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-ec092c948e93"></use></svg>',
-      edit: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-8dd12045d43d"></use></svg>',
-      done: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-7777739b8e2e"></use></svg>',
+      edit: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>',
+      done: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg>',
       report: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-ee29015a0f8f"></use></svg>',
-      cancel: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-241cbd029e7b"></use></svg>',
+      cancel: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg>',
       expand: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-b28a842edf09"></use></svg>',
       reduce: '<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-1687de9965e6"></use></svg>'
     };

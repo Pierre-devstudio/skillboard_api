@@ -1519,11 +1519,11 @@
   }
 
   function simEyeIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-d26995a25940"></use></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>`;
   }
 
   function simTrashIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>`;
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
   }
 
   async function simApiBlob(url) {

@@ -445,7 +445,7 @@
     if (icon) {
       icon.innerHTML = isArchive
         ? `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`
-        : `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg>`;
+        : `<svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-save"></use></svg>`;
     }
   }
 

@@ -1569,10 +1569,10 @@
         <td class="ep-punctual-actions-cell">
           <div class="ep-punctual-actions">
             <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--eval" data-eval="1" title="Évaluer" aria-label="Évaluer">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
             </button>
             <button type="button" class="sb-icon-btn ep-punctual-action-btn ep-punctual-action-btn--pdf" data-pdf="1" title="Fiche compétence PDF" aria-label="Fiche compétence PDF">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>
             </button>
           </div>
         </td>
@@ -3583,7 +3583,7 @@ function getCollaborateurInitials(c) {
             ` : ""}
             ${canEvaluate ? `
               <button type="button" class="sb-icon-btn ep-entretien-eval-btn" data-eval="1" title="Évaluer" aria-label="Évaluer">
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-48dd56632f54"></use></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
               </button>
             ` : ""}
             ` : ""}
@@ -5604,7 +5604,7 @@ function getCollaborateurInitials(c) {
               const niveau = scoreInfo.levelLabel;
 
                   const iconEye = `
-                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-2fb5e9684f26"></use></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>
                   `;
 
                   const row = document.createElement("div");
