@@ -3,7 +3,7 @@
 <head>
   <link rel="stylesheet" href="/novoskill_typography.css">
   <meta charset="utf-8" />
-  <title>PrÃ©paration Formation â€” Skillboard</title>
+  <title>Préparation Formation — Skillboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { font-family: var(--ns-font-ui); }
@@ -38,7 +38,7 @@
     <img src="/logo.png" alt="Logo" style="max-height:80px;">
     <div id="formationTitle" style="margin-top:8px; font-weight:var(--ns-weight-semibold, 600); font-size:var(--ns-title-md, 1.25rem);"></div>
   </header>
-  <h1 id="greetingH1">Fiche de prÃ©paration formation</h1>
+  <h1 id="greetingH1">Fiche de préparation formation</h1>
   <p id="introText" class="muted">
   Merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.
   </p>
@@ -51,7 +51,7 @@
 
     <div class="row">
       <div class="col">
-        <label>Ferez-vous appel Ã  un OPCO ?</label>
+        <label>Ferez-vous appel à un OPCO ?</label>
         <div>
           <label><input type="radio" name="opco_oui" value="yes"> Oui</label>
           &nbsp;&nbsp;
@@ -60,7 +60,7 @@
       </div>
 
       <div class="col" id="opcoNameCol" style="display:none">
-        <label>Nom de lâ€™OPCO (si oui)</label>
+        <label>Nom de l’OPCO (si oui)</label>
         <input type="text" id="nom_opco" placeholder="Ex : OPCO Atlas" />
       </div>
 
@@ -71,7 +71,7 @@
           &nbsp;&nbsp;
           <label><input type="radio" name="facturation" value="opco"> OPCO</label>
         </div>
-        <div class="muted">Si vous choisissez "OPCO", nous adresserons la facture Ã  lâ€™OPCO indiquÃ©.</div>
+        <div class="muted">Si vous choisissez "OPCO", nous adresserons la facture à l’OPCO indiqué.</div>
       </div>
     </div>
   </fieldset>
@@ -99,7 +99,7 @@
 
   <script>
     // === CONFIG ===
-    // Mets lâ€™URL de ton API ici si besoin (local par dÃ©faut)
+    // Mets l’URL de ton API ici si besoin (local par défaut)
         const API_URL = "https://skillboard-services.onrender.com/preparation";
     window.ID_OFFRE = null;
     // === Helpers ===
@@ -129,7 +129,7 @@
       <div class="stagiaire" data-index="${idx}">
         <div class="row">
           <div class="col" style="max-width:120px">
-            <label>CivilitÃ©</label>
+            <label>Civilité</label>
             <select class="civilite">
               ${CIVILITES.map(c => `<option value="${c}">${c}</option>`).join("")}
             </select>
@@ -139,13 +139,13 @@
             <input type="text" class="nom" placeholder="Nom" />
           </div>
           <div class="col">
-            <label>PrÃ©nom *</label>
-            <input type="text" class="prenom" placeholder="PrÃ©nom" />
+            <label>Prénom *</label>
+            <input type="text" class="prenom" placeholder="Prénom" />
           </div>
         </div>
         <div class="row">
           <div class="col">
-            <label>RÃ´le / Fonction</label>
+            <label>Rôle / Fonction</label>
             <input type="text" class="role" placeholder="Ex : Chef de projet" />
           </div>
           <div class="col">
@@ -176,7 +176,7 @@
     async function submitForm(){
       const token = getQueryParam("t");
       if(!token){
-        alertBox("error", "Lien invalide : token manquant dans lâ€™URL.");
+        alertBox("error", "Lien invalide : token manquant dans l’URL.");
         return;
       }
 
@@ -187,17 +187,17 @@
       const facturation_cible = qs('input[name="facturation"]:checked').value;
       const final_opco_oui = (facturation_cible === "opco") ? true : opco_oui;
 
-      // RÃ©cup stagiaires
+      // Récup stagiaires
       const stagiaires = Array.from(cont.querySelectorAll(".stagiaire")).map(div => ({
         civilite: div.querySelector(".civilite").value || null,
         nom: (div.querySelector(".nom").value || "").trim(),
         prenom: (div.querySelector(".prenom").value || "").trim(),
         role: (div.querySelector(".role").value || null),
         email: (div.querySelector(".email").value || null)
-      })).filter(s => s.nom && s.prenom); // on garde seulement ceux avec nom/prÃ©nom
+      })).filter(s => s.nom && s.prenom); // on garde seulement ceux avec nom/prénom
 
       if(stagiaires.length === 0){
-        alertBox("error", "Veuillez ajouter au moins un stagiaire avec nom et prÃ©nom.");
+        alertBox("error", "Veuillez ajouter au moins un stagiaire avec nom et prénom.");
         return;
       }
 
@@ -224,13 +224,13 @@
           throw new Error(`Erreur serveur (${res.status}) : ${txt}`);
         }
         const json = await res.json();
-        alertBox("success", "Merci ! Vos informations ont Ã©tÃ© enregistrÃ©es.");
-        // (si tu veux garder lâ€™ID pour debug)
+        alertBox("success", "Merci ! Vos informations ont été enregistrées.");
+        // (si tu veux garder l’ID pour debug)
       if (json && json.id_preparation_formation) {
       console.log("id_preparation_formation:", json.id_preparation_formation);
       }
       } catch(err){
-        alertBox("error", "Impossible dâ€™enregistrer : " + err.message);
+        alertBox("error", "Impossible d’enregistrer : " + err.message);
       } finally {
         qs("#submitBtn").disabled = false;
       }
@@ -241,7 +241,7 @@
     qs("#clearStag").addEventListener("click", e => { e.preventDefault(); clearStagiaires(); });
     qs("#submitBtn").addEventListener("click", e => { e.preventDefault(); submitForm(); });
     refreshOPCO();
-    addStagiaire(); // on affiche 1 bloc par dÃ©faut
+    addStagiaire(); // on affiche 1 bloc par défaut
   </script>
 
   <!-- Supabase JS v2 -->
@@ -265,7 +265,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
   const { data: doff, error: eoff } = await sb.rpc('rpc_get_offre_from_token', { p_token: token });
   if (!eoff && Array.isArray(doff) && doff.length) {
-    window.ID_OFFRE = doff[0].id_offre;   // <<< voilÃ  lâ€™id_offre rÃ©solu par le token
+    window.ID_OFFRE = doff[0].id_offre;   // <<< voilà l’id_offre résolu par le token
     console.log('[Form] id_offre =', window.ID_OFFRE);
   }
 } catch (e) {
@@ -278,7 +278,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const introEl = document.getElementById('introText');
 
   try {
-    // Appels en parallÃ¨le
+    // Appels en parallèle
     const [{ data: d1, error: e1 }, { data: d2, error: e2 }] = await Promise.all([
       sb.rpc('rpc_get_titre_formation', { p_token: token }),
       sb.rpc('rpc_get_contact_prepa',   { p_token: token })
@@ -300,7 +300,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (nomComplet && h1El) h1El.textContent = nomComplet + ',';
       if (introEl) {
         introEl.innerHTML =
-          "Pour nous permettre de prÃ©parer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.";
+          "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.";
       }
     }
   } catch (err) {
@@ -317,7 +317,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     var msg = document.getElementById('submitMsg');
     if (msg) {
       msg.textContent =
-        "Veuillez attendre la confirmation avant de fermer cette page ; un dÃ©lai pouvant aller jusquâ€™Ã  30 secondes peut Ãªtre nÃ©cessaire.";
+        "Veuillez attendre la confirmation avant de fermer cette page ; un délai pouvant aller jusqu’à 30 secondes peut être nécessaire.";
     }
   }
 
@@ -329,7 +329,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // 1) On capte le SUBMIT (capture = true) pour Ãªtre sÃ»r de passer avant tout
+  // 1) On capte le SUBMIT (capture = true) pour être sûr de passer avant tout
   document.addEventListener('submit', function (e) {
     if (alreadySubmitting) return;
     alreadySubmitting = true;
@@ -337,7 +337,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     showWaitMessage();
   }, true);
 
-  // 2) On capte aussi le CLICK sur le bouton (si un autre script empÃªche 'submit')
+  // 2) On capte aussi le CLICK sur le bouton (si un autre script empêche 'submit')
   document.addEventListener('click', function (e) {
     var target = e.target;
     if (!target) return;

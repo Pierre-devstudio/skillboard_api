@@ -3,7 +3,7 @@
     <div class="sb-card-head">
       <div>
         <div class="card-title">Vos clients</div>
-        <div class="card-sub">GÃ©rez votre carnet dâ€™entreprises clientes, sans les prospects et sans les archiver Ã  la hache.</div>
+        <div class="card-sub">Gérez votre carnet d’entreprises clientes, sans les prospects et sans les archiver à la hache.</div>
         <div class="card-sub" id="clientsOwnerCapability" style="margin-top:6px;"></div>
       </div>
       <div class="sb-actions">
@@ -18,7 +18,7 @@
       <div class="sb-kpi-value" id="clientsKpiTotal">0</div>
     </div>
     <div class="sb-kpi-card">
-      <div class="sb-kpi-label">Clients en groupe / rÃ©seau</div>
+      <div class="sb-kpi-label">Clients en groupe / réseau</div>
       <div class="sb-kpi-value" id="clientsKpiGroup">0</div>
     </div>
     <div class="sb-kpi-card">
@@ -26,7 +26,7 @@
       <div class="sb-kpi-value" id="clientsKpiOwner">0</div>
     </div>
     <div class="sb-kpi-card">
-      <div class="sb-kpi-label">Clients avec dÃ©lÃ©gation Studio</div>
+      <div class="sb-kpi-label">Clients avec délégation Studio</div>
       <div class="sb-kpi-value" id="clientsKpiStudioDelegue">0</div>
     </div>
   </div>
@@ -38,7 +38,7 @@
           <div class="card-title" id="clientsSectionTitle">Carnet client</div>
         </div>
         <div class="sb-client-head-actions">
-          <div class="card-sub" id="clientsStatus">â€”</div>
+          <div class="card-sub" id="clientsStatus">—</div>
           <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnClientsToggleAll" style="display:none;">Afficher tout</button>
         </div>
       </div>
@@ -46,7 +46,7 @@
       <div class="sb-toolbar sb-toolbar--nowrap">
         <div class="sb-search sb-search--inline">
           <div class="label">Rechercher</div>
-          <input type="text" id="clientsSearch" placeholder="Nom, code postal, ville, groupeâ€¦" />
+          <input type="text" id="clientsSearch" placeholder="Nom, code postal, ville, groupe…" />
         </div>
 
         <div class="sb-client-filter">
@@ -57,7 +57,7 @@
             <option value="multi_site">Multi-site</option>
             <option value="holding_multi_entreprise">Holding multi-entreprise</option>
             <option value="holding_multi_entreprise_multi_site">Holding multi-entreprise + multi-site</option>
-            <option value="__none__">Non renseignÃ©</option>
+            <option value="__none__">Non renseigné</option>
           </select>
         </div>
 
@@ -88,17 +88,17 @@
       </table>
 
       <div class="sb-client-legend">
-        <span class="sb-client-legend__label">LÃ©gende profil :</span>
+        <span class="sb-client-legend__label">Légende profil :</span>
         <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--site-unique"></span> Site unique</span>
         <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--multi-site"></span> Multi-site</span>
         <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--holding"></span> Holding multi-entreprise</span>
         <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--holding-multi-site"></span> Holding multi-entreprise + multi-site</span>
-        <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--unknown"></span> Non renseignÃ©</span>
+        <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--unknown"></span> Non renseigné</span>
       </div>
 
       <div class="sb-empty-state sb-mt-10 is-hidden" id="clientsEmpty">
-        <div class="sb-empty-state__title">Aucun Ã©lÃ©ment trouvÃ©</div>
-        <div class="sb-empty-state__text">Ajuste la recherche ou les filtres, ou crÃ©e une fiche.</div>
+        <div class="sb-empty-state__title">Aucun élément trouvé</div>
+        <div class="sb-empty-state__text">Ajuste la recherche ou les filtres, ou crée une fiche.</div>
       </div>
     </div>
   </div>
@@ -110,12 +110,12 @@
           <div class="card-title" id="clientModalTitle">Client</div>
           <div class="card-sub is-hidden" id="clientModalSub"></div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnClientModalClose" aria-label="Fermer">Ã—</button>
+        <button type="button" class="sb-modal-x" id="btnClientModalClose" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-segbar sb-client-tabbar" role="tablist" aria-label="Fiche client">
         <button type="button" class="sb-btn sb-btn--soft is-active" data-client-tab="identification">Identification</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-client-tab="references">RÃ©fÃ©rences et profil structurel</button>
+        <button type="button" class="sb-btn sb-btn--soft" data-client-tab="references">Références et profil structurel</button>
         <button type="button" class="sb-btn sb-btn--soft" data-client-tab="contacts">Contacts</button>
       </div>
 
@@ -128,9 +128,9 @@
               <div class="sb-field-head">
                 <div>
                   <div class="card-title">Fiche entreprise</div>
-                  <div class="card-sub">IdentitÃ© administrative et donnÃ©es officielles.</div>
+                  <div class="card-sub">Identité administrative et données officielles.</div>
                 </div>
-                <button type="button" class="sb-btn sb-btn--secondary" id="btnClientLoadPublicData">Charger les donnÃ©es officielles</button>
+                <button type="button" class="sb-btn sb-btn--secondary" id="btnClientLoadPublicData">Charger les données officielles</button>
               </div>
 
               <div class="sb-form-grid sb-mt-10">
@@ -143,29 +143,29 @@
                   <input type="text" class="sb-ctrl" id="frm_siret_ent" inputmode="numeric" maxlength="14" />
                 </div>
                 <div class="sb-field">
-                  <label class="sb-label" for="frm_num_entreprise">NÂ° entreprise</label>
+                  <label class="sb-label" for="frm_num_entreprise">N° entreprise</label>
                   <input type="text" class="sb-ctrl" id="frm_num_entreprise" />
                 </div>
                 <div class="sb-field">
-                  <label class="sb-label" for="frm_date_creation">Date de crÃ©ation</label>
+                  <label class="sb-label" for="frm_date_creation">Date de création</label>
                   <input type="date" class="sb-date" id="frm_date_creation" />
                 </div>
                 <div class="sb-field">
-                  <label class="sb-label" for="frm_effectif_ent">Effectif dÃ©clarÃ©</label>
+                  <label class="sb-label" for="frm_effectif_ent">Effectif déclaré</label>
                   <select class="sb-select" id="frm_effectif_ent">
                     <option value="">-</option>
-                    <option value="1 Ã  9">1 Ã  9</option>
-                    <option value="10 Ã  19">10 Ã  19</option>
-                    <option value="20 Ã  49">20 Ã  49</option>
-                    <option value="50 Ã  99">50 Ã  99</option>
-                    <option value="100 Ã  199">100 Ã  199</option>
-                    <option value="200 Ã  499">200 Ã  499</option>
-                    <option value="500 Ã  999">500 Ã  999</option>
+                    <option value="1 à 9">1 à 9</option>
+                    <option value="10 à 19">10 à 19</option>
+                    <option value="20 à 49">20 à 49</option>
+                    <option value="50 à 99">50 à 99</option>
+                    <option value="100 à 199">100 à 199</option>
+                    <option value="200 à 499">200 à 499</option>
+                    <option value="500 à 999">500 à 999</option>
                     <option value="1000 et +">1000 et +</option>
                   </select>
                 </div>
                 <div class="sb-field sb-span-2">
-                  <label class="sb-label" for="frm_num_tva_ent">NÂ° TVA</label>
+                  <label class="sb-label" for="frm_num_tva_ent">N° TVA</label>
                   <input type="text" class="sb-ctrl" id="frm_num_tva_ent" />
                 </div>
 
@@ -174,11 +174,11 @@
                   <div class="sb-logo-card sb-client-logo-card">
                     <div class="sb-logo-preview" id="clientLogoPreview">
                       <img id="clientLogoImg" alt="Logo structure" style="display:none;" />
-                      <div class="sb-help" id="clientLogoEmpty">Enregistrez dâ€™abord la structure pour importer un logo.</div>
+                      <div class="sb-help" id="clientLogoEmpty">Enregistrez d’abord la structure pour importer un logo.</div>
                     </div>
                     <div class="sb-logo-meta">
                       <div class="card-sub" id="clientLogoMeta" style="margin:0;">
-                        Le logo sera rÃ©utilisÃ© dans les sorties PDF de cette structure.
+                        Le logo sera réutilisé dans les sorties PDF de cette structure.
                       </div>
                       <div class="sb-actions">
                         <button type="button" class="sb-btn sb-btn--doc" id="btnClientUploadLogo">Importer le logo</button>
@@ -191,14 +191,14 @@
             </div>
 
             <div class="card sb-client-modal-section">
-              <div class="card-title">CoordonnÃ©es</div>
+              <div class="card-title">Coordonnées</div>
               <div class="sb-form-grid sb-mt-10">
                 <div class="sb-field sb-span-2">
                   <label class="sb-label" for="frm_adresse_ent">Adresse</label>
                   <input type="text" class="sb-ctrl" id="frm_adresse_ent" />
                 </div>
                 <div class="sb-field sb-span-2">
-                  <label class="sb-label" for="frm_adresse_cplt_ent">Adresse complÃ©mentaire</label>
+                  <label class="sb-label" for="frm_adresse_cplt_ent">Adresse complémentaire</label>
                   <input type="text" class="sb-ctrl" id="frm_adresse_cplt_ent" />
                 </div>
                 <div class="sb-field">
@@ -216,7 +216,7 @@
                   <input type="text" class="sb-ctrl" id="frm_pays_ent" />
                 </div>
                 <div class="sb-field">
-                  <label class="sb-label" for="frm_telephone_ent">TÃ©lÃ©phone</label>
+                  <label class="sb-label" for="frm_telephone_ent">Téléphone</label>
                   <input type="tel" class="sb-ctrl" id="frm_telephone_ent" inputmode="numeric" maxlength="14" />
                 </div>
                 <div class="sb-field">
@@ -235,17 +235,17 @@
         <div class="sb-client-panel" data-client-panel="references">
           <div class="sb-client-modal-grid">
             <div class="card sb-client-modal-section">
-              <div class="card-title">RÃ©fÃ©rences administratives</div>
+              <div class="card-title">Références administratives</div>
               <div class="sb-form-grid sb-mt-10">
                 <div class="sb-field">
                   <label class="sb-label" for="frm_idcc">IDCC</label>
                   <input type="text" class="sb-ctrl" id="frm_idcc" inputmode="numeric" />
-                  <div class="sb-help" id="frm_idcc_hint">â€”</div>
+                  <div class="sb-help" id="frm_idcc_hint">—</div>
                 </div>
                 <div class="sb-field">
                   <label class="sb-label" for="frm_code_ape_ent">Code APE</label>
                   <input type="text" class="sb-ctrl" id="frm_code_ape_ent" maxlength="5" inputmode="numeric" placeholder="00.00" autocomplete="off" />
-                  <div class="sb-help" id="frm_ape_hint">â€”</div>
+                  <div class="sb-help" id="frm_ape_hint">—</div>
                 </div>
                 <div class="sb-field">
                   <label class="sb-label" for="frm_id_opco">OPCO</label>
@@ -257,7 +257,7 @@
                   <label class="sb-label">Site web OPCO</label>
                   <div class="sb-client-read-value">
                     <a id="frm_opco_site_link" class="sb-client-inline-link is-hidden" href="#" target="_blank" rel="noopener noreferrer">Ouvrir le site</a>
-                    <span id="frm_opco_site_empty">â€”</span>
+                    <span id="frm_opco_site_empty">—</span>
                   </div>
                 </div>
               </div>
@@ -283,7 +283,7 @@
                 </label>
                 <label class="sb-check sb-span-2 js-client-group-field">
                   <input type="checkbox" id="frm_tete_groupe" />
-                  <span>TÃªte de groupe</span>
+                  <span>Tête de groupe</span>
                 </label>
                 <div class="sb-field js-client-group-field" id="frmGroupNomWrap">
                   <label class="sb-label" for="frm_nom_groupe">Nom du groupe</label>
@@ -291,7 +291,7 @@
                 </div>
                 <div class="sb-field js-client-group-field" id="frmGroupTypeWrap">
                   <label class="sb-label" for="frm_type_groupe">Type de groupe</label>
-                  <input type="text" class="sb-ctrl" id="frm_type_groupe" placeholder="Holding, franchise, rÃ©seauâ€¦" />
+                  <input type="text" class="sb-ctrl" id="frm_type_groupe" placeholder="Holding, franchise, réseau…" />
                 </div>
               </div>
             </div>
@@ -303,13 +303,13 @@
             <div class="sb-field-head">
               <div>
                 <div class="card-title">Contacts administratifs</div>
-                <div class="card-sub" id="clientContactsSub">Enregistrez dâ€™abord la structure pour ajouter des contacts.</div>
+                <div class="card-sub" id="clientContactsSub">Enregistrez d’abord la structure pour ajouter des contacts.</div>
               </div>
               <button type="button" class="sb-btn sb-btn--accent" id="btnClientContactAdd">Ajouter un contact</button>
             </div>
 
             <div class="sb-client-contact-locked" id="clientContactsLocked">
-              Enregistrez la structure avant dâ€™ajouter des contacts administratifs.
+              Enregistrez la structure avant d’ajouter des contacts administratifs.
             </div>
 
             <div class="table-wrap sb-mt-10" id="clientContactsTableWrap">
@@ -318,7 +318,7 @@
                   <tr>
                     <th>Contact</th>
                     <th>Fonction</th>
-                    <th>CoordonnÃ©es</th>
+                    <th>Coordonnées</th>
                     <th>Statut</th>
                     <th style="width:72px; text-align:center;">Action</th>
                   </tr>
@@ -345,9 +345,9 @@
       <div class="sb-modal-head">
         <div>
           <div class="card-title">Ajouter un contact</div>
-          <div class="card-sub">SÃ©lection depuis les effectifs actifs ou crÃ©ation manuelle.</div>
+          <div class="card-sub">Sélection depuis les effectifs actifs ou création manuelle.</div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnClientContactAddClose" aria-label="Fermer">Ã—</button>
+        <button type="button" class="sb-modal-x" id="btnClientContactAddClose" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
@@ -355,14 +355,14 @@
           <div class="sb-field-head">
             <div>
               <div class="card-title">Effectifs disponibles</div>
-              <div class="card-sub">Les personnes dÃ©jÃ  rattachÃ©es comme contact ne sont pas proposÃ©es.</div>
+              <div class="card-sub">Les personnes déjà rattachées comme contact ne sont pas proposées.</div>
             </div>
-            <button type="button" class="sb-btn sb-btn--secondary" id="btnClientContactManualToggle">CrÃ©er manuellement</button>
+            <button type="button" class="sb-btn sb-btn--secondary" id="btnClientContactManualToggle">Créer manuellement</button>
           </div>
 
           <div class="sb-search sb-search--inline sb-mt-10">
             <span>âŒ•</span>
-            <input type="text" id="clientContactSearch" placeholder="Rechercher un nom, un email, une fonctionâ€¦" />
+            <input type="text" id="clientContactSearch" placeholder="Rechercher un nom, un email, une fonction…" />
           </div>
 
           <div class="table-wrap sb-mt-10">
@@ -381,10 +381,10 @@
         </div>
 
         <div class="card sb-client-modal-section is-hidden" id="clientContactManualCard">
-          <div class="card-title">CrÃ©er un contact</div>
+          <div class="card-title">Créer un contact</div>
           <div class="sb-form-grid sb-mt-10">
             <div class="sb-field">
-              <label class="sb-label" for="contactManualCivilite">CivilitÃ©</label>
+              <label class="sb-label" for="contactManualCivilite">Civilité</label>
               <select class="sb-select" id="contactManualCivilite">
                 <option value="-">-</option>
                 <option value="Mme">Mme</option>
@@ -396,7 +396,7 @@
               <input type="text" class="sb-ctrl" id="contactManualNom" />
             </div>
             <div class="sb-field">
-              <label class="sb-label" for="contactManualPrenom">PrÃ©nom *</label>
+              <label class="sb-label" for="contactManualPrenom">Prénom *</label>
               <input type="text" class="sb-ctrl" id="contactManualPrenom" />
             </div>
             <div class="sb-field">
@@ -404,11 +404,11 @@
               <input type="text" class="sb-ctrl" id="contactManualRole" />
             </div>
             <div class="sb-field">
-              <label class="sb-label" for="contactManualTel">TÃ©lÃ©phone</label>
+              <label class="sb-label" for="contactManualTel">Téléphone</label>
               <input type="tel" class="sb-ctrl" id="contactManualTel" inputmode="numeric" maxlength="14" />
             </div>
             <div class="sb-field">
-              <label class="sb-label" for="contactManualTel2">TÃ©lÃ©phone 2</label>
+              <label class="sb-label" for="contactManualTel2">Téléphone 2</label>
               <input type="tel" class="sb-ctrl" id="contactManualTel2" inputmode="numeric" maxlength="14" />
             </div>
             <div class="sb-field sb-span-2">
@@ -431,8 +431,8 @@
         <div class="sb-save-inline-msg" id="clientContactAddMsg"></div>
         <div class="sb-actions">
           <button type="button" class="sb-btn sb-btn--secondary" id="btnClientContactAddCancel">Annuler</button>
-          <button type="button" class="sb-btn sb-btn--accent" id="btnClientContactAddSelected">Ajouter la sÃ©lection</button>
-          <button type="button" class="sb-btn sb-btn--accent is-hidden" id="btnClientContactManualSave">CrÃ©er le contact</button>
+          <button type="button" class="sb-btn sb-btn--accent" id="btnClientContactAddSelected">Ajouter la sélection</button>
+          <button type="button" class="sb-btn sb-btn--accent is-hidden" id="btnClientContactManualSave">Créer le contact</button>
         </div>
       </div>
     </div>
@@ -443,16 +443,16 @@
       <div class="sb-modal-head">
         <div>
           <div class="card-title">Modifier le contact</div>
-          <div class="card-sub">La modification est rÃ©percutÃ©e sur lâ€™effectif liÃ©.</div>
+          <div class="card-sub">La modification est répercutée sur l’effectif lié.</div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnClientContactEditClose" aria-label="Fermer">Ã—</button>
+        <button type="button" class="sb-modal-x" id="btnClientContactEditClose" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="card sb-client-modal-section">
           <div class="sb-form-grid">
             <div class="sb-field">
-              <label class="sb-label" for="contactEditCivilite">CivilitÃ©</label>
+              <label class="sb-label" for="contactEditCivilite">Civilité</label>
               <select class="sb-select" id="contactEditCivilite">
                 <option value="-">-</option>
                 <option value="Mme">Mme</option>
@@ -464,7 +464,7 @@
               <input type="text" class="sb-ctrl" id="contactEditNom" />
             </div>
             <div class="sb-field">
-              <label class="sb-label" for="contactEditPrenom">PrÃ©nom *</label>
+              <label class="sb-label" for="contactEditPrenom">Prénom *</label>
               <input type="text" class="sb-ctrl" id="contactEditPrenom" />
             </div>
             <div class="sb-field">
@@ -472,11 +472,11 @@
               <input type="text" class="sb-ctrl" id="contactEditRole" />
             </div>
             <div class="sb-field">
-              <label class="sb-label" for="contactEditTel">TÃ©lÃ©phone</label>
+              <label class="sb-label" for="contactEditTel">Téléphone</label>
               <input type="tel" class="sb-ctrl" id="contactEditTel" inputmode="numeric" maxlength="14" />
             </div>
             <div class="sb-field">
-              <label class="sb-label" for="contactEditTel2">TÃ©lÃ©phone 2</label>
+              <label class="sb-label" for="contactEditTel2">Téléphone 2</label>
               <input type="tel" class="sb-ctrl" id="contactEditTel2" inputmode="numeric" maxlength="14" />
             </div>
             <div class="sb-field sb-span-2">
@@ -510,9 +510,9 @@
       <div class="sb-modal-head">
         <div>
           <div class="card-title" id="clientCommercialModalTitle">Abonnement et droits</div>
-          <div class="card-sub" id="clientCommercialModalSub">ParamÃ©trage commercial du client sÃ©lectionnÃ©.</div>
+          <div class="card-sub" id="clientCommercialModalSub">Paramétrage commercial du client sélectionné.</div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnClientCommercialClose" aria-label="Fermer">Ã—</button>
+        <button type="button" class="sb-modal-x" id="btnClientCommercialClose" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
@@ -522,7 +522,7 @@
             <div class="sb-field-head">
               <div>
                 <div class="card-title" style="font-size:var(--ns-text-lg, 0.9375rem); margin:0;">Abonnement</div>
-                <div class="card-sub">Socle limitÃ© Ã  Essential, Studio Solo et Studio RÃ©seau.</div>
+                <div class="card-sub">Socle limité à Essential, Studio Solo et Studio Réseau.</div>
               </div>
             </div>
 
@@ -542,7 +542,7 @@
               <div class="sb-col-3"></div>
 
               <div class="sb-col-3">
-                <div class="label">Date dÃ©but</div>
+                <div class="label">Date début</div>
                 <input type="date" class="sb-date" id="frmCommercialDateDebut" />
               </div>
               <div class="sb-col-3">
@@ -553,33 +553,33 @@
           </div>
 
           <div class="card">
-            <div class="card-title" style="font-size:var(--ns-text-lg, 0.9375rem);">Options indÃ©pendantes</div>
+            <div class="card-title" style="font-size:var(--ns-text-lg, 0.9375rem);">Options indépendantes</div>
             <div class="sb-commercial-option-grid sb-mt-10">
               <label class="sb-commercial-option-card">
                 <input type="checkbox" id="frmCommercialLearnActif" />
                 <span>
                   <strong>Learn</strong>
-                  <small>Option autonome. Extensions Learn visibles uniquement si lâ€™option est active.</small>
+                  <small>Option autonome. Extensions Learn visibles uniquement si l’option est active.</small>
                 </span>
               </label>
               <label class="sb-commercial-option-card">
                 <input type="checkbox" id="frmCommercialPartnerActif" />
                 <span>
                   <strong>Partner</strong>
-                  <small>Option autonome. Extensions Partner visibles uniquement si lâ€™option est active.</small>
+                  <small>Option autonome. Extensions Partner visibles uniquement si l’option est active.</small>
                 </span>
               </label>
             </div>
           </div>
 
           <div class="card">
-            <div class="card-title" style="font-size:var(--ns-text-lg, 0.9375rem);">Consoles et quotas appliquÃ©s</div>
+            <div class="card-title" style="font-size:var(--ns-text-lg, 0.9375rem);">Consoles et quotas appliqués</div>
             <div class="sb-commercial-summary-grid sb-mt-10" id="commercialConsoleSummary"></div>
           </div>
 
           <div class="card">
             <div class="card-title" style="font-size:var(--ns-text-lg, 0.9375rem);">Extensions</div>
-            <div class="card-sub">Les packs sont filtrÃ©s par console active. Ã‡a Ã©vite de vendre une rallonge de tuyau Ã  quelquâ€™un qui nâ€™a pas le robinet.</div>
+            <div class="card-sub">Les packs sont filtrés par console active. Ça évite de vendre une rallonge de tuyau à quelqu’un qui n’a pas le robinet.</div>
             <div class="sb-commercial-extension-list sb-mt-10" id="commercialExtensionList"></div>
           </div>
 
@@ -602,7 +602,7 @@
 
             <div class="sb-grid-12 sb-mt-10">
               <div class="sb-col-12">
-                <textarea id="frmCommercialCommentaire" class="sb-textarea--md" placeholder="Commentaire commercial, exception, historique courtâ€¦"></textarea>
+                <textarea id="frmCommercialCommentaire" class="sb-textarea--md" placeholder="Commentaire commercial, exception, historique court…"></textarea>
               </div>
             </div>
           </div>

@@ -14,14 +14,14 @@
         </svg>
       </div>
       <div style="min-width:0;">
-        <div class="card-title ep-page-head__title">Entretiens & Ã©valuations</div>
-        <div class="card-sub ep-page-head__sub">PrÃ©parer, rÃ©aliser et valider les entretiens de vos collaborateurs.</div>
+        <div class="card-title ep-page-head__title">Entretiens & évaluations</div>
+        <div class="card-sub ep-page-head__sub">Préparer, réaliser et valider les entretiens de vos collaborateurs.</div>
       </div>
     </div>
 
   </div>
 
-  <!-- SynthÃ¨se collaborateur intÃ©grÃ©e Ã  la carte Couverture du poste actuel -->
+  <!-- Synthèse collaborateur intégrée à la carte Couverture du poste actuel -->
 
   <div class="ep-main-layout">
     <div class="ep-left-col">
@@ -29,7 +29,7 @@
         <div class="ep-card-head">
           <div>
             <div class="card-title ep-card-head__title">Filtres</div>
-            <div class="card-sub ep-card-head__sub">Le filtre sâ€™applique aux indicateurs et aux listes.</div>
+            <div class="card-sub ep-card-head__sub">Le filtre s’applique aux indicateurs et aux listes.</div>
           </div>
           <button type="button"
                   class="ep-card-head__icon ep-filter-toggle"
@@ -53,10 +53,10 @@
         </div>
 
         <div class="ep-filter-stack" id="epFilterBody">
-          <!-- Mode embarquÃ© Studio : alimentÃ© par studio_client_space.js.
-               En console Insights classique, ce bloc reste masquÃ©. -->
+          <!-- Mode embarqué Studio : alimenté par studio_client_space.js.
+               En console Insights classique, ce bloc reste masqué. -->
           <div class="info-item ep-organisation-field" id="ep_orgWrap" style="min-width:0; display:none;">
-            <label class="sb-label" for="ep_selOrganisation">Organisation analysÃ©e</label>
+            <label class="sb-label" for="ep_selOrganisation">Organisation analysée</label>
             <select id="ep_selOrganisation" class="sb-select">
               <option value="">Structure courante</option>
             </select>
@@ -65,22 +65,22 @@
           <div class="info-item" style="min-width:0;">
             <label class="sb-label" for="ep_selService">Service</label>
             <select id="ep_selService" class="sb-select">
-              <option value="">â€” SÃ©lectionner â€”</option>
+              <option value="">— Sélectionner —</option>
             </select>
           </div>
 
           <div class="ep-crit-slider ep-crit-slider--perimetre">
-            <label class="sb-label" for="ep_rngCriticite">CriticitÃ© minimale</label>
+            <label class="sb-label" for="ep_rngCriticite">Criticité minimale</label>
             <input type="range" id="ep_rngCriticite" min="0" max="100" step="1" value="0" />
             <div class="ep-crit-slider-meta">
-              <span>CompÃ©tences analysÃ©es si criticitÃ© â‰¥</span>
+              <span>Compétences analysées si criticité ≥</span>
               <strong><span id="ep_rngCriticiteVal">0</span></strong>
             </div>
           </div>
 
           <div class="ep-filter-actions">
             <button type="button" class="sb-btn sb-btn--soft" id="ep_btnScopeReset">
-              RÃ©initialiser
+              Réinitialiser
             </button>
             <button type="button" class="sb-btn sb-btn--accent" id="ep_btnScopeApply">
               Appliquer
@@ -95,7 +95,7 @@
             <span class="ep-section-title__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </span>
-            <span class="card-title">Collaborateurs Ã  Ã©valuer</span>
+            <span class="card-title">Collaborateurs à évaluer</span>
           </div>
 
         </div>
@@ -116,7 +116,7 @@
 
     <div class="ep-work-col">
       <div class="card ep-panel-card ep-summary-empty-card" id="ep_covHint">
-        SÃ©lectionne un collaborateur pour prÃ©parer un entretien ou lancer une Ã©valuation.
+        Sélectionne un collaborateur pour préparer un entretien ou lancer une évaluation.
       </div>
 
       <div id="ep_covWrap" class="ep-collab-workspace" style="display:none;">
@@ -124,37 +124,37 @@
           <div class="card-body ep-collab-summary-body">
             <div class="ep-collab-summary-main">
               <div class="ep-collab-avatar ep-collab-avatar--initials" aria-hidden="true">
-                <span id="ep_ctxInitials">â€”</span>
+                <span id="ep_ctxInitials">—</span>
               </div>
               <div class="ep-collab-identity">
                 <div class="ep-summary-label">Collaborateur</div>
-                <div class="ep-summary-name" id="ep_ctxCollaborateur">â€”</div>
-                <div class="ep-summary-role" id="ep_ctxPoste">â€”</div>
-                <div class="ep-collab-service-pill" id="ep_ctxServiceBadge">Service non renseignÃ©</div>
+                <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
+                <div class="ep-summary-role" id="ep_ctxPoste">—</div>
+                <div class="ep-collab-service-pill" id="ep_ctxServiceBadge">Service non renseigné</div>
               </div>
             </div>
 
             <div class="ep-collab-summary-grid">
               <div class="ep-collab-summary-item">
                 <span>Dernier entretien annuel</span>
-                <button type="button" class="ep-collab-summary-link" id="ep_annualLastDate">â€”</button>
-                <em id="ep_annualLastSub">â€”</em>
+                <button type="button" class="ep-collab-summary-link" id="ep_annualLastDate">—</button>
+                <em id="ep_annualLastSub">—</em>
               </div>
               <div class="ep-collab-summary-item">
-                <span>Prochaine Ã©chÃ©ance</span>
-                <button type="button" class="ep-collab-summary-link" id="ep_annualNextDate">â€”</button>
-                <em id="ep_annualNextSub">â€”</em>
+                <span>Prochaine échéance</span>
+                <button type="button" class="ep-collab-summary-link" id="ep_annualNextDate">—</button>
+                <em id="ep_annualNextSub">—</em>
               </div>
               <div class="ep-collab-summary-item" id="ep_annualCurrentItem" style="display:none;">
                 <span>Entretien en cours</span>
-                <strong><span class="sb-badge ep-entretien-status" id="ep_annualCurrentStatus">â€”</span></strong>
-                <em id="ep_annualCurrentSub">â€”</em>
+                <strong><span class="sb-badge ep-entretien-status" id="ep_annualCurrentStatus">—</span></strong>
+                <em id="ep_annualCurrentSub">—</em>
               </div>
             </div>
 
-            <div id="ep_ctxMatricule" style="display:none;">â€”</div>
-            <div id="ep_ctxService" style="display:none;">â€”</div>
-            <div id="ep_ctxDate" style="display:none;">â€”</div>
+            <div id="ep_ctxMatricule" style="display:none;">—</div>
+            <div id="ep_ctxService" style="display:none;">—</div>
+            <div id="ep_ctxDate" style="display:none;">—</div>
             <div id="ep_kpiToDo" style="display:none;">0</div>
             <div id="ep_compCount" style="display:none;">0</div>
           </div>
@@ -171,7 +171,7 @@
             <div class="ep-panel-title-row">
               <div>
                 <div class="card-title">Entretien annuel en cours</div>
-                <div class="card-sub">Un flux unique : prÃ©parer, rÃ©aliser, signer, produire le rapport.</div>
+                <div class="card-sub">Un flux unique : préparer, réaliser, signer, produire le rapport.</div>
               </div>
             </div>
 
@@ -181,12 +181,12 @@
                   <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M9 7h6"/><path d="M5 5a2 2 0 0 1 2-2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5"/></svg></div>
                   <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
                 </div>
-                <div class="ep-step-title">1. PrÃ©paration</div>
-                <span class="sb-badge" id="ep_stepPreparationBadge">Ã€ prÃ©parer</span>
-                <div class="ep-step-sub" id="ep_stepPreparationSub">Aucune prÃ©paration ouverte</div>
+                <div class="ep-step-title">1. Préparation</div>
+                <span class="sb-badge" id="ep_stepPreparationBadge">À préparer</span>
+                <div class="ep-step-sub" id="ep_stepPreparationSub">Aucune préparation ouverte</div>
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAnnualPrepare">
                   <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span>
-                  <span>PrÃ©parer</span>
+                  <span>Préparer</span>
                 </button>
               </div>
 
@@ -197,12 +197,12 @@
                   <div class="ep-step-icon"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></div>
                   <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
                 </div>
-                <div class="ep-step-title">2. RÃ©alisation</div>
-                <span class="sb-badge" id="ep_stepRealisationBadge">Ã€ rÃ©aliser</span>
-                <div class="ep-step-sub" id="ep_stepRealisationSub">Planifier et conduire lâ€™entretien</div>
+                <div class="ep-step-title">2. Réalisation</div>
+                <span class="sb-badge" id="ep_stepRealisationBadge">À réaliser</span>
+                <div class="ep-step-sub" id="ep_stepRealisationSub">Planifier et conduire l’entretien</div>
                 <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="ep_btnAnnualRealize">
                   <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7V3"/><path d="M16 7V3"/><path d="M4 11h16"/><rect x="4" y="5" width="16" height="16" rx="2"/></svg></span>
-                  <span>RÃ©aliser lâ€™entretien</span>
+                  <span>Réaliser l’entretien</span>
                 </button>
               </div>
 
@@ -214,8 +214,8 @@
                   <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
                 </div>
                 <div class="ep-step-title">3. Signatures</div>
-                <span class="sb-badge" id="ep_stepSignaturesBadge">Non engagÃ©</span>
-                <div class="ep-step-sub" id="ep_stepSignaturesSub">Validation Ã©lectronique</div>
+                <span class="sb-badge" id="ep_stepSignaturesBadge">Non engagé</span>
+                <div class="ep-step-sub" id="ep_stepSignaturesSub">Validation électronique</div>
               </div>
 
               <div class="ep-annual-step-sep" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
@@ -226,8 +226,8 @@
                   <span class="ep-step-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
                 </div>
                 <div class="ep-step-title">4. Rapport</div>
-                <span class="sb-badge" id="ep_stepRapportBadge">Ã€ gÃ©nÃ©rer</span>
-                <div class="ep-step-sub" id="ep_stepRapportSub">Rapport dâ€™entretien</div>
+                <span class="sb-badge" id="ep_stepRapportBadge">À générer</span>
+                <div class="ep-step-sub" id="ep_stepRapportSub">Rapport d’entretien</div>
                 <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAnnualReport">
                   <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg></span>
                   <span>Voir le rapport</span>
@@ -241,31 +241,31 @@
               <div class="ep-panel-title-row">
                 <div class="ep-section-title">
                   <span class="ep-section-title__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span>
-                  <span class="card-title">CompÃ©tences Ã  aborder</span>
+                  <span class="card-title">Compétences à aborder</span>
                 </div>
               </div>
 
               <div class="ep-annual-metrics">
                 <div class="ep-annual-metric">
                   <strong id="ep_annualMetricNever">0</strong>
-                  <span>Jamais Ã©valuÃ©es</span>
-                  <em>Ã€ Ã©valuer pour la 1re fois</em>
+                  <span>Jamais évaluées</span>
+                  <em>À évaluer pour la 1re fois</em>
                 </div>
                 <div class="ep-annual-metric">
                   <strong id="ep_annualMetricReview">0</strong>
-                  <span>Ã€ rÃ©Ã©valuer</span>
-                  <em>Ã‰valuÃ©es il y a plus de 24 mois</em>
+                  <span>À réévaluer</span>
+                  <em>Évaluées il y a plus de 24 mois</em>
                 </div>
                 <div class="ep-annual-metric">
                   <strong id="ep_annualMetricCritical">0</strong>
                   <span>Critiques</span>
-                  <em>Dans le pÃ©rimÃ¨tre du poste</em>
+                  <em>Dans le périmètre du poste</em>
                 </div>
               </div>
 
               <button type="button" class="ep-link-row" id="ep_btnAnnualSeeCompetences">
-                <span>Voir le dÃ©tail des compÃ©tences</span>
-                <span aria-hidden="true">â€º</span>
+                <span>Voir le détail des compétences</span>
+                <span aria-hidden="true">›</span>
               </button>
             </div>
 
@@ -281,18 +281,18 @@
                 <table class="sb-table ep-annual-history-table">
                   <thead>
                     <tr>
-                      <th>AnnÃ©e</th>
+                      <th>Année</th>
                       <th>Date</th>
                       <th>Statut</th>
                       <th>Rapport</th>
                     </tr>
                   </thead>
                   <tbody id="ep_annualHistoryBody">
-                    <tr><td colspan="4" class="ep-empty-cell">Aucun entretien annuel chargÃ©.</td></tr>
+                    <tr><td colspan="4" class="ep-empty-cell">Aucun entretien annuel chargé.</td></tr>
                   </tbody>
                 </table>
                 <button type="button" class="ep-more-competences ep-more-annual-history" id="ep_btnMoreAnnualHistory" style="display:none;">
-                  <span id="ep_moreAnnualHistoryLabel">Plus dâ€™historique</span>
+                  <span id="ep_moreAnnualHistoryLabel">Plus d’historique</span>
                   <span class="ep-more-competences__chevron" aria-hidden="true">âŒ„</span>
                 </button>
               </div>
@@ -303,29 +303,29 @@
         <div class="ep-tab-panel" id="ep_panelPonctuel" data-ep-panel="ponctuel">
           <div class="card ep-panel-card ep-punctual-hero">
             <div>
-              <div class="card-title">Ã‰valuation ponctuelle</div>
-              <div class="card-sub">Ã‰valuer une compÃ©tence hors entretien annuel.</div>
+              <div class="card-title">Évaluation ponctuelle</div>
+              <div class="card-sub">Évaluer une compétence hors entretien annuel.</div>
             </div>
             <div class="sb-actions">
               <button type="button" class="sb-btn sb-btn--accent" id="ep_btnNewPonctuel">
                 <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
-                <span>Nouvelle Ã©valuation ponctuelle</span>
+                <span>Nouvelle évaluation ponctuelle</span>
               </button>
               <button type="button" class="sb-btn sb-btn--soft" id="ep_btnHistoryGlobal">
                 <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-                <span>Voir lâ€™historique</span>
+                <span>Voir l’historique</span>
               </button>
             </div>
           </div>
 
           <div class="card ep-panel-card ep-competence-panel ep-punctual-main-card">
             <div class="card-body ep-punctual-main-body">
-              <div class="ep-punctual-inner-tabs" role="tablist" aria-label="Ã‰valuations ponctuelles">
+              <div class="ep-punctual-inner-tabs" role="tablist" aria-label="Évaluations ponctuelles">
                 <button type="button" class="ep-punctual-inner-tab is-active" data-ep-punctual-tab="competences" role="tab" aria-selected="true">
                   <span class="ep-punctual-inner-tab__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 12h18"/><path d="m6 6 12 12"/><path d="m18 6-12 12"/></svg>
                   </span>
-                  <span>CompÃ©tences Ã  Ã©valuer</span>
+                  <span>Compétences à évaluer</span>
                 </button>
                 <button type="button" class="ep-punctual-inner-tab" data-ep-punctual-tab="historique" role="tab" aria-selected="false">
                   <span class="ep-punctual-inner-tab__icon" aria-hidden="true">
@@ -338,12 +338,12 @@
               <div class="ep-punctual-inner-panel is-active" data-ep-punctual-panel="competences">
                 <div class="ep-punctual-toolbar">
                   <div class="ep-search-field ep-punctual-search">
-                    <input id="ep_txtSearchCompetence" class="ep-search-input" placeholder="Rechercher une compÃ©tence" autocomplete="off" />
+                    <input id="ep_txtSearchCompetence" class="ep-search-input" placeholder="Rechercher une compétence" autocomplete="off" />
                     <span class="ep-search-field__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
                   </div>
-                  <div class="ep-status-filter" role="group" aria-label="Filtrer les compÃ©tences">
-                    <button type="button" class="ep-status-filter-btn" data-ep-status="never">Jamais Ã©valuÃ©e</button>
-                    <button type="button" class="ep-status-filter-btn" data-ep-status="review">Ã€ revoir</button>
+                  <div class="ep-status-filter" role="group" aria-label="Filtrer les compétences">
+                    <button type="button" class="ep-status-filter-btn" data-ep-status="never">Jamais évaluée</button>
+                    <button type="button" class="ep-status-filter-btn" data-ep-status="review">À revoir</button>
                     <button type="button" class="ep-status-filter-btn is-active" data-ep-status="all">Toutes</button>
                   </div>
                 </div>
@@ -353,17 +353,17 @@
                     <thead>
                       <tr>
                         <th>Code</th>
-                        <th>CompÃ©tence</th>
-                        <th>DerniÃ¨re Ã©valuation</th>
+                        <th>Compétence</th>
+                        <th>Dernière évaluation</th>
                         <th>Niveau actuel</th>
-                        <th>Ã‰tat dâ€™Ã©valuation</th>
+                        <th>État d’évaluation</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody></tbody>
                   </table>
                   <button type="button" class="ep-more-competences" id="ep_btnMoreCompetences" style="display:none;">
-                    <span id="ep_moreCompetencesLabel">Plus de compÃ©tences</span>
+                    <span id="ep_moreCompetencesLabel">Plus de compétences</span>
                     <span class="ep-more-competences__chevron" aria-hidden="true">âŒ„</span>
                   </button>
                 </div>
@@ -372,10 +372,10 @@
               <div class="ep-punctual-inner-panel" data-ep-punctual-panel="historique">
                 <div class="ep-punctual-history-wrap">
                   <div class="ep-punctual-history-list" id="ep_punctualHistoryList">
-                    <div class="ep-empty-cell">Aucun historique chargÃ©.</div>
+                    <div class="ep-empty-cell">Aucun historique chargé.</div>
                   </div>
                   <button type="button" class="ep-more-competences ep-more-history-competences" id="ep_btnMoreHistoryCompetences" style="display:none;">
-                    <span id="ep_moreHistoryCompetencesLabel">Plus de compÃ©tences</span>
+                    <span id="ep_moreHistoryCompetencesLabel">Plus de compétences</span>
                     <span class="ep-more-competences__chevron" aria-hidden="true">âŒ„</span>
                   </button>
                 </div>
@@ -388,13 +388,13 @@
         <div class="ep-tab-panel" id="ep_panelFormation" data-ep-panel="formation">
           <div class="card ep-panel-card ep-formation-hero">
             <div>
-              <div class="card-title">Ã‰valuation post-formation</div>
-              <div class="card-sub">VÃ©rifier le transfert des acquis en situation de travail.</div>
+              <div class="card-title">Évaluation post-formation</div>
+              <div class="card-sub">Vérifier le transfert des acquis en situation de travail.</div>
             </div>
             <div class="sb-actions">
               <button type="button" class="sb-btn sb-btn--accent" id="ep_btnFormationEval" disabled>
                 <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3Z"/></svg></span>
-                <span>Lancer lâ€™Ã©valuation</span>
+                <span>Lancer l’évaluation</span>
               </button>
               <button type="button" class="sb-btn sb-btn--soft" id="ep_btnFormationReport" disabled>
                 <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg></span>
@@ -406,8 +406,8 @@
           <div class="card ep-panel-card ep-formation-empty-card">
             <div class="ep-empty-illustration" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg></div>
             <div>
-              <div class="card-title">Aucune formation terminÃ©e Ã  suivre pour lâ€™instant</div>
-              <div class="card-sub">Cet onglet recevra les Ã©valuations Ã  froid lorsque les formations terminÃ©es seront reliÃ©es au collaborateur.</div>
+              <div class="card-title">Aucune formation terminée à suivre pour l’instant</div>
+              <div class="card-sub">Cet onglet recevra les évaluations à froid lorsque les formations terminées seront reliées au collaborateur.</div>
             </div>
           </div>
         </div>
@@ -419,17 +419,17 @@
     <div class="modal-card ep-eval-modal-card">
       <div class="modal-header">
         <div>
-          <div class="card-title" style="margin:0;">Ã‰valuer la compÃ©tence</div>
-          <div class="card-sub" id="ep_evalHint" style="margin-top:2px;">SÃ©lectionne une compÃ©tence.</div>
+          <div class="card-title" style="margin:0;">Évaluer la compétence</div>
+          <div class="card-sub" id="ep_evalHint" style="margin-top:2px;">Sélectionne une compétence.</div>
         </div>
-        <button type="button" class="modal-x" id="btnCloseEpEvaluationModalX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="btnCloseEpEvaluationModalX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
         <div class="ep-skill-head">
           <div class="ep-skill-main">
-            <div class="sb-label"><b>CompÃ©tence</b></div>
-            <div class="ep-skill-title" id="ep_compTitle">â€”</div>
+            <div class="sb-label"><b>Compétence</b></div>
+            <div class="ep-skill-title" id="ep_compTitle">—</div>
             <div style="margin-top:8px;">
               <span class="sb-badge" id="ep_compDomain" style="display:inline-block;"></span>
             </div>
@@ -445,17 +445,17 @@
           <table class="sb-table sb-table--airy" id="ep_tblCriteres">
             <thead>
               <tr>
-                <th style="width:58%;">CritÃ¨re</th>
+                <th style="width:58%;">Critère</th>
                 <th style="width:14%;">Note</th>
                 <th style="width:28%;">Commentaire</th>
               </tr>
             </thead>
             <tbody>
               <tr data-crit="1">
-                <td><span id="ep_critLabel1">â€”</span></td>
+                <td><span id="ep_critLabel1">—</span></td>
                 <td>
                   <select id="ep_critNote1" disabled>
-                    <option value="">â€”</option>
+                    <option value="">—</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
@@ -466,10 +466,10 @@
               </tr>
 
               <tr data-crit="2">
-                <td><span id="ep_critLabel2">â€”</span></td>
+                <td><span id="ep_critLabel2">—</span></td>
                 <td>
                   <select id="ep_critNote2" disabled>
-                    <option value="">â€”</option>
+                    <option value="">—</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
@@ -480,10 +480,10 @@
               </tr>
 
               <tr data-crit="3">
-                <td><span id="ep_critLabel3">â€”</span></td>
+                <td><span id="ep_critLabel3">—</span></td>
                 <td>
                   <select id="ep_critNote3" disabled>
-                    <option value="">â€”</option>
+                    <option value="">—</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
@@ -494,10 +494,10 @@
               </tr>
 
               <tr data-crit="4">
-                <td><span id="ep_critLabel4">â€”</span></td>
+                <td><span id="ep_critLabel4">—</span></td>
                 <td>
                   <select id="ep_critNote4" disabled>
-                    <option value="">â€”</option>
+                    <option value="">—</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
@@ -512,7 +512,7 @@
 
         <div class="ep-score-grid">
           <div class="ep-score-card ep-score-card--method">
-            <div class="label">MÃ©thode dâ€™Ã©valuation</div>
+            <div class="label">Méthode d’évaluation</div>
             <select id="ep_selEvalMethod" disabled>
               <option value="Entretien de performance" selected>Entretien de performance</option>
               <option value="Observation en situation de travail">Observation en situation de travail</option>
@@ -524,9 +524,9 @@
           </div>
 
           <div class="ep-score-card ep-score-card--mastery">
-            <div class="label">MaÃ®trise</div>
+            <div class="label">Maîtrise</div>
             <div class="ep-mastery-value">
-              <div class="value" id="ep_scorePct">â€”</div>
+              <div class="value" id="ep_scorePct">—</div>
               <div class="ep-mastery-gauge is-empty" id="ep_masteryGauge" aria-hidden="true">
                 <span></span>
               </div>
@@ -535,7 +535,7 @@
 
           <div class="ep-score-card">
             <div class="label">Niveau</div>
-            <div class="value" id="ep_levelABC">â€”</div>
+            <div class="value" id="ep_levelABC">—</div>
           </div>
         </div>
 
@@ -565,10 +565,10 @@
       <div class="modal-header">
         <div style="min-width:0;">
           <div class="sb-modal-title">Historique des entretiens</div>
-          <div class="card-sub" id="ep_histCollaborateurName" style="margin-top:2px;">â€”</div>
+          <div class="card-sub" id="ep_histCollaborateurName" style="margin-top:2px;">—</div>
         </div>
 
-        <button type="button" class="modal-x" id="btnCloseEpHistoryModalX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="btnCloseEpHistoryModalX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body ep-history-body">
@@ -590,18 +590,18 @@
           <div class="ep-history-filters">
             <div class="sb-field ep-history-search">
               <label class="sb-label" for="ep_histSearch">Recherche</label>
-              <input id="ep_histSearch" class="sb-ctrl" placeholder="Code, compÃ©tence, observation..." autocomplete="off" />
+              <input id="ep_histSearch" class="sb-ctrl" placeholder="Code, compétence, observation..." autocomplete="off" />
             </div>
 
             <div class="sb-field">
-              <label class="sb-label" for="ep_histSelEvaluateur">Ã‰valuateur</label>
+              <label class="sb-label" for="ep_histSelEvaluateur">Évaluateur</label>
               <select id="ep_histSelEvaluateur" class="sb-select">
                 <option value="">Tous</option>
               </select>
             </div>
 
             <div class="sb-field">
-              <label class="sb-label" for="ep_histSelMethode">MÃ©thode</label>
+              <label class="sb-label" for="ep_histSelMethode">Méthode</label>
               <select id="ep_histSelMethode" class="sb-select">
                 <option value="">Toutes</option>
               </select>
@@ -614,14 +614,14 @@
         <div class="ep-history-panel" id="ep_histPanelProgression">
           <div class="ep-prog-toolbar">
             <div class="sb-field ep-prog-method">
-              <label class="sb-label" for="ep_progMethod">MÃ©thode prise en compte</label>
+              <label class="sb-label" for="ep_progMethod">Méthode prise en compte</label>
               <select id="ep_progMethod" class="sb-select">
-                <option value="">Toutes les mÃ©thodes</option>
+                <option value="">Toutes les méthodes</option>
               </select>
             </div>
 
             <div class="ep-prog-viewbar">
-              <button type="button" class="ep-prog-view is-active" data-view="competences">CompÃ©tences</button>
+              <button type="button" class="ep-prog-view is-active" data-view="competences">Compétences</button>
               <button type="button" class="ep-prog-view" data-view="domaines">Domaines</button>
             </div>
           </div>
@@ -636,7 +636,7 @@
         <div class="ep-history-panel" id="ep_histPanelEntretiens">
           <div class="ep-entretien-toolbar">
             <div class="card-sub">
-              Entretiens individuels rattachÃ©s au collaborateur sÃ©lectionnÃ©.
+              Entretiens individuels rattachés au collaborateur sélectionné.
             </div>
 
             <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="ep_btnNewEntretienFromHistory">
@@ -661,10 +661,10 @@
       <div class="modal-header">
         <div style="min-width:0;">
           <div class="sb-modal-title" id="ep_entretienModalTitle">Entretien individuel</div>
-          <div class="card-sub" id="ep_entretienModalSub" style="margin-top:2px;">â€”</div>
+          <div class="card-sub" id="ep_entretienModalSub" style="margin-top:2px;">—</div>
         </div>
 
-        <button type="button" class="modal-x" id="btnCloseEpEntretienModalX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="btnCloseEpEntretienModalX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body ep-entretien-body">
@@ -673,15 +673,15 @@
         <div class="ep-entretien-modebar">
           <div class="ep-entretien-field-statut">
             <select id="ep_entretienStatut" class="sb-select ep-entretien-statut-native" aria-hidden="true" tabindex="-1">
-              <option value="Ã  rÃ©aliser">Ã€ rÃ©aliser</option>
+              <option value="à réaliser">À réaliser</option>
               <option value="en cours">En cours</option>
-              <option value="Ã  signer 2/2">Ã€ signer 2/2</option>
-              <option value="Ã  signer 1/2">Ã€ signer 1/2</option>
-              <option value="terminÃ©">TerminÃ©</option>
+              <option value="à signer 2/2">À signer 2/2</option>
+              <option value="à signer 1/2">À signer 1/2</option>
+              <option value="terminé">Terminé</option>
             </select>
 
             <div class="ep-status-toggle-wrap" aria-label="Avancement de l'entretien">
-              <span class="ep-status-toggle-side">Ã€ rÃ©aliser</span>
+              <span class="ep-status-toggle-side">À réaliser</span>
               <button type="button" class="ep-switch" id="ep_entretienStatutToggle" role="switch" aria-checked="true" aria-label="Basculer le statut de l'entretien">
                 <span class="ep-switch-knob"></span>
               </button>
@@ -703,45 +703,45 @@
           </div>
 
           <div class="sb-field">
-            <label class="sb-label" for="ep_entretienDatePrevue">Date prÃ©vue</label>
+            <label class="sb-label" for="ep_entretienDatePrevue">Date prévue</label>
             <input id="ep_entretienDatePrevue" class="sb-ctrl" type="date" />
           </div>
 
           <div class="sb-field ep-entretien-field-date-realisee">
-            <label class="sb-label" for="ep_entretienDateRealisee">Date rÃ©alisÃ©e</label>
+            <label class="sb-label" for="ep_entretienDateRealisee">Date réalisée</label>
             <input id="ep_entretienDateRealisee" class="sb-ctrl" type="date" />
           </div>
 
           <div class="sb-field">
-            <label class="sb-label" for="ep_entretienPeriodeDebut">PÃ©riode dÃ©but</label>
+            <label class="sb-label" for="ep_entretienPeriodeDebut">Période début</label>
             <input id="ep_entretienPeriodeDebut" class="sb-ctrl" type="date" />
           </div>
 
           <div class="sb-field">
-            <label class="sb-label" for="ep_entretienPeriodeFin">PÃ©riode fin</label>
+            <label class="sb-label" for="ep_entretienPeriodeFin">Période fin</label>
             <input id="ep_entretienPeriodeFin" class="sb-ctrl" type="date" />
           </div>
         </div>
 
         <div class="ep-entretien-tabs">
-          <button type="button" class="ep-entretien-tab is-active" data-panel="preparation">PrÃ©paration</button>
-          <button type="button" class="ep-entretien-tab" data-panel="competences">CompÃ©tences</button>
-          <button type="button" class="ep-entretien-tab" data-panel="realisation">RÃ©alisation</button>
+          <button type="button" class="ep-entretien-tab is-active" data-panel="preparation">Préparation</button>
+          <button type="button" class="ep-entretien-tab" data-panel="competences">Compétences</button>
+          <button type="button" class="ep-entretien-tab" data-panel="realisation">Réalisation</button>
           <button type="button" class="ep-entretien-tab" data-panel="documents">Documents</button>
         </div>
 
         <div class="ep-entretien-panel is-active" id="ep_entretienPanelPreparation">
           <div class="ep-entretien-section">
-            <div class="ep-entretien-section-title">PrÃ©paration manager</div>
+            <div class="ep-entretien-section-title">Préparation manager</div>
 
             <div class="ep-entretien-grid ep-entretien-grid--two">
               <div class="sb-field">
-                <label class="sb-label" for="ep_entretienPrepNotes">Notes prÃ©paratoires</label>
+                <label class="sb-label" for="ep_entretienPrepNotes">Notes préparatoires</label>
                 <textarea id="ep_entretienPrepNotes" class="sb-ctrl" rows="4"></textarea>
               </div>
 
               <div class="sb-field">
-                <label class="sb-label" for="ep_entretienPrepPoints">Points Ã  aborder</label>
+                <label class="sb-label" for="ep_entretienPrepPoints">Points à aborder</label>
                 <textarea id="ep_entretienPrepPoints" class="sb-ctrl" rows="4"></textarea>
               </div>
             </div>
@@ -751,10 +751,10 @@
         <div class="ep-entretien-panel" id="ep_entretienPanelCompetences">
           <div class="ep-entretien-section">
             <div class="ep-entretien-section-head">
-              <div class="ep-entretien-section-title">CompÃ©tences requises au poste</div>
+              <div class="ep-entretien-section-title">Compétences requises au poste</div>
 
               <div class="ep-entretien-crit-filter">
-                <label class="sb-label" for="ep_entretienCriticite">CriticitÃ© minimale</label>
+                <label class="sb-label" for="ep_entretienCriticite">Criticité minimale</label>
                 <input type="range" id="ep_entretienCriticite" min="0" max="100" step="1" value="0" />
                 <span><span id="ep_entretienCriticiteVal">0</span>%</span>
               </div>
@@ -765,10 +765,10 @@
 
           <div class="ep-entretien-section">
             <div class="ep-entretien-section-head">
-              <div class="ep-entretien-section-title">CompÃ©tences dÃ©tenues hors poste</div>
+              <div class="ep-entretien-section-title">Compétences détenues hors poste</div>
 
               <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAddCompHorsPoste">
-                Ajouter une compÃ©tence
+                Ajouter une compétence
               </button>
             </div>
 
@@ -778,10 +778,10 @@
 
           <div class="ep-entretien-section">
             <div class="ep-entretien-section-head">
-              <div class="ep-entretien-section-title">CompÃ©tences Ã  dÃ©velopper ou explorer</div>
+              <div class="ep-entretien-section-title">Compétences à développer ou explorer</div>
 
               <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAddCompDevelop">
-                Ajouter une compÃ©tence
+                Ajouter une compétence
               </button>
             </div>
 
@@ -792,37 +792,37 @@
 
         <div class="ep-entretien-panel" id="ep_entretienPanelRealisation">
           <div class="ep-entretien-section">
-            <div class="ep-entretien-section-title">RÃ©alisation</div>
+            <div class="ep-entretien-section-title">Réalisation</div>
 
             <div class="ep-entretien-grid ep-entretien-grid--two">
               <div class="sb-field">
-                <label class="sb-label" for="ep_entretienBilan">Bilan de la pÃ©riode</label>
+                <label class="sb-label" for="ep_entretienBilan">Bilan de la période</label>
                 <textarea id="ep_entretienBilan" class="sb-ctrl" rows="4"></textarea>
               </div>
 
               <div class="sb-field">
-                <label class="sb-label" for="ep_entretienObjectifs">Objectifs Ã  venir</label>
+                <label class="sb-label" for="ep_entretienObjectifs">Objectifs à venir</label>
                 <textarea id="ep_entretienObjectifs" class="sb-ctrl" rows="4"></textarea>
               </div>
 
               <div class="sb-field">
-                <label class="sb-label" for="ep_entretienDeveloppement">DÃ©veloppement / formation / mobilitÃ©</label>
+                <label class="sb-label" for="ep_entretienDeveloppement">Développement / formation / mobilité</label>
                 <textarea id="ep_entretienDeveloppement" class="sb-ctrl" rows="4"></textarea>
               </div>
 
               <div class="sb-field">
-                <label class="sb-label" for="ep_entretienPlanActions">Plan dâ€™action</label>
+                <label class="sb-label" for="ep_entretienPlanActions">Plan d’action</label>
                 <textarea id="ep_entretienPlanActions" class="sb-ctrl" rows="4"></textarea>
               </div>
             </div>
           </div>
 
           <div class="ep-entretien-section">
-            <div class="ep-entretien-section-title">SynthÃ¨se</div>
+            <div class="ep-entretien-section-title">Synthèse</div>
 
             <div class="ep-entretien-grid ep-entretien-grid--two">
               <div class="sb-field">
-                <label class="sb-label" for="ep_entretienSyntheseManager">SynthÃ¨se manager</label>
+                <label class="sb-label" for="ep_entretienSyntheseManager">Synthèse manager</label>
                 <textarea id="ep_entretienSyntheseManager" class="sb-ctrl" rows="4"></textarea>
               </div>
 
@@ -837,16 +837,16 @@
 
         <div class="ep-entretien-panel" id="ep_entretienPanelDocuments">
           <div class="ep-entretien-section">
-            <div class="ep-entretien-section-title">Document dâ€™entretien rÃ©alisÃ©</div>
+            <div class="ep-entretien-section-title">Document d’entretien réalisé</div>
 
             <div class="ep-entretien-doc-upload">
               <select id="ep_entretienDocType" class="sb-select">
-                <option value="document_entretien">Document dâ€™entretien</option>
-                <option value="document_signe">Document signÃ©</option>
-                <option value="document_preparatoire">Document prÃ©paratoire</option>
+                <option value="document_entretien">Document d’entretien</option>
+                <option value="document_signe">Document signé</option>
+                <option value="document_preparatoire">Document préparatoire</option>
               </select>
 
-              <div class="ep-entretien-dropzone" id="ep_entretienDocDrop" role="button" tabindex="0" aria-label="Cliquez ou dÃ©posez un fichier">
+              <div class="ep-entretien-dropzone" id="ep_entretienDocDrop" role="button" tabindex="0" aria-label="Cliquez ou déposez un fichier">
                 <div class="ep-entretien-drop-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
@@ -855,8 +855,8 @@
                     <path d="M9 14l3-3 3 3"></path>
                   </svg>
                 </div>
-                <div class="ep-entretien-drop-main" id="ep_entretienDocDropName">Cliquez ou dÃ©posez un fichier ici</div>
-                <div class="ep-entretien-drop-sub">PDF, Word, image ou document dâ€™entretien</div>
+                <div class="ep-entretien-drop-main" id="ep_entretienDocDropName">Cliquez ou déposez un fichier ici</div>
+                <div class="ep-entretien-drop-sub">PDF, Word, image ou document d’entretien</div>
               </div>
 
               <input id="ep_entretienDocFile" class="ep-entretien-file-hidden" type="file" />
@@ -879,23 +879,23 @@
   </div>
 
 
-  <!-- Modal: sÃ©lection compÃ©tences catalogue -->
+  <!-- Modal: sélection compétences catalogue -->
   <div class="modal" id="modalEpCatalogueCompetences" aria-hidden="true">
     <div class="modal-card ep-catalogue-modal-card">
       <div class="modal-header">
         <div style="min-width:0;">
-          <div class="sb-modal-title" id="ep_catalogueModalTitle">Ajouter des compÃ©tences</div>
-          <div class="card-sub" id="ep_catalogueModalSub" style="margin-top:2px;">Catalogue de compÃ©tences</div>
+          <div class="sb-modal-title" id="ep_catalogueModalTitle">Ajouter des compétences</div>
+          <div class="card-sub" id="ep_catalogueModalSub" style="margin-top:2px;">Catalogue de compétences</div>
         </div>
 
-        <button type="button" class="modal-x" id="btnCloseEpCatalogueModalX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="btnCloseEpCatalogueModalX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body ep-catalogue-modal-body">
         <div class="ep-catalogue-toolbar">
           <div class="sb-field ep-catalogue-search-field">
             <label class="sb-label" for="ep_catalogueSearch">Recherche</label>
-            <input id="ep_catalogueSearch" class="sb-ctrl" placeholder="Code, intitulÃ©, domaine..." autocomplete="off" />
+            <input id="ep_catalogueSearch" class="sb-ctrl" placeholder="Code, intitulé, domaine..." autocomplete="off" />
           </div>
 
           <div class="sb-field ep-catalogue-domain-field">
@@ -906,7 +906,7 @@
           </div>
         </div>
 
-        <div id="ep_catalogueInfo" class="card-sub ep-catalogue-info">SÃ©lectionne les compÃ©tences Ã  ajouter.</div>
+        <div id="ep_catalogueInfo" class="card-sub ep-catalogue-info">Sélectionne les compétences à ajouter.</div>
 
         <div id="ep_catalogueList" class="ep-catalogue-list"></div>
       </div>
@@ -914,7 +914,7 @@
       <div class="modal-footer ep-catalogue-footer">
         <div id="ep_catalogueMsg" class="sb-inline-msg" aria-live="polite"></div>
         <button type="button" class="sb-btn sb-btn--soft" id="btnEpCatalogueModalClose">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="ep_btnCatalogueAddSelection" disabled>Ajouter la sÃ©lection</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="ep_btnCatalogueAddSelection" disabled>Ajouter la sélection</button>
       </div>
     </div>
   </div>
@@ -924,7 +924,7 @@
     <div class="modal-card modal-card--medium">
       <div class="modal-header">
         <div style="font-weight:var(--ns-weight-semibold, 600);" id="ep_histObsTitle">Observation</div>
-        <button type="button" class="modal-x" id="btnCloseEpHistoryObsModalX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="modal-x" id="btnCloseEpHistoryObsModalX" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body" style="font-size:var(--ns-text-sm, 0.8125rem);">

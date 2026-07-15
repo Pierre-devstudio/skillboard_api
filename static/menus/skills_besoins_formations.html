@@ -7,24 +7,24 @@
         </span>
         <div>
           <div class="card-title">Demandes RH</div>
-          <div class="card-sub">Centralisez les demandes issues des analyses, des simulations, des managers et des salariÃ©s.</div>
+          <div class="card-sub">Centralisez les demandes issues des analyses, des simulations, des managers et des salariés.</div>
         </div>
       </div>
       <div class="bf-page-head-actions">
-        <div id="bfDestinationText" class="bf-destination">Destination Studio : â€”</div>
+        <div id="bfDestinationText" class="bf-destination">Destination Studio : —</div>
         <button type="button" class="sb-btn sb-btn--accent" id="btnBfCreateDemand">
           <span class="sb-btn-icon" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
           </span>
-          <span>CrÃ©er une demande</span>
+          <span>Créer une demande</span>
         </button>
       </div>
     </div>
 
     <div class="bf-kpi-grid" id="bfKpiGrid">
-      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--red">?</span><div><div class="bf-kpi-label">Ã€ traiter</div><div class="bf-kpi-value">â€”</div></div></div>
-      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--green">âœ“</span><div><div class="bf-kpi-label">PrÃªtes Ã  transmettre</div><div class="bf-kpi-value">â€”</div></div></div>
-      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--violet">â†—</span><div><div class="bf-kpi-label">Transmises au Studio</div><div class="bf-kpi-value">â€”</div></div></div>
+      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--red">?</span><div><div class="bf-kpi-label">À traiter</div><div class="bf-kpi-value">—</div></div></div>
+      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--green">✓</span><div><div class="bf-kpi-label">Prêtes à transmettre</div><div class="bf-kpi-value">—</div></div></div>
+      <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--violet">↗</span><div><div class="bf-kpi-label">Transmises au Studio</div><div class="bf-kpi-value">—</div></div></div>
       <div class="bf-kpi-card"><span class="bf-kpi-icon bf-kpi-icon--orange">â¸</span><div><div class="bf-kpi-label">ReportÃ©es</div><div class="bf-kpi-value">â€”</div></div></div>
     </div>
   </div>
@@ -44,36 +44,36 @@
           <option value="analyse">Analyse</option>
           <option value="simulation">Simulation</option>
           <option value="manager">Manager</option>
-          <option value="salarie">SalariÃ©</option>
+          <option value="salarie">Salarié</option>
           <option value="entretien">Entretien</option>
         </select>
       </div>
       <div class="bf-field">
-        <label class="sb-label" for="bfFinaliteSelect">FinalitÃ©</label>
+        <label class="sb-label" for="bfFinaliteSelect">Finalité</label>
         <select id="bfFinaliteSelect" class="sb-select">
           <option value="tous">Toutes</option>
-          <option value="monter_competence">Monter en compÃ©tence</option>
-          <option value="securiser_poste">SÃ©curiser un poste</option>
-          <option value="preparer_evolution">PrÃ©parer une Ã©volution</option>
-          <option value="renforcer_equipe">Renforcer une Ã©quipe</option>
-          <option value="anticiper_depart">Anticiper un dÃ©part</option>
+          <option value="monter_competence">Monter en compétence</option>
+          <option value="securiser_poste">Sécuriser un poste</option>
+          <option value="preparer_evolution">Préparer une évolution</option>
+          <option value="renforcer_equipe">Renforcer une équipe</option>
+          <option value="anticiper_depart">Anticiper un départ</option>
           <option value="capitaliser_savoir">Capitaliser un savoir-faire</option>
-          <option value="traiter_demande_salarie">Traiter une demande salariÃ©</option>
+          <option value="traiter_demande_salarie">Traiter une demande salarié</option>
           <option value="besoin_rh">Autre besoin RH</option>
         </select>
       </div>
       <div class="bf-field">
         <label class="sb-label" for="bfStatutSelect">Statut</label>
         <select id="bfStatutSelect" class="sb-select">
-          <option value="a_traiter">Ã€ traiter</option>
-          <option value="validee">PrÃªtes Ã  transmettre</option>
+          <option value="a_traiter">À traiter</option>
+          <option value="validee">Prêtes à transmettre</option>
           <option value="transmise_studio">Transmises</option>
-          <option value="reportee">ReportÃ©es</option>
+          <option value="reportee">Reportées</option>
           <option value="tous">Toutes les demandes</option>
         </select>
       </div>
       <div class="bf-field">
-        <label class="sb-label" for="bfPrioritySelect">PrioritÃ©</label>
+        <label class="sb-label" for="bfPrioritySelect">Priorité</label>
         <select id="bfPrioritySelect" class="sb-select">
           <option value="toutes">Toutes</option>
           <option value="critique">Critique</option>
@@ -84,11 +84,11 @@
       </div>
       <div class="bf-field bf-field--search">
         <label class="sb-label" for="bfSearchInput">Recherche</label>
-        <input id="bfSearchInput" class="sb-ctrl" type="search" placeholder="Rechercher une demandeâ€¦">
+        <input id="bfSearchInput" class="sb-ctrl" type="search" placeholder="Rechercher une demande…">
       </div>
       <button type="button" class="sb-btn sb-btn--soft" id="btnBfReset">
         <span class="sb-btn-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/></svg></span>
-        <span>RÃ©initialiser</span>
+        <span>Réinitialiser</span>
       </button>
     </div>
   </div>
@@ -96,8 +96,8 @@
   <div class="card bf-main-card">
     <div class="bf-list-head">
       <div>
-        <div class="card-title">Demandes Ã  traiter</div>
-        <div class="card-sub" id="bfMeta">Chargementâ€¦</div>
+        <div class="card-title">Demandes à traiter</div>
+        <div class="card-sub" id="bfMeta">Chargement…</div>
       </div>
       <div class="bf-actions">
         <span id="bfActionMsg" class="sb-inline-msg" aria-live="polite"></span>
@@ -107,23 +107,23 @@
         </button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnBfRefresh">
           <span class="sb-btn-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span>
-          <span>RafraÃ®chir</span>
+          <span>Rafraîchir</span>
         </button>
       </div>
     </div>
 
     <div class="bf-tabs" id="bfTabs">
-      <button type="button" class="bf-tab is-active" data-bf-tab="a_traiter"><span>Ã€ traiter</span><strong>â€”</strong></button>
-      <button type="button" class="bf-tab" data-bf-tab="validee"><span>PrÃªtes Ã  transmettre</span><strong>â€”</strong></button>
-      <button type="button" class="bf-tab" data-bf-tab="transmise_studio"><span>Transmises</span><strong>â€”</strong></button>
-      <button type="button" class="bf-tab" data-bf-tab="reportee"><span>ReportÃ©es</span><strong>â€”</strong></button>
-      <button type="button" class="bf-tab" data-bf-tab="tous"><span>Historique</span><strong>â€”</strong></button>
+      <button type="button" class="bf-tab is-active" data-bf-tab="a_traiter"><span>À traiter</span><strong>—</strong></button>
+      <button type="button" class="bf-tab" data-bf-tab="validee"><span>Prêtes à transmettre</span><strong>—</strong></button>
+      <button type="button" class="bf-tab" data-bf-tab="transmise_studio"><span>Transmises</span><strong>—</strong></button>
+      <button type="button" class="bf-tab" data-bf-tab="reportee"><span>Reportées</span><strong>—</strong></button>
+      <button type="button" class="bf-tab" data-bf-tab="tous"><span>Historique</span><strong>—</strong></button>
     </div>
 
-    <div class="bf-proposal-note" id="bfProposalNote">Les propositions Novoskill affichÃ©es automatiquement concernent uniquement les Ã©carts entre niveau actuel et niveau attendu. Les mobilitÃ©s, renforts et postes Ã  pourvoir passent par le simulateur ou une demande manager.</div>
+    <div class="bf-proposal-note" id="bfProposalNote">Les propositions Novoskill affichées automatiquement concernent uniquement les écarts entre niveau actuel et niveau attendu. Les mobilités, renforts et postes à pourvoir passent par le simulateur ou une demande manager.</div>
 
     <div id="bfListWrap" class="bf-list-wrap">
-      <div class="bf-empty">Chargement des demandesâ€¦</div>
+      <div class="bf-empty">Chargement des demandes…</div>
     </div>
 
     <button type="button" class="bf-more-bar" id="btnBfShowMore" style="display:none;">Voir plus</button>
@@ -132,13 +132,13 @@
   <aside id="bfDetailPanel" class="bf-detail-panel" aria-live="polite">
     <div class="bf-detail-head">
       <div>
-        <div class="card-title">DÃ©tail de la demande</div>
-        <div class="card-sub" id="bfDetailSub">SÃ©lectionnez une demande.</div>
+        <div class="card-title">Détail de la demande</div>
+        <div class="card-sub" id="bfDetailSub">Sélectionnez une demande.</div>
       </div>
-      <button type="button" class="modal-x" id="btnBfCloseDetail">Ã—</button>
+      <button type="button" class="modal-x" id="btnBfCloseDetail">×</button>
     </div>
     <div id="bfDetailBody" class="bf-detail-body">
-      <div class="bf-empty">Aucune demande sÃ©lectionnÃ©e.</div>
+      <div class="bf-empty">Aucune demande sélectionnée.</div>
     </div>
   </aside>
 
@@ -146,38 +146,38 @@
     <div class="modal-card modal-card--wide bf-demand-modal" role="dialog" aria-modal="true" aria-labelledby="bfDemandModalTitle">
       <div class="modal-header">
         <div>
-          <div id="bfDemandModalTitle" class="card-title">CrÃ©er une demande RH</div>
-          <div id="bfDemandModalSub" class="card-sub">Exprimez le besoin terrain. Le traitement se fera ensuite cÃ´tÃ© Studio puis Plan dâ€™actions.</div>
+          <div id="bfDemandModalTitle" class="card-title">Créer une demande RH</div>
+          <div id="bfDemandModalSub" class="card-sub">Exprimez le besoin terrain. Le traitement se fera ensuite côté Studio puis Plan d’actions.</div>
         </div>
-        <button type="button" class="modal-x" data-bf-demand-close>Ã—</button>
+        <button type="button" class="modal-x" data-bf-demand-close>×</button>
       </div>
 
       <div class="modal-body">
         <div class="bf-modal-grid">
           <div class="bf-modal-card">
             <div class="bf-modal-card__title">Contexte</div>
-            <label class="bf-form-label" for="bfDemandEffectif">Collaborateur concernÃ©</label>
+            <label class="bf-form-label" for="bfDemandEffectif">Collaborateur concerné</label>
             <select id="bfDemandEffectif" class="sb-select"></select>
 
-            <label class="bf-form-label" for="bfDemandCompetence">CompÃ©tence concernÃ©e</label>
+            <label class="bf-form-label" for="bfDemandCompetence">Compétence concernée</label>
             <select id="bfDemandCompetence" class="sb-select"></select>
           </div>
 
           <div class="bf-modal-card">
             <div class="bf-modal-card__title">Qualification</div>
-            <label class="bf-form-label" for="bfDemandFinalite">FinalitÃ© terrain</label>
+            <label class="bf-form-label" for="bfDemandFinalite">Finalité terrain</label>
             <select id="bfDemandFinalite" class="sb-select">
-              <option value="monter_competence">Monter en compÃ©tence</option>
-              <option value="securiser_poste">SÃ©curiser un poste</option>
-              <option value="preparer_evolution">PrÃ©parer une Ã©volution</option>
-              <option value="renforcer_equipe">Renforcer une Ã©quipe</option>
-              <option value="anticiper_depart">Anticiper un dÃ©part</option>
+              <option value="monter_competence">Monter en compétence</option>
+              <option value="securiser_poste">Sécuriser un poste</option>
+              <option value="preparer_evolution">Préparer une évolution</option>
+              <option value="renforcer_equipe">Renforcer une équipe</option>
+              <option value="anticiper_depart">Anticiper un départ</option>
               <option value="capitaliser_savoir">Capitaliser un savoir-faire</option>
-              <option value="traiter_demande_salarie">Traiter une demande salariÃ©</option>
+              <option value="traiter_demande_salarie">Traiter une demande salarié</option>
               <option value="besoin_rh">Autre besoin RH</option>
             </select>
 
-            <label class="bf-form-label" for="bfDemandPriority">PrioritÃ©</label>
+            <label class="bf-form-label" for="bfDemandPriority">Priorité</label>
             <select id="bfDemandPriority" class="sb-select">
               <option value="normale">Normale</option>
               <option value="haute">Haute</option>
@@ -189,22 +189,22 @@
           <div class="bf-modal-card bf-modal-card--wide">
             <div class="bf-modal-card__title">Demande</div>
             <label class="bf-form-label" for="bfDemandObjet">Objet</label>
-            <input id="bfDemandObjet" class="sb-ctrl" type="text" placeholder="Ex : Renforcer la polyvalence SAV avant le pic dâ€™activitÃ©">
+            <input id="bfDemandObjet" class="sb-ctrl" type="text" placeholder="Ex : Renforcer la polyvalence SAV avant le pic d’activité">
 
             <label class="bf-form-label" for="bfDemandDescription">Description / justification</label>
-            <textarea id="bfDemandDescription" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Contexte terrain, simulation retenue, demande salariÃ©, fragilitÃ© dÃ©tectÃ©eâ€¦"></textarea>
+            <textarea id="bfDemandDescription" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Contexte terrain, simulation retenue, demande salarié, fragilité détectée…"></textarea>
           </div>
 
           <div class="bf-modal-card bf-modal-card--wide">
-            <div class="bf-modal-card__title">Ã‰chÃ©ance</div>
-            <label class="bf-form-label" for="bfDemandDelai">DÃ©lai souhaitÃ©</label>
+            <div class="bf-modal-card__title">Échéance</div>
+            <label class="bf-form-label" for="bfDemandDelai">Délai souhaité</label>
             <select id="bfDemandDelai" class="sb-select">
-              <option value="">Non prÃ©cisÃ©</option>
-              <option value="DÃ¨s que possible">DÃ¨s que possible</option>
+              <option value="">Non précisé</option>
+              <option value="Dès que possible">Dès que possible</option>
               <option value="Sous 3 mois">Sous 3 mois</option>
               <option value="Sous 6 mois">Sous 6 mois</option>
               <option value="Sous 12 mois">Sous 12 mois</option>
-              <option value="Ã€ anticiper sur 24 mois">Ã€ anticiper sur 24 mois</option>
+              <option value="À anticiper sur 24 mois">À anticiper sur 24 mois</option>
             </select>
 
             <label class="bf-form-label" for="bfDemandEcheance">Date cible</label>
@@ -213,7 +213,7 @@
 
           <div class="bf-modal-card bf-modal-card--wide">
             <div class="bf-modal-card__title">Commentaire manager</div>
-            <textarea id="bfDemandCommentaire" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Attente terrain, contrainte planning, niveau dâ€™urgence rÃ©el, Ã©lÃ©ments Ã  transmettre au Studioâ€¦"></textarea>
+            <textarea id="bfDemandCommentaire" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Attente terrain, contrainte planning, niveau d’urgence réel, éléments à transmettre au Studio…"></textarea>
           </div>
 
         </div>
@@ -221,7 +221,7 @@
 
       <div class="modal-footer bf-demand-footer">
         <div class="bf-footer-decision" id="bfDemandDecisionCard" hidden>
-          <div class="bf-decision-toggle" id="bfDemandDecisionToggle" role="group" aria-label="DÃ©cision manager">
+          <div class="bf-decision-toggle" id="bfDemandDecisionToggle" role="group" aria-label="Décision manager">
             <span class="bf-decision-thumb" aria-hidden="true"></span>
             <button type="button" class="is-active" data-bf-decision="validee">Valider</button>
             <button type="button" data-bf-decision="reportee">Reporter</button>

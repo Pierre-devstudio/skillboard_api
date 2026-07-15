@@ -3,7 +3,7 @@
 <head>
   <link rel="stylesheet" href="/novoskill_typography.css">
   <meta charset="utf-8" />
-  <title>Portail consultant â€” Skillboard</title>
+  <title>Portail consultant — Skillboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { font-family: var(--ns-font-ui); }
@@ -230,7 +230,7 @@
       cursor:pointer;
     }
 
-    /* Plus dâ€™espace entre le formulaire et le bloc admin */
+    /* Plus d’espace entre le formulaire et le bloc admin */
     #view-vos-donnees .card:first-of-type {
       margin-bottom:32px !important;
     }
@@ -330,7 +330,7 @@
     .level-dot.active { background:#1d4ed8; }
 
     /* =========================
-       MODAL AJOUT COMPÃ‰TENCE
+       MODAL AJOUT COMPÉTENCE
        ========================= */
     .modal {
       position:fixed;
@@ -403,7 +403,7 @@
 
     /* =========================
    EXPERTISES - MOBILE FIX
-   (Lisible sur tÃ©lÃ©phone)
+   (Lisible sur téléphone)
    ========================= */
 .mobile-meta {
   display:none;
@@ -429,7 +429,7 @@
 }
 
 @media (max-width: 640px) {
-  /* On masque les colonnes "DÃ©butant / IntermÃ©diaire / AvancÃ© / Expert / Dernier audit" */
+  /* On masque les colonnes "Débutant / Intermédiaire / Avancé / Expert / Dernier audit" */
   .sb-table th:nth-child(3),
   .sb-table th:nth-child(4),
   .sb-table th:nth-child(5),
@@ -441,7 +441,7 @@
     display:none;
   }
 
-  /* On affiche le niveau + audit sous l'intitulÃ© */
+  /* On affiche le niveau + audit sous l'intitulé */
   .mobile-meta {
     display:flex;
   }
@@ -582,14 +582,14 @@
   <aside class="sidebar" id="sidebar">
     <div>
       <div class="sidebar-header">Espace consultant</div>
-      <div class="sidebar-sub">JMB CONSULTANT Â· Skillboard</div>
+      <div class="sidebar-sub">JMB CONSULTANT · Skillboard</div>
     </div>
     <nav class="menu">
       <div class="menu-item active" data-view="dashboard">Dashboard</div>
-      <div class="menu-item" data-view="vos-donnees">Vos donnÃ©es</div>
+      <div class="menu-item" data-view="vos-donnees">Vos données</div>
       <div class="menu-item" data-view="vos-expertises">Vos expertises</div>
       <div class="menu-item disabled" data-view="actions">Actions de formation</div>
-      <div class="menu-item disabled" data-view="adaptations">Fiches dâ€™adaptation</div>
+      <div class="menu-item disabled" data-view="adaptations">Fiches d’adaptation</div>
       <div class="menu-item disabled" data-view="ressources">Ressources</div>
       <div class="menu-item disabled" data-view="factures">Vos factures</div>
     </nav>
@@ -603,7 +603,7 @@
         </button>
         <span id="topbarName">Consultant</span>
       </div>
-      <div class="topbar-right" id="topbarInfo">Chargementâ€¦</div>
+      <div class="topbar-right" id="topbarInfo">Chargement…</div>
     </header>
 
     <main class="content">
@@ -619,20 +619,20 @@
           <div class="card-title" id="welcomeTitle">Bienvenue</div>
           <div class="card-sub" id="welcomeIntro">
             Cet espace vous permet de suivre vos interventions, formaliser vos adaptations
-            et accÃ©der, Ã  terme, Ã  lâ€™ensemble des informations liÃ©es Ã  vos missions avec JMB CONSULTANT.
+            et accéder, à terme, à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.
           </div>
         </div>
       </section>
 
-      <!-- VOS DONNÃ‰ES -->
+      <!-- VOS DONNÉES -->
       <section id="view-vos-donnees" style="display:none;">
         <div class="card">
-          <div class="card-title">Vos donnÃ©es</div>
+          <div class="card-title">Vos données</div>
           <div class="card-sub">
-            Consultez et mettez Ã  jour vos informations de contact. Les informations administratives
-            (type de consultant, entreprise, coÃ»ts) sont affichÃ©es Ã  titre indicatif.
+            Consultez et mettez à jour vos informations de contact. Les informations administratives
+            (type de consultant, entreprise, coûts) sont affichées à titre indicatif.
             Pour tout changement, veuillez contacter
-            <a href="mailto:pierre@jmbconsultant.fr">lâ€™administrateur</a>.
+            <a href="mailto:pierre@jmbconsultant.fr">l’administrateur</a>.
           </div>
 
           <!-- Avatar + info -->
@@ -646,19 +646,19 @@
           <form id="profileForm">
             <div class="row" style="flex-direction:column; gap:16px;">
 
-              <!-- Bloc identitÃ© -->
+              <!-- Bloc identité -->
               <div class="row">
                 <div class="info-item" style="min-width:160px;">
-                  <div class="label">CivilitÃ©</div>
+                  <div class="label">Civilité</div>
                   <select id="civilite" name="civilite" data-editable="1">
-                    <option value="">(Non prÃ©cisÃ©)</option>
+                    <option value="">(Non précisé)</option>
                     <option value="M">M.</option>
                     <option value="Mme">Mme</option>
                     <option value="Autre">Autre</option>
                   </select>
                 </div>
                 <div class="info-item">
-                  <div class="label">PrÃ©nom *</div>
+                  <div class="label">Prénom *</div>
                   <input type="text" id="prenom" name="prenom" required data-editable="1" />
                 </div>
                 <div class="info-item">
@@ -667,14 +667,14 @@
                 </div>
               </div>
 
-              <!-- CoordonnÃ©es -->
+              <!-- Coordonnées -->
               <div class="row">
                 <div class="info-item" style="flex:1;">
                   <div class="label">Adresse (ligne 1)</div>
                   <input type="text" id="adresse_1" name="adresse_1" data-editable="1" />
                 </div>
                 <div class="info-item" style="flex:1;">
-                  <div class="label">Adresse (complÃ©ment)</div>
+                  <div class="label">Adresse (complément)</div>
                   <input type="text" id="adresse_2" name="adresse_2" data-editable="1" />
                 </div>
               </div>
@@ -701,7 +701,7 @@
 
               <div class="row">
                 <div class="info-item" style="min-width:150px;">
-                  <div class="label">TÃ©lÃ©phone</div>
+                  <div class="label">Téléphone</div>
                   <input type="tel" id="telephone" name="telephone" data-editable="1" />
                 </div>
                 <div class="info-item" style="min-width:150px;">
@@ -716,10 +716,10 @@
 
               <div style="margin-top:16px;" id="profileButtons">
                 <button type="button" class="btn-primary" id="btnEditProfile">
-                  Modifier vos donnÃ©es
+                  Modifier vos données
                 </button>
                 <button type="submit" class="btn-primary" id="btnSaveProfile" style="display:none;">
-                  Enregistrer vos donnÃ©es
+                  Enregistrer vos données
                 </button>
                 <button type="button" class="btn-secondary" id="btnCancelEdit" style="display:none;">
                   Annuler
@@ -735,35 +735,35 @@
           <div class="row">
             <div class="info-item">
               <div class="label">Nom complet</div>
-              <div class="value" id="infoNomComplet">â€“</div>
+              <div class="value" id="infoNomComplet">–</div>
             </div>
             <div class="info-item">
               <div class="label">Identifiant consultant</div>
-              <div class="value" id="infoIdConsultant">â€“</div>
+              <div class="value" id="infoIdConsultant">–</div>
             </div>
           </div>
           <div class="row" style="margin-top:8px;">
             <div class="info-item">
               <div class="label">Type de consultant</div>
-              <div class="value" id="infoTypeConsultant">â€“</div>
+              <div class="value" id="infoTypeConsultant">–</div>
             </div>
             <div class="info-item">
               <div class="label">Entreprise</div>
-              <div class="value" id="infoEntreprise">â€“</div>
+              <div class="value" id="infoEntreprise">–</div>
             </div>
           </div>
           <div class="row" style="margin-top:8px;">
             <div class="info-item">
-              <div class="label">CoÃ»t horaire</div>
-              <div class="value" id="infoCoutHoraire">â€“</div>
+              <div class="label">Coût horaire</div>
+              <div class="value" id="infoCoutHoraire">–</div>
             </div>
             <div class="info-item">
-              <div class="label">SupplÃ©ment dÃ©placement</div>
-              <div class="value" id="infoCoutDeplacement">â€“</div>
+              <div class="label">Supplément déplacement</div>
+              <div class="value" id="infoCoutDeplacement">–</div>
             </div>
             <div class="info-item">
-              <div class="label">Autre supplÃ©ment</div>
-              <div class="value" id="infoCoutSupp">â€“</div>
+              <div class="label">Autre supplément</div>
+              <div class="value" id="infoCoutSupp">–</div>
             </div>
           </div>
         </div>
@@ -774,33 +774,33 @@
         <div class="card">
           <div class="card-title">Vos expertises</div>
           <div class="card-sub">
-            DÃ©clarez vos compÃ©tences (puis certifications et diplÃ´mes). Les compÃ©tences ajoutÃ©es ici seront ensuite auditables dans Skillboard (version bureau).
+            Déclarez vos compétences (puis certifications et diplômes). Les compétences ajoutées ici seront ensuite auditables dans Skillboard (version bureau).
           </div>
         </div>
 
         <div class="card" id="cardDomainesFormation">
-          <div class="card-title" style="margin-bottom:2px;">Domaines de formation de prÃ©dilection</div>
+          <div class="card-title" style="margin-bottom:2px;">Domaines de formation de prédilection</div>
           <div class="card-sub" style="margin:0;">
-            SÃ©lectionnez les domaines sur lesquels vous intervenez le plus. Cela sert au pilotage (missions, matching, catalogue).
+            Sélectionnez les domaines sur lesquels vous intervenez le plus. Cela sert au pilotage (missions, matching, catalogue).
           </div>
 
           <div class="domaines-wrap">
             <div class="domaines-actions">
-              <button type="button" class="btn-secondary" id="btnClearDomainesFormation">Tout dÃ©cocher</button>
+              <button type="button" class="btn-secondary" id="btnClearDomainesFormation">Tout décocher</button>
               <button type="button" class="btn-primary" id="btnSaveDomainesFormation">Enregistrer</button>
             </div>
 
             <div class="domaines-list" id="domainesFormationList">
               <div class="domaines-item" style="cursor:default;">
                 <div class="domaines-text">
-                  <div class="domaines-title">Chargementâ€¦</div>
-                  <div class="domaines-desc">RÃ©cupÃ©ration du rÃ©fÃ©rentiel des domaines.</div>
+                  <div class="domaines-title">Chargement…</div>
+                  <div class="domaines-desc">Récupération du référentiel des domaines.</div>
                 </div>
               </div>
             </div>
 
             <div class="domaines-hint" id="domainesFormationHint" style="display:none;">
-              Aucun domaine disponible (ou tous masquÃ©s).
+              Aucun domaine disponible (ou tous masqués).
             </div>
           </div>
         </div>
@@ -809,9 +809,9 @@
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
             <div>
-              <div class="card-title" style="margin-bottom:2px;">CompÃ©tences</div>
+              <div class="card-title" style="margin-bottom:2px;">Compétences</div>
               <div class="card-sub" style="margin:0;">
-                Niveau affichÃ© selon votre dÃ©claration. La date dâ€™audit apparaÃ®t si une Ã©valuation a dÃ©jÃ  Ã©tÃ© rÃ©alisÃ©e.
+                Niveau affiché selon votre déclaration. La date d’audit apparaît si une évaluation a déjà été réalisée.
               </div>
             </div>
             <button type="button" class="btn-primary" id="btnAddCompetence">+ Ajouter</button>
@@ -822,10 +822,10 @@
               <thead>
                 <tr>
                   <th>Code</th>
-                  <th>IntitulÃ©</th>
-                  <th class="col-level">DÃ©butant</th>
-                  <th class="col-level">IntermÃ©diaire</th>
-                  <th class="col-level">AvancÃ©</th>
+                  <th>Intitulé</th>
+                  <th class="col-level">Débutant</th>
+                  <th class="col-level">Intermédiaire</th>
+                  <th class="col-level">Avancé</th>
                   <th class="col-level">Expert</th>
                   <th class="col-date">Dernier audit</th>
                 </tr>
@@ -835,42 +835,42 @@
           </div>
 
           <div class="card-sub" id="competencesEmpty" style="display:none; margin-top:10px;">
-            Aucune compÃ©tence enregistrÃ©e pour le moment.
+            Aucune compétence enregistrée pour le moment.
           </div>
         </div>
       </section>
 
-      <!-- Modal: Ajouter une compÃ©tence -->
+      <!-- Modal: Ajouter une compétence -->
       <div class="modal" id="modalAddCompetence" aria-hidden="true">
         <div class="modal-card">
           <div class="modal-header">
-            <div style="font-weight:var(--ns-weight-semibold, 600);">Ajouter une compÃ©tence</div>
-            <button type="button" class="modal-x" id="btnCloseAddCompetence" aria-label="Fermer">Ã—</button>
+            <div style="font-weight:var(--ns-weight-semibold, 600);">Ajouter une compétence</div>
+            <button type="button" class="modal-x" id="btnCloseAddCompetence" aria-label="Fermer">×</button>
           </div>
 
           <div class="modal-body">
             <div class="row" style="flex-direction:column; gap:10px;">
               <div class="info-item" style="min-width:0;">
-                <div class="label">Rechercher une compÃ©tence</div>
-                <input type="text" id="competenceSearch" placeholder="Code ou intitulÃ©..." />
+                <div class="label">Rechercher une compétence</div>
+                <input type="text" id="competenceSearch" placeholder="Code ou intitulé..." />
               </div>
 
               <div class="info-item" style="min-width:0;">
-                <div class="label">RÃ©sultats</div>
+                <div class="label">Résultats</div>
                 <div id="competenceResults" class="results"></div>
               </div>
 
               <div class="info-item" style="min-width:0;">
-                <div class="label">CompÃ©tence sÃ©lectionnÃ©e</div>
-                <div class="value" id="competenceSelected">â€“</div>
+                <div class="label">Compétence sélectionnée</div>
+                <div class="value" id="competenceSelected">–</div>
               </div>
 
               <div class="info-item" style="min-width:0;">
                 <div class="label">Niveau actuel</div>
                 <select id="competenceLevel">
-                  <option value="A">DÃ©butant</option>
-                  <option value="B">IntermÃ©diaire</option>
-                  <option value="C">AvancÃ©</option>
+                  <option value="A">Débutant</option>
+                  <option value="B">Intermédiaire</option>
+                  <option value="C">Avancé</option>
                   <option value="D">Expert</option>
                 </select>
               </div>
@@ -889,16 +889,16 @@
         <div class="card">
           <div class="card-title">Actions de formation</div>
           <div class="card-sub">
-            Cette section affichera vos actions de formation (Ã  venir, en cours, passÃ©es).
+            Cette section affichera vos actions de formation (à venir, en cours, passées).
           </div>
         </div>
       </section>
 
       <section id="view-adaptations" style="display:none;">
         <div class="card">
-          <div class="card-title">Fiches dâ€™adaptation</div>
+          <div class="card-title">Fiches d’adaptation</div>
           <div class="card-sub">
-            Cette section affichera vos adaptations dÃ©clarÃ©es et permettra dâ€™en crÃ©er de nouvelles.
+            Cette section affichera vos adaptations déclarées et permettra d’en créer de nouvelles.
           </div>
         </div>
       </section>
@@ -907,7 +907,7 @@
         <div class="card">
           <div class="card-title">Ressources</div>
           <div class="card-sub">
-            Cette section listera les documents mis Ã  votre disposition (guides, modÃ¨les, supports).
+            Cette section listera les documents mis à votre disposition (guides, modèles, supports).
           </div>
         </div>
       </section>
@@ -916,7 +916,7 @@
         <div class="card">
           <div class="card-title">Vos factures</div>
           <div class="card-sub">
-            Cette section vous permettra de consulter vos factures et dâ€™en dÃ©poser de nouvelles.
+            Cette section vous permettra de consulter vos factures et d’en déposer de nouvelles.
           </div>
         </div>
       </section>
@@ -973,7 +973,7 @@
     function setTextOrDash(id, value) {
       const el = document.getElementById(id);
       if (!el) return;
-      el.textContent = value != null && value !== "" ? value : "â€“";
+      el.textContent = value != null && value !== "" ? value : "–";
     }
 
     function setProfileEditMode(isEdit) {
@@ -1151,7 +1151,7 @@ function getSelectedDomainesFromUI() {
   list.querySelectorAll("input[type='checkbox'][data-id]").forEach(cb => {
     if (cb.checked) ids.push(cb.getAttribute("data-id"));
   });
-  // dÃ©doublonnage
+  // dédoublonnage
   return Array.from(new Set(ids));
 }
 
@@ -1172,7 +1172,7 @@ async function saveConsultantDomainesFormation(id_consultant) {
     throw new Error(detail);
   }
 
-  // Met Ã  jour le set local
+  // Met à jour le set local
   DOMAINES_FORMATION_SELECTED = new Set(ids);
 }
 
@@ -1191,7 +1191,7 @@ async function initDomainesFormationUI(id_consultant) {
         try {
           showAlert("", "");
           await saveConsultantDomainesFormation(id_consultant);
-          showAlert("success", "Domaines de formation enregistrÃ©s.");
+          showAlert("success", "Domaines de formation enregistrés.");
         } catch (e) {
           showAlert("error", "Erreur enregistrement domaines : " + e.message);
         }
@@ -1213,7 +1213,7 @@ async function initDomainesFormationUI(id_consultant) {
       DOMAINES_FORMATION_CATALOGUE = await loadDomainesFormationCatalogue();
     }
 
-    // SÃ©lection du consultant
+    // Sélection du consultant
     const selectedItems = await loadConsultantDomainesFormation(id_consultant);
     DOMAINES_FORMATION_SELECTED = new Set(
       (selectedItems || [])
@@ -1224,7 +1224,7 @@ async function initDomainesFormationUI(id_consultant) {
     renderDomainesFormation(DOMAINES_FORMATION_CATALOGUE, DOMAINES_FORMATION_SELECTED);
 
   } catch (e) {
-    // On affiche un bloc dâ€™erreur dans la liste sans casser la page
+    // On affiche un bloc d’erreur dans la liste sans casser la page
     const list = document.getElementById("domainesFormationList");
     if (list) {
       list.innerHTML = `
@@ -1262,7 +1262,7 @@ async function initDomainesFormationUI(id_consultant) {
           : `${body.prenom} ${body.nom}`;
 
         document.getElementById("topbarName").textContent = nomComplet;
-        document.getElementById("topbarInfo").textContent = "Portail consultant â€” JMB CONSULTANT";
+        document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
         document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
 
         updateAvatar(nomComplet, body.photo_url);
@@ -1292,15 +1292,15 @@ async function initDomainesFormationUI(id_consultant) {
         setTextOrDash("infoTypeConsultant", body.type_consultant);
         setTextOrDash("infoEntreprise", body.entreprise_nom);
 
-        const fmt = (v) => v != null ? `${v.toFixed(2)} â‚¬` : "â€“";
-        setTextOrDash("infoCoutHoraire", body.cout_horaire != null ? fmt(body.cout_horaire) : "â€“");
-        setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "â€“");
-        setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "â€“");
+        const fmt = (v) => v != null ? `${v.toFixed(2)} €` : "–";
+        setTextOrDash("infoCoutHoraire", body.cout_horaire != null ? fmt(body.cout_horaire) : "–");
+        setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "–");
+        setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "–");
 
         setProfileEditMode(false);
 
       } catch (err) {
-        showAlert("error", "Erreur de chargement de vos donnÃ©es : " + err.message);
+        showAlert("error", "Erreur de chargement de vos données : " + err.message);
       }
     }
 
@@ -1317,7 +1317,7 @@ async function initDomainesFormationUI(id_consultant) {
       const ville = document.getElementById("ville")?.value || "";
 
       if (!prenom.trim() || !nom.trim()) {
-        showAlert("error", "Merci de renseigner au minimum votre prÃ©nom et votre nom.");
+        showAlert("error", "Merci de renseigner au minimum votre prénom et votre nom.");
         return;
       }
 
@@ -1350,10 +1350,10 @@ async function initDomainesFormationUI(id_consultant) {
           throw new Error(detail);
         }
 
-        showAlert("success", "Vos donnÃ©es ont Ã©tÃ© enregistrÃ©es.");
+        showAlert("success", "Vos données ont été enregistrées.");
         await loadConsultantProfile(id_consultant);
       } catch (err) {
-        showAlert("error", "Erreur lors de lâ€™enregistrement : " + err.message);
+        showAlert("error", "Erreur lors de l’enregistrement : " + err.message);
       }
     }
 
@@ -1379,9 +1379,9 @@ async function initDomainesFormationUI(id_consultant) {
         }
 
         await loadConsultantProfile(id_consultant);
-        showAlert("success", "Votre photo a Ã©tÃ© mise Ã  jour.");
+        showAlert("success", "Votre photo a été mise à jour.");
       } catch (err) {
-        showAlert("error", "Erreur lors de lâ€™envoi de la photo : " + err.message);
+        showAlert("error", "Erreur lors de l’envoi de la photo : " + err.message);
       }
     }
 
@@ -1400,12 +1400,12 @@ async function initDomainesFormationUI(id_consultant) {
     }
 
     /* ======================================================
-       EXPERTISES - COMPÃ‰TENCES
+       EXPERTISES - COMPÉTENCES
        ====================================================== */
     function formatDateFR(iso) {
-      if (!iso) return "â€“";
+      if (!iso) return "–";
       const d = new Date(iso);
-      if (isNaN(d.getTime())) return "â€“";
+      if (isNaN(d.getTime())) return "–";
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const yyyy = d.getFullYear();
@@ -1445,11 +1445,11 @@ async function initDomainesFormationUI(id_consultant) {
 
         const badge = document.createElement("span");
         badge.className = "badge";
-        badge.textContent = window.NovoskillLevels ? window.NovoskillLevels.label(it.niveau_actuel) : (it.niveau_actuel || "â€“");
+        badge.textContent = window.NovoskillLevels ? window.NovoskillLevels.label(it.niveau_actuel) : (it.niveau_actuel || "–");
 
         const audit = document.createElement("span");
         audit.className = "muted";
-        audit.textContent = it.date_dernier_audit ? `Audit : ${formatDateFR(it.date_dernier_audit)}` : "Audit : â€“";
+        audit.textContent = it.date_dernier_audit ? `Audit : ${formatDateFR(it.date_dernier_audit)}` : "Audit : –";
 
         meta.appendChild(badge);
         meta.appendChild(audit);
@@ -1474,7 +1474,7 @@ async function initDomainesFormationUI(id_consultant) {
 
         const tdDate = document.createElement("td");
         tdDate.className = "col-date";
-        tdDate.textContent = it.date_dernier_audit ? formatDateFR(it.date_dernier_audit) : "â€“";
+        tdDate.textContent = it.date_dernier_audit ? formatDateFR(it.date_dernier_audit) : "–";
         tr.appendChild(tdDate);
 
         body.appendChild(tr);
@@ -1495,7 +1495,7 @@ async function initDomainesFormationUI(id_consultant) {
 
         renderCompetencesTable(body);
       } catch (e) {
-        showAlert("error", "Erreur de chargement des compÃ©tences : " + e.message);
+        showAlert("error", "Erreur de chargement des compétences : " + e.message);
       }
     }
 
@@ -1510,7 +1510,7 @@ async function initDomainesFormationUI(id_consultant) {
       const level = document.getElementById("competenceLevel");
 
       _selectedCompetence = null;
-      if (selected) selected.textContent = "â€“";
+      if (selected) selected.textContent = "–";
       if (level) level.value = "A";
       if (results) results.innerHTML = "";
 
@@ -1541,7 +1541,7 @@ async function initDomainesFormationUI(id_consultant) {
       results.innerHTML = "";
 
       if (!list || list.length === 0) {
-        results.innerHTML = `<div class="result-item" style="cursor:default; color:#6b7280;">Aucun rÃ©sultat</div>`;
+        results.innerHTML = `<div class="result-item" style="cursor:default; color:#6b7280;">Aucun résultat</div>`;
         return;
       }
 
@@ -1596,7 +1596,7 @@ async function initDomainesFormationUI(id_consultant) {
           div.addEventListener("click", () => {
             _selectedCompetence = it;
             const selected = document.getElementById("competenceSelected");
-            if (selected) selected.textContent = `${it.code} â€” ${it.intitule}`;
+            if (selected) selected.textContent = `${it.code} — ${it.intitule}`;
           });
 
           wrap.appendChild(div);
@@ -1618,7 +1618,7 @@ async function initDomainesFormationUI(id_consultant) {
         if (!resp.ok) return;
         renderCompetenceResults(body);
       } catch (e) {
-        console.warn("Erreur recherche compÃ©tences:", e);
+        console.warn("Erreur recherche compétences:", e);
       }
     }
 
@@ -1626,7 +1626,7 @@ async function initDomainesFormationUI(id_consultant) {
       if (!CONSULTANT_ID) return;
 
       if (!_selectedCompetence || !_selectedCompetence.id_competence) {
-        showAlert("error", "Merci de sÃ©lectionner une compÃ©tence dans la liste.");
+        showAlert("error", "Merci de sélectionner une compétence dans la liste.");
         return;
       }
 
@@ -1652,11 +1652,11 @@ async function initDomainesFormationUI(id_consultant) {
         }
 
         closeAddCompetenceModal();
-        showAlert("success", "CompÃ©tence ajoutÃ©e (ou mise Ã  jour).");
+        showAlert("success", "Compétence ajoutée (ou mise à jour).");
         loadConsultantCompetences(CONSULTANT_ID);
 
       } catch (e) {
-        showAlert("error", "Erreur lors de lâ€™ajout : " + e.message);
+        showAlert("error", "Erreur lors de l’ajout : " + e.message);
       }
     }
 
@@ -1664,7 +1664,7 @@ async function initDomainesFormationUI(id_consultant) {
       const id = getQueryParam("id");
 
       if (!id) {
-        showAlert("error", "Identifiant consultant manquant dans lâ€™URL. Le lien utilisÃ© nâ€™est pas valide.");
+        showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
         return;
       }
 
@@ -1683,7 +1683,7 @@ async function initDomainesFormationUI(id_consultant) {
         mob.addEventListener("blur", () => formatPhoneInput(mob));
       }
 
-      // Vue par dÃ©faut : dashboard
+      // Vue par défaut : dashboard
       switchView("dashboard");
 
       // Menu

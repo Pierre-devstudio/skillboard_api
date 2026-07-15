@@ -2,12 +2,12 @@
   <div class="card">
     <div class="sb-card-head">
       <div>
-        <div class="card-title">Catalogue de compÃ©tences</div>
-        <div class="card-sub">CrÃ©er, modifier, archiver des compÃ©tences du rÃ©fÃ©rentiel Learn.</div>
+        <div class="card-title">Catalogue de compétences</div>
+        <div class="card-sub">Créer, modifier, archiver des compétences du référentiel Learn.</div>
       </div>
       <div class="sb-actions">
         <span class="sb-save-success" id="catCompsSuccess" style="display:none;"></span>
-        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCompNew">Ajouter une compÃ©tence</button>
+        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCompNew">Ajouter une compétence</button>
       </div>
     </div>
   </div>
@@ -16,16 +16,16 @@
     <div class="sb-toolbar">
       <div class="sb-search">
         <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
-        <input type="text" id="catCompsSearch" placeholder="Code, intitulÃ©, domaineâ€¦" />
+        <input type="text" id="catCompsSearch" placeholder="Code, intitulé, domaine…" />
       </div>
 
       <div class="info-item" style="min-width:220px;">
         <div class="label">Afficher</div>
         <select id="catCompsShow">
           <option value="active">Actives</option>
-          <option value="validation">Ã€ valider</option>
+          <option value="validation">À valider</option>
           <option value="all">Toutes</option>
-          <option value="archived">ArchivÃ©es</option>
+          <option value="archived">Archivées</option>
         </select>
       </div>
 
@@ -46,17 +46,17 @@
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <span id="compModalBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
-            <div class="card-title" id="compModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">CompÃ©tence</div>
+            <div class="card-title" id="compModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
           </div>
           <div class="card-sub" id="compModalSub" style="margin:4px 0 0 0; display:none;"></div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnCompX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="sb-modal-x" id="btnCompX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="row">
           <div class="info-item" style="flex:2; min-width:260px;">
-            <div class="label">IntitulÃ©</div>
+            <div class="label">Intitulé</div>
             <input type="text" id="compIntitule" />
           </div>
         </div>
@@ -65,14 +65,14 @@
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">Domaine</div>
             <select id="compDomaine">
-              <option value="">â€”</option>
+              <option value="">—</option>
             </select>
           </div>
           <div class="info-item" style="flex:1; min-width:240px;">
-            <div class="label">Ã‰tat</div>
+            <div class="label">État</div>
             <select id="compEtat">
               <option value="active">active</option>
-              <option value="Ã  valider">Ã  valider</option>
+              <option value="à valider">à valider</option>
               <option value="valide">valide</option>
             </select>
           </div>
@@ -87,15 +87,15 @@
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau A - DÃ©butant</div>
+            <div class="label">Niveau A - Débutant</div>
             <textarea id="compNivA" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau B - IntermÃ©diaire</div>
+            <div class="label">Niveau B - Intermédiaire</div>
             <textarea id="compNivB" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau C - AvancÃ©</div>
+            <div class="label">Niveau C - Avancé</div>
             <textarea id="compNivC" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
           <div class="info-item" style="flex:1; min-width:260px;">
@@ -107,16 +107,16 @@
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="sb-field-head">
-              <div class="label" style="margin:0;">Grille dâ€™Ã©valuation</div>
-              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCompAddCrit">Ajouter un critÃ¨re</button>
+              <div class="label" style="margin:0;">Grille d’évaluation</div>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCompAddCrit">Ajouter un critère</button>
             </div>
 
             <div class="sb-crit-editor" id="compCritEditor" style="display:none;">
-              <div class="card-sub" id="compCritEditorTitle" style="margin:0 0 10px 0;">CritÃ¨re</div>
+              <div class="card-sub" id="compCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
 
               <div class="row">
                 <div class="info-item" style="flex:1; min-width:260px;">
-                  <div class="label">Nom du critÃ¨re</div>
+                  <div class="label">Nom du critère</div>
                   <input type="text" id="compCritNom" />
                 </div>
               </div>
@@ -149,14 +149,14 @@
             <div class="sb-stack sb-stack--xs" id="compCritList"></div>
 
             <div class="card-sub" style="margin:8px 0 0 0;">
-              1 Ã  4 critÃ¨res. Chaque critÃ¨re doit contenir 4 niveaux dâ€™Ã©valuation.
+              1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
             </div>
           </div>
         </div>
       </div>
 
       <div class="sb-modal-foot">
-        <button type="button" class="sb-btn sb-btn--ai" id="btnCompAi">Concevoir avec lâ€™IA</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnCompAi">Concevoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnCompSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnCompCancel">Annuler</button>
       </div>
@@ -167,10 +167,10 @@
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin-bottom:2px;">Archiver la compÃ©tence</div>
-          <div class="card-sub" id="compArchiveMsg" style="margin:0;">â€”</div>
+          <div class="card-title" style="margin-bottom:2px;">Archiver la compétence</div>
+          <div class="card-sub" id="compArchiveMsg" style="margin:0;">—</div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnCompArchiveX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="sb-modal-x" id="btnCompArchiveX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-foot">
@@ -184,26 +184,26 @@
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin:0;">Concevoir avec lâ€™IA</div>
+          <div class="card-title" style="margin:0;">Concevoir avec l’IA</div>
           <div class="card-sub" style="margin:4px 0 0 0;">
-            Lâ€™IA propose un brouillon. Vous validez et ajustez avant dâ€™enregistrer.
+            L’IA propose un brouillon. Vous validez et ajustez avant d’enregistrer.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnCompAiX" aria-label="Fermer">Ã—</button>
+        <button type="button" class="sb-modal-x" id="btnCompAiX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Objectif de la compÃ©tence</div>
-            <textarea id="compAiObjectif" rows="3" placeholder="Ex : Analyser et structurer des donnÃ©es avec une aide IA"></textarea>
+            <div class="label">Objectif de la compétence</div>
+            <textarea id="compAiObjectif" rows="3" placeholder="Ex : Analyser et structurer des données avec une aide IA"></textarea>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Contexte</div>
-            <textarea id="compAiContexte" rows="3" placeholder="Contexte mÃ©tier, public visÃ©, outils, contraintesâ€¦"></textarea>
+            <textarea id="compAiContexte" rows="3" placeholder="Contexte métier, public visé, outils, contraintes…"></textarea>
           </div>
         </div>
 
@@ -211,33 +211,33 @@
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">Domaine</div>
             <select id="compAiDomaine">
-              <option value="">â€”</option>
+              <option value="">—</option>
             </select>
-            <div class="card-sub" style="margin:6px 0 0 0;">Si vous choisissez un domaine, lâ€™IA sera contrainte de le respecter.</div>
+            <div class="card-sub" style="margin:6px 0 0 0;">Si vous choisissez un domaine, l’IA sera contrainte de le respecter.</div>
           </div>
 
           <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Nombre de critÃ¨res</div>
+            <div class="label">Nombre de critères</div>
             <select id="compAiNbCrit">
-              <option value="1">1 critÃ¨re</option>
-              <option value="2">2 critÃ¨res</option>
-              <option value="3" selected>3 critÃ¨res</option>
-              <option value="4">4 critÃ¨res</option>
+              <option value="1">1 critère</option>
+              <option value="2">2 critères</option>
+              <option value="3" selected>3 critères</option>
+              <option value="4">4 critères</option>
             </select>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Document Ã  analyser</div>
+            <div class="label">Document à analyser</div>
             <input type="file" id="compAiDocument" accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" />
-            <div class="card-sub" style="margin:6px 0 0 0;">Formats acceptÃ©s : PDF, DOCX, TXT, MD, CSV. Le document sert uniquement de contexte de gÃ©nÃ©ration.</div>
+            <div class="card-sub" style="margin:6px 0 0 0;">Formats acceptés : PDF, DOCX, TXT, MD, CSV. Le document sert uniquement de contexte de génération.</div>
           </div>
         </div>
       </div>
 
       <div class="sb-modal-foot">
-        <button type="button" class="sb-btn sb-btn--accent" id="btnCompAiGenerate">GÃ©nÃ©rer</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCompAiGenerate">Générer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnCompAiCancel">Annuler</button>
       </div>
     </div>
