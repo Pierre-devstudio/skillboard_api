@@ -55,6 +55,7 @@ class PosteItem(BaseModel):
     codif_client: Optional[str] = None
     intitule_poste: str
     id_service: Optional[str] = None
+    nom_service: Optional[str] = None
     isresponsable: Optional[bool] = None
 
     mission_principale: Optional[str] = None
@@ -811,6 +812,9 @@ class PosteDetailResponse(BaseModel):
     codif_poste: Optional[str] = None
     codif_client: Optional[str] = None
     intitule_poste: Optional[str] = None
+    id_service: Optional[str] = None
+    nom_service: Optional[str] = None
+    actif: Optional[bool] = None
 
     mission_principale: Optional[str] = None
     responsabilites: Optional[str] = None            # RTF brut (pour round-trip futur)
@@ -833,6 +837,8 @@ class PosteDetailResponse(BaseModel):
 
     competences: List[PosteCompetenceItem] = []
     certifications: List[PosteCertificationItem] = []
+    collaborateurs: List[Dict[str, Any]] = []
+    ccn: Dict[str, Any] = {}
 
         # Paramétrage RH (tbl_fiche_poste_param_rh)
     rh_statut_poste: Optional[str] = None
@@ -1012,14 +1018,89 @@ def get_services_tree(id_contact: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+
+def _ccn_first_text(*values: Any) -> str:
+    for value in values:
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return ""
+
+
+def _build_poste_ccn_readonly(idcc: str, dossier: Optional[dict], referential: Optional[dict]) -> Dict[str, Any]:
+    ref = (referential or {}).get("referentiel_json") or {}
+    proposal_root = (dossier or {}).get("proposition_json") or {}
+    validation = (dossier or {}).get("validation_json") or {}
+    proposal = proposal_root.get("proposal") if isinstance(proposal_root.get("proposal"), dict) else proposal_root
+
+    convention_label = _ccn_first_text((referential or {}).get("convention_label"))
+    version_label = _ccn_first_text((referential or {}).get("version_label"))
+    date_maj = (dossier or {}).get("date_maj")
+    if date_maj is not None:
+        try:
+            date_maj = date_maj.isoformat()
+        except Exception:
+            date_maj = str(date_maj)
+
+    if idcc and not referential:
+        status = "unsupported"
+    elif validation:
+        status = "validated"
+    elif proposal_root:
+        status = "draft"
+    else:
+        status = "none"
+
+    data = validation if validation else proposal
+    coefficient = data.get("coefficient") if isinstance(data, dict) else None
+    palier = data.get("palier") if isinstance(data, dict) else None
+    mode = str(ref.get("mode") or "").strip().lower()
+    classification = ref.get("classification_map") if isinstance(ref.get("classification_map"), list) else []
+
+    result = ""
+    if coefficient not in (None, "") or palier not in (None, ""):
+        if mode == "group_level":
+            result = f"Groupe {coefficient or '—'} · Niveau {palier or '—'}"
+        elif classification:
+            group = _ccn_first_text(data.get("groupe_emploi") if isinstance(data, dict) else None)
+            classe = _ccn_first_text(data.get("classe_emploi") if isinstance(data, dict) else None, palier)
+            result = f"Cotation {coefficient or '—'} · Classe {classe or '—'}"
+            if group:
+                result += f" · Groupe {group.upper()}"
+        else:
+            result = f"Coef. {coefficient or '—'} · Palier {palier or '—'}"
+
+    category = _ccn_first_text(
+        data.get("categorie_professionnelle") if isinstance(data, dict) else None,
+        proposal.get("categorie_professionnelle") if isinstance(proposal, dict) else None,
+    )
+    justification = _ccn_first_text(
+        validation.get("justification") if isinstance(validation, dict) else None,
+        proposal_root.get("justification_globale") if isinstance(proposal_root, dict) else None,
+        proposal.get("resume_cotation") if isinstance(proposal, dict) else None,
+    )
+
+    return {
+        "idcc": (idcc or "").strip(),
+        "statut": status,
+        "convention_label": convention_label,
+        "version_label": version_label,
+        "resultat": result,
+        "categorie": category,
+        "justification": justification,
+        "date_maj": date_maj,
+    }
+
+
 @router.get(
     "/skills/organisation/poste_detail/{id_contact}/{id_poste}",
     response_model=PosteDetailResponse,
 )
 def get_poste_detail(id_contact: str, id_poste: str, request: Request):
     """
-    Détail d'un poste pour le modal.
-    On renvoie uniquement les champs nécessaires à l'onglet "Définition".
+    Détail complet d'un poste pour la page dédiée Insights.
     """
     try:
         with get_conn() as conn:
@@ -1033,6 +1114,10 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                         p.codif_poste,
                         p.codif_client,
                         p.intitule_poste,
+                        p.id_service,
+                        COALESCE(s.nom_service, '') AS nom_service,
+                        COALESCE(p.actif, TRUE) AS actif,
+                        COALESCE(ent.idcc, '') AS ent_idcc,
                         p.isresponsable,
                         p.mission_principale,
                         p.responsabilites,
@@ -1055,6 +1140,13 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                     LEFT JOIN public.tbl_nsf_groupe g
                            ON g.code = p.nsf_groupe_code
                           AND COALESCE(g.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_entreprise_organigramme s
+                           ON s.id_service = p.id_service
+                          AND s.id_ent = p.id_ent
+                          AND COALESCE(s.archive, FALSE) = FALSE
+                    LEFT JOIN public.tbl_entreprise ent
+                           ON ent.id_ent = p.id_ent
+                          AND COALESCE(ent.masque, FALSE) = FALSE
                     WHERE p.id_ent = %s
                       AND COALESCE(p.actif, TRUE) = TRUE
                       AND p.id_poste = %s
@@ -1214,6 +1306,47 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                 cur.execute(
                     """
                     SELECT
+                      e.id_effectif,
+                      COALESCE(e.prenom_effectif, '') AS prenom,
+                      COALESCE(e.nom_effectif, '') AS nom,
+                      EXISTS (
+                        SELECT 1
+                        FROM public.tbl_effectif_client_break b
+                        WHERE b.id_ent = e.id_ent
+                          AND b.id_effectif = e.id_effectif
+                          AND COALESCE(b.archive, FALSE) = FALSE
+                          AND b.date_debut <= CURRENT_DATE
+                          AND b.date_fin >= CURRENT_DATE
+                      ) AS indisponible
+                    FROM public.tbl_effectif_client e
+                    WHERE e.id_ent = %s
+                      AND e.id_poste_actuel = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                      AND COALESCE(e.is_temp, FALSE) = FALSE
+                      AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
+                    ORDER BY lower(COALESCE(e.nom_effectif, '')), lower(COALESCE(e.prenom_effectif, ''))
+                    """,
+                    (id_ent, id_poste),
+                )
+                collaborateurs = [
+                    {
+                        "id_effectif": row.get("id_effectif"),
+                        "prenom": row.get("prenom") or "",
+                        "nom": row.get("nom") or "",
+                        "indisponible": bool(row.get("indisponible")),
+                    }
+                    for row in (cur.fetchall() or [])
+                ]
+
+                dossier_ccn = _fetch_poste_ccn_dossier(cur, id_poste)
+                idcc = str(r.get("ent_idcc") or "").strip()
+                referential_ccn = _fetch_ccn_referential(cur, idcc) if idcc else None
+                ccn = _build_poste_ccn_readonly(idcc, dossier_ccn, referential_ccn)
+
+                cur.execute(
+                    """
+                    SELECT
                       code,
                       titre
                     FROM public.tbl_nsf_groupe
@@ -1243,6 +1376,9 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                     codif_poste=r.get("codif_poste"),
                     codif_client=r.get("codif_client"),
                     intitule_poste=r.get("intitule_poste"),
+                    id_service=r.get("id_service"),
+                    nom_service=r.get("nom_service"),
+                    actif=bool(r.get("actif")),
                     isresponsable=r.get("isresponsable"),
                     mission_principale=r.get("mission_principale"),
                     responsabilites=raw_resp,
@@ -1260,6 +1396,8 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                     detail_contrainte=r.get("detail_contrainte"),
                     competences=comps,
                     certifications=certs,
+                    collaborateurs=collaborateurs,
+                    ccn=ccn,
                     rh_statut_poste=(pr.get("statut_poste") if pr else None),
                     rh_date_debut_validite=(pr.get("date_debut_validite").isoformat() if pr and pr.get("date_debut_validite") else None),
                     rh_date_fin_validite=(pr.get("date_fin_validite").isoformat() if pr and pr.get("date_fin_validite") else None),
@@ -1836,12 +1974,17 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                             p.codif_client,
                             p.intitule_poste,
                             p.id_service,
+                            COALESCE(o.nom_service, '') AS nom_service,
                             p.isresponsable,
                             p.date_maj,
                             COALESCE(ec.nb, 0)::int AS nb_effectifs
                         FROM public.tbl_fiche_poste p
                         LEFT JOIN ({eff_subquery}) ec
                             ON ec.id_poste_actuel = p.id_poste
+                        LEFT JOIN public.tbl_entreprise_organigramme o
+                            ON o.id_service = p.id_service
+                           AND o.id_ent = p.id_ent
+                           AND COALESCE(o.archive, FALSE) = FALSE
                         WHERE p.id_ent = %s
                         AND COALESCE(p.actif, TRUE) = TRUE
                         ORDER BY p.intitule_poste
@@ -1858,6 +2001,7 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                             codif_client=r.get("codif_client"),
                             intitule_poste=r["intitule_poste"],
                             id_service=r.get("id_service"),
+                            nom_service=r.get("nom_service") or None,
                             isresponsable=r.get("isresponsable"),
                             nb_effectifs=int(r.get("nb_effectifs") or 0),
                             date_maj=_dt_to_iso(r.get("date_maj")),
@@ -1880,6 +2024,7 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                             p.codif_client,
                             p.intitule_poste,
                             p.id_service,
+                            COALESCE(o.nom_service, '') AS nom_service,
                             p.isresponsable,
                             p.date_maj,
                             COALESCE(ec.nb, 0)::int AS nb_effectifs
@@ -1907,6 +2052,7 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                             codif_client=r.get("codif_client"),
                             intitule_poste=r["intitule_poste"],
                             id_service=r.get("id_service"),
+                            nom_service=r.get("nom_service") or None,
                             isresponsable=r.get("isresponsable"),
                             nb_effectifs=int(r.get("nb_effectifs") or 0),
                             date_maj=_dt_to_iso(r.get("date_maj")),
@@ -1943,6 +2089,7 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                         p.codif_client,
                         p.intitule_poste,
                         p.id_service,
+                        %s::text AS nom_service,
                         p.isresponsable,
                         p.date_maj,
                         COALESCE(ec.nb, 0)::int AS nb_effectifs
@@ -1954,7 +2101,7 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                     AND p.id_service = %s
                     ORDER BY p.intitule_poste
                     """,
-                    (id_ent, id_ent, id_service),
+                    (srow["nom_service"], id_ent, id_ent, id_service),
                 )
 
                 rows = cur.fetchall() or []
@@ -1966,6 +2113,7 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                         codif_client=r.get("codif_client"),
                         intitule_poste=r["intitule_poste"],
                         id_service=r.get("id_service"),
+                        nom_service=r.get("nom_service") or None,
                         isresponsable=r.get("isresponsable"),
                         nb_effectifs=int(r.get("nb_effectifs") or 0),
                         date_maj=_dt_to_iso(r.get("date_maj")),

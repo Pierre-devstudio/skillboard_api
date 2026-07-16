@@ -10,6 +10,14 @@
   let _serviceIndex = new Map();     // id_service -> node
   let _postesCache = new Map();      // id_service -> postes[]
   let _currentPostes = [];           // postes courants (pour filtre)
+  let _visiblePostes = [];
+  let _posteSortKey = "intitule";
+  let _posteSortDir = "asc";
+  let _postePage = 1;
+  let _postePageSize = 25;
+  let _activePoste = null;
+  let _activePosteDetail = null;
+  let _posteHistoryBound = false;
 
   function escapeHtml(s) {
     return (s ?? "").toString()
@@ -55,153 +63,315 @@
     function byId(id){ return document.getElementById(id); }
 
   function setOrgPosteTab(tab){
-    const modal = byId("modalOrgPoste");
-    if (!modal) return;
+    const page = byId("orgPostePage");
+    if (!page) return;
 
-    modal.querySelectorAll("#orgPosteTabbar [data-tab]").forEach(btn => {
+    page.querySelectorAll("#orgPosteTabbar [data-tab]").forEach(btn => {
       const isOn = (btn.getAttribute("data-tab") === tab);
       btn.classList.toggle("is-active", isOn);
       btn.setAttribute("aria-selected", isOn ? "true" : "false");
     });
 
-    modal.querySelectorAll(".sb-tab-panel").forEach(p => {
-      const isOn = (p.getAttribute("data-panel") === tab);
-      p.classList.toggle("is-active", isOn);
+    page.querySelectorAll(".sb-tab-panel").forEach(panel => {
+      panel.classList.toggle("is-active", panel.getAttribute("data-panel") === tab);
     });
   }
 
-  async function openOrgPosteModal(p){
+  function _serviceLabelForPoste(poste){
+    const direct = String(poste?.nom_service || "").trim();
+    if (direct) return direct;
+    const sid = String(poste?.id_service || "").trim();
+    if (!sid) return "Non lié";
+    return String(_serviceIndex.get(sid)?.nom_service || "Non lié").trim() || "Non lié";
+  }
+
+  function _showOrganisationIndex(){
+    const root = byId("view-votre-organisation");
+    const page = byId("orgPostePage");
+    if (root) root.classList.remove("is-poste-page");
+    if (page) page.style.display = "none";
+    _activePoste = null;
+    _activePosteDetail = null;
+  }
+
+  function _showPostePage(){
+    const root = byId("view-votre-organisation");
+    const page = byId("orgPostePage");
+    if (root) root.classList.add("is-poste-page");
+    if (page) page.style.display = "";
+  }
+
+  function _bindPosteHistoryOnce(){
+    if (_posteHistoryBound) return;
+    _posteHistoryBound = true;
+    window.addEventListener("popstate", () => {
+      const root = byId("view-votre-organisation");
+      if (root?.classList.contains("is-poste-page")) _showOrganisationIndex();
+    });
+  }
+
+  function _pushPosteHistory(idPoste){
+    try {
+      window.history.pushState({ skillsOrganisationPoste: String(idPoste || "") }, "", window.location.href);
+    } catch (_) {}
+  }
+
+  function _setPosteHeader(poste){
+    const badge = byId("orgPosteModalBadge");
+    const title = byId("orgPosteModalTitle");
+    const sub = byId("orgPostePageSub");
+    const code = String(poste?.codif_client || poste?.codif_poste || "").trim();
+    if (badge){
+      badge.textContent = code;
+      badge.style.display = code ? "" : "none";
+    }
+    if (title) title.textContent = String(poste?.intitule_poste || "Poste").trim() || "Poste";
+    if (sub) sub.textContent = _serviceLabelForPoste(poste);
+  }
+
+  function _criticalityLabel(value){
+    const labels = { "0":"Non critique", "1":"Faible", "2":"Important", "3":"Élevé", "4":"Critique" };
+    const key = String(value ?? "").trim();
+    return labels[key] || "—";
+  }
+
+  function _statusLabel(value){
+    const labels = { actif:"Actif", a_pourvoir:"À pourvoir", gele:"Gelé", temporaire:"Temporaire", archive:"Archivé" };
+    const key = String(value || "").trim().toLowerCase();
+    return labels[key] || "—";
+  }
+
+  function _strategyLabel(value){
+    const labels = { interne:"Interne", externe:"Externe", mixte:"Mixte" };
+    const key = String(value || "").trim().toLowerCase();
+    return labels[key] || "—";
+  }
+
+  function _plainTextFromHtml(value){
+    const tmp = document.createElement("div");
+    tmp.innerHTML = repairAiTextEncodingGlitches(value || "");
+    return String(tmp.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function _extractActivities(detail){
+    const html = repairAiTextEncodingGlitches(detail?.responsabilites_html || "");
+    if (!html) return [];
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    const listed = Array.from(tmp.querySelectorAll("li"))
+      .map(node => String(node.textContent || "").replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+    if (listed.length) return listed;
+    const paragraphs = Array.from(tmp.querySelectorAll("p"))
+      .map(node => String(node.textContent || "").replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+    if (paragraphs.length) return paragraphs;
+    return String(tmp.textContent || "")
+      .split(/\r?\n|[•·]/)
+      .map(value => value.replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+  }
+
+  function _setDefinitionList(id, rows){
+    const target = byId(id);
+    if (!target) return;
+    target.innerHTML = rows.map(([label, value]) => `
+      <div class="org-poste-overview-data-row">
+        <dt>${escapeHtml(label)}</dt>
+        <dd>${escapeHtml(value || "—")}</dd>
+      </div>
+    `).join("");
+  }
+
+  function _renderOverviewRequirementList(id, items, kind){
+    const target = byId(id);
+    if (!target) return;
+    const source = Array.isArray(items) ? items : [];
+    if (!source.length){
+      target.innerHTML = `<div class="org-poste-overview-empty">Aucun élément renseigné.</div>`;
+      return;
+    }
+    target.innerHTML = source.slice(0, 5).map(item => {
+      const title = kind === "competence" ? item?.intitule : item?.nom_certification;
+      const code = kind === "competence" ? item?.code : item?.categorie;
+      const level = kind === "competence" ? item?.niveau_requis : item?.niveau_exigence;
+      return `<div class="org-poste-overview-item">
+        <div class="org-poste-overview-item__main">
+          ${code ? `<span class="sb-badge ${kind === "competence" ? "sb-badge-ref-comp-code" : ""}">${escapeHtml(code)}</span>` : ""}
+          <span>${escapeHtml(title || "—")}</span>
+        </div>
+        <span class="org-poste-overview-item__level">${escapeHtml(level || "—")}</span>
+      </div>`;
+    }).join("");
+  }
+
+  function _renderCollaborators(collaborators){
+    const target = byId("orgPosteOverviewCollaborators");
+    if (!target) return;
+    const rows = Array.isArray(collaborators) ? collaborators : [];
+    if (!rows.length){
+      target.innerHTML = `<div class="org-poste-collaborators__empty">Aucun collaborateur actif sur ce poste.</div>`;
+      return;
+    }
+    target.innerHTML = rows.map(item => {
+      const prenom = String(item?.prenom || item?.prenom_effectif || "").trim();
+      const nom = String(item?.nom || item?.nom_effectif || "").trim();
+      const initials = `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase() || "?";
+      const unavailable = item?.indisponible === true;
+      return `<div class="org-poste-collaborator">
+        <span class="org-poste-collaborator__avatar" aria-hidden="true">${escapeHtml(initials)}</span>
+        <span class="org-poste-collaborator__name">${escapeHtml([prenom, nom].filter(Boolean).join(" ") || "Collaborateur")}</span>
+        <span class="org-poste-collaborator__status ${unavailable ? "is-unavailable" : "is-active"}">
+          <span aria-hidden="true"></span>${unavailable ? "Indisponible" : "Actif"}
+        </span>
+      </div>`;
+    }).join("");
+  }
+
+  function fillPosteOverview(detail){
+    const competences = Array.isArray(detail?.competences) ? detail.competences : [];
+    const certifications = Array.isArray(detail?.certifications) ? detail.certifications : [];
+    const collaborators = Array.isArray(detail?.collaborateurs) ? detail.collaborateurs : [];
+    const criticalCompetences = competences.filter(item => Number(item?.poids_criticite || 0) >= 70).length;
+
+    _setText("orgPosteOverviewCollabs", String(collaborators.length));
+    _setText("orgPosteOverviewCollabsMeta", `${Number(detail?.rh_nb_titulaires_cible || 0)} titulaire(s) cible`);
+    _setText("orgPosteOverviewCompetences", String(competences.length));
+    _setText("orgPosteOverviewCompetencesMeta", `${criticalCompetences} critique(s)`);
+    _setText("orgPosteOverviewCertifications", String(certifications.length));
+    _setText("orgPosteOverviewCertificationsMeta", certifications.length ? "Exigences du poste" : "Aucune exigence");
+    _setText("orgPosteOverviewCriticite", _criticalityLabel(detail?.rh_criticite_poste));
+    _setText("orgPosteOverviewMission", repairAiTextEncodingGlitches(detail?.mission_principale || "").trim() || "—");
+    _setText("orgPosteOverviewComment", String(detail?.rh_param_rh_commentaire || "").trim() || "—");
+
+    const activities = _extractActivities(detail);
+    const activitiesTarget = byId("orgPosteOverviewActivities");
+    if (activitiesTarget){
+      activitiesTarget.innerHTML = activities.length
+        ? activities.map(value => `<li>${escapeHtml(value)}</li>`).join("")
+        : `<li class="org-poste-overview-empty">Aucune activité renseignée.</li>`;
+    }
+
+    _renderOverviewRequirementList("orgPosteOverviewCompList", competences, "competence");
+    _renderOverviewRequirementList("orgPosteOverviewCertList", certifications, "certification");
+    _renderCollaborators(collaborators);
+
+    const codeInterne = String(detail?.codif_client || detail?.codif_poste || "").trim();
+    _setDefinitionList("orgPosteOverviewInfo", [
+      ["Service", _serviceLabelForPoste(detail)],
+      ["Code interne", codeInterne || "—"],
+      ["Statut", _statusLabel(detail?.rh_statut_poste || (detail?.actif === false ? "archive" : "actif"))],
+      ["Stratégie de pourvoi", _strategyLabel(detail?.rh_strategie_pourvoi)],
+      ["Titulaires cible", String(detail?.rh_nb_titulaires_cible ?? "—")],
+      ["Début de validité", formatDateOnly(detail?.rh_date_debut_validite) || "—"],
+      ["Fin de validité", formatDateOnly(detail?.rh_date_fin_validite) || "—"]
+    ]);
+    _setDefinitionList("orgPosteOverviewConstraints", [
+      ["Mobilité", String(detail?.mobilite || "—")],
+      ["Risques physiques", String(detail?.risque_physique || "—")],
+      ["Perspectives", String(detail?.perspectives_evolution || "—")],
+      ["Niveau de contraintes", String(detail?.niveau_contrainte || "—")]
+    ]);
+    fillPosteCotationTab(detail);
+  }
+
+  async function openOrgPosteModal(p, options){
     const portal = window.__skillsPortalInstance;
-    if (!portal) return;
+    const page = byId("orgPostePage");
+    if (!portal || !page) return;
 
-    const modal = document.getElementById("modalOrgPoste");
-    if (!modal) return;
+    const idPoste = String(p?.id_poste || "").trim();
+    _activePoste = Object.assign({}, p || {});
+    _activePosteDetail = null;
+    page.setAttribute("data-id-poste", idPoste);
+    _setPosteHeader(_activePoste);
+    _showPostePage();
+    setOrgPosteTab("overview");
 
-    const badge = document.getElementById("orgPosteModalBadge");
-    const title = document.getElementById("orgPosteModalTitle");
-
-    const code = ((p?.codif_client || p?.codif_poste || "") + "").trim();
-    const lib = ((p?.intitule_poste || "") + "").trim();
-    const id_poste = (p?.id_poste || "").trim();
-
-    // Contexte (utile pour save RH)
-    modal.setAttribute("data-id-poste", id_poste);
-
-    // Reset RH édition
     _rhEdit.editing = false;
     _rhEdit.snapshot = null;
     _setRhEditMode(false);
+    _ctrEdit.editing = false;
+    _ctrEdit.snapshot = null;
+    _setCtrEditMode(false);
 
-    // Header
-    if (badge){
-      if (code){
-        badge.textContent = code;
-        badge.style.display = "";
-      } else {
-        badge.style.display = "none";
-      }
-    }
-    if (title){
-      title.textContent = lib || "Poste";
-    }
-
-    // Ouvre le modal + onglet def
-    setOrgPosteTab("def");
-    modal.classList.add("show");
-    modal.setAttribute("aria-hidden", "false");
-
-    // Placeholder rapide (évite effet “vide”)
-    fillPosteDefinitionTab({
+    const placeholder = Object.assign({}, _activePoste, {
       mission_principale: "",
       responsabilites_html: "",
       responsabilites: "",
-      isresponsable: !!p?.isresponsable,
-      date_maj: ""
+      competences: [],
+      certifications: [],
+      collaborateurs: [],
+      ccn: { statut: "none" }
     });
-
+    fillPosteDefinitionTab(placeholder);
     fillPosteContraintesTab({});
     fillPosteCompetencesTab({ competences: [] });
     fillPosteCertificationsTab({ certifications: [] });
     fillPosteParamRhTab({});
-    fillPosteCotationTab({ __force_empty: true });
+    fillPosteOverview(placeholder);
 
+    if (options?.pushHistory !== false) _pushPosteHistory(idPoste);
 
-    // Détail (fetch)
     try {
-      if (!id_poste) return;
-      const detail = await fetchPosteDetail(portal, id_poste);
-      fillPosteDefinitionTab(detail);
-      fillPosteContraintesTab(detail);
-      fillPosteCompetencesTab(detail);
-      fillPosteCertificationsTab(detail);
-      fillPosteParamRhTab(detail);
+      if (!idPoste) throw new Error("Poste manquant.");
+      const detail = await fetchPosteDetail(portal, idPoste);
+      const merged = Object.assign({}, _activePoste, detail || {});
+      _activePoste = merged;
+      _activePosteDetail = merged;
+      _setPosteHeader(merged);
+      fillPosteDefinitionTab(merged);
+      fillPosteContraintesTab(merged);
+      fillPosteCompetencesTab(merged);
+      fillPosteCertificationsTab(merged);
+      fillPosteParamRhTab(merged);
+      fillPosteOverview(merged);
     } catch (e) {
       portal.showAlert("error", "Erreur chargement poste : " + e.message);
     }
   }
 
-
   function closeOrgPosteModal(){
-    const modal = byId("modalOrgPoste");
-    if (!modal) return;
-    modal.classList.remove("show");
-    modal.setAttribute("aria-hidden", "true");
+    _showOrganisationIndex();
   }
 
   function bindOrgPosteModalOnce(){
-    const modal = byId("modalOrgPoste");
-    if (!modal) return;
+    const page = byId("orgPostePage");
+    if (!page) return;
+    _bindPosteHistoryOnce();
+    if (page.getAttribute("data-bound") === "1") return;
+    page.setAttribute("data-bound", "1");
 
-    if (modal.getAttribute("data-bound") === "1") return;
-    modal.setAttribute("data-bound", "1");
-
-    // Close buttons
-    byId("orgPosteModalClose")?.addEventListener("click", closeOrgPosteModal);
-    byId("orgPosteModalX")?.addEventListener("click", closeOrgPosteModal);
-
-    // Click backdrop (zone grisée = .modal)
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeOrgPosteModal();
+    page.querySelectorAll("#orgPosteTabbar [data-tab]").forEach(btn => {
+      btn.addEventListener("click", () => setOrgPosteTab(btn.getAttribute("data-tab")));
+    });
+    page.querySelectorAll("[data-go-tab]").forEach(btn => {
+      btn.addEventListener("click", () => setOrgPosteTab(btn.getAttribute("data-go-tab")));
+    });
+    byId("orgPostePagePdf")?.addEventListener("click", async () => {
+      const portal = window.__skillsPortalInstance;
+      if (!portal || !_activePoste) return;
+      try { await openPosteFichePdf(portal, _activePoste); }
+      catch (e) { portal.showAlert("error", e?.message || String(e)); }
     });
 
-    // Tabs
-    modal.querySelectorAll("#orgPosteTabbar [data-tab]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tab = btn.getAttribute("data-tab");
-        setOrgPosteTab(tab);
-      });
-    });
-
-    // Param RH buttons (bind once)
     const btnEdit = byId("orgRhBtnEdit");
     const btnSave = byId("orgRhBtnSave");
     const btnCancel = byId("orgRhBtnCancel");
 
     if (btnEdit && !btnEdit._sbBound){
       btnEdit._sbBound = true;
-      btnEdit.addEventListener("click", (e) => {
-        e.preventDefault();
-        _rhEnterEditMode();
-      });
+      btnEdit.addEventListener("click", (e) => { e.preventDefault(); _rhEnterEditMode(); });
     }
-
     if (btnCancel && !btnCancel._sbBound){
       btnCancel._sbBound = true;
-      btnCancel.addEventListener("click", (e) => {
-        e.preventDefault();
-        _rhCancelEdit();
-      });
+      btnCancel.addEventListener("click", (e) => { e.preventDefault(); _rhCancelEdit(); });
     }
-
     if (btnSave && !btnSave._sbBound){
       btnSave._sbBound = true;
-      btnSave.addEventListener("click", (e) => {
-        e.preventDefault();
-        _rhSaveEdit();
-      });
+      btnSave.addEventListener("click", (e) => { e.preventDefault(); _rhSaveEdit(); });
     }
 
-    // Contraintes buttons (bind once)
     const btnCtrEdit = byId("orgCtrBtnEdit");
     const btnCtrSave = byId("orgCtrBtnSave");
     const btnCtrCancel = byId("orgCtrBtnCancel");
@@ -209,28 +379,16 @@
 
     if (btnCtrEdit && !btnCtrEdit._sbBound){
       btnCtrEdit._sbBound = true;
-      btnCtrEdit.addEventListener("click", (e) => {
-        e.preventDefault();
-        _ctrEnterEditMode();
-      });
+      btnCtrEdit.addEventListener("click", (e) => { e.preventDefault(); _ctrEnterEditMode(); });
     }
-
     if (btnCtrCancel && !btnCtrCancel._sbBound){
       btnCtrCancel._sbBound = true;
-      btnCtrCancel.addEventListener("click", (e) => {
-        e.preventDefault();
-        _ctrCancelEdit();
-      });
+      btnCtrCancel.addEventListener("click", (e) => { e.preventDefault(); _ctrCancelEdit(); });
     }
-
     if (btnCtrSave && !btnCtrSave._sbBound){
       btnCtrSave._sbBound = true;
-      btnCtrSave.addEventListener("click", (e) => {
-        e.preventDefault();
-        _ctrSaveEdit();
-      });
+      btnCtrSave.addEventListener("click", (e) => { e.preventDefault(); _ctrSaveEdit(); });
     }
-
     if (btnCompMore && !btnCompMore._sbBound){
       btnCompMore._sbBound = true;
       btnCompMore.addEventListener("click", (e) => {
@@ -258,14 +416,6 @@
         clearRhOnChange.addEventListener(evtName, () => _clearInlineMsg("orgRhMsg"));
       });
     }
-
-
-    // Esc
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && modal.classList.contains("show")) {
-        closeOrgPosteModal();
-      }
-    });
   }
 
 
@@ -412,67 +562,29 @@
   }
 
   function fillPosteCotationTab(detail){
-    if (detail?.__force_empty){
-      _setText("orgRhCotationCategorie", "");
-      _setText("orgRhCotationCoefficient", "");
-      return;
-    }
+    const ccn = detail?.ccn || {};
+    const status = String(ccn?.statut || "none").trim().toLowerCase();
+    const statusLabel = status === "validated" ? "Validée" : status === "draft" ? "Brouillon" : status === "unsupported" ? "Convention non supportée" : "Aucune cotation";
+    const result = String(ccn?.resultat || "").trim() || "—";
+    const category = String(ccn?.categorie || "").trim() || "—";
+    const justification = String(ccn?.justification || "").trim() || "—";
+    const convention = [ccn?.convention_label, ccn?.version_label].map(value => String(value || "").trim()).filter(Boolean).join(" · ") || "—";
+    const dateMaj = formatDateOnly(ccn?.date_maj) || "—";
 
-    const categorieKeys = [
-      "rh_cotation_categorie_retendue",
-      "rh_categorie_retendue",
-      "categorie_retendue",
-      "categorie_retenue",
-      "categorie_conventionnelle",
-      "categorie_conventionnelle_retendue",
-      "categorie_professionnelle"
-    ];
+    _setText("orgCcnConvention", convention);
+    _setText("orgCcnStatus", statusLabel);
+    _setText("orgCcnResult", result);
+    _setText("orgCcnCategory", category);
+    _setText("orgCcnDateMaj", dateMaj);
+    _setText("orgCcnJustification", justification);
 
-    const coefficientKeys = [
-      "rh_cotation_coefficient_palier_retenu",
-      "rh_coefficient_palier_retenu",
-      "coefficient_palier_retenu",
-      "coefficient_palier",
-      "coefficient_palier_affichage"
-    ];
-
-    const coeffOnlyKeys = [
-      "rh_cotation_coefficient_retenu",
-      "rh_coefficient_retenu",
-      "coefficient_retenu",
-      "coefficient"
-    ];
-
-    const palierKeys = [
-      "rh_cotation_palier_retenu",
-      "rh_palier_retenu",
-      "palier_retenu",
-      "palier"
-    ];
-
-    const hasRawCotation = [...categorieKeys, ...coefficientKeys, ...coeffOnlyKeys, ...palierKeys]
-      .some(key => {
-        const v = detail?.[key];
-        return v !== null && v !== undefined && String(v).trim() !== "";
-      });
-
-    if (!hasRawCotation) return;
-
-    const categorie = _pickFirstString(detail, categorieKeys);
-
-    let coefficient = _pickFirstString(detail, coefficientKeys);
-
-    if (!coefficient){
-      const coeff = _pickFirstString(detail, coeffOnlyKeys);
-      const palierRaw = _pickFirstString(detail, palierKeys);
-      let palier = palierRaw;
-      if (palier && !/^palier\b/i.test(palier)) palier = `Palier ${palier}`;
-      coefficient = [coeff, palier].filter(Boolean).join(" / ");
-    }
-
-    _setText("orgRhCotationCategorie", categorie);
-    _setText("orgRhCotationCoefficient", coefficient);
+    const summary = status === "validated"
+      ? [result, category !== "—" ? category : ""].filter(Boolean).join(" · ")
+      : statusLabel;
+    _setText("orgPosteOverviewCcnSummary", summary || "—");
+    _setText("orgPosteOverviewCcnNote", status === "validated" ? "Cotation validée. La justification détaillée est disponible dans l’onglet dédié." : "Le détail de la cotation est disponible dans l’onglet dédié.");
   }
+
 
   function _setRhEditMode(editing){
     _rhEdit.editing = !!editing;
@@ -526,8 +638,8 @@
     const portal = window.__skillsPortalInstance;
     if (!portal) return;
 
-    const modal = byId("modalOrgPoste");
-    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    const page = byId("orgPostePage");
+    const id_poste = page?.getAttribute("data-id-poste") || "";
     if (!id_poste) {
       _showInlineMsg("orgRhMsg", "danger", "Impossible d’enregistrer : id_poste manquant.");
       return;
@@ -573,6 +685,8 @@
 
       // refresh UI (retour lecture)
       fillPosteParamRhTab(merged);
+      fillPosteOverview(merged);
+      _activePosteDetail = merged;
       _showInlineMsg("orgRhMsg", "success", "Paramétrage RH enregistré.");
 
     } catch (e) {
@@ -800,108 +914,164 @@
     }
   }
 
+  function _posteSortValue(poste, key){
+    if (key === "code") return String(poste?.codif_client || poste?.codif_poste || "").toLocaleLowerCase("fr");
+    if (key === "service") return _serviceLabelForPoste(poste).toLocaleLowerCase("fr");
+    if (key === "collaborateurs") return Number(poste?.nb_effectifs || 0);
+    return String(poste?.intitule_poste || "").toLocaleLowerCase("fr");
+  }
+
+  function _sortPostes(list){
+    return [...(Array.isArray(list) ? list : [])].sort((a, b) => {
+      const av = _posteSortValue(a, _posteSortKey);
+      const bv = _posteSortValue(b, _posteSortKey);
+      const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv), "fr", { sensitivity:"base" });
+      return _posteSortDir === "desc" ? -cmp : cmp;
+    });
+  }
+
+  function _paginationButton(label, page, disabled, active){
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "org-poste-page-btn" + (active ? " is-active" : "");
+    btn.textContent = label;
+    btn.disabled = !!disabled;
+    btn.addEventListener("click", () => {
+      _postePage = page;
+      renderPostes(_visiblePostes);
+    });
+    return btn;
+  }
+
+  function _renderPostePagination(container, total){
+    const totalPages = Math.max(1, Math.ceil(total / _postePageSize));
+    _postePage = Math.min(Math.max(1, _postePage), totalPages);
+    const start = total ? ((_postePage - 1) * _postePageSize) + 1 : 0;
+    const end = Math.min(total, _postePage * _postePageSize);
+
+    const bar = document.createElement("div");
+    bar.className = "org-poste-pagination-bar";
+
+    const sizeWrap = document.createElement("label");
+    sizeWrap.className = "org-poste-page-size";
+    sizeWrap.innerHTML = `<span>Afficher</span><select aria-label="Nombre de postes par page"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select><span>lignes</span>`;
+    const select = sizeWrap.querySelector("select");
+    select.value = String(_postePageSize);
+    select.addEventListener("change", () => {
+      _postePageSize = Number(select.value || 25);
+      _postePage = 1;
+      renderPostes(_visiblePostes);
+    });
+
+    const nav = document.createElement("div");
+    nav.className = "org-poste-pagination";
+    nav.appendChild(_paginationButton("‹", _postePage - 1, _postePage <= 1, false));
+    const first = Math.max(1, Math.min(_postePage - 2, totalPages - 4));
+    const last = Math.min(totalPages, Math.max(5, _postePage + 2));
+    for (let page = first; page <= last; page += 1){
+      nav.appendChild(_paginationButton(String(page), page, false, page === _postePage));
+    }
+    nav.appendChild(_paginationButton("›", _postePage + 1, _postePage >= totalPages, false));
+
+    const summary = document.createElement("div");
+    summary.className = "org-poste-pagination-summary";
+    summary.textContent = `${start}–${end} sur ${total}`;
+
+    bar.appendChild(sizeWrap);
+    bar.appendChild(nav);
+    bar.appendChild(summary);
+    container.appendChild(bar);
+  }
+
   function renderPostes(list) {
-    const container = document.getElementById("postesContainer");
-    const empty = document.getElementById("postesEmpty");
-    if (!container || !empty) return;
-
+    const container = byId("postesContainer");
+    if (!container) return;
+    _visiblePostes = Array.isArray(list) ? list : [];
     container.innerHTML = "";
-    empty.style.display = "none";
 
-    if (!list || list.length === 0) {
-      empty.style.display = "block";
+    if (!_visiblePostes.length) {
+      container.innerHTML = `<div class="org-poste-table-empty">Aucun poste pour ce périmètre.</div>`;
       return;
     }
 
-    const iconEye = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>';
-    const iconPdf = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
+    const sorted = _sortPostes(_visiblePostes);
+    const totalPages = Math.max(1, Math.ceil(sorted.length / _postePageSize));
+    _postePage = Math.min(_postePage, totalPages);
+    const start = (_postePage - 1) * _postePageSize;
+    const displayed = sorted.slice(start, start + _postePageSize);
 
-    list.forEach(p => {
-      const row = document.createElement("div");
-      row.className = "org-poste-row";
+    const table = document.createElement("table");
+    table.className = "sb-table org-postes-table";
+    table.innerHTML = `<thead><tr>
+      <th><button type="button" class="org-poste-sort" data-sort="code">Code</button></th>
+      <th><button type="button" class="org-poste-sort" data-sort="intitule">Intitulé du poste</button></th>
+      <th><button type="button" class="org-poste-sort" data-sort="service">Service</button></th>
+      <th><button type="button" class="org-poste-sort" data-sort="collaborateurs">Collaborateurs</button></th>
+      <th class="org-postes-actions-head">Actions</th>
+    </tr></thead><tbody></tbody>`;
 
-      const left = document.createElement("div");
-      left.className = "sb-acc-left org-poste-row__main";
-
-      const head = document.createElement("div");
-      head.className = "org-poste-head";
-
-      const code = (p.codif_poste || "").trim();
-      const title = (p.intitule_poste || "").trim();
-      const clientCode = (p.codif_client || "").trim();
-      const codeBadge = clientCode || code;
-
-      if (codeBadge) {
-        const badge = document.createElement("span");
-        badge.className = "sb-badge sb-badge-ref-poste-code";
-        badge.textContent = codeBadge;
-        head.appendChild(badge);
+    table.querySelectorAll(".org-poste-sort").forEach(btn => {
+      const key = btn.getAttribute("data-sort");
+      if (key === _posteSortKey){
+        btn.classList.add("is-active");
+        btn.setAttribute("data-direction", _posteSortDir);
       }
-
-      const titleNode = document.createElement("div");
-      titleNode.className = "sb-acc-title";
-      titleNode.textContent = title || "Poste";
-      head.appendChild(titleNode);
-      left.appendChild(head);
-
-      const right = document.createElement("div");
-      right.className = "sb-acc-right org-poste-row__actions";
-
-      if (p.isresponsable) {
-        const badgeResp = document.createElement("span");
-        badgeResp.className = "sb-badge sb-badge-manager";
-        badgeResp.textContent = "Responsable";
-        right.appendChild(badgeResp);
-      }
-
-      const badgeEff = document.createElement("span");
-      badgeEff.className = "sb-badge org-poste-row__count";
-      badgeEff.textContent = `${(p.nb_effectifs ?? 0).toString()} collab.`;
-      right.appendChild(badgeEff);
-
-      const actions = document.createElement("div");
-      actions.className = "sb-icon-actions org-poste-row__icon-actions";
-
-      const eyeBtn = document.createElement("button");
-      eyeBtn.type = "button";
-      eyeBtn.className = "sb-icon-btn";
-      eyeBtn.title = "Voir la fiche";
-      eyeBtn.setAttribute("aria-label", "Voir la fiche");
-      eyeBtn.innerHTML = iconEye;
-      eyeBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openOrgPosteModal(p);
+      btn.addEventListener("click", () => {
+        if (_posteSortKey === key) _posteSortDir = _posteSortDir === "asc" ? "desc" : "asc";
+        else { _posteSortKey = key; _posteSortDir = "asc"; }
+        _postePage = 1;
+        renderPostes(_visiblePostes);
       });
-      actions.appendChild(eyeBtn);
+    });
 
-      const pdfBtn = document.createElement("button");
-      pdfBtn.type = "button";
-      pdfBtn.className = "sb-icon-btn";
-      pdfBtn.title = "Voir le PDF";
-      pdfBtn.setAttribute("aria-label", "Voir le PDF");
-      pdfBtn.innerHTML = iconPdf;
-      pdfBtn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const tbody = table.querySelector("tbody");
+    displayed.forEach(poste => {
+      const code = String(poste?.codif_client || poste?.codif_poste || "—").trim() || "—";
+      const title = String(poste?.intitule_poste || "Poste").trim() || "Poste";
+      const service = _serviceLabelForPoste(poste);
+      const tr = document.createElement("tr");
+      tr.className = "org-poste-table-row";
+      tr.tabIndex = 0;
+      tr.innerHTML = `
+        <td><span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span></td>
+        <td><div class="org-poste-table-title">${escapeHtml(title)}${poste?.isresponsable ? '<span class="sb-badge sb-badge-manager">Responsable</span>' : ""}</div><div class="org-poste-mobile-service">${escapeHtml(service)}</div></td>
+        <td>${escapeHtml(service)}</td>
+        <td class="org-poste-table-count">${Number(poste?.nb_effectifs || 0)}</td>
+        <td><div class="sb-icon-actions org-poste-table-actions"></div></td>`;
+      const actions = tr.querySelector(".org-poste-table-actions");
+      const eye = document.createElement("button");
+      eye.type = "button";
+      eye.className = "sb-icon-btn";
+      eye.title = "Voir la fiche";
+      eye.setAttribute("aria-label", "Voir la fiche");
+      eye.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>';
+      eye.addEventListener("click", event => { event.stopPropagation(); openOrgPosteModal(poste); });
+      const pdf = document.createElement("button");
+      pdf.type = "button";
+      pdf.className = "sb-icon-btn";
+      pdf.title = "Voir le PDF";
+      pdf.setAttribute("aria-label", "Voir le PDF");
+      pdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
+      pdf.addEventListener("click", async event => {
+        event.stopPropagation();
         const portal = window.__skillsPortalInstance;
         if (!portal) return;
-        try {
-          await openPosteFichePdf(portal, p);
-        } catch (err) {
-          portal.showAlert("error", err?.message || String(err));
-        }
+        try { await openPosteFichePdf(portal, poste); }
+        catch (e) { portal.showAlert("error", e?.message || String(e)); }
       });
-      actions.appendChild(pdfBtn);
-
-      right.appendChild(actions);
-      row.appendChild(left);
-      row.appendChild(right);
-
-      row.addEventListener("click", () => openOrgPosteModal(p));
-      container.appendChild(row);
+      actions.appendChild(eye);
+      actions.appendChild(pdf);
+      tr.addEventListener("click", () => openOrgPosteModal(poste));
+      tr.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openOrgPosteModal(poste); }
+      });
+      tbody.appendChild(tr);
     });
+
+    container.appendChild(table);
+    _renderPostePagination(container, sorted.length);
   }
+
 
   function formatDateOnly(v) {
     if (!v) return "";
@@ -973,6 +1143,11 @@
     const empty = document.getElementById("orgPosteDefEmpty");
     const badgeResp = document.getElementById("orgPosteDefRespBadge");
     const dateEl = document.getElementById("orgPosteDefDate");
+
+    _setText("orgPosteDefService", _serviceLabelForPoste(detail));
+    _setText("orgPosteDefCodeInterne", String(detail?.codif_client || detail?.codif_poste || "").trim() || "—");
+    _setText("orgPosteDefCodeNovoskill", String(detail?.codif_poste || "").trim() || "—");
+    _setText("orgPosteDefTitle", String(detail?.intitule_poste || "").trim() || "—");
 
     const m = repairAiTextEncodingGlitches(detail?.mission_principale || "").trim();
     const rh = repairAiTextEncodingGlitches(detail?.responsabilites_html || "").trim();
@@ -1303,8 +1478,8 @@
     const portal = window.__skillsPortalInstance;
     if (!portal) return;
 
-    const modal = byId("modalOrgPoste");
-    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    const page = byId("orgPostePage");
+    const id_poste = page?.getAttribute("data-id-poste") || "";
     if (!id_poste){
       _showInlineMsg("orgCtrMsg", "danger", "Poste introuvable : enregistrement impossible.");
       return;
@@ -1670,8 +1845,8 @@
     const portal = window.__skillsPortalInstance;
     if (!portal || !_orgCompCritEdit) return;
 
-    const modal = byId("modalOrgPoste");
-    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    const page = byId("orgPostePage");
+    const id_poste = page?.getAttribute("data-id-poste") || "";
     const id_competence = (_orgCompCritEdit.id_competence || _orgCompCritEdit.id_comp || "").toString().trim();
     if (!id_poste || !id_competence){
       _showInlineMsg("orgCompCritMsg", "danger", "Poste ou compétence introuvable.");
@@ -1697,6 +1872,8 @@
 
       _posteDetailCache.set(id_poste, updated);
       fillPosteCompetencesTab(updated);
+      fillPosteOverview(updated);
+      _activePosteDetail = updated;
       closeOrgCompCritModal();
     } catch (e) {
       _showInlineMsg("orgCompCritMsg", "danger", "Erreur enregistrement : " + e.message);
@@ -1757,8 +1934,8 @@
     const portal = window.__skillsPortalInstance;
     if (!portal || !_orgCertValidEdit) return;
 
-    const modal = byId("modalOrgPoste");
-    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    const page = byId("orgPostePage");
+    const id_poste = page?.getAttribute("data-id-poste") || "";
     const id_certification = (_orgCertValidEdit.id_certification || "").toString().trim();
     if (!id_poste || !id_certification){
       _showInlineMsg("orgCertValidMsg", "danger", "Poste ou certification introuvable.");
@@ -1786,6 +1963,8 @@
 
       _posteDetailCache.set(id_poste, updated);
       fillPosteCertificationsTab(updated);
+      fillPosteOverview(updated);
+      _activePosteDetail = updated;
       closeOrgCertValidModal();
     } catch (e) {
       _showInlineMsg("orgCertValidMsg", "danger", "Erreur enregistrement : " + e.message);
@@ -1946,21 +2125,22 @@
   }
 
 
-  function applyPosteFilter() {
-    const q = (document.getElementById("posteSearch")?.value || "").trim().toLowerCase();
-    if (!q) {
-      renderPostes(_currentPostes);
-      return;
-    }
-    const filtered = _currentPostes.filter(p => {
-      const a = (p.codif_poste || "").toLowerCase();
-      const b = (p.intitule_poste || "").toLowerCase();
-      const c = (p.codif_client || "").toLowerCase();
-      return a.includes(q) || b.includes(q) || c.includes(q);
+  function applyPosteFilter(resetPage){
+    if (resetPage !== false) _postePage = 1;
+    const q = _norm(byId("posteSearch")?.value || "");
+    const filtered = !_currentPostes.length ? [] : _currentPostes.filter(poste => {
+      if (!q) return true;
+      const haystack = [
+        poste?.codif_poste,
+        poste?.codif_client,
+        poste?.intitule_poste,
+        _serviceLabelForPoste(poste)
+      ].map(_norm).join(" ");
+      return haystack.includes(q);
     });
-
     renderPostes(filtered);
   }
+
 
   async function loadServices(portal) {
     portal.showAlert("", "");
@@ -1990,6 +2170,7 @@
 
   async function selectService(id_service) {
     _selectedServiceId = id_service;
+    _postePage = 1;
     setActiveTreeItem(id_service);
 
     const node = _serviceIndex.get(id_service);
@@ -2000,8 +2181,7 @@
 
     try {
       portal.showAlert("", "");
-      document.getElementById("postesContainer").innerHTML = `<div class="card-sub">Chargement…</div>`;
-      document.getElementById("postesEmpty").style.display = "none";
+      document.getElementById("postesContainer").innerHTML = `<div class="card-sub org-placeholder">Chargement…</div>`;
       updateServiceStats(node || { id_service }, []);
 
       await loadPostesForService(portal, id_service);
@@ -2020,7 +2200,7 @@
       let t = null;
       search.addEventListener("input", () => {
         clearTimeout(t);
-        t = setTimeout(() => applyPosteFilter(), 180);
+        t = setTimeout(() => applyPosteFilter(true), 180);
       });
     }
   }
@@ -2068,8 +2248,9 @@
     onShow: async (portal) => {
       window.__skillsPortalInstance = portal;
       bindOrgPosteModalOnce();
-
+      _showOrganisationIndex();
       try {
+        try { window.history.replaceState({ skillsOrganisationIndex:true }, "", window.location.href); } catch (_) {}
         bindOnce(portal);
         if (!_servicesLoaded) await loadServices(portal);
         await processReferentielPendingPosteAction(portal);
@@ -2108,6 +2289,7 @@
       await openPosteFichePdf(portal, { id_poste: id });
     }
   };
+
 
   window.SkillsOrganisation = orgPublicApi;
   window.skillsOrganisation = orgPublicApi;

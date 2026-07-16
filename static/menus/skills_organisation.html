@@ -1,4 +1,5 @@
-<section id="view-votre-organisation" style="display:none;">
+<section id="view-votre-organisation" class="skills-org-page" style="display:none;">
+  <div id="orgOrganisationIndex">
   <div class="card org-page-hero">
     <div class="org-page-hero__icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-organisation"></use></svg>
@@ -84,392 +85,699 @@
           </div>
         </div>
 
-        <div id="postesContainer" class="org-postes-list">
+        <div id="postesContainer" class="table-wrap org-postes-list">
           <div class="card-sub org-placeholder">Sélectionnez un service pour afficher les postes.</div>
         </div>
 
-        <div class="card-sub" id="postesEmpty">
-          Aucun poste pour ce service.
-        </div>
       </div>
     </div>
   </div>
+  </div>
 
   <!-- ======================================================
-      Modal Poste (Votre organisation) — Squelette 3 onglets
+      Page dédiée Poste (Votre organisation)
       ====================================================== -->
-  <div id="modalOrgPoste" class="modal" aria-hidden="true">
-    <div class="modal-card modal-card--xl">
-      <div class="modal-header modal-header--top">
-        <div class="sb-modal-headstack">
-          <div class="sb-modal-titleline">
-            <span id="orgPosteModalBadge" class="ns-badge sb-badge sb-badge-ref-poste-code" style="display:none;"></span>
-            <div id="orgPosteModalTitle" class="sb-title-text">Poste</div>
-          </div>
+  <div class="org-poste-page" id="orgPostePage" style="display:none;">
+  <div class="org-poste-page-card">
+  <div class="org-poste-page-head">
+  <div class="org-poste-page-headstack">
+  <div class="sb-modal-titleline org-poste-page-titleline">
+  <span class="ns-badge sb-badge sb-badge-ref-poste-code" id="orgPosteModalBadge" style="display:none;">
+  </span>
+  <div class="sb-title-text" id="orgPosteModalTitle">Poste</div>
+  </div>
+  <div class="card-sub org-poste-page-sub" id="orgPostePageSub">—</div>
+  <div aria-label="Navigation fiche poste" class="org-poste-page-nav" id="orgPosteTabbar" role="tablist">
+  <button aria-selected="true" class="org-poste-nav-btn is-active" data-tab="overview" role="tab" type="button">
+  <svg aria-hidden="true" class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-eye">
+  </use>
+  </svg>
+  <span>Vue d’ensemble</span>
+  </button>
+  <button aria-selected="false" class="org-poste-nav-btn" data-tab="def" role="tab" type="button">
+  <svg aria-hidden="true" class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-job">
+  </use>
+  </svg>
+  <span>Définition</span>
+  </button>
+  <button aria-selected="false" class="org-poste-nav-btn" data-tab="exi" role="tab" type="button">
+  <svg aria-hidden="true" class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-checklist">
+  </use>
+  </svg>
+  <span>Exigences</span>
+  </button>
+  <button aria-selected="false" class="org-poste-nav-btn" data-tab="rh" role="tab" type="button">
+  <svg aria-hidden="true" class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-settings">
+  </use>
+  </svg>
+  <span>Paramétrage RH</span>
+  </button>
+  <button aria-selected="false" class="org-poste-nav-btn" data-tab="ccn" role="tab" type="button">
+  <svg aria-hidden="true" class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-ccn">
+  </use>
+  </svg>
+  <span>Cotation conventionnelle</span>
+  </button>
+  </div>
+  </div>
 
-          <div class="org-poste-modal-nav" id="orgPosteTabbar" role="tablist" aria-label="Navigation fiche poste">
-            <button type="button" class="org-poste-nav-btn is-active" data-tab="def" role="tab" aria-selected="true">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
-              <span>Définition</span>
-            </button>
-            <button type="button" class="org-poste-nav-btn" data-tab="exi" role="tab" aria-selected="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg>
-              <span>Exigences</span>
-            </button>
-            <button type="button" class="org-poste-nav-btn" data-tab="rh" role="tab" aria-selected="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-settings"></use></svg>
-              <span>Paramétrage RH</span>
-            </button>
-          </div>
-        </div>
-
-        <button type="button" class="modal-x" id="orgPosteModalX" aria-label="Fermer">×</button>
-      </div>
-
-      <div class="modal-body">
-        <!-- Définition -->
-        <div class="sb-tab-panel is-active" data-panel="def">
-          <div class="card org-poste-def-card sb-card-compact">
-            <div class="org-poste-def-head">
-              <div class="org-section-titleline">
-                <span class="org-section-titleline__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
-                </span>
-                <div class="card-title" style="margin:0;">Définition du poste</div>
+  <div class="org-poste-page-actions">
+  <button class="sb-btn sb-btn--doc" id="orgPostePagePdf" type="button">
+  <span aria-hidden="true" class="sb-btn-icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-pdf">
+  </use>
+  </svg>
+  </span>
+  <span>Imprimer en PDF</span>
+  </button>
+  </div>
+  </div>
+  <div class="org-poste-page-body">
+  <!-- Définition -->
+  <div class="sb-tab-panel is-active org-poste-overview" data-panel="overview">
+  <div class="org-poste-kpis">
+  <div class="org-poste-kpi org-poste-kpi--collabs">
+  <span aria-hidden="true" class="org-poste-kpi__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-users">
+  </use>
+  </svg>
+  </span>
+  <span class="org-poste-kpi__content">
+  <span class="org-poste-kpi__label">Collaborateurs en poste</span>
+  <strong id="orgPosteOverviewCollabs">—</strong>
+  <small id="orgPosteOverviewCollabsMeta">Titularisation du poste</small>
+  </span>
+  </div>
+  <div class="org-poste-kpi org-poste-kpi--competences">
+  <span aria-hidden="true" class="org-poste-kpi__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-competence">
+  </use>
+  </svg>
+  </span>
+  <span class="org-poste-kpi__content">
+  <span class="org-poste-kpi__label">Compétences requises</span>
+  <strong id="orgPosteOverviewCompetences">—</strong>
+  <small id="orgPosteOverviewCompetencesMeta">— critique</small>
+  </span>
+  </div>
+  <div class="org-poste-kpi org-poste-kpi--certifications">
+  <span aria-hidden="true" class="org-poste-kpi__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-certification">
+  </use>
+  </svg>
+  </span>
+  <span class="org-poste-kpi__content">
+  <span class="org-poste-kpi__label">Certifications requises</span>
+  <strong id="orgPosteOverviewCertifications">—</strong>
+  <small id="orgPosteOverviewCertificationsMeta">Exigences du poste</small>
+  </span>
+  </div>
+  <div class="org-poste-kpi org-poste-kpi--criticite">
+  <span aria-hidden="true" class="org-poste-kpi__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-criticality">
+  </use>
+  </svg>
+  </span>
+  <span class="org-poste-kpi__content">
+  <span class="org-poste-kpi__label">Criticité</span>
+  <strong id="orgPosteOverviewCriticite">—</strong>
+  <small>Impact sur l’activité</small>
+  </span>
+  </div>
+  </div>
+  <div class="org-poste-overview-grid">
+  <div class="org-poste-overview-main">
+  <div class="org-poste-overview-highlight-grid">
+  <section class="card org-poste-overview-card org-poste-overview-card--mission">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-job">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Mission principale</div>
+  </div>
+  <div class="org-poste-overview-text" id="orgPosteOverviewMission">—</div>
+  </section>
+  <section class="card org-poste-overview-card org-poste-overview-card--activities">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon org-poste-overview-card__icon--activities">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-activity">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Activités principales</div>
+  </div>
+  <ol class="org-poste-activities" id="orgPosteOverviewActivities">
+  </ol>
+  </section>
+  </div>
+  <section class="card org-poste-overview-card">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon org-poste-overview-card__icon--competences">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-competence">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Compétences requises</div>
+  </div>
+  <div class="org-poste-overview-list" id="orgPosteOverviewCompList">
+  </div>
+  <button class="org-poste-overview-link" data-go-tab="exi" type="button">Voir toutes les compétences</button>
+  </section>
+  <section class="card org-poste-overview-card">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon org-poste-overview-card__icon--certifications">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-certification">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Certifications requises</div>
+  </div>
+  <div class="org-poste-overview-list" id="orgPosteOverviewCertList">
+  </div>
+  <button class="org-poste-overview-link" data-go-tab="exi" type="button">Voir toutes les certifications</button>
+  </section>
+  </div>
+  <aside class="org-poste-overview-side">
+  <section class="card org-poste-overview-card">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-info">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Informations clés</div>
+  </div>
+  <dl id="orgPosteOverviewInfo">
+  </dl>
+  </section>
+  <section class="card org-poste-overview-card">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon org-poste-overview-card__icon--constraints">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-constraints">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Contraintes</div>
+  </div>
+  <dl id="orgPosteOverviewConstraints">
+  </dl>
+  </section>
+  <section class="card org-poste-overview-card">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon org-poste-overview-card__icon--comment">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-comment">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Commentaire RH</div>
+  </div>
+  <div class="org-poste-overview-text" id="orgPosteOverviewComment">—</div>
+  </section>
+  <section class="card org-poste-overview-card org-poste-overview-card--ccn">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon org-poste-overview-card__icon--ccn">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-ccn">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Cotation conventionnelle</div>
+  </div>
+  <div class="org-poste-overview-text" id="orgPosteOverviewCcnSummary">—</div>
+  <div class="org-poste-overview-note" id="orgPosteOverviewCcnNote">La justification détaillée est disponible dans l’onglet dédié.</div>
+  <button class="org-poste-overview-link org-poste-overview-link--block" data-go-tab="ccn" type="button">Accéder au détail de la cotation</button>
+  </section>
+  <section class="card org-poste-overview-card org-poste-overview-card--collaborators">
+  <div class="org-poste-overview-card__head">
+  <span aria-hidden="true" class="org-poste-overview-card__icon org-poste-overview-card__icon--collaborators">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-users">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Collaborateurs au poste</div>
+  </div>
+  <div class="org-poste-collaborators" id="orgPosteOverviewCollaborators">
+  <div class="org-poste-collaborators__empty">Chargement…</div>
+  </div>
+  </section>
+  </aside>
+  </div>
+  </div>
+  <div class="sb-tab-panel" data-panel="def">
+  <div class="card org-poste-def-card sb-card-compact">
+  <div class="org-poste-def-head">
+  <div class="org-section-titleline">
+  <span aria-hidden="true" class="org-section-titleline__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-job">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title" style="margin:0;">Définition du poste</div>
+  </div>
+  <span class="ns-badge sb-badge sb-badge-resp" id="orgPosteDefRespBadge" style="display:none;">Responsable</span>
+  </div>
+  <div class="org-poste-def-meta">
+  <div>
+  <span class="label">Service</span>
+  <strong id="orgPosteDefService">—</strong>
+  </div>
+  <div>
+  <span class="label">Code interne</span>
+  <strong id="orgPosteDefCodeInterne">—</strong>
+  </div>
+  <div>
+  <span class="label">Code Novoskill</span>
+  <strong id="orgPosteDefCodeNovoskill">—</strong>
+  </div>
+  <div>
+  <span class="label">Intitulé</span>
+  <strong id="orgPosteDefTitle">—</strong>
+  </div>
+  </div>
+  <div class="org-poste-def-section" id="orgPosteDefMissionWrap" style="display:none;">
+  <div class="org-poste-def-section__head">
+  <span aria-hidden="true" class="org-poste-def-section__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-job">
+  </use>
+  </svg>
+  </span>
+  <div class="label">Mission principale</div>
+  </div>
+  <div class="value org-poste-def-mission" id="orgPosteDefMission">
+  </div>
+  </div>
+  <div class="org-poste-def-section" id="orgPosteDefRespWrap" style="display:none;">
+  <div class="org-poste-def-section__head">
+  <span aria-hidden="true" class="org-poste-def-section__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-activity">
+  </use>
+  </svg>
+  </span>
+  <div class="label">Responsabilités</div>
+  </div>
+  <div class="value sb-richtext sb-richtext-readonly org-poste-def-resp" id="orgPosteDefResp">
+  </div>
+  </div>
+  <div class="card-sub" id="orgPosteDefEmpty" style="margin-top:10px; display:none;">
+                Aucune description renseignée.
               </div>
-              <span id="orgPosteDefRespBadge" class="ns-badge sb-badge sb-badge-resp" style="display:none;">Responsable</span>
-            </div>
+  <div class="org-poste-def-date" id="orgPosteDefDate" style="display:none;">
+  </div>
+  </div>
+  </div>
+  <!-- Exigences -->
+  <div class="sb-tab-panel" data-panel="exi">
+  <div class="card org-bloc org-exi-card" id="orgPosteBlocContraintes">
+  <div class="org-exi-card-head">
+  <div class="org-section-titleline">
+  <span aria-hidden="true" class="org-section-titleline__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-constraints">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title" style="margin:0;">Contraintes</div>
+  </div>
+  <div class="sb-actions sb-modal-edit-actions org-ctr-btns">
+  <span aria-live="polite" class="sb-inline-msg sb-modal-inline-msg org-ctr-msg" id="orgCtrMsg">
+  </span>
+  <button class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--edit" id="orgCtrBtnEdit" type="button">
+  <span aria-hidden="true" class="sb-btn-icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-edit">
+  </use>
+  </svg>
+  </span>
+  <span>Modifier</span>
+  </button>
+  <button class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="orgCtrBtnCancel" style="display:none;" type="button">
+  <span aria-hidden="true" class="sb-btn-icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-legacy-e0d9daa3282f">
+  </use>
+  </svg>
+  </span>
+  <span>Annuler</span>
+  </button>
+  <button class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="orgCtrBtnSave" style="display:none;" type="button">
+  <span aria-hidden="true" class="sb-btn-icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-legacy-3a35b0c33d3c">
+  </use>
+  </svg>
+  </span>
+  <span>Enregistrer</span>
+  </button>
+  </div>
+  </div>
+  <div class="org-exi-constraints-grid">
+  <div class="org-exi-col">
+  <div class="sb-field">
+  <div class="label">Niveau d’étude minimum requis</div>
+  <select disabled="" id="orgCtrEduMin">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Correspondance du diplôme impérative</div>
+  <input id="orgCtrNsfOblig" type="hidden"/>
+  <select disabled="" id="orgCtrNsfObligView">
+  <option value="non">Non</option>
+  <option value="oui">Oui</option>
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Risques physiques</div>
+  <select disabled="" id="orgCtrRisquePhys">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Niveau de contraintes</div>
+  <select disabled="" id="orgCtrNivContrainte">
+  </select>
+  </div>
+  </div>
+  <div class="org-exi-col">
+  <div class="sb-field">
+  <div class="label">Domaine du diplôme (NSF)</div>
+  <select disabled="" id="orgCtrNsfGroupe">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Mobilité</div>
+  <select disabled="" id="orgCtrMobilite">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Perspectives d’évolution</div>
+  <select disabled="" id="orgCtrPerspEvol">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Détails des contraintes</div>
+  <textarea class="sb-ctrl" disabled="" id="orgCtrDetailContrainte" rows="3">
+  </textarea>
+  </div>
+  </div>
+  </div>
+  </div>
+  <div class="card sb-card-compact org-exi-card org-exi-table-card">
+  <div class="org-section-titleline">
+  <span aria-hidden="true" class="org-section-titleline__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-competence">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title" style="margin:0;">Compétences requises</div>
+  </div>
+  <div class="table-wrap org-exi-table-wrap">
+  <table class="sb-table" id="orgPosteCompTable">
+  <thead>
+  <tr>
+  <th style="width:80px; text-align:center;">Code</th>
+  <th>Compétence</th>
+  <th style="width:90px; text-align:center;">Niveau requis</th>
+  <th style="width:80px; text-align:center;">Criticité</th>
+  <th style="width:72px;">
+  </th>
+  </tr>
+  </thead>
+  <tbody id="orgPosteCompTbody">
+  </tbody>
+  </table>
+  </div>
+  <button class="org-exi-more" id="orgPosteCompMore" style="display:none;" type="button">
+  <span id="orgPosteCompMoreText">Voir plus de compétences</span>
+  <span aria-hidden="true" class="org-exi-more__chev">âŒ„</span>
+  </button>
+  <div class="org-exi-empty" id="orgPosteCompEmpty" style="display:none;">
+  <span aria-hidden="true" class="org-exi-empty__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-competence">
+  </use>
+  </svg>
+  </span>
+  <span>Aucune compétence requise pour ce poste.</span>
+  </div>
+  </div>
+  <div class="card sb-card-compact org-exi-card org-exi-table-card">
+  <div class="org-section-titleline">
+  <span aria-hidden="true" class="org-section-titleline__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-certification">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title" style="margin:0;">Certifications requises</div>
+  </div>
+  <div class="table-wrap org-exi-table-wrap">
+  <table class="sb-table" id="orgPosteCertTable">
+  <thead>
+  <tr>
+  <th>Certification</th>
+  <th style="width:170px;">Catégorie</th>
+  <th style="width:120px; text-align:center;">Validité</th>
+  <th style="width:120px; text-align:center;">Exigence</th>
+  <th style="width:58px;">
+  </th>
+  </tr>
+  </thead>
+  <tbody id="orgPosteCertTbody">
+  </tbody>
+  </table>
+  </div>
+  <div class="org-exi-empty" id="orgPosteCertEmpty" style="display:none;">
+  <span aria-hidden="true" class="org-exi-empty__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-certification">
+  </use>
+  </svg>
+  </span>
+  <span>Aucune certification requise pour ce poste.</span>
+  </div>
+  </div>
+  </div>
+  <!-- Paramétrage RH -->
+  <div class="sb-tab-panel" data-panel="rh">
+  <div class="card org-bloc" id="orgPosteBlocRh">
+  <div class="org-poste-rh-head">
+  <div class="org-section-titleline">
+  <span aria-hidden="true" class="org-section-titleline__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-job">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title" style="margin:0;">Paramétrage RH</div>
+  </div>
+  <div class="sb-actions org-poste-rh-actions">
+  <div class="sb-actions sb-modal-edit-actions org-rh-btns">
+  <span aria-live="polite" class="sb-inline-msg sb-modal-inline-msg org-rh-msg" id="orgRhMsg">
+  </span>
+  <button class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--edit" id="orgRhBtnEdit" type="button">
+  <span aria-hidden="true" class="sb-btn-icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-edit">
+  </use>
+  </svg>
+  </span>
+  <span>Modifier</span>
+  </button>
+  <button class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="orgRhBtnCancel" style="display:none;" type="button">
+  <span aria-hidden="true" class="sb-btn-icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-legacy-e0d9daa3282f">
+  </use>
+  </svg>
+  </span>
+  <span>Annuler</span>
+  </button>
+  <button class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="orgRhBtnSave" style="display:none;" type="button">
+  <span aria-hidden="true" class="sb-btn-icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-legacy-3a35b0c33d3c">
+  </use>
+  </svg>
+  </span>
+  <span>Enregistrer</span>
+  </button>
+  </div>
+  </div>
+  </div>
+  <div class="org-rh-view" id="orgRhView">
+  <div class="org-rh-view-grid">
+  <div class="org-rh-sheet">
+  <table class="org-rh-view-table">
+  <tbody>
+  <tr>
+  <th>Statut du poste</th>
+  <td id="orgRhViewStatut">—</td>
+  </tr>
+  <tr>
+  <th>Stratégie de pourvoi</th>
+  <td id="orgRhViewStrategie">—</td>
+  </tr>
+  <tr>
+  <th>Début de validité</th>
+  <td id="orgRhViewDateDebut">—</td>
+  </tr>
+  <tr id="orgRhViewDateFinRow" style="display:none;">
+  <th>Fin de validité</th>
+  <td id="orgRhViewDateFin">—</td>
+  </tr>
+  <tr>
+  <th>Dernière mise à jour</th>
+  <td id="orgRhViewDateMaj">—</td>
+  </tr>
+  </tbody>
+  </table>
+  </div>
+  <div class="org-rh-sheet">
+  <table class="org-rh-view-table">
+  <tbody>
+  <tr>
+  <th>Criticité du poste</th>
+  <td id="orgRhViewCriticite">—</td>
+  </tr>
+  <tr>
+  <th>Nb titulaires cible</th>
+  <td id="orgRhViewNbTitulaires">—</td>
+  </tr>
+  <tr>
+  <th>Source</th>
+  <td id="orgRhViewSource">—</td>
+  </tr>
+  <tr class="org-rh-view-table__comment-row">
+  <th>Commentaire</th>
+  <td class="org-rh-view-comment" id="orgRhViewCommentaire">—</td>
+  </tr>
+  </tbody>
+  </table>
+  </div>
+  </div>
+  </div>
+  <div class="org-rh-edit" id="orgRhEdit" style="display:none;">
+  <div class="sb-form-grid org-rh-grid">
+  <div class="sb-field">
+  <div class="label">Statut du poste</div>
+  <select disabled="" id="orgRhStatut">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Criticité du poste</div>
+  <select disabled="" id="orgRhCriticite">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Stratégie de pourvoi</div>
+  <select disabled="" id="orgRhStrategie">
+  </select>
+  </div>
+  <div class="sb-field">
+  <div class="label">Nb titulaires cible</div>
+  <div aria-label="Nb titulaires cible" class="sb-stepper">
+  <button class="sb-stepper-btn" disabled="" id="orgRhNbMinus" type="button">-</button>
+  <input disabled="" id="orgRhNbTitulaires" min="0" step="1" type="number"/>
+  <button class="sb-stepper-btn" disabled="" id="orgRhNbPlus" type="button">+</button>
+  </div>
+  </div>
+  <div class="sb-field">
+  <div class="label">Début de validité</div>
+  <input class="sb-date" disabled="" id="orgRhDateDebut" type="date"/>
+  </div>
+  <div class="sb-field">
+  <div class="label">Fin de validité</div>
+  <input class="sb-date" disabled="" id="orgRhDateFin" type="date"/>
+  </div>
+  <div class="sb-field">
+  <div class="label">Source</div>
+  <input disabled="" id="orgRhSource" type="text"/>
+  </div>
+  <div class="sb-field">
+  <div class="label">Dernière mise à jour</div>
+  <input disabled="" id="orgRhDateMaj" type="text"/>
+  </div>
+  <div class="sb-field sb-span-2">
+  <div class="label">Commentaire</div>
+  <textarea disabled="" id="orgRhCommentaire" rows="3">
+  </textarea>
+  </div>
+  </div>
+  </div>
+  </div>
 
-            <div id="orgPosteDefMissionWrap" class="org-poste-def-section" style="display:none;">
-              <div class="org-poste-def-section__head">
-                <span class="org-poste-def-section__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
-                </span>
-                <div class="label">Mission principale</div>
-              </div>
-              <div id="orgPosteDefMission" class="value org-poste-def-mission"></div>
-            </div>
+  </div>
+  <div class="sb-tab-panel" data-panel="ccn">
+  <div class="card org-bloc org-poste-ccn-card">
+  <div class="org-section-titleline">
+  <span aria-hidden="true" class="org-section-titleline__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24">
+  <use href="/novoskill_icons.svg#ns-icon-ccn">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title">Cotation conventionnelle</div>
+  </div>
+  <div class="org-ccn-grid">
+  <div class="org-rh-sheet">
+  <table class="org-rh-view-table">
+  <tbody>
+  <tr>
+  <th>Convention</th>
+  <td id="orgCcnConvention">—</td>
+  </tr>
+  <tr>
+  <th>État</th>
+  <td id="orgCcnStatus">—</td>
+  </tr>
+  <tr>
+  <th>Résultat retenu</th>
+  <td id="orgCcnResult">—</td>
+  </tr>
+  <tr>
+  <th>Catégorie professionnelle</th>
+  <td id="orgCcnCategory">—</td>
+  </tr>
+  <tr>
+  <th>Dernière mise à jour</th>
+  <td id="orgCcnDateMaj">—</td>
+  </tr>
+  </tbody>
+  </table>
+  </div>
+  <div class="org-ccn-justification">
+  <div class="label">Justification enregistrée</div>
+  <div class="org-poste-overview-text" id="orgCcnJustification">—</div>
+  </div>
+  </div>
+  </div>
+  </div>
+  </div>
 
-            <div id="orgPosteDefRespWrap" class="org-poste-def-section" style="display:none;">
-              <div class="org-poste-def-section__head">
-                <span class="org-poste-def-section__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-activity"></use></svg>
-                </span>
-                <div class="label">Responsabilités</div>
-              </div>
-              <div id="orgPosteDefResp" class="value sb-richtext sb-richtext-readonly org-poste-def-resp"></div>
-            </div>
-
-            <div id="orgPosteDefEmpty" class="card-sub" style="margin-top:10px; display:none;">
-              Aucune description renseignée.
-            </div>
-
-            <div id="orgPosteDefDate" class="org-poste-def-date" style="display:none;"></div>
-          </div>
-        </div>
-
-
-        <!-- Exigences -->
-        <div class="sb-tab-panel" data-panel="exi">
-          <div class="card org-bloc org-exi-card" id="orgPosteBlocContraintes">
-            <div class="org-exi-card-head">
-              <div class="org-section-titleline">
-                <span class="org-section-titleline__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-constraints"></use></svg>
-                </span>
-                <div class="card-title" style="margin:0;">Contraintes</div>
-              </div>
-
-              <div class="sb-actions sb-modal-edit-actions org-ctr-btns">
-                <span id="orgCtrMsg" class="sb-inline-msg sb-modal-inline-msg org-ctr-msg" aria-live="polite"></span>
-                <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--edit" id="orgCtrBtnEdit">
-                  <span class="sb-btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
-                  </span>
-                  <span>Modifier</span>
-                </button>
-                <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="orgCtrBtnCancel" style="display:none;">
-                  <span class="sb-btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e0d9daa3282f"></use></svg>
-                  </span>
-                  <span>Annuler</span>
-                </button>
-                <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="orgCtrBtnSave" style="display:none;">
-                  <span class="sb-btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3a35b0c33d3c"></use></svg>
-                  </span>
-                  <span>Enregistrer</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="org-exi-constraints-grid">
-              <div class="org-exi-col">
-                <div class="sb-field">
-                  <div class="label">Niveau d’étude minimum requis</div>
-                  <select id="orgCtrEduMin" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Correspondance du diplôme impérative</div>
-                  <input type="hidden" id="orgCtrNsfOblig" />
-                  <select id="orgCtrNsfObligView" disabled>
-                    <option value="non">Non</option>
-                    <option value="oui">Oui</option>
-                  </select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Risques physiques</div>
-                  <select id="orgCtrRisquePhys" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Niveau de contraintes</div>
-                  <select id="orgCtrNivContrainte" disabled></select>
-                </div>
-              </div>
-
-              <div class="org-exi-col">
-                <div class="sb-field">
-                  <div class="label">Domaine du diplôme (NSF)</div>
-                  <select id="orgCtrNsfGroupe" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Mobilité</div>
-                  <select id="orgCtrMobilite" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Perspectives d’évolution</div>
-                  <select id="orgCtrPerspEvol" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Détails des contraintes</div>
-                  <textarea id="orgCtrDetailContrainte" class="sb-ctrl" rows="3" disabled></textarea>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-          <div class="card sb-card-compact org-exi-card org-exi-table-card">
-            <div class="org-section-titleline">
-              <span class="org-section-titleline__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
-              </span>
-              <div class="card-title" style="margin:0;">Compétences requises</div>
-            </div>
-
-            <div class="table-wrap org-exi-table-wrap">
-              <table class="sb-table" id="orgPosteCompTable">
-                <thead>
-                  <tr>
-                    <th style="width:80px; text-align:center;">Code</th>
-                    <th>Compétence</th>
-                    <th style="width:90px; text-align:center;">Niveau requis</th>
-                    <th style="width:80px; text-align:center;">Criticité</th>
-                    <th style="width:72px;"></th>
-                  </tr>
-                </thead>
-                <tbody id="orgPosteCompTbody"></tbody>
-              </table>
-            </div>
-
-            <button type="button" class="org-exi-more" id="orgPosteCompMore" style="display:none;">
-              <span id="orgPosteCompMoreText">Voir plus de compétences</span>
-              <span class="org-exi-more__chev" aria-hidden="true">âŒ„</span>
-            </button>
-
-            <div class="org-exi-empty" id="orgPosteCompEmpty" style="display:none;">
-              <span class="org-exi-empty__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
-              </span>
-              <span>Aucune compétence requise pour ce poste.</span>
-            </div>
-          </div>
-
-
-          <div class="card sb-card-compact org-exi-card org-exi-table-card">
-            <div class="org-section-titleline">
-              <span class="org-section-titleline__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-certification"></use></svg>
-              </span>
-              <div class="card-title" style="margin:0;">Certifications requises</div>
-            </div>
-
-            <div class="table-wrap org-exi-table-wrap">
-              <table class="sb-table" id="orgPosteCertTable">
-                <thead>
-                  <tr>
-                    <th>Certification</th>
-                    <th style="width:170px;">Catégorie</th>
-                    <th style="width:120px; text-align:center;">Validité</th>
-                    <th style="width:120px; text-align:center;">Exigence</th>
-                    <th style="width:58px;"></th>
-                  </tr>
-                </thead>
-                <tbody id="orgPosteCertTbody"></tbody>
-              </table>
-            </div>
-
-            <div class="org-exi-empty" id="orgPosteCertEmpty" style="display:none;">
-              <span class="org-exi-empty__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-certification"></use></svg>
-              </span>
-              <span>Aucune certification requise pour ce poste.</span>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Paramétrage RH -->
-        <div class="sb-tab-panel" data-panel="rh">
-          <div class="card org-bloc" id="orgPosteBlocRh">
-            <div class="org-poste-rh-head">
-              <div class="org-section-titleline">
-                <span class="org-section-titleline__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
-                </span>
-                <div class="card-title" style="margin:0;">Paramétrage RH</div>
-              </div>
-
-              <div class="sb-actions org-poste-rh-actions">
-                <div class="sb-actions sb-modal-edit-actions org-rh-btns">
-                  <span id="orgRhMsg" class="sb-inline-msg sb-modal-inline-msg org-rh-msg" aria-live="polite"></span>
-                  <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--edit" id="orgRhBtnEdit">
-                    <span class="sb-btn-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
-                    </span>
-                    <span>Modifier</span>
-                  </button>
-                  <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="orgRhBtnCancel" style="display:none;">
-                    <span class="sb-btn-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-e0d9daa3282f"></use></svg>
-                    </span>
-                    <span>Annuler</span>
-                  </button>
-                  <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="orgRhBtnSave" style="display:none;">
-                    <span class="sb-btn-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-3a35b0c33d3c"></use></svg>
-                    </span>
-                    <span>Enregistrer</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="org-rh-view" id="orgRhView">
-              <div class="org-rh-view-grid">
-                <div class="org-rh-sheet">
-                  <table class="org-rh-view-table">
-                    <tbody>
-                      <tr><th>Statut du poste</th><td id="orgRhViewStatut">—</td></tr>
-                      <tr><th>Stratégie de pourvoi</th><td id="orgRhViewStrategie">—</td></tr>
-                      <tr><th>Début de validité</th><td id="orgRhViewDateDebut">—</td></tr>
-                      <tr id="orgRhViewDateFinRow" style="display:none;"><th>Fin de validité</th><td id="orgRhViewDateFin">—</td></tr>
-                      <tr><th>Dernière mise à jour</th><td id="orgRhViewDateMaj">—</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="org-rh-sheet">
-                  <table class="org-rh-view-table">
-                    <tbody>
-                      <tr><th>Criticité du poste</th><td id="orgRhViewCriticite">—</td></tr>
-                      <tr><th>Nb titulaires cible</th><td id="orgRhViewNbTitulaires">—</td></tr>
-                      <tr><th>Source</th><td id="orgRhViewSource">—</td></tr>
-                      <tr class="org-rh-view-table__comment-row"><th>Commentaire</th><td id="orgRhViewCommentaire" class="org-rh-view-comment">—</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div class="org-rh-edit" id="orgRhEdit" style="display:none;">
-              <div class="sb-form-grid org-rh-grid">
-                <div class="sb-field">
-                  <div class="label">Statut du poste</div>
-                  <select id="orgRhStatut" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Criticité du poste</div>
-                  <select id="orgRhCriticite" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Stratégie de pourvoi</div>
-                  <select id="orgRhStrategie" disabled></select>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Nb titulaires cible</div>
-                  <div class="sb-stepper" aria-label="Nb titulaires cible">
-                    <button type="button" class="sb-stepper-btn" id="orgRhNbMinus" disabled>-</button>
-                    <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
-                    <button type="button" class="sb-stepper-btn" id="orgRhNbPlus" disabled>+</button>
-                  </div>
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Début de validité</div>
-                  <input id="orgRhDateDebut" type="date" class="sb-date" disabled />
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Fin de validité</div>
-                  <input id="orgRhDateFin" type="date" class="sb-date" disabled />
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Source</div>
-                  <input id="orgRhSource" type="text" disabled />
-                </div>
-
-                <div class="sb-field">
-                  <div class="label">Dernière mise à jour</div>
-                  <input id="orgRhDateMaj" type="text" disabled />
-                </div>
-
-                <div class="sb-field sb-span-2">
-                  <div class="label">Commentaire</div>
-                  <textarea id="orgRhCommentaire" rows="3" disabled></textarea>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card org-bloc" id="orgPosteBlocCotation">
-            <div class="org-section-titleline">
-              <span class="org-section-titleline__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-ccn"></use></svg>
-              </span>
-              <div class="card-title" style="margin:0;">Cotation conventionnelle</div>
-            </div>
-
-            <div class="org-rh-cotation-grid">
-              <div class="org-rh-cotation-box">
-                <div class="org-rh-cotation-box__label">Catégorie retenue</div>
-                <div id="orgRhCotationCategorie" class="org-rh-cotation-box__value">—</div>
-              </div>
-
-              <div class="org-rh-cotation-box">
-                <div class="org-rh-cotation-box__label">Coefficient / palier retenu</div>
-                <div id="orgRhCotationCoefficient" class="org-rh-cotation-box__value">—</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="orgPosteModalClose">Fermer</button>
-      </div>
-
-    </div>
+  </div>
   </div>
 
   <!-- Modal : évaluation criticité compétence poste -->
