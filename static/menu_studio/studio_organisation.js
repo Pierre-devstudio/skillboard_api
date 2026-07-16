@@ -2198,7 +2198,7 @@ body {
 
             const codeCell = document.createElement("td");
             const code = document.createElement("span");
-            code.className = "sb-badge sb-badge--poste";
+            code.className = "ns-badge ns-badge-code ns-badge-code--poste";
             code.textContent = p.code || "—";
             codeCell.appendChild(code);
 
@@ -3696,7 +3696,7 @@ function renderPosteCompAiResults(){
             left.className = "sb-row-left";
 
             const code = document.createElement("span");
-            code.className = "sb-badge sb-badge--comp";
+            code.className = "ns-badge ns-badge-code ns-badge-code--competence";
             code.textContent = (it.code || "—");
 
             const wrap = document.createElement("div");
@@ -4069,7 +4069,7 @@ function renderPosteCompAiResults(){
             compWrap.className = "sb-comp-cell";
 
             const code = document.createElement("span");
-            code.className = "sb-badge sb-badge--comp";
+            code.className = "ns-badge ns-badge-code ns-badge-code--competence";
             code.textContent = it.code || "—";
 
             const title = document.createElement("div");
@@ -4710,7 +4710,7 @@ function renderPosteCompAiResults(){
         left.className = "sb-row-left";
 
         const code = document.createElement("span");
-        code.className = "sb-badge sb-badge--comp";
+        code.className = "ns-badge ns-badge-code ns-badge-code--competence";
         code.textContent = it.code || "—";
 
         const title = document.createElement("div");
@@ -5683,7 +5683,7 @@ function refreshPosteCompEditCritDisplay(){
                 const row = document.createElement("div");
                 const levelKey = nsLevelKey(it.niveau_requis || it.niveau || "").toLowerCase();
                 const code = String(it.code_competence || it.code || "").trim();
-                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="ns-badge sb-badge sb-badge--comp"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="ns-badge studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey ||"default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
+                row.innerHTML = `<span class="studio-poste-overview-skill"><span class="ns-badge ns-badge-code ns-badge-code--competence"${code ? "" : " style=\"display:none;\""}>${htmlEsc(code)}</span><span>${htmlEsc(it.intitule_competence || it.intitule || it.code_competence || "Compétence")}</span></span><strong class="ns-badge studio-poste-overview-badge studio-poste-overview-badge--${htmlEsc(levelKey ||"default")}">${htmlEsc(nsLevelLabel(it.niveau_requis || it.niveau || ""))}</strong>`;
                 compHost.appendChild(row);
             });
             if (!compHost.children.length) compHost.textContent = "Aucune compétence rattachée.";
@@ -6331,7 +6331,7 @@ function refreshPosteCompEditCritDisplay(){
         left.className = "sb-row-left";
 
         const code = document.createElement("span");
-        code.className = "sb-badge sb-badge--comp";
+        code.className = "ns-badge ns-badge-code ns-badge-code--competence";
         code.textContent = it.code || "—";
 
         const title = document.createElement("div");
