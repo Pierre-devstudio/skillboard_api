@@ -1501,7 +1501,7 @@
         btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
         btnPdf.title = "Ouvrir la fiche compétence PDF";
         btnPdf.setAttribute("aria-label", "Ouvrir la fiche compétence PDF");
-        btnPdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>';
+        btnPdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
         btnPdf.addEventListener("click", async (e) => {
           e.preventDefault();
           e.stopPropagation();

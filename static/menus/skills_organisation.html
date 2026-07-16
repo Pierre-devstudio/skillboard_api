@@ -549,7 +549,10 @@
             </div>
 
             <div class="org-crit-ring" aria-label="Score de criticité">
-              <svg viewBox="0 0 36 36" class="org-crit-ring__svg ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-criticality"></use></svg>
+              <svg viewBox="0 0 36 36" class="org-crit-ring__svg" aria-hidden="true">
+                <circle class="org-crit-ring__bg" cx="18" cy="18" r="15.9155"></circle>
+                <circle id="orgCompCritRingProg" class="org-crit-ring__prog" cx="18" cy="18" r="15.9155" pathLength="100" stroke-dasharray="0 100"></circle>
+              </svg>
               <div class="org-crit-ring__center">
                 <div id="orgCompCritRingVal" class="org-crit-ring__value">0</div>
                 <div class="org-crit-ring__label">/100</div>
@@ -564,7 +567,7 @@
         <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="orgCompCritCancel">Annuler</button>
         <button type="button" class="sb-btn sb-btn--accent" id="orgCompCritSave">
           <span class="sb-btn-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-certification"></use></svg>
+            <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-save"></use></svg>
           </span>
           <span>Enregistrer</span>
         </button>
