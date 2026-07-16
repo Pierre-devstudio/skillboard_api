@@ -270,7 +270,7 @@
         : _certRequirementBadge(level);
       return `<div class="org-poste-overview-item">
         <div class="org-poste-overview-item__main">
-          ${code ? `<span class="ns-badge ${kind === "competence" ? "ns-badge-code ns-badge-code--competence" : "ns-badge-category"}">${escapeHtml(code)}</span>` : ""}
+          ${code ? `<span class="ns-badge ns-badge-code ${kind === "competence" ? "ns-badge-code--competence" : "ns-badge-code--certification"}">${escapeHtml(code)}</span>` : ""}
           <span>${escapeHtml(title || "—")}</span>
         </div>
         <span class="org-poste-overview-item__level">${levelHtml}</span>

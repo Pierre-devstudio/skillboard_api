@@ -31361,6 +31361,11 @@ body{
   margin-bottom:0;
 }
 
+#view-votre-organisation .org-poste-kpi .org-stat-box__icon .ns-icon-use{
+  width:var(--ns-icon-md);
+  height:var(--ns-icon-md);
+}
+
 #view-votre-organisation .org-poste-overview-grid{
   display:grid;
   grid-template-columns:minmax(0, 1.72fr) minmax(330px, .86fr);
