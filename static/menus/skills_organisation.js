@@ -223,7 +223,7 @@
     const variant = key === "actif"
       ? "success"
       : (key === "a_pourvoir" || key === "temporaire" ? "warning" : "neutral");
-    return `<span class="ns-badge ns-badge-status--${variant}">${escapeHtml(_statusLabel(value))}</span>`;
+    return `<span class="ns-badge ns-badge-status ns-badge-status--${variant}">${escapeHtml(_statusLabel(value))}</span>`;
   }
 
   function _constraintBadge(value){
@@ -233,7 +233,7 @@
     if (/^(aucun|aucune|rare|faible)$/.test(normalized)) variant = "success";
     else if (/^(occasionnelle|modere|moderee|frequente)$/.test(normalized)) variant = "warning";
     else if (/^(forte|rapide|eleve|elevee|critique)$/.test(normalized)) variant = "danger";
-    return `<span class="ns-badge ns-badge-status--${variant}">${escapeHtml(label)}</span>`;
+    return `<span class="ns-badge ns-badge-status ns-badge-status--${variant}">${escapeHtml(label)}</span>`;
   }
 
   function _setDefinitionList(id, rows){
@@ -243,8 +243,8 @@
       const displayValue = value === null || value === undefined || value === "" ? "—" : value;
       return `
       <div class="org-poste-overview-data-row">
-        <dt>${escapeHtml(label)}</dt>
-        <dd>${isHtml ? String(displayValue) : escapeHtml(displayValue)}</dd>
+        <dt class="label">${escapeHtml(label)}</dt>
+        <dd class="value">${isHtml ? String(displayValue) : escapeHtml(displayValue)}</dd>
       </div>
     `;
     }).join("");
@@ -255,7 +255,7 @@
     if (!target) return;
     const source = Array.isArray(items) ? items : [];
     if (!source.length){
-      target.innerHTML = `<div class="org-poste-overview-empty">Aucun élément renseigné.</div>`;
+      target.innerHTML = `<div class="card-sub org-poste-overview-empty">Aucun élément renseigné.</div>`;
       return;
     }
     target.innerHTML = source.slice(0, 5).map(item => {
@@ -265,12 +265,12 @@
       const levelLabel = kind === "competence" ? _nivLabel(level) : "";
       const levelHtml = kind === "competence"
         ? (levelLabel
-          ? `<span class="ns-badge sb-badge sb-badge-niv ${_nivClass(level)}">${escapeHtml(levelLabel)}</span>`
+          ? `<span class="ns-badge ns-badge-level ${_nivClass(level)}">${escapeHtml(levelLabel)}</span>`
           : "—")
         : _certRequirementBadge(level);
       return `<div class="org-poste-overview-item">
         <div class="org-poste-overview-item__main">
-          ${code ? `<span class="sb-badge ${kind === "competence" ? "sb-badge-ref-comp-code" : ""}">${escapeHtml(code)}</span>` : ""}
+          ${code ? `<span class="ns-badge ${kind === "competence" ? "ns-badge-code ns-badge-code--competence" : "ns-badge-category"}">${escapeHtml(code)}</span>` : ""}
           <span>${escapeHtml(title || "—")}</span>
         </div>
         <span class="org-poste-overview-item__level">${levelHtml}</span>
@@ -283,7 +283,7 @@
     if (!target) return;
     const rows = Array.isArray(collaborators) ? collaborators : [];
     if (!rows.length){
-      target.innerHTML = `<div class="org-poste-collaborators__empty">Aucun collaborateur actif sur ce poste.</div>`;
+      target.innerHTML = `<div class="card-sub org-poste-collaborators__empty">Aucun collaborateur actif sur ce poste.</div>`;
       return;
     }
     target.innerHTML = rows.map(item => {
@@ -293,8 +293,8 @@
       const unavailable = item?.indisponible === true;
       return `<div class="org-poste-collaborator">
         <span class="org-poste-collaborator__avatar" aria-hidden="true">${escapeHtml(initials)}</span>
-        <span class="org-poste-collaborator__name">${escapeHtml([prenom, nom].filter(Boolean).join(" ") || "Collaborateur")}</span>
-        <span class="ns-badge ${unavailable ? "ns-badge-status--warning" : "ns-badge-status--success"}">${unavailable ? "Indisponible" : "Actif"}</span>
+        <span class="value org-poste-collaborator__name">${escapeHtml([prenom, nom].filter(Boolean).join(" ") || "Collaborateur")}</span>
+        <span class="ns-badge ns-badge-status ${unavailable ? "ns-badge-status--warning" : "ns-badge-status--success"}">${unavailable ? "Indisponible" : "Actif"}</span>
       </div>`;
     }).join("");
   }
@@ -999,7 +999,7 @@
   function _paginationButton(label, page, disabled, active){
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "org-poste-page-btn" + (active ? " is-active" : "");
+    btn.className = `sb-btn sb-btn--xs ${active ? "sb-btn--accent" : "sb-btn--soft"} org-poste-page-btn`;
     btn.textContent = label;
     btn.disabled = !!disabled;
     btn.addEventListener("click", () => {
@@ -1020,7 +1020,7 @@
 
     const sizeWrap = document.createElement("label");
     sizeWrap.className = "org-poste-page-size";
-    sizeWrap.innerHTML = `<span>Afficher</span><select aria-label="Nombre de postes par page"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select><span>lignes</span>`;
+    sizeWrap.innerHTML = `<span>Afficher</span><select class="sb-ctrl" aria-label="Nombre de postes par page"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select><span>lignes</span>`;
     const select = sizeWrap.querySelector("select");
     select.value = String(_postePageSize);
     select.addEventListener("change", () => {
@@ -1078,7 +1078,7 @@
     };
 
     const table = document.createElement("table");
-    table.className = "sb-table org-postes-table";
+    table.className = "sb-table sb-table--airy sb-table--hover org-postes-table";
     table.innerHTML = `<thead><tr>
       <th>${sortHead("code", "Code")}</th>
       <th>${sortHead("intitule", "Intitulé du poste")}</th>
@@ -1106,8 +1106,8 @@
       tr.className = "org-poste-table-row";
       tr.tabIndex = 0;
       tr.innerHTML = `
-        <td><span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(code)}</span></td>
-        <td><div class="org-poste-table-title">${escapeHtml(title)}${poste?.isresponsable ? '<span class="sb-badge sb-badge-manager">Responsable</span>' : ""}</div><div class="org-poste-mobile-service">${escapeHtml(service)}</div></td>
+        <td><span class="ns-badge ns-badge-code ns-badge-code--poste">${escapeHtml(code)}</span></td>
+        <td><div class="org-poste-table-title">${escapeHtml(title)}${poste?.isresponsable ? '<span class="ns-badge ns-badge-role">Responsable</span>' : ""}</div><div class="org-poste-mobile-service">${escapeHtml(service)}</div></td>
         <td>${escapeHtml(service)}</td>
         <td class="org-poste-table-count">${Number(poste?.nb_effectifs || 0)}</td>
         <td><div class="sb-icon-actions org-poste-table-actions"></div></td>`;
@@ -1117,14 +1117,14 @@
       eye.className = "sb-icon-btn";
       eye.title = "Voir la fiche";
       eye.setAttribute("aria-label", "Voir la fiche");
-      eye.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>';
+      eye.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg>';
       eye.addEventListener("click", event => { event.stopPropagation(); openOrgPosteModal(poste); });
       const pdf = document.createElement("button");
       pdf.type = "button";
       pdf.className = "sb-icon-btn";
       pdf.title = "Voir le PDF";
       pdf.setAttribute("aria-label", "Voir le PDF");
-      pdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
+      pdf.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
       pdf.addEventListener("click", async event => {
         event.stopPropagation();
         const portal = window.__skillsPortalInstance;
@@ -1653,10 +1653,10 @@
 
   function _nivClass(niv){
     const n = (niv || "").toString().trim().toUpperCase();
-    if (n === "A") return "sb-badge-niv-a";
-    if (n === "B") return "sb-badge-niv-b";
-    if (n === "C") return "sb-badge-niv-c";
-    if (n === "D") return "sb-badge-niv-d";
+    if (n === "A") return "ns-badge-level--beginner";
+    if (n === "B") return "ns-badge-level--intermediate";
+    if (n === "C") return "ns-badge-level--advanced";
+    if (n === "D") return "ns-badge-level--expert";
     return "";
   }
 
@@ -1695,23 +1695,20 @@
       const critTxt = (crit === null || crit === undefined || crit === "") ? "" : String(crit).trim();
 
       const nivLbl = _nivLabel(niv);
-      const nivCell = (!nivLbl) ? "—" : `<span class="ns-badge sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
+      const nivCell = (!nivLbl) ? "—" : `<span class="ns-badge ns-badge-level ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
 
       const tr = document.createElement("tr");
       const critVal = Number(critTxt);
-      const lvl =
-        !isFinite(critVal) ? 0 :
-        (critVal >= 80 ? 5 :
-        critVal >= 60 ? 4 :
-        critVal >= 40 ? 3 :
-        critVal >= 20 ? 2 : 1);
 
+      const critVariant = !isFinite(critVal) || critVal < 40
+        ? "low"
+        : (critVal < 60 ? "moderate" : (critVal < 80 ? "high" : "critical"));
       const critHtml = isFinite(critVal)
-        ? `<span class="ns-badge sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${escapeHtml(String(critVal))}">${escapeHtml(String(critVal))}</span>`
+        ? `<span class="ns-badge ns-badge-criticality ns-badge-criticality--${critVariant}" title="Criticité : ${escapeHtml(String(critVal))}">${escapeHtml(String(critVal))}</span>`
         : "—";
 
       tr.innerHTML = `
-        <td class="col-center">${code ? `<span class="ns-badge sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
+        <td class="col-center">${code ? `<span class="ns-badge ns-badge-code ns-badge-code--competence">${escapeHtml(code)}</span>` : "-"}</td>
         <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
         <td class="col-center">${nivCell}</td>
         <td class="col-center">${critHtml}</td>
@@ -1725,7 +1722,7 @@
         btnCrit.className = "sb-icon-btn";
         btnCrit.title = "Évaluer la criticité";
         btnCrit.setAttribute("aria-label", "Évaluer la criticité");
-        btnCrit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-criticality"></use></svg>';
+        btnCrit.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-criticality"></use></svg>';
         btnCrit.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -1738,7 +1735,7 @@
         btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
         btnPdf.title = "Ouvrir la fiche compétence PDF";
         btnPdf.setAttribute("aria-label", "Ouvrir la fiche compétence PDF");
-        btnPdf.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
+        btnPdf.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-pdf"></use></svg>';
         btnPdf.addEventListener("click", async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -1805,7 +1802,7 @@
         btnEdit.className = "sb-icon-btn";
         btnEdit.title = "Modifier le paramétrage de la certification";
         btnEdit.setAttribute("aria-label", "Modifier le paramétrage de la certification");
-        btnEdit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-certification"></use></svg>';
+        btnEdit.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-certification"></use></svg>';
         btnEdit.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -2076,10 +2073,8 @@
 
   function _certRequirementBadge(v){
     const raw = (v || "requis").toString().trim().toLowerCase();
-    const isSouhaite = raw === "souhaité" || raw === "souhaite";
-    const label = isSouhaite ? "Souhaité" : "Requis";
-    const cls = isSouhaite ? "org-cert-req-badge org-cert-req-badge--soft" : "org-cert-req-badge org-cert-req-badge--strong";
-    return `<span class="${cls}">${escapeHtml(label)}</span>`;
+    const label = raw === "souhaité" || raw === "souhaite" ? "Souhaité" : "Requis";
+    return `<span class="ns-badge ns-badge-requirement">${escapeHtml(label)}</span>`;
   }
 
   function _buildCertBaseInfo(it){
