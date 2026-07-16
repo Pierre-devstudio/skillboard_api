@@ -218,22 +218,32 @@
       .slice(0, 8);
   }
 
+  function _overviewStatusClass(value){
+    const raw = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (raw.includes("actif")) return "is-success";
+    if (raw.includes("temp")) return "is-warning";
+    if (raw.includes("gele") || raw.includes("inactif")) return "is-neutral";
+    if (raw.includes("archive")) return "is-dark";
+    return "is-neutral";
+  }
+
+  function _constraintLevelClass(value){
+    const raw = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (!raw || raw === "—" || raw.includes("aucun")) return "is-low";
+    if (raw.includes("faible") || raw.includes("locale")) return "is-low";
+    if (raw.includes("modere") || raw.includes("moyen") || raw.includes("frequent")) return "is-medium";
+    if (raw.includes("eleve") || raw.includes("fort") || raw.includes("critique")) return "is-high";
+    return "is-neutral";
+  }
+
   function _statusBadge(value){
-    const key = String(value || "").trim().toLowerCase();
-    const variant = key === "actif"
-      ? "success"
-      : (key === "a_pourvoir" || key === "temporaire" ? "warning" : "neutral");
-    return `<span class="ns-badge ns-badge-status ns-badge-status--${variant}">${escapeHtml(_statusLabel(value))}</span>`;
+    const label = _statusLabel(value);
+    return `<span class="studio-poste-status-badge ${_overviewStatusClass(label)}">${escapeHtml(label)}</span>`;
   }
 
   function _constraintBadge(value){
     const label = String(value || "").trim() || "—";
-    const normalized = label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    let variant = "neutral";
-    if (/^(aucun|aucune|rare|faible)$/.test(normalized)) variant = "success";
-    else if (/^(occasionnelle|modere|moderee|frequente)$/.test(normalized)) variant = "warning";
-    else if (/^(forte|rapide|eleve|elevee|critique)$/.test(normalized)) variant = "danger";
-    return `<span class="ns-badge ns-badge-status ns-badge-status--${variant}">${escapeHtml(label)}</span>`;
+    return `<span class="studio-poste-constraint-badge ${_constraintLevelClass(label)}"><span class="studio-poste-constraint-badge__dot"></span><span>${escapeHtml(label)}</span></span>`;
   }
 
   function _setDefinitionList(id, rows){
@@ -265,15 +275,15 @@
       const levelLabel = kind === "competence" ? _nivLabel(level) : "";
       const levelHtml = kind === "competence"
         ? (levelLabel
-          ? `<span class="ns-badge ns-badge-level ${_nivClass(level)}">${escapeHtml(levelLabel)}</span>`
+          ? `<strong class="ns-badge ns-badge-level ${_nivClass(level)}">${escapeHtml(levelLabel)}</strong>`
           : "—")
         : _certRequirementBadge(level);
-      return `<div class="org-poste-overview-item">
-        <div class="org-poste-overview-item__main">
+      return `<div>
+        <span class="studio-poste-overview-skill">
           ${code ? `<span class="ns-badge ns-badge-code ${kind === "competence" ? "ns-badge-code--competence" : "ns-badge-code--certification"}">${escapeHtml(code)}</span>` : ""}
           <span>${escapeHtml(title || "—")}</span>
-        </div>
-        <span class="org-poste-overview-item__level">${levelHtml}</span>
+        </span>
+        ${levelHtml}
       </div>`;
     }).join("");
   }
@@ -283,7 +293,7 @@
     if (!target) return;
     const rows = Array.isArray(collaborators) ? collaborators : [];
     if (!rows.length){
-      target.innerHTML = `<div class="card-sub org-poste-collaborators__empty">Aucun collaborateur actif sur ce poste.</div>`;
+      target.innerHTML = `<div class="studio-poste-collaborators__empty">Aucun collaborateur actif sur ce poste.</div>`;
       return;
     }
     target.innerHTML = rows.map(item => {
@@ -291,10 +301,10 @@
       const nom = String(item?.nom || item?.nom_effectif || "").trim();
       const initials = `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase() || "?";
       const unavailable = item?.indisponible === true;
-      return `<div class="org-poste-collaborator">
-        <span class="org-poste-collaborator__avatar" aria-hidden="true">${escapeHtml(initials)}</span>
-        <span class="value org-poste-collaborator__name">${escapeHtml([prenom, nom].filter(Boolean).join(" ") || "Collaborateur")}</span>
-        <span class="ns-badge ns-badge-status ${unavailable ? "ns-badge-status--warning" : "ns-badge-status--success"}">${unavailable ? "Indisponible" : "Actif"}</span>
+      return `<div class="studio-poste-collaborator-row">
+        <span class="studio-poste-collaborator-avatar" aria-hidden="true">${escapeHtml(initials)}</span>
+        <span class="studio-poste-collaborator-name">${escapeHtml([prenom, nom].filter(Boolean).join(" ") || "Collaborateur")}</span>
+        <span class="studio-poste-collaborator-status ${unavailable ? "is-unavailable" : "is-active"}"><span class="studio-poste-collaborator-status__dot"></span><span>${unavailable ? "Indisponible" : "Actif"}</span></span>
       </div>`;
     }).join("");
   }
