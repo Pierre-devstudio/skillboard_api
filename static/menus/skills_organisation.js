@@ -6,7 +6,6 @@
   let _bound = false;
   let _servicesLoaded = false;
 
-  let _selectedServiceId = null;
   let _serviceIndex = new Map();     // id_service -> node
   let _postesCache = new Map();      // id_service -> postes[]
   let _currentPostes = [];           // postes courants (pour filtre)
@@ -16,7 +15,6 @@
   let _postePage = 1;
   let _postePageSize = 25;
   let _activePoste = null;
-  let _activePosteDetail = null;
   let _posteHistoryBound = false;
 
   function escapeHtml(s) {
@@ -85,34 +83,58 @@
     return String(_serviceIndex.get(sid)?.nom_service || "Non lié").trim() || "Non lié";
   }
 
-  function _showOrganisationIndex(){
+  function _setPostePageMode(enabled){
     const root = byId("view-votre-organisation");
+    const content = root?.closest(".content");
+    if (root) root.classList.toggle("is-poste-page", !!enabled);
+    if (content) content.classList.toggle("is-poste-page", !!enabled);
+  }
+
+  function _closePosteSecondaryModals(){
+    closeOrgCompCritModal();
+    closeOrgCertValidModal();
+  }
+
+  function _showOrganisationIndex(){
     const page = byId("orgPostePage");
-    if (root) root.classList.remove("is-poste-page");
-    if (page) page.style.display = "none";
+    _setPostePageMode(false);
+    if (page){
+      page.style.display = "none";
+      page.removeAttribute("data-id-poste");
+    }
     _activePoste = null;
-    _activePosteDetail = null;
+    _closePosteSecondaryModals();
   }
 
   function _showPostePage(){
-    const root = byId("view-votre-organisation");
     const page = byId("orgPostePage");
-    if (root) root.classList.add("is-poste-page");
+    _setPostePageMode(true);
     if (page) page.style.display = "";
   }
 
   function _bindPosteHistoryOnce(){
     if (_posteHistoryBound) return;
     _posteHistoryBound = true;
-    window.addEventListener("popstate", () => {
+    window.addEventListener("popstate", event => {
       const root = byId("view-votre-organisation");
-      if (root?.classList.contains("is-poste-page")) _showOrganisationIndex();
+      if (!root || root.style.display === "none") return;
+
+      const idPoste = String(event.state?.skillsOrganisationPoste || "").trim();
+      if (idPoste){
+        _closePosteSecondaryModals();
+        void openOrgPosteModal({ id_poste: idPoste }, { pushHistory: false });
+        return;
+      }
+      _showOrganisationIndex();
     });
   }
 
   function _pushPosteHistory(idPoste){
+    const id = String(idPoste || "").trim();
+    if (!id || String(window.history.state?.skillsOrganisationPoste || "") === id) return;
     try {
-      window.history.pushState({ skillsOrganisationPoste: String(idPoste || "") }, "", window.location.href);
+      const state = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.pushState({ ...state, skillsOrganisationIndex: false, skillsOrganisationPoste: id }, "", window.location.href);
     } catch (_) {}
   }
 
@@ -156,31 +178,76 @@
   function _extractActivities(detail){
     const html = repairAiTextEncodingGlitches(detail?.responsabilites_html || "");
     if (!html) return [];
+
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
-    const listed = Array.from(tmp.querySelectorAll("li"))
-      .map(node => String(node.textContent || "").replace(/\s+/g, " ").trim())
+
+    const rootOrderedLists = Array.from(tmp.querySelectorAll("ol"))
+      .filter(list => !list.closest("li"));
+    const listed = rootOrderedLists
+      .flatMap(list => Array.from(list.children).filter(node => node.tagName === "LI"))
+      .map(node => {
+        const clone = node.cloneNode(true);
+        clone.querySelectorAll("ul, ol").forEach(nested => nested.remove());
+        return String(clone.textContent || "").replace(/\s+/g, " ").trim();
+      })
       .filter(Boolean);
-    if (listed.length) return listed;
+    if (listed.length) return listed.slice(0, 8);
+
+    const rootLists = Array.from(tmp.querySelectorAll("ul"))
+      .filter(list => !list.closest("li"));
+    const fallbackListed = rootLists
+      .flatMap(list => Array.from(list.children).filter(node => node.tagName === "LI"))
+      .map(node => {
+        const clone = node.cloneNode(true);
+        clone.querySelectorAll("ul, ol").forEach(nested => nested.remove());
+        return String(clone.textContent || "").replace(/\s+/g, " ").trim();
+      })
+      .filter(Boolean);
+    if (fallbackListed.length) return fallbackListed.slice(0, 8);
+
     const paragraphs = Array.from(tmp.querySelectorAll("p"))
       .map(node => String(node.textContent || "").replace(/\s+/g, " ").trim())
       .filter(Boolean);
-    if (paragraphs.length) return paragraphs;
+    if (paragraphs.length) return paragraphs.slice(0, 8);
+
     return String(tmp.textContent || "")
       .split(/\r?\n|[•·]/)
       .map(value => value.replace(/\s+/g, " ").trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
+  function _statusBadge(value){
+    const key = String(value || "").trim().toLowerCase();
+    const variant = key === "actif"
+      ? "success"
+      : (key === "a_pourvoir" || key === "temporaire" ? "warning" : "neutral");
+    return `<span class="ns-badge ns-badge-status--${variant}">${escapeHtml(_statusLabel(value))}</span>`;
+  }
+
+  function _constraintBadge(value){
+    const label = String(value || "").trim() || "—";
+    const normalized = label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    let variant = "neutral";
+    if (/^(aucun|aucune|rare|faible)$/.test(normalized)) variant = "success";
+    else if (/^(occasionnelle|modere|moderee|frequente)$/.test(normalized)) variant = "warning";
+    else if (/^(forte|rapide|eleve|elevee|critique)$/.test(normalized)) variant = "danger";
+    return `<span class="ns-badge ns-badge-status--${variant}">${escapeHtml(label)}</span>`;
   }
 
   function _setDefinitionList(id, rows){
     const target = byId(id);
     if (!target) return;
-    target.innerHTML = rows.map(([label, value]) => `
+    target.innerHTML = rows.map(([label, value, isHtml]) => {
+      const displayValue = value === null || value === undefined || value === "" ? "—" : value;
+      return `
       <div class="org-poste-overview-data-row">
         <dt>${escapeHtml(label)}</dt>
-        <dd>${escapeHtml(value || "—")}</dd>
+        <dd>${isHtml ? String(displayValue) : escapeHtml(displayValue)}</dd>
       </div>
-    `).join("");
+    `;
+    }).join("");
   }
 
   function _renderOverviewRequirementList(id, items, kind){
@@ -195,12 +262,18 @@
       const title = kind === "competence" ? item?.intitule : item?.nom_certification;
       const code = kind === "competence" ? item?.code : item?.categorie;
       const level = kind === "competence" ? item?.niveau_requis : item?.niveau_exigence;
+      const levelLabel = kind === "competence" ? _nivLabel(level) : "";
+      const levelHtml = kind === "competence"
+        ? (levelLabel
+          ? `<span class="ns-badge sb-badge sb-badge-niv ${_nivClass(level)}">${escapeHtml(levelLabel)}</span>`
+          : "—")
+        : _certRequirementBadge(level);
       return `<div class="org-poste-overview-item">
         <div class="org-poste-overview-item__main">
           ${code ? `<span class="sb-badge ${kind === "competence" ? "sb-badge-ref-comp-code" : ""}">${escapeHtml(code)}</span>` : ""}
           <span>${escapeHtml(title || "—")}</span>
         </div>
-        <span class="org-poste-overview-item__level">${escapeHtml(level || "—")}</span>
+        <span class="org-poste-overview-item__level">${levelHtml}</span>
       </div>`;
     }).join("");
   }
@@ -221,9 +294,7 @@
       return `<div class="org-poste-collaborator">
         <span class="org-poste-collaborator__avatar" aria-hidden="true">${escapeHtml(initials)}</span>
         <span class="org-poste-collaborator__name">${escapeHtml([prenom, nom].filter(Boolean).join(" ") || "Collaborateur")}</span>
-        <span class="org-poste-collaborator__status ${unavailable ? "is-unavailable" : "is-active"}">
-          <span aria-hidden="true"></span>${unavailable ? "Indisponible" : "Actif"}
-        </span>
+        <span class="ns-badge ${unavailable ? "ns-badge-status--warning" : "ns-badge-status--success"}">${unavailable ? "Indisponible" : "Actif"}</span>
       </div>`;
     }).join("");
   }
@@ -232,7 +303,7 @@
     const competences = Array.isArray(detail?.competences) ? detail.competences : [];
     const certifications = Array.isArray(detail?.certifications) ? detail.certifications : [];
     const collaborators = Array.isArray(detail?.collaborateurs) ? detail.collaborateurs : [];
-    const criticalCompetences = competences.filter(item => Number(item?.poids_criticite || 0) >= 70).length;
+    const criticalCompetences = competences.filter(item => Number(item?.poids_criticite || 0) >= 80).length;
 
     _setText("orgPosteOverviewCollabs", String(collaborators.length));
     _setText("orgPosteOverviewCollabsMeta", `${Number(detail?.rh_nb_titulaires_cible || 0)} titulaire(s) cible`);
@@ -260,17 +331,17 @@
     _setDefinitionList("orgPosteOverviewInfo", [
       ["Service", _serviceLabelForPoste(detail)],
       ["Code interne", codeInterne || "—"],
-      ["Statut", _statusLabel(detail?.rh_statut_poste || (detail?.actif === false ? "archive" : "actif"))],
+      ["Statut", _statusBadge(detail?.rh_statut_poste || (detail?.actif === false ? "archive" : "actif")), true],
       ["Stratégie de pourvoi", _strategyLabel(detail?.rh_strategie_pourvoi)],
       ["Titulaires cible", String(detail?.rh_nb_titulaires_cible ?? "—")],
       ["Début de validité", formatDateOnly(detail?.rh_date_debut_validite) || "—"],
       ["Fin de validité", formatDateOnly(detail?.rh_date_fin_validite) || "—"]
     ]);
     _setDefinitionList("orgPosteOverviewConstraints", [
-      ["Mobilité", String(detail?.mobilite || "—")],
-      ["Risques physiques", String(detail?.risque_physique || "—")],
-      ["Perspectives", String(detail?.perspectives_evolution || "—")],
-      ["Niveau de contraintes", String(detail?.niveau_contrainte || "—")]
+      ["Mobilité", _constraintBadge(detail?.mobilite), true],
+      ["Risques physiques", _constraintBadge(detail?.risque_physique), true],
+      ["Perspectives", _constraintBadge(detail?.perspectives_evolution), true],
+      ["Niveau de contraintes", _constraintBadge(detail?.niveau_contrainte), true]
     ]);
     fillPosteCotationTab(detail);
   }
@@ -282,7 +353,6 @@
 
     const idPoste = String(p?.id_poste || "").trim();
     _activePoste = Object.assign({}, p || {});
-    _activePosteDetail = null;
     page.setAttribute("data-id-poste", idPoste);
     _setPosteHeader(_activePoste);
     _showPostePage();
@@ -318,7 +388,6 @@
       const detail = await fetchPosteDetail(portal, idPoste);
       const merged = Object.assign({}, _activePoste, detail || {});
       _activePoste = merged;
-      _activePosteDetail = merged;
       _setPosteHeader(merged);
       fillPosteDefinitionTab(merged);
       fillPosteContraintesTab(merged);
@@ -329,10 +398,6 @@
     } catch (e) {
       portal.showAlert("error", "Erreur chargement poste : " + e.message);
     }
-  }
-
-  function closeOrgPosteModal(){
-    _showOrganisationIndex();
   }
 
   function bindOrgPosteModalOnce(){
@@ -686,7 +751,8 @@
       // refresh UI (retour lecture)
       fillPosteParamRhTab(merged);
       fillPosteOverview(merged);
-      _activePosteDetail = merged;
+      _activePoste = Object.assign({}, _activePoste || {}, merged);
+      _setPosteHeader(_activePoste);
       _showInlineMsg("orgRhMsg", "success", "Paramétrage RH enregistré.");
 
     } catch (e) {
@@ -1000,22 +1066,29 @@
     const start = (_postePage - 1) * _postePageSize;
     const displayed = sorted.slice(start, start + _postePageSize);
 
+    const sortHead = (key, label) => {
+      const active = key === _posteSortKey;
+      return `<button type="button" class="org-poste-sort-head${active ? " is-active" : ""}" data-sort="${key}">
+        <span>${escapeHtml(label)}</span>
+        <span class="org-poste-sort-arrows" aria-hidden="true">
+          <span class="org-poste-sort-arrow${active && _posteSortDir === "asc" ? " is-active" : ""}">▲</span>
+          <span class="org-poste-sort-arrow${active && _posteSortDir === "desc" ? " is-active" : ""}">▼</span>
+        </span>
+      </button>`;
+    };
+
     const table = document.createElement("table");
     table.className = "sb-table org-postes-table";
     table.innerHTML = `<thead><tr>
-      <th><button type="button" class="org-poste-sort" data-sort="code">Code</button></th>
-      <th><button type="button" class="org-poste-sort" data-sort="intitule">Intitulé du poste</button></th>
-      <th><button type="button" class="org-poste-sort" data-sort="service">Service</button></th>
-      <th><button type="button" class="org-poste-sort" data-sort="collaborateurs">Collaborateurs</button></th>
+      <th>${sortHead("code", "Code")}</th>
+      <th>${sortHead("intitule", "Intitulé du poste")}</th>
+      <th>${sortHead("service", "Service")}</th>
+      <th>${sortHead("collaborateurs", "Collaborateurs")}</th>
       <th class="org-postes-actions-head">Actions</th>
     </tr></thead><tbody></tbody>`;
 
-    table.querySelectorAll(".org-poste-sort").forEach(btn => {
+    table.querySelectorAll(".org-poste-sort-head").forEach(btn => {
       const key = btn.getAttribute("data-sort");
-      if (key === _posteSortKey){
-        btn.classList.add("is-active");
-        btn.setAttribute("data-direction", _posteSortDir);
-      }
       btn.addEventListener("click", () => {
         if (_posteSortKey === key) _posteSortDir = _posteSortDir === "asc" ? "desc" : "asc";
         else { _posteSortKey = key; _posteSortDir = "asc"; }
@@ -1072,19 +1145,6 @@
     _renderPostePagination(container, sorted.length);
   }
 
-
-  function formatDateOnly(v) {
-    if (!v) return "";
-    const s = String(v);
-    // ISO "YYYY-MM-DD..." -> "DD/MM/YYYY"
-    if (s.length >= 10 && s[4] === "-" && s[7] === "-") {
-      const y = s.substring(0, 4);
-      const m = s.substring(5, 7);
-      const d = s.substring(8, 10);
-      return `${d}/${m}/${y}`;
-    }
-    return s;
-  }
 
   const _posteDetailCache = new Map(); // id_poste -> detail
 
@@ -1507,7 +1567,9 @@
 
       const merged = Object.assign({}, _posteDetailCache.get(id_poste) || {}, updated || {}, v);
       _posteDetailCache.set(id_poste, merged);
+      _activePoste = Object.assign({}, _activePoste || {}, merged);
       fillPosteContraintesTab(merged);
+      fillPosteOverview(merged);
       _showInlineMsg("orgCtrMsg", "success", "Contraintes enregistrées.");
     } catch (e) {
       _showInlineMsg("orgCtrMsg", "danger", "Erreur enregistrement : " + e.message);
@@ -1873,7 +1935,7 @@
       _posteDetailCache.set(id_poste, updated);
       fillPosteCompetencesTab(updated);
       fillPosteOverview(updated);
-      _activePosteDetail = updated;
+      _activePoste = Object.assign({}, _activePoste || {}, updated);
       closeOrgCompCritModal();
     } catch (e) {
       _showInlineMsg("orgCompCritMsg", "danger", "Erreur enregistrement : " + e.message);
@@ -1964,7 +2026,7 @@
       _posteDetailCache.set(id_poste, updated);
       fillPosteCertificationsTab(updated);
       fillPosteOverview(updated);
-      _activePosteDetail = updated;
+      _activePoste = Object.assign({}, _activePoste || {}, updated);
       closeOrgCertValidModal();
     } catch (e) {
       _showInlineMsg("orgCertValidMsg", "danger", "Erreur enregistrement : " + e.message);
@@ -2169,7 +2231,6 @@
   }
 
   async function selectService(id_service) {
-    _selectedServiceId = id_service;
     _postePage = 1;
     setActiveTreeItem(id_service);
 
@@ -2250,7 +2311,10 @@
       bindOrgPosteModalOnce();
       _showOrganisationIndex();
       try {
-        try { window.history.replaceState({ skillsOrganisationIndex:true }, "", window.location.href); } catch (_) {}
+        try {
+          const state = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+          window.history.replaceState({ ...state, skillsOrganisationIndex: true, skillsOrganisationPoste: null }, "", window.location.href);
+        } catch (_) {}
         bindOnce(portal);
         if (!_servicesLoaded) await loadServices(portal);
         await processReferentielPendingPosteAction(portal);

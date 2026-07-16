@@ -954,6 +954,7 @@ def get_services_tree(id_contact: str, request: Request):
                       AND e.archive = FALSE
                       AND e.statut_actif = TRUE
                       AND e.is_temp = FALSE
+                      AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
                       AND e.id_poste_actuel IS NOT NULL
                     GROUP BY e.id_poste_actuel
                     """,
@@ -1959,6 +1960,7 @@ def get_postes_for_service(id_contact: str, id_service: str, request: Request):
                       AND e.archive = FALSE
                       AND e.statut_actif = TRUE
                       AND e.is_temp = FALSE
+                      AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
                       AND e.id_poste_actuel IS NOT NULL
                     GROUP BY e.id_poste_actuel
                 """

@@ -3472,82 +3472,6 @@ textarea.sb-ctrl{
    Modal Organisation: navigation fiche poste
    ====================================================== */
 
-#orgPostePage .modal-header--top{
-  padding-bottom:0;
-}
-
-#orgPostePage .sb-modal-headstack{
-  gap:10px;
-  width:100%;
-  min-width:0;
-}
-
-#orgPostePage .org-poste-modal-nav{
-  display:flex;
-  align-items:center;
-  gap:28px;
-  min-height:48px;
-  border-bottom:1px solid #e5e7eb;
-  margin:0 0 0 -2px;
-  padding:0;
-}
-
-#orgPostePage .org-poste-nav-btn{
-  position:relative;
-  min-height:48px;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  border:0;
-  background:transparent;
-  color:#0f2742;
-  padding:0 0 2px;
-  font-family:inherit;
-  font-size:var(--ns-text-sm, 0.8125rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  cursor:pointer;
-}
-
-#orgPostePage .org-poste-nav-btn svg{
-  width:18px;
-  height:18px;
-  display:block;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:2;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-
-#orgPostePage .org-poste-nav-btn::after{
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:-1px;
-  height:2px;
-  border-radius:999px;
-  background:transparent;
-}
-
-#orgPostePage .org-poste-nav-btn:hover,
-#orgPostePage .org-poste-nav-btn.is-active{
-  color:var(--accent);
-}
-
-#orgPostePage .org-poste-nav-btn.is-active::after{
-  background:var(--accent);
-}
-
-#orgPostePage .org-poste-nav-btn:focus{
-  outline:none;
-  color:var(--accent);
-}
-
-#orgPostePage .org-poste-nav-btn:focus::after{
-  background:var(--accent);
-}
-
 /* Actions d'édition fiche poste : pack commun Modifier / Annuler / Enregistrer */
 #orgPostePage .org-ctr-btns,
 #orgPostePage .org-rh-btns{
@@ -23617,37 +23541,6 @@ body{
 /* ======================================================
    Votre organisation — Modal poste (refonte visuelle)
    ====================================================== */
-#orgPostePage .modal-card{
-  max-width: 1320px;
-}
-
-#orgPostePage .modal-body{
-  padding: 16px 18px 18px;
-  background: #fff;
-}
-
-#orgPostePage .sb-segbar{
-  gap: 10px;
-}
-
-#orgPostePage .sb-segbar .sb-btn{
-  min-width: 0;
-  height: 38px;
-  padding: 0 18px;
-  border-radius: 12px;
-  font-size: var(--ns-text-lg, 0.9375rem);
-  font-weight: var(--ns-weight-semibold, 600);
-}
-
-#orgPostePage .sb-segbar .sb-btn--soft{
-  background: rgba(193,39,45,.04);
-  border-color: rgba(193,39,45,.28);
-}
-
-#orgPostePage .sb-segbar .sb-btn--accent{
-  box-shadow: 0 8px 20px rgba(193,39,45,.18);
-}
-
 #orgPostePage .sb-tab-panel{
   display: none;
 }
@@ -31395,28 +31288,48 @@ body{
   stroke-linejoin:round;
 }
 
-#view-votre-organisation .org-poste-sort{
-  position:relative;
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  padding:0;
+#view-votre-organisation .org-poste-sort-head{
+  appearance:none;
   border:0;
   background:transparent;
   color:inherit;
+  padding:0;
+  margin:0;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
   font:inherit;
-  font-weight:inherit;
+  font-weight:var(--ns-weight-semibold, 600);
   cursor:pointer;
 }
 
-#view-votre-organisation .org-poste-sort.is-active::after{
-  content:"↑";
-  color:var(--accent);
-  font-size:var(--ns-text-xs, 0.75rem);
+#view-votre-organisation .org-poste-sort-head:hover,
+#view-votre-organisation .org-poste-sort-head.is-active{
+  color:#111827;
 }
 
-#view-votre-organisation .org-poste-sort.is-active[data-direction="desc"]::after{
-  content:"↓";
+#view-votre-organisation .org-poste-sort-arrows{
+  display:inline-flex;
+  flex-direction:column;
+  gap:0;
+  line-height:var(--ns-leading-tight, 1.15);
+  font-size:var(--ns-text-xs, 0.75rem);
+  color:#cbd5e1;
+  opacity:0;
+}
+
+#view-votre-organisation .org-poste-sort-head:hover .org-poste-sort-arrows,
+#view-votre-organisation .org-poste-sort-head.is-active .org-poste-sort-arrows{
+  opacity:1;
+}
+
+#view-votre-organisation .org-poste-sort-arrow{
+  height:8px;
+  display:block;
+}
+
+#view-votre-organisation .org-poste-sort-arrow.is-active{
+  color:#111827;
 }
 
 #view-votre-organisation .org-poste-table-empty{
@@ -31486,6 +31399,10 @@ body{
 
 #view-votre-organisation .org-poste-pagination-summary{
   justify-self:end;
+}
+
+.content.is-poste-page{
+  padding-top:0;
 }
 
 #view-votre-organisation .org-poste-page{
@@ -31596,10 +31513,16 @@ body{
 }
 
 #view-votre-organisation .org-poste-nav-btn:hover,
+#view-votre-organisation .org-poste-nav-btn:focus,
 #view-votre-organisation .org-poste-nav-btn.is-active{
   color:var(--accent);
 }
 
+#view-votre-organisation .org-poste-nav-btn:focus{
+  outline:none;
+}
+
+#view-votre-organisation .org-poste-nav-btn:focus::after,
 #view-votre-organisation .org-poste-nav-btn.is-active::after{
   background:var(--accent);
 }
@@ -31710,14 +31633,18 @@ body{
 }
 
 #view-votre-organisation .org-poste-overview-highlight-grid > .org-poste-overview-card{
-  height:100%;
+  height:auto;
+  min-height:0;
 }
 
 #view-votre-organisation .org-poste-overview-card{
+  min-width:0;
+  margin-bottom:0;
   padding:14px 16px;
   border-color:#e2e8f0;
   border-radius:16px;
   box-shadow:0 8px 24px rgba(15,23,42,.05);
+  overflow:visible;
 }
 
 #view-votre-organisation .org-poste-overview-card__head{
@@ -31726,6 +31653,11 @@ body{
   gap:10px;
   min-width:0;
   margin-bottom:10px;
+}
+
+#view-votre-organisation .org-poste-overview-card__head .card-title{
+  min-width:0;
+  flex:1 1 auto;
 }
 
 #view-votre-organisation .org-poste-overview-card__icon{
@@ -31810,8 +31742,8 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:14px;
-  min-height:32px;
-  padding:8px 0;
+  min-height:28px;
+  padding:5px 0;
   border-bottom:1px solid #eef2f7;
   color:#334155;
   font-size:var(--ns-text-xs, 0.75rem);
@@ -31822,6 +31754,13 @@ body{
   display:flex;
   align-items:center;
   gap:8px;
+}
+
+#view-votre-organisation .org-poste-overview-item__main > span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 #view-votre-organisation .org-poste-overview-item__level{
@@ -31923,26 +31862,6 @@ body{
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-}
-
-#view-votre-organisation .org-poste-collaborator__status{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  color:#64748b;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
-}
-
-#view-votre-organisation .org-poste-collaborator__status > span{
-  width:8px;
-  height:8px;
-  border-radius:999px;
-  background:var(--org-green);
-}
-
-#view-votre-organisation .org-poste-collaborator__status.is-unavailable > span{
-  background:#d97706;
 }
 
 #view-votre-organisation .org-poste-collaborators__empty{
@@ -32119,7 +32038,8 @@ body{
     grid-template-columns:34px minmax(0,1fr);
   }
 
-  #view-votre-organisation.is-poste-page .org-poste-collaborator__status{
+  #view-votre-organisation.is-poste-page .org-poste-collaborator .ns-badge{
     grid-column:2;
+    justify-self:start;
   }
 }

@@ -26,6 +26,11 @@
         }
       }
 
+      if (v && v !== "votre-organisation") {
+        document.querySelector(".content")?.classList.remove("is-poste-page");
+        document.getElementById("view-votre-organisation")?.classList.remove("is-poste-page");
+      }
+
       return await _origSwitchView(viewName, ...args);
     };
   }
