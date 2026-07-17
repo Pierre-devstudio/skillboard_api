@@ -745,7 +745,7 @@
     const versionLabel = String(ccn?.version_label || "").trim() || "—";
     const idcc = String(_ccnFirstValue(objects, ["idcc"]) || "").trim();
     const validatedAt = formatDateOnly(_ccnFirstValue(objects, ["validated_at", "date_validation", "date_maj"])) || "—";
-    const validatedBy = String(_ccnFirstValue(objects, ["validated_by", "updated_by_name", "validateur", "auteur", "updated_by"]) || "").trim() || "—";
+    const validatedBy = String(_ccnFirstValue(objects, ["validated_by_name", "updated_by_name", "validateur", "auteur", "validated_by", "updated_by"]) || "").trim() || "—";
 
     let coefficient = String(_ccnFirstValue(objects, ["coefficient", "coefficient_retenu", "coef"]) || "").trim();
     let palier = String(_ccnFirstValue(objects, ["palier", "palier_retenu", "niveau_retenu"]) || "").trim();
@@ -758,8 +758,8 @@
     coefficient = coefficient || "—";
     palier = palier || "—";
 
-    _setText("orgCcnKpiConvention", idcc ? `IDCC ${idcc}` : conventionLabel);
-    _setText("orgCcnKpiConventionMeta", conventionLabel);
+    _setText("orgCcnKpiConvention", conventionLabel);
+    _setText("orgCcnKpiConventionMeta", idcc ? `IDCC ${idcc}` : "—");
     _setText("orgCcnKpiReferentiel", versionLabel);
     _setText("orgCcnKpiReferentielMeta", versionLabel === "—" ? "—" : "Référentiel utilisé");
     _setText("orgCcnKpiStatus", statusLabel);

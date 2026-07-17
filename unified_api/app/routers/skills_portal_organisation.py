@@ -20,6 +20,7 @@ from app.routers.studio_portal_organisation import (
     _fetch_ccn_referential,
     _fetch_logo_bytes_for_ent,
     _fetch_poste_ccn_dossier,
+    _ensure_json_dict,
     _pdf_first_non_empty,
     _pdf_format_footer_date,
     _pdf_latin1_safe,
@@ -1030,6 +1031,74 @@ def _ccn_first_text(*values: Any) -> str:
     return ""
 
 
+def _fetch_poste_ccn_referential(cur, idcc: str, dossier: Optional[dict]) -> Optional[dict]:
+    id_referentiel_ccn = str((dossier or {}).get("id_referentiel_ccn") or "").strip()
+    if id_referentiel_ccn:
+        cur.execute(
+            """
+            SELECT
+              id_referentiel_ccn,
+              idcc,
+              convention_label,
+              version_label,
+              date_effet,
+              source_url,
+              referentiel_json
+            FROM public.tbl_studio_ccn_referentiel
+            WHERE id_referentiel_ccn = %s
+              AND COALESCE(archive, FALSE) = FALSE
+            LIMIT 1
+            """,
+            (id_referentiel_ccn,),
+        )
+        row = cur.fetchone() or None
+        if row:
+            row["referentiel_json"] = _ensure_json_dict(row.get("referentiel_json"))
+            return row
+
+    return _fetch_ccn_referential(cur, idcc) if idcc else None
+
+
+def _resolve_ccn_validator_name(cur, validator: str, id_ent: str) -> str:
+    value = str(validator or "").strip()
+    if not value or "@" not in value:
+        return value
+
+    cur.execute(
+        """
+        SELECT prenom_effectif AS prenom, nom_effectif AS nom
+        FROM public.tbl_effectif_client
+        WHERE id_ent = %s
+          AND lower(COALESCE(email_effectif, '')) = lower(%s)
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_ent, value),
+    )
+    row = cur.fetchone() or {}
+    full_name = " ".join(
+        part for part in [str(row.get("prenom") or "").strip(), str(row.get("nom") or "").strip()] if part
+    ).strip()
+    if full_name:
+        return full_name
+
+    cur.execute(
+        """
+        SELECT ut_prenom AS prenom, ut_nom AS nom
+        FROM public.tbl_utilisateur
+        WHERE lower(COALESCE(ut_mail, '')) = lower(%s)
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (value,),
+    )
+    row = cur.fetchone() or {}
+    full_name = " ".join(
+        part for part in [str(row.get("prenom") or "").strip(), str(row.get("nom") or "").strip()] if part
+    ).strip()
+    return full_name or "—"
+
+
 def _build_poste_ccn_readonly(idcc: str, dossier: Optional[dict], referential: Optional[dict]) -> Dict[str, Any]:
     ref = (referential or {}).get("referentiel_json") or {}
     proposal_root = (dossier or {}).get("proposition_json") or {}
@@ -1350,9 +1419,14 @@ def get_poste_detail(id_contact: str, id_poste: str, request: Request):
                 ]
 
                 dossier_ccn = _fetch_poste_ccn_dossier(cur, id_poste)
-                idcc = str(r.get("ent_idcc") or "").strip()
-                referential_ccn = _fetch_ccn_referential(cur, idcc) if idcc else None
+                idcc = str((dossier_ccn or {}).get("idcc") or r.get("ent_idcc") or "").strip()
+                referential_ccn = _fetch_poste_ccn_referential(cur, idcc, dossier_ccn)
                 ccn = _build_poste_ccn_readonly(idcc, dossier_ccn, referential_ccn)
+                ccn["validated_by_name"] = _resolve_ccn_validator_name(
+                    cur,
+                    str(ccn.get("validated_by") or ""),
+                    id_ent,
+                )
 
                 cur.execute(
                     """
