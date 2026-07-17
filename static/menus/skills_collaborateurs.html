@@ -303,11 +303,59 @@
     <div class="org-poste-page-card">
       <div class="org-poste-page-head">
         <div class="org-poste-page-headstack">
-          <div class="sb-modal-titleline org-poste-page-titleline">
-            <div class="sb-collab-profile-avatar" id="collabModalAvatar" aria-hidden="true">–</div>
-            <div class="sb-collab-profile-titlewrap">
-              <div class="sb-title-text" id="collabModalTitle">Collaborateur</div>
-              <div id="collabModalBadges" class="sb-collab-modal-badges"></div>
+          <div class="sb-collab-profile-header-row">
+            <div class="sb-modal-titleline org-poste-page-titleline">
+              <div class="sb-collab-profile-avatar-wrap">
+                <div class="sb-collab-profile-avatar" id="collabModalAvatar" aria-hidden="true">–</div>
+                <span class="ns-collab-status ns-collab-status--inactive sb-collab-profile-status" id="collabModalStatus" aria-label="Statut : inactif">
+                  <span class="ns-collab-status__dot" aria-hidden="true"></span>
+                </span>
+              </div>
+              <div class="sb-collab-profile-titlewrap">
+                <div class="sb-title-text" id="collabModalTitle">Collaborateur</div>
+                <div id="collabModalBadges" class="sb-collab-modal-badges"></div>
+                <div class="sb-collab-profile-poste" id="collabModalPoste">–</div>
+                <div class="sb-collab-profile-service" id="collabModalService">–</div>
+              </div>
+            </div>
+
+            <div class="sb-collab-profile-context" aria-label="Situation du collaborateur">
+              <div class="sb-collab-summary-item">
+                <span class="sb-collab-summary-icon" aria-hidden="true">
+                  <svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg>
+                </span>
+                <span>
+                  <span class="sb-collab-summary-label">Entrée dans l’entreprise</span>
+                  <strong id="collabModalDateEntree">–</strong>
+                </span>
+              </div>
+              <div class="sb-collab-summary-item">
+                <span class="sb-collab-summary-icon" aria-hidden="true">
+                  <svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-legacy-c489f3162892"></use></svg>
+                </span>
+                <span>
+                  <span class="sb-collab-summary-label">Type de contrat</span>
+                  <strong id="collabModalContrat">–</strong>
+                </span>
+              </div>
+              <div class="sb-collab-summary-item">
+                <span class="sb-collab-summary-icon" aria-hidden="true">
+                  <svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
+                </span>
+                <span>
+                  <span class="sb-collab-summary-label">Début dans le poste</span>
+                  <strong id="collabModalDatePoste">–</strong>
+                </span>
+              </div>
+              <div class="sb-collab-summary-item">
+                <span class="sb-collab-summary-icon" aria-hidden="true">
+                  <svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>
+                </span>
+                <span>
+                  <span class="sb-collab-summary-label">Manager</span>
+                  <strong id="collabModalManager">–</strong>
+                </span>
+              </div>
             </div>
           </div>
 

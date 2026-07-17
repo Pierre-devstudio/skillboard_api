@@ -744,10 +744,22 @@
     const body = byId("collabModalBody");
     const hb = byId("collabModalBadges");
     const avatar = byId("collabModalAvatar");
-    if (hb) hb.innerHTML = "";
+    const status = byId("collabModalStatus");
+    if (hb) hb.innerHTML = renderRolePills(it);
 
     if (title) title.textContent = `${it.prenom_effectif || ""} ${it.nom_effectif || ""}`.trim() || "Collaborateur";
     if (avatar) avatar.textContent = getCollaborateurInitials(it);
+    setText("collabModalPoste", it?.intitule_poste || "–");
+    setText("collabModalService", it?.nom_service || "–");
+    setText("collabModalDateEntree", formatDateFR(it?.date_entree_entreprise_effectif));
+    setText("collabModalContrat", it?.type_contrat || "–");
+    setText("collabModalDatePoste", "–");
+    setText("collabModalManager", "–");
+    if (status) {
+      const statusClass = getCollaborateurStatusClass(it);
+      status.className = `ns-collab-status ${statusClass} sb-collab-profile-status`;
+      status.setAttribute("aria-label", `Statut : ${getCollaborateurStatusLabel(it)}`);
+    }
     if (sub) {
       sub.textContent = "";
       sub.style.display = "none";
@@ -1180,41 +1192,6 @@
                 : (ident?.statut_actif ? (unavailableToday ? "Indisponible" : "Actif") : "Inactif");
 
               overviewHost.innerHTML = `
-                <div class="studio-poste-kpis">
-                  <div class="studio-poste-kpi studio-poste-kpi--collabs">
-                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("building")}</span>
-                    <span class="studio-poste-kpi__content">
-                      <span class="studio-poste-kpi__label">Service</span>
-                      <strong class="studio-poste-kpi__value">${escapeHtml(ident?.nom_service || "Non lié")}</strong>
-                      <small class="studio-poste-kpi__label">Affectation actuelle</small>
-                    </span>
-                  </div>
-                  <div class="studio-poste-kpi studio-poste-kpi--competences">
-                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("briefcase")}</span>
-                    <span class="studio-poste-kpi__content">
-                      <span class="studio-poste-kpi__label">Poste actuel</span>
-                      <strong class="studio-poste-kpi__value">${escapeHtml(ident?.intitule_poste || "–")}</strong>
-                      <small class="studio-poste-kpi__label">Situation professionnelle</small>
-                    </span>
-                  </div>
-                  <div class="studio-poste-kpi studio-poste-kpi--certifications">
-                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("contract")}</span>
-                    <span class="studio-poste-kpi__content">
-                      <span class="studio-poste-kpi__label">Type de contrat</span>
-                      <strong class="studio-poste-kpi__value">${escapeHtml(ident?.type_contrat || "–")}</strong>
-                      <small class="studio-poste-kpi__label">Contrat en cours</small>
-                    </span>
-                  </div>
-                  <div class="studio-poste-kpi studio-poste-kpi--criticite">
-                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("calendar")}</span>
-                    <span class="studio-poste-kpi__content">
-                      <span class="studio-poste-kpi__label">Date d’entrée</span>
-                      <strong class="studio-poste-kpi__value">${escapeHtml(formatDateFR(ident?.date_entree_entreprise_effectif))}</strong>
-                      <small class="studio-poste-kpi__label">Entrée dans l’entreprise</small>
-                    </span>
-                  </div>
-                </div>
-
                 <div class="sb-collab-metrics">
                   <div class="sb-collab-metric sb-collab-metric--red">
                     <span aria-hidden="true">${collabIcon("contract")}</span>
@@ -1317,34 +1294,44 @@
                 return Number.isFinite(n) ? String(n) : "";
               };
 
-              // Badges (statuts)
-              const badges = [];
+              // Le header conserve uniquement les rôles sous forme de badges.
+              const roleBadges = [];
+              if (d.is_temp) roleBadges.push({ label: "Temp", cls: "collab-role-badge collab-role-badge--temp" });
+              if (d.ismanager) roleBadges.push({ label: "Manager", cls: "collab-role-badge collab-role-badge--manager" });
+              if (d.isformateur) roleBadges.push({ label: "Formateur", cls: "collab-role-badge collab-role-badge--formateur" });
 
-              // Badge Indisponible (si indispo en cours aujourd’hui)
+              const headerBadges = byId("collabModalBadges");
+              if (headerBadges) {
+                headerBadges.innerHTML = roleBadges
+                  .map(b => `<span class="ns-badge sb-badge ${escapeHtml(b.cls)}">${escapeHtml(b.label)}</span>`)
+                  .join("");
+              }
 
-
-              if (d.archive) badges.push({ label: "Archivé", cls: "sb-badge--archive" });
-              else if (d.statut_actif) badges.push({ label: "Actif", cls: "sb-badge--actif" });
-              else badges.push({ label: "Inactif", cls: "sb-badge--inactif" });
-
+              let indisponible = false;
               try {
-                const indispo = await isEffectifIndispoToday(id_contact, it.id_effectif);
-                if (indispo) badges.push({ label: "Indisponible", cls: "sb-badge--indispo" });
+                indisponible = await isEffectifIndispoToday(id_contact, it.id_effectif);
               } catch (_) {}
 
-              if (d.is_temp) badges.push({ label: "Temp", cls: "collab-role-badge collab-role-badge--temp" });
-              if (d.ismanager) badges.push({ label: "Manager", cls: "collab-role-badge collab-role-badge--manager" });
-              if (d.isformateur) badges.push({ label: "Formateur", cls: "collab-role-badge collab-role-badge--formateur" });
+              const headerStatus = byId("collabModalStatus");
+              if (headerStatus) {
+                const statusClass = d.archive
+                  ? "ns-collab-status--archived"
+                  : (d.statut_actif
+                    ? (indisponible ? "ns-collab-status--unavailable" : "ns-collab-status--active")
+                    : "ns-collab-status--inactive");
+                const statusLabel = d.archive
+                  ? "Archivé"
+                  : (d.statut_actif ? (indisponible ? "Indisponible" : "Actif") : "Inactif");
+                headerStatus.className = `ns-collab-status ${statusClass} sb-collab-profile-status`;
+                headerStatus.setAttribute("aria-label", `Statut : ${statusLabel}`);
+              }
 
-              const badgesHtml = badges
-                .map(b => `<span class="ns-badge sb-badge ${escapeHtml(b.cls)}">${escapeHtml(b.label)}</span>`)
-                .join("");
-
-
-
-              // Push badges dans le header du modal (à côté du nom)
-              const headerBadges = byId("collabModalBadges");
-              if (headerBadges) headerBadges.innerHTML = badgesHtml;
+              setText("collabModalPoste", d.intitule_poste || "–");
+              setText("collabModalService", d.nom_service || "–");
+              setText("collabModalDateEntree", formatDateFR(d.date_entree_entreprise_effectif));
+              setText("collabModalContrat", d.type_contrat || "–");
+              setText("collabModalDatePoste", formatDateFR(d.date_debut_poste_actuel));
+              setText("collabModalManager", "–");
 
 
               // Civilité: alignement Studio (M. / Mme / -)

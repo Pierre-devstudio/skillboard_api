@@ -32051,109 +32051,128 @@ body{
   background:var(--accent);
 }
 
-#modalCollaborateur .studio-poste-kpis{
+#modalCollaborateur .sb-collab-profile-header-row{
   display:grid;
-  grid-template-columns:repeat(4, minmax(0,1fr));
-  gap:14px;
-  margin:18px 0 14px;
+  grid-template-columns:minmax(0, 1fr) minmax(520px, .95fr);
+  gap:32px;
+  align-items:center;
+  min-height:112px;
+  padding:8px 0 12px;
 }
 
-#modalCollaborateur .studio-poste-kpi{
+#modalCollaborateur .org-poste-page-titleline{
   display:flex;
   align-items:center;
-  gap:14px;
-  min-height:92px;
-  padding:14px 16px;
-  border:1px solid #e2e8f0;
-  border-radius:16px;
-  background:#fff;
-  box-shadow:0 8px 22px rgba(15,23,42,.055);
+  gap:18px;
 }
 
-#modalCollaborateur .studio-poste-kpi > .studio-poste-kpi__icon{
-  display:inline-flex;
+#modalCollaborateur .sb-collab-profile-avatar-wrap{
+  position:relative;
+  flex:0 0 auto;
+}
+
+#modalCollaborateur .sb-collab-profile-avatar{
+  width:88px;
+  height:88px;
+  flex-basis:88px;
+  font-size:var(--ns-title-lg, 1.5rem);
+}
+
+#modalCollaborateur .sb-collab-profile-status{
+  position:absolute;
+  right:2px;
+  bottom:2px;
+  width:18px;
+  height:18px;
+  display:flex;
   align-items:center;
   justify-content:center;
-  box-sizing:border-box;
-  flex:0 0 auto;
-  width:48px;
-  height:48px;
-  padding:0;
-  border-radius:14px;
-  line-height:var(--ns-leading-tight, 1.15);
+  border:3px solid #ffffff;
+  border-radius:999px;
+  background:#ffffff;
 }
 
-#modalCollaborateur .studio-poste-kpi > .studio-poste-kpi__icon > svg{
-  display:block;
-  width:24px;
-  height:24px;
-  margin:0;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.9;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-  transform:none;
+#modalCollaborateur .sb-collab-profile-status .ns-collab-status__dot{
+  width:12px;
+  height:12px;
+  flex-basis:12px;
 }
 
-#modalCollaborateur .studio-poste-kpi--collabs .studio-poste-kpi__icon{
-  background:#f1eafe;
-  color:#6d28d9;
-}
-
-#modalCollaborateur .studio-poste-kpi--competences .studio-poste-kpi__icon{
-  background:#fff0e2;
-  color:#ea580c;
-}
-
-#modalCollaborateur .studio-poste-kpi--certifications .studio-poste-kpi__icon{
-  background:#e8f2ff;
-  color:#2563eb;
-}
-
-#modalCollaborateur .studio-poste-kpi--criticite .studio-poste-kpi__icon{
-  background:#e9f7e7;
-  color:#3f8f2f;
-}
-
-#modalCollaborateur .studio-poste-kpi__content{
-  display:block;
+#modalCollaborateur .sb-collab-profile-titlewrap{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
   min-width:0;
 }
 
-#modalCollaborateur .studio-poste-kpi__label{
-  color:#475569;
-  font-size:var(--ns-text-sm, 0.8125rem);
+#modalCollaborateur .sb-collab-modal-badges{
+  margin-bottom:8px;
+}
+
+#modalCollaborateur .sb-collab-profile-poste{
+  color:var(--ns-text-primary);
+  font-size:var(--ns-text-lg, 0.9375rem);
   font-weight:var(--ns-weight-semibold, 600);
+  line-height:var(--ns-leading-title, 1.25);
 }
 
-#modalCollaborateur .studio-poste-kpi__content strong{
-  display:block;
-  margin-top:5px;
-  color:#111827;
-  font-size:var(--ns-title-lg, 1.5rem);
-  font-weight:var(--ns-weight-bold, 700);
-  line-height:var(--ns-leading-tight, 1.15);
+#modalCollaborateur .sb-collab-profile-service{
+  margin-top:3px;
+  color:var(--ns-text-secondary);
+  font-size:var(--ns-text-md, 0.875rem);
+  line-height:var(--ns-leading-body, 1.5);
 }
 
-#modalCollaborateur .studio-poste-kpi__content small{
-  display:block;
-  margin-top:5px;
-  color:#64748b;
-  font-size:var(--ns-text-xs, 0.75rem);
-  font-weight:var(--ns-weight-semibold, 600);
+#modalCollaborateur .sb-collab-profile-context{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:14px 24px;
+  min-width:0;
+  padding-left:28px;
+  border-left:1px solid var(--border);
 }
 
-#modalCollaborateur .studio-poste-kpi--competences small{
-  color:#c2410c;
+#modalCollaborateur .sb-collab-profile-context .sb-collab-summary-item{
+  min-width:0;
+  padding:0;
+  border:0;
+  background:transparent;
 }
 
-#modalCollaborateur .studio-poste-kpi--collabs small{
-  color:#6d28d9;
+#modalCollaborateur .sb-collab-profile-context .sb-collab-summary-icon{
+  background:#f8fafc;
 }
 
-#modalCollaborateur .studio-poste-kpi--certifications small{
-  color:#2563eb;
+#modalCollaborateur .sb-collab-profile-context .sb-collab-summary-item strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+@media (max-width:1100px){
+  #modalCollaborateur .sb-collab-profile-header-row{
+    grid-template-columns:1fr;
+    gap:18px;
+  }
+
+  #modalCollaborateur .sb-collab-profile-context{
+    padding-left:0;
+    padding-top:18px;
+    border-left:0;
+    border-top:1px solid var(--border);
+  }
+}
+
+@media (max-width:680px){
+  #modalCollaborateur .sb-collab-profile-context{
+    grid-template-columns:1fr;
+  }
+
+  #modalCollaborateur .sb-collab-profile-avatar{
+    width:72px;
+    height:72px;
+    flex-basis:72px;
+  }
 }
 
 #orgPostePage .studio-poste-overview-card .studio-rh-panel-title{
