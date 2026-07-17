@@ -1092,6 +1092,15 @@ def _build_poste_ccn_readonly(idcc: str, dossier: Optional[dict], referential: O
         "categorie": category,
         "justification": justification,
         "date_maj": date_maj,
+        "proposition_json": proposal_root,
+        "validation_json": validation,
+        "referentiel_json": ref,
+        "validated_by": _ccn_first_text(
+            validation.get("validated_by") if isinstance(validation, dict) else None,
+        ),
+        "validated_at": _ccn_first_text(
+            validation.get("validated_at") if isinstance(validation, dict) else None,
+        ),
     }
 
 

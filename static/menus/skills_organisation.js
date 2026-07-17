@@ -658,25 +658,24 @@
   }
 
   function _ccnCriteria(ccn){
-    const sources = [
-      ccn,
-      _ccnParseJson(ccn?.validation_json),
-      _ccnParseJson(ccn?.proposition_json),
-      _ccnParseJson(ccn?.validation),
-      _ccnParseJson(ccn?.proposition),
-      _ccnParseJson(ccn?.analysis)
-    ].filter(Boolean);
-    const arrayKeys = ["grille_justification", "grille", "criteres", "criteria", "details", "justifications", "items", "rows"];
-    for (const source of sources){
+    const proposalRoot = _ccnParseJson(ccn?.proposition_json) || _ccnParseJson(ccn?.proposition) || {};
+    const validation = _ccnParseJson(ccn?.validation_json) || _ccnParseJson(ccn?.validation) || {};
+    const analysis = _ccnParseJson(ccn?.analysis) || {};
+    const rows = [];
+
+    [proposalRoot, analysis, validation].forEach(source => {
+      if (!source || typeof source !== "object") return;
+      if (Array.isArray(source.criteres)) rows.push(...source.criteres);
+      if (Array.isArray(source.bonifications)) rows.push(...source.bonifications);
+    });
+
+    if (rows.length) return rows;
+
+    const fallbackSources = [ccn, proposalRoot, analysis, validation];
+    const arrayKeys = ["grille_justification", "grille", "criteria", "details", "justifications", "items", "rows"];
+    for (const source of fallbackSources){
       for (const key of arrayKeys){
         if (Array.isArray(source?.[key])) return source[key];
-      }
-      for (const nestedKey of ["analysis", "proposition", "validation", "resultat"]){
-        const nested = _ccnParseJson(source?.[nestedKey]);
-        if (!nested) continue;
-        for (const key of arrayKeys){
-          if (Array.isArray(nested?.[key])) return nested[key];
-        }
       }
     }
     return [];
@@ -686,7 +685,7 @@
     const source = row && typeof row === "object" ? row : {};
     return {
       label: _pickFirstString(source, ["critere", "criterion", "libelle", "label", "nom", "titre", "bonification"]) || "—",
-      level: _pickFirstString(source, ["niveau", "level", "degre", "degree", "marche", "valeur_niveau"]) || "—",
+      level: _pickFirstString(source, ["niveau_label", "niveau", "level", "degre", "degree", "marche", "valeur_niveau"]) || "—",
       points: _pickFirstString(source, ["points", "score", "points_calcules", "total_points", "valeur_points"]) || "—",
       justification: _pickFirstString(source, ["justification", "motif", "explanation", "commentaire", "rationale", "detail"]) || "—"
     };
@@ -734,7 +733,9 @@
     const ccn = detail?.ccn || {};
     const validation = _ccnParseJson(ccn?.validation_json) || _ccnParseJson(ccn?.validation) || {};
     const proposition = _ccnParseJson(ccn?.proposition_json) || _ccnParseJson(ccn?.proposition) || {};
-    const objects = [ccn, validation, proposition];
+    const proposal = _ccnParseJson(proposition?.proposal) || {};
+    const referential = _ccnParseJson(ccn?.referentiel_json) || {};
+    const objects = [ccn, validation, proposition, proposal, referential];
     const status = String(ccn?.statut || "none").trim().toLowerCase();
     const statusLabel = status === "validated" ? "Validée" : status === "draft" ? "Brouillon" : status === "unsupported" ? "Convention non supportée" : "Aucune cotation";
     const result = String(ccn?.resultat || "").trim() || "—";
@@ -743,7 +744,7 @@
     const conventionLabel = String(ccn?.convention_label || "").trim() || "—";
     const versionLabel = String(ccn?.version_label || "").trim() || "—";
     const idcc = String(_ccnFirstValue(objects, ["idcc"]) || "").trim();
-    const dateMaj = formatDateOnly(ccn?.date_maj) || "—";
+    const validatedAt = formatDateOnly(_ccnFirstValue(objects, ["validated_at", "date_validation", "date_maj"])) || "—";
     const validatedBy = String(_ccnFirstValue(objects, ["validated_by", "updated_by_name", "validateur", "auteur", "updated_by"]) || "").trim() || "—";
 
     let coefficient = String(_ccnFirstValue(objects, ["coefficient", "coefficient_retenu", "coef"]) || "").trim();
@@ -762,11 +763,11 @@
     _setText("orgCcnKpiReferentiel", versionLabel);
     _setText("orgCcnKpiReferentielMeta", versionLabel === "—" ? "—" : "Référentiel utilisé");
     _setText("orgCcnKpiStatus", statusLabel);
-    _setText("orgCcnKpiStatusMeta", status === "validated" ? `Depuis le ${dateMaj}` : "—");
+    _setText("orgCcnKpiStatusMeta", status === "validated" ? `Depuis le ${validatedAt}` : "—");
     _setText("orgCcnKpiCategory", category);
     _setText("orgCcnKpiResult", coefficient !== "—" ? `Coef. ${coefficient}` : result);
     _setText("orgCcnKpiResultMeta", palier !== "—" ? `Palier ${palier}` : "—");
-    _setText("orgCcnKpiDateMaj", dateMaj);
+    _setText("orgCcnKpiDateMaj", validatedAt);
     _setText("orgCcnKpiAuthor", validatedBy);
 
     _setText("orgCcnConvention", [idcc ? `IDCC ${idcc}` : "", conventionLabel].filter(Boolean).join(" · ") || "—");
@@ -775,7 +776,7 @@
     _setText("orgCcnCoefficient", coefficient);
     _setText("orgCcnPalier", palier);
     _setText("orgCcnCategory", category);
-    _setText("orgCcnDateMaj", dateMaj);
+    _setText("orgCcnDateMaj", validatedAt);
     _setText("orgCcnValidatedBy", validatedBy);
     _setText("orgCcnJustification", justification);
     _setText("orgCcnGridTitle", idcc ? `Grille de justification (référentiel IDCC ${idcc})` : "Grille de justification");
