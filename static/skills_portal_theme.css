@@ -31944,6 +31944,218 @@ body{
   font-size:var(--ns-text-xs, 0.75rem);
 }
 
+
+/* ======================================================
+   Insights > Vos collaborateurs > Fiche collaborateur
+   Reprise à l'identique du positionnement de la fiche poste.
+   ====================================================== */
+#view-vos-collaborateurs .org-poste-page{
+  width:100%;
+}
+
+#view-vos-collaborateurs .org-poste-page-card{
+  width:100%;
+  min-width:0;
+}
+
+#view-vos-collaborateurs .org-poste-page-head{
+  position:sticky;
+  top:0;
+  z-index:35;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  margin:0 -14px;
+  padding:10px 14px 0;
+  border-bottom:1px solid var(--border);
+  background:var(--card-bg);
+}
+
+#view-vos-collaborateurs .org-poste-page-headstack{
+  min-width:0;
+  flex:1 1 auto;
+}
+
+#view-vos-collaborateurs .org-poste-page-titleline{
+  min-width:0;
+}
+
+#view-vos-collaborateurs .org-poste-page-titleline .sb-title-text{
+  min-width:0;
+  color:var(--ns-text-primary);
+  font-size:var(--ns-title-md);
+  font-weight:var(--ns-weight-bold);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#view-vos-collaborateurs .org-poste-page-nav{
+  display:flex;
+  align-items:center;
+  gap:26px;
+  min-height:48px;
+  margin-top:12px;
+  overflow-x:auto;
+}
+
+#view-vos-collaborateurs .org-poste-page-body{
+  padding-top:0;
+}
+
+#modalCollaborateur .studio-poste-nav-btn{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:34px;
+  padding:7px 10px 9px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:#334155;
+  font:inherit;
+  font-size:var(--ns-text-sm, 0.8125rem);
+  font-weight:var(--ns-weight-semibold, 600);
+  cursor:pointer;
+}
+
+#modalCollaborateur .studio-poste-nav-btn svg{
+  width:16px;
+  height:16px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#modalCollaborateur .studio-poste-nav-btn:hover{
+  color:#111827;
+  background:rgba(var(--sb-accent-rgb), .09);
+}
+
+#modalCollaborateur .studio-poste-nav-btn.is-active{
+  color:#111827;
+}
+
+#modalCollaborateur .studio-poste-nav-btn.is-active::after{
+  content:"";
+  position:absolute;
+  left:10px;
+  right:10px;
+  bottom:-1px;
+  height:3px;
+  border-radius:999px 999px 0 0;
+  background:var(--accent);
+}
+
+#modalCollaborateur .studio-poste-kpis{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:14px;
+  margin:18px 0 14px;
+}
+
+#modalCollaborateur .studio-poste-kpi{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-height:92px;
+  padding:14px 16px;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 8px 22px rgba(15,23,42,.055);
+}
+
+#modalCollaborateur .studio-poste-kpi > .studio-poste-kpi__icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  flex:0 0 auto;
+  width:48px;
+  height:48px;
+  padding:0;
+  border-radius:14px;
+  line-height:var(--ns-leading-tight, 1.15);
+}
+
+#modalCollaborateur .studio-poste-kpi > .studio-poste-kpi__icon > svg{
+  display:block;
+  width:24px;
+  height:24px;
+  margin:0;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  transform:none;
+}
+
+#modalCollaborateur .studio-poste-kpi--collabs .studio-poste-kpi__icon{
+  background:#f1eafe;
+  color:#6d28d9;
+}
+
+#modalCollaborateur .studio-poste-kpi--competences .studio-poste-kpi__icon{
+  background:#fff0e2;
+  color:#ea580c;
+}
+
+#modalCollaborateur .studio-poste-kpi--certifications .studio-poste-kpi__icon{
+  background:#e8f2ff;
+  color:#2563eb;
+}
+
+#modalCollaborateur .studio-poste-kpi--criticite .studio-poste-kpi__icon{
+  background:#e9f7e7;
+  color:#3f8f2f;
+}
+
+#modalCollaborateur .studio-poste-kpi__content{
+  display:block;
+  min-width:0;
+}
+
+#modalCollaborateur .studio-poste-kpi__label{
+  color:#475569;
+  font-size:var(--ns-text-sm, 0.8125rem);
+  font-weight:var(--ns-weight-semibold, 600);
+}
+
+#modalCollaborateur .studio-poste-kpi__content strong{
+  display:block;
+  margin-top:5px;
+  color:#111827;
+  font-size:var(--ns-title-lg, 1.5rem);
+  font-weight:var(--ns-weight-bold, 700);
+  line-height:var(--ns-leading-tight, 1.15);
+}
+
+#modalCollaborateur .studio-poste-kpi__content small{
+  display:block;
+  margin-top:5px;
+  color:#64748b;
+  font-size:var(--ns-text-xs, 0.75rem);
+  font-weight:var(--ns-weight-semibold, 600);
+}
+
+#modalCollaborateur .studio-poste-kpi--competences small{
+  color:#c2410c;
+}
+
+#modalCollaborateur .studio-poste-kpi--collabs small{
+  color:#6d28d9;
+}
+
+#modalCollaborateur .studio-poste-kpi--certifications small{
+  color:#2563eb;
+}
+
 #orgPostePage .studio-poste-overview-card .studio-rh-panel-title{
   font-size:var(--ns-text-lg, 0.9375rem);
 }
