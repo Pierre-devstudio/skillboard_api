@@ -648,56 +648,67 @@
   </div>
   </div>
   </div>
+  <div class="studio-poste-kpis org-rh-kpis">
+  <div class="studio-poste-kpi studio-poste-kpi--criticite">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Statut du poste</span><strong id="orgRhKpiStatut">—</strong></span>
+  </div>
+  <div class="studio-poste-kpi studio-poste-kpi--certifications">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Stratégie de pourvoi</span><strong id="orgRhKpiStrategie">—</strong></span>
+  </div>
+  <div class="studio-poste-kpi studio-poste-kpi--collabs">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Début de validité</span><strong id="orgRhKpiDateDebut">—</strong></span>
+  </div>
+  <div class="studio-poste-kpi studio-poste-kpi--competences">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Dernière mise à jour</span><strong id="orgRhKpiDateMaj">—</strong></span>
+  </div>
+  <div class="studio-poste-kpi studio-poste-kpi--certifications">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-criticality"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Criticité du poste</span><strong id="orgRhKpiCriticite">—</strong></span>
+  </div>
+  <div class="studio-poste-kpi studio-poste-kpi--criticite">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Nb titulaires cible</span><strong id="orgRhKpiNbTitulaires">—</strong></span>
+  </div>
+  </div>
   <div class="org-rh-view" id="orgRhView">
   <div class="org-rh-view-grid">
-  <div class="org-rh-sheet">
-  <table class="org-rh-view-table">
-  <tbody>
-  <tr>
-  <th>Statut du poste</th>
-  <td id="orgRhViewStatut">—</td>
-  </tr>
-  <tr>
-  <th>Stratégie de pourvoi</th>
-  <td id="orgRhViewStrategie">—</td>
-  </tr>
-  <tr>
-  <th>Début de validité</th>
-  <td id="orgRhViewDateDebut">—</td>
-  </tr>
-  <tr id="orgRhViewDateFinRow" style="display:none;">
-  <th>Fin de validité</th>
-  <td id="orgRhViewDateFin">—</td>
-  </tr>
-  <tr>
-  <th>Dernière mise à jour</th>
-  <td id="orgRhViewDateMaj">—</td>
-  </tr>
-  </tbody>
-  </table>
+  <section class="studio-rh-panel studio-poste-overview-card">
+  <div class="studio-poste-overview-card__head">
+  <span aria-hidden="true" class="studio-poste-overview-card__icon studio-poste-overview-card__icon--blue"><svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20"><use href="/novoskill_icons.svg#ns-icon-info"></use></svg></span>
+  <div class="studio-rh-panel-title">Informations générales</div>
   </div>
   <div class="org-rh-sheet">
   <table class="org-rh-view-table">
   <tbody>
-  <tr>
-  <th>Criticité du poste</th>
-  <td id="orgRhViewCriticite">—</td>
-  </tr>
-  <tr>
-  <th>Nb titulaires cible</th>
-  <td id="orgRhViewNbTitulaires">—</td>
-  </tr>
-  <tr>
-  <th>Source</th>
-  <td id="orgRhViewSource">—</td>
-  </tr>
-  <tr class="org-rh-view-table__comment-row">
-  <th>Commentaire</th>
-  <td class="org-rh-view-comment" id="orgRhViewCommentaire">—</td>
-  </tr>
+  <tr><th>Statut du poste</th><td id="orgRhViewStatut">—</td></tr>
+  <tr><th>Stratégie de pourvoi</th><td id="orgRhViewStrategie">—</td></tr>
+  <tr><th>Début de validité</th><td id="orgRhViewDateDebut">—</td></tr>
+  <tr id="orgRhViewDateFinRow" style="display:none;"><th>Fin de validité</th><td id="orgRhViewDateFin">—</td></tr>
+  <tr><th>Dernière mise à jour</th><td id="orgRhViewDateMaj">—</td></tr>
+  <tr><th>Source</th><td id="orgRhViewSource">—</td></tr>
+  <tr class="org-rh-view-table__comment-row"><th>Commentaire</th><td class="org-rh-view-comment" id="orgRhViewCommentaire">—</td></tr>
   </tbody>
   </table>
   </div>
+  </section>
+  <section class="studio-rh-panel studio-poste-overview-card">
+  <div class="studio-poste-overview-card__head">
+  <span aria-hidden="true" class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet"><svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20"><use href="/novoskill_icons.svg#ns-icon-organisation"></use></svg></span>
+  <div class="studio-rh-panel-title">Organisation et effectif</div>
+  </div>
+  <div class="org-rh-sheet">
+  <table class="org-rh-view-table">
+  <tbody>
+  <tr><th>Criticité du poste</th><td id="orgRhViewCriticite">—</td></tr>
+  <tr><th>Nb titulaires cible</th><td id="orgRhViewNbTitulaires">—</td></tr>
+  </tbody>
+  </table>
+  </div>
+  </section>
   </div>
   </div>
   <div class="org-rh-edit" id="orgRhEdit" style="display:none;">

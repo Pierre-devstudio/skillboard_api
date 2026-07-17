@@ -599,14 +599,28 @@
   }
 
   function _rhSyncViewFromCurrentForm(){
-    _setText("orgRhViewStatut", _rhSelectedText("orgRhStatut"));
-    _setText("orgRhViewCriticite", _rhSelectedText("orgRhCriticite"));
-    _setText("orgRhViewStrategie", _rhSelectedText("orgRhStrategie"));
-    _setText("orgRhViewNbTitulaires", byId("orgRhNbTitulaires")?.value || "");
-    _setText("orgRhViewDateDebut", formatDateOnly(byId("orgRhDateDebut")?.value || ""));
+    const statut = _rhSelectedText("orgRhStatut");
+    const criticite = _rhSelectedText("orgRhCriticite");
+    const strategie = _rhSelectedText("orgRhStrategie");
+    const nbTitulaires = byId("orgRhNbTitulaires")?.value || "";
+    const dateDebut = formatDateOnly(byId("orgRhDateDebut")?.value || "");
+    const dateMaj = byId("orgRhDateMaj")?.value || "";
+
+    _setText("orgRhViewStatut", statut);
+    _setText("orgRhViewCriticite", criticite);
+    _setText("orgRhViewStrategie", strategie);
+    _setText("orgRhViewNbTitulaires", nbTitulaires);
+    _setText("orgRhViewDateDebut", dateDebut);
     _setText("orgRhViewSource", byId("orgRhSource")?.value || "");
-    _setText("orgRhViewDateMaj", byId("orgRhDateMaj")?.value || "");
+    _setText("orgRhViewDateMaj", dateMaj);
     _setText("orgRhViewCommentaire", byId("orgRhCommentaire")?.value || "");
+
+    _setText("orgRhKpiStatut", statut);
+    _setText("orgRhKpiStrategie", strategie);
+    _setText("orgRhKpiDateDebut", dateDebut);
+    _setText("orgRhKpiDateMaj", dateMaj);
+    _setText("orgRhKpiCriticite", criticite);
+    _setText("orgRhKpiNbTitulaires", nbTitulaires);
 
     const finRow = byId("orgRhViewDateFinRow");
     const finVal = formatDateOnly(byId("orgRhDateFin")?.value || "");
