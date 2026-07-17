@@ -23944,6 +23944,10 @@ body{
   width:112px;
 }
 
+#orgPostePage #orgPosteCompTable td:nth-child(2){
+  font-size:var(--ns-text-md, 0.875rem);
+}
+
 #orgPostePage #orgPosteCompTable th:nth-child(3),
 #orgPostePage #orgPosteCompTable td:nth-child(3){
   width:150px;
