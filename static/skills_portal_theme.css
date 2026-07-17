@@ -2056,20 +2056,8 @@ textarea.sb-ctrl{
   line-height:var(--ns-leading-tight, 1.15);
 }
 
-#view-vos-collaborateurs .collab-preview-statusline{
-  display:flex;
-  align-items:center;
-  gap:6px;
+#view-vos-collaborateurs .collab-preview-identity .ns-collab-status{
   margin-top:5px;
-  color:var(--collab-muted);
-  font-size:var(--ns-text-xs, 0.75rem);
-}
-
-#view-vos-collaborateurs .collab-status-dot{
-  width:7px;
-  height:7px;
-  border-radius:999px;
-  background:#22c55e;
 }
 
 #view-vos-collaborateurs .collab-preview-fields{

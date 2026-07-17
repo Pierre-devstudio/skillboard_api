@@ -18,6 +18,12 @@
 }
 .ns-icon-use { display:inline-block; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; vertical-align:middle; }
 .ns-icon-use use { pointer-events:none; }
+.ns-collab-status { display:inline-flex; align-items:center; gap:.4rem; color:var(--ns-text-secondary); font-size:var(--ns-text-xs,.75rem); font-weight:var(--ns-weight-medium,500); line-height:var(--ns-leading-tight,1.15); white-space:nowrap; }
+.ns-collab-status__dot { width:7px; height:7px; flex:0 0 7px; border-radius:999px; background:var(--ns-neutral-text); }
+.ns-collab-status--active .ns-collab-status__dot { background:var(--ns-success-text); }
+.ns-collab-status--inactive .ns-collab-status__dot { background:var(--ns-neutral-text); }
+.ns-collab-status--unavailable .ns-collab-status__dot { background:var(--ns-danger-text); }
+.ns-collab-status--archived .ns-collab-status__dot { background:var(--ns-neutral-text); }
 .ns-badge { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-height:22px; padding:3px 10px; border-radius:999px; font-size:var(--ns-text-xs,.75rem); font-weight:var(--ns-weight-semibold,600); line-height:var(--ns-leading-tight,1.15); white-space:nowrap; border:1px solid transparent; box-sizing:border-box; }
 .ns-badge-status--success { color:var(--ns-success-text); background:var(--ns-success-bg); border-color:var(--ns-success-border); }
 .ns-badge-status--warning { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }

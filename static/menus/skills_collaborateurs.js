@@ -410,11 +410,13 @@
   }
 
   function getCollaborateurStatusLabel(it) {
+    if (it?.archive) return "Archivé";
     return it?.statut_actif ? "Actif" : "Inactif";
   }
 
   function getCollaborateurStatusClass(it) {
-    return it?.statut_actif ? "sb-badge--actif" : "sb-badge--inactif";
+    if (it?.archive) return "ns-collab-status--archived";
+    return it?.statut_actif ? "ns-collab-status--active" : "ns-collab-status--inactive";
   }
 
   function getCollaborateurRoleClass(role) {
@@ -518,7 +520,12 @@
     const fullName = getCollaborateurFullName(it);
     setText("collabPreviewAvatar", getCollaborateurInitials(it), "–");
     setText("collabPreviewName", fullName, "Collaborateur");
-    setText("collabPreviewStatusText", it.archive ? "Archivé" : (it.statut_actif ? "Actif" : "Inactif"));
+    const previewStatus = byId("collabPreviewStatus");
+    if (previewStatus) {
+      previewStatus.classList.remove("ns-collab-status--active", "ns-collab-status--inactive", "ns-collab-status--archived");
+      previewStatus.classList.add(getCollaborateurStatusClass(it));
+    }
+    setText("collabPreviewStatusText", getCollaborateurStatusLabel(it));
     setText("collabPreviewService", it.nom_service || (it.id_service ? it.id_service : "Non lié"));
     setText("collabPreviewPoste", it.intitule_poste || "–");
     setText("collabPreviewEntree", formatDateFR(it.date_entree_entreprise_effectif));
@@ -645,7 +652,7 @@
         </td>
         <td>${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non lié"))}</td>
         <td>${escapeHtml(it.intitule_poste || "–")}</td>
-        <td><span class="ns-badge sb-badge ${escapeHtml(statusCls)}">${escapeHtml(statusLabel || "–")}</span></td>
+        <td><span class="ns-collab-status ${escapeHtml(statusCls)}"><span class="ns-collab-status__dot" aria-hidden="true"></span><span>${escapeHtml(statusLabel || "–")}</span></span></td>
       `;
 
       tr.addEventListener("click", () => {
