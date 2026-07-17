@@ -141,14 +141,12 @@
   function _setPosteHeader(poste){
     const badge = byId("orgPosteModalBadge");
     const title = byId("orgPosteModalTitle");
-    const sub = byId("orgPostePageSub");
     const code = String(poste?.codif_client || poste?.codif_poste || "").trim();
     if (badge){
       badge.textContent = code;
       badge.style.display = code ? "" : "none";
     }
-    if (title) title.textContent = String(poste?.intitule_poste || "Poste").trim() || "Poste";
-    if (sub) sub.textContent = _serviceLabelForPoste(poste);
+    if (title) title.textContent = String(poste?.intitule_poste || "Poste").trim() || "Poste";    
   }
 
   function _criticalityLabel(value){
