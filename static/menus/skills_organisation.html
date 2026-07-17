@@ -343,9 +343,9 @@
   </aside>
   </div>
   </div>
-  <div class="sb-tab-panel" data-panel="def">
-  <div class="card org-poste-def-card sb-card-compact">
-  <div class="org-poste-def-head">
+  <div class="sb-tab-panel studio-poste-overview" data-panel="def">
+  <div class="org-poste-def-card">
+  <div class="studio-rh-panel studio-poste-overview-card org-poste-def-head">
   <div class="org-section-titleline">
   <span aria-hidden="true" class="org-section-titleline__icon">
   <svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20">
@@ -357,55 +357,42 @@
   </div>
   <span class="ns-badge ns-badge-role" id="orgPosteDefRespBadge" style="display:none;">Responsable</span>
   </div>
-  <div class="org-poste-def-meta">
-  <div class="info-item">
-  <span class="label">Service</span>
-  <strong class="value" id="orgPosteDefService">—</strong>
+  <div class="studio-poste-kpis org-poste-def-meta">
+  <div class="studio-poste-kpi studio-poste-kpi--collabs">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-organisation"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Service</span><strong id="orgPosteDefService">—</strong></span>
   </div>
-  <div class="info-item">
-  <span class="label">Code interne</span>
-  <strong class="value" id="orgPosteDefCodeInterne">—</strong>
+  <div class="studio-poste-kpi studio-poste-kpi--competences">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Code interne</span><strong id="orgPosteDefCodeInterne">—</strong></span>
   </div>
-  <div class="info-item">
-  <span class="label">Code Novoskill</span>
-  <strong class="value" id="orgPosteDefCodeNovoskill">—</strong>
+  <div class="studio-poste-kpi studio-poste-kpi--certifications">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-info"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Code Novoskill</span><strong id="orgPosteDefCodeNovoskill">—</strong></span>
   </div>
-  <div class="info-item">
-  <span class="label">Intitulé</span>
-  <strong class="value" id="orgPosteDefTitle">—</strong>
-  </div>
-  </div>
-  <div class="org-poste-def-section" id="orgPosteDefMissionWrap" style="display:none;">
-  <div class="org-poste-def-section__head">
-  <span aria-hidden="true" class="org-poste-def-section__icon">
-  <svg class="ns-icon-use" viewBox="0 0 24 24" width="18" height="18">
-  <use href="/novoskill_icons.svg#ns-icon-job">
-  </use>
-  </svg>
-  </span>
-  <div class="label">Mission principale</div>
-  </div>
-  <div class="value org-poste-def-mission" id="orgPosteDefMission">
+  <div class="studio-poste-kpi studio-poste-kpi--criticite">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-activity"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Intitulé</span><strong id="orgPosteDefTitle">—</strong></span>
   </div>
   </div>
-  <div class="org-poste-def-section" id="orgPosteDefRespWrap" style="display:none;">
-  <div class="org-poste-def-section__head">
-  <span aria-hidden="true" class="org-poste-def-section__icon">
-  <svg class="ns-icon-use" viewBox="0 0 24 24" width="18" height="18">
-  <use href="/novoskill_icons.svg#ns-icon-activity">
-  </use>
-  </svg>
-  </span>
-  <div class="label">Responsabilités</div>
+  <div class="studio-poste-overview-main">
+  <section class="studio-rh-panel studio-poste-overview-card org-poste-def-section" id="orgPosteDefMissionWrap" style="display:none;">
+  <div class="studio-poste-overview-card__head org-poste-def-section__head">
+  <span aria-hidden="true" class="studio-poste-overview-card__icon org-poste-def-section__icon"><svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg></span>
+  <div class="studio-rh-panel-title">Mission principale</div>
   </div>
-  <div class="value sb-richtext sb-richtext-readonly org-poste-def-resp" id="orgPosteDefResp">
+  <div class="studio-poste-overview-text value org-poste-def-mission" id="orgPosteDefMission"></div>
+  </section>
+  <section class="studio-rh-panel studio-poste-overview-card org-poste-def-section" id="orgPosteDefRespWrap" style="display:none;">
+  <div class="studio-poste-overview-card__head org-poste-def-section__head">
+  <span aria-hidden="true" class="studio-poste-overview-card__icon studio-poste-overview-card__icon--activities org-poste-def-section__icon"><svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20"><use href="/novoskill_icons.svg#ns-icon-activity"></use></svg></span>
+  <div class="studio-rh-panel-title">Responsabilités</div>
   </div>
+  <div class="value sb-richtext sb-richtext-readonly org-poste-def-resp" id="orgPosteDefResp"></div>
+  </section>
   </div>
-  <div class="card-sub" id="orgPosteDefEmpty" style="margin-top:10px; display:none;">
-                Aucune description renseignée.
-              </div>
-  <div class="org-poste-def-date" id="orgPosteDefDate" style="display:none;">
-  </div>
+  <div class="card-sub" id="orgPosteDefEmpty" style="margin-top:10px; display:none;">Aucune description renseignée.</div>
+  <div class="org-poste-def-date" id="orgPosteDefDate" style="display:none;"></div>
   </div>
   </div>
   <!-- Exigences -->

@@ -23652,13 +23652,14 @@ body{
    Votre organisation — Modal poste : Définition / Exigences
    ====================================================== */
 #orgPostePage .org-poste-def-card{
-  padding:18px;
+  padding:0;
+  border:0;
+  box-shadow:none;
 }
 
 #orgPostePage .org-poste-def-head{
-  padding-bottom:12px;
-  border-bottom:1px solid #e5e7eb;
-  margin-bottom:12px;
+  align-items:center;
+  margin-bottom:0;
 }
 
 #orgPostePage .org-poste-def-section{
@@ -23666,51 +23667,39 @@ body{
 }
 
 #orgPostePage #orgPosteDefMissionWrap{
-  padding-bottom:6px;
-  border-bottom:1px solid #e5e7eb;
+  padding-bottom:14px;
 }
 
 #orgPostePage #orgPosteDefRespWrap{
   margin-top:0;
-  padding:4px 0 0;
+  padding-top:14px;
 }
 
 #orgPostePage .org-poste-def-section__head{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin:0 0 4px 0;
+  margin:0 0 10px 0;
 }
 
 #orgPostePage #orgPosteDefRespWrap .org-poste-def-section__head{
-  margin-bottom:10px;
+  margin-bottom:12px;
 }
 
 #orgPostePage .org-poste-def-section__head .label{
   margin:0;
-  color:#1f2937;
-  font-size:var(--ns-text-sm, 0.8125rem);
-  font-weight:var(--ns-weight-semibold, 600);
-  line-height:var(--ns-leading-tight, 1.15);
 }
 
 #orgPostePage .org-poste-def-section__icon{
-  width:20px;
-  height:20px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  color:var(--accent);
-  flex:0 0 20px;
+  flex:0 0 auto;
 }
 
 
 #orgPostePage .org-poste-def-mission{
-  padding-left:28px;
-  color:#111827;
+  padding:12px 14px;
+  border-radius:10px;
+  background:#f8fafc;
+  color:#334155;
   font-size:var(--ns-text-md, 0.875rem);
   font-weight:var(--ns-weight-regular, 400);
-  line-height:var(--ns-leading-body, 1.5);
+  line-height:var(--ns-leading-long, 1.6);
   white-space:pre-wrap;
 }
 
@@ -23737,22 +23726,23 @@ body{
 #orgPostePage .org-poste-def-resp ol > li{
   counter-increment:orgResp;
   position:relative;
-  margin:0;
-  padding:0 0 7px 36px;
-  border-bottom:1px solid #e5e7eb;
+  margin:0 0 10px 0;
+  padding:14px 16px 14px 48px;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  background:#fff;
   font-weight:var(--ns-weight-semibold, 600);
 }
 
 #orgPostePage .org-poste-def-resp ol > li:last-child{
-  border-bottom:0;
-  padding-bottom:0;
+  margin-bottom:0;
 }
 
 #orgPostePage .org-poste-def-resp ol > li::before{
   content:counter(orgResp);
   position:absolute;
-  left:0;
-  top:-2px;
+  left:14px;
+  top:12px;
   width:22px;
   height:22px;
   border-radius:999px;
