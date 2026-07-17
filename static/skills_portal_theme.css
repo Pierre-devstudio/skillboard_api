@@ -23657,11 +23657,6 @@ body{
   box-shadow:none;
 }
 
-#orgPostePage .org-poste-def-head{
-  align-items:center;
-  margin-bottom:0;
-}
-
 #orgPostePage .org-poste-def-section{
   margin:0;
 }
@@ -23731,6 +23726,7 @@ body{
   border:1px solid #e5e7eb;
   border-radius:14px;
   background:#fff;
+  font-size:var(--ns-text-md, 0.875rem);
   font-weight:var(--ns-weight-semibold, 600);
 }
 
@@ -23761,6 +23757,7 @@ body{
   gap:5px 32px;
   margin:8px 0 0 0;
   padding:0;
+  font-size:var(--ns-text-sm, 0.8125rem);
   font-weight:var(--ns-weight-regular, 400);
 }
 
