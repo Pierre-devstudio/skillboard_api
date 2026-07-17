@@ -11,6 +11,10 @@
   --ns-danger-text: #991b1b; --ns-danger-bg: #fef2f2; --ns-danger-border: #fecaca;
   --ns-info-text: #1e40af; --ns-info-bg: #eff6ff; --ns-info-border: #bfdbfe;
   --ns-neutral-text: #475569; --ns-neutral-bg: #f8fafc; --ns-neutral-border: #cbd5e1;
+  --ns-criticality-low-text: #6d28d9; --ns-criticality-low-bg: #faf5ff; --ns-criticality-low-border: #e9d5ff;
+  --ns-criticality-moderate-text: #6d28d9; --ns-criticality-moderate-bg: #f3e8ff; --ns-criticality-moderate-border: #d8b4fe;
+  --ns-criticality-high-text: #5b21b6; --ns-criticality-high-bg: #ede9fe; --ns-criticality-high-border: #c4b5fd;
+  --ns-criticality-critical-text: #4c1d95; --ns-criticality-critical-bg: #ddd6fe; --ns-criticality-critical-border: #8b5cf6;
 }
 .ns-icon-use { display:inline-block; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; vertical-align:middle; }
 .ns-icon-use use { pointer-events:none; }
@@ -30,10 +34,10 @@
 .ns-badge-level--intermediate { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }
 .ns-badge-level--advanced { color:var(--ns-info-text); background:var(--ns-info-bg); border-color:var(--ns-info-border); }
 .ns-badge-level--expert { color:var(--ns-success-text); background:var(--ns-success-bg); border-color:var(--ns-success-border); }
-.ns-badge-criticality--low { color:var(--ns-success-text); background:var(--ns-success-bg); border-color:var(--ns-success-border); }
-.ns-badge-criticality--moderate { color:var(--ns-info-text); background:var(--ns-info-bg); border-color:var(--ns-info-border); }
-.ns-badge-criticality--high { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }
-.ns-badge-criticality--critical { color:var(--ns-danger-text); background:var(--ns-danger-bg); border-color:var(--ns-danger-border); }
+.ns-badge-criticality--low { color:var(--ns-criticality-low-text); background:var(--ns-criticality-low-bg); border-color:var(--ns-criticality-low-border); }
+.ns-badge-criticality--moderate { color:var(--ns-criticality-moderate-text); background:var(--ns-criticality-moderate-bg); border-color:var(--ns-criticality-moderate-border); }
+.ns-badge-criticality--high { color:var(--ns-criticality-high-text); background:var(--ns-criticality-high-bg); border-color:var(--ns-criticality-high-border); }
+.ns-badge-criticality--critical { color:var(--ns-criticality-critical-text); background:var(--ns-criticality-critical-bg); border-color:var(--ns-criticality-critical-border); }
 .ns-badge-role { color:var(--ns-info-text); background:var(--ns-info-bg); border-color:var(--ns-info-border); }
 .ns-badge-requirement { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }
 .ns-badge-category { color:var(--ns-neutral-text); background:var(--ns-neutral-bg); border-color:var(--ns-neutral-border); }
