@@ -639,22 +639,147 @@
     return "";
   }
 
+  function _ccnParseJson(value){
+    if (!value) return null;
+    if (typeof value === "object") return value;
+    if (typeof value !== "string") return null;
+    try { return JSON.parse(value); } catch (_) { return null; }
+  }
+
+  function _ccnFirstValue(objects, keys){
+    for (const obj of objects){
+      if (!obj || typeof obj !== "object") continue;
+      for (const key of keys){
+        const value = obj[key];
+        if (value !== null && value !== undefined && String(value).trim() !== "") return value;
+      }
+    }
+    return "";
+  }
+
+  function _ccnCriteria(ccn){
+    const sources = [
+      ccn,
+      _ccnParseJson(ccn?.validation_json),
+      _ccnParseJson(ccn?.proposition_json),
+      _ccnParseJson(ccn?.validation),
+      _ccnParseJson(ccn?.proposition),
+      _ccnParseJson(ccn?.analysis)
+    ].filter(Boolean);
+    const arrayKeys = ["grille_justification", "grille", "criteres", "criteria", "details", "justifications", "items", "rows"];
+    for (const source of sources){
+      for (const key of arrayKeys){
+        if (Array.isArray(source?.[key])) return source[key];
+      }
+      for (const nestedKey of ["analysis", "proposition", "validation", "resultat"]){
+        const nested = _ccnParseJson(source?.[nestedKey]);
+        if (!nested) continue;
+        for (const key of arrayKeys){
+          if (Array.isArray(nested?.[key])) return nested[key];
+        }
+      }
+    }
+    return [];
+  }
+
+  function _ccnNormalizeCriterion(row){
+    const source = row && typeof row === "object" ? row : {};
+    return {
+      label: _pickFirstString(source, ["critere", "criterion", "libelle", "label", "nom", "titre", "bonification"]) || "—",
+      level: _pickFirstString(source, ["niveau", "level", "degre", "degree", "marche", "valeur_niveau"]) || "—",
+      points: _pickFirstString(source, ["points", "score", "points_calcules", "total_points", "valeur_points"]) || "—",
+      justification: _pickFirstString(source, ["justification", "motif", "explanation", "commentaire", "rationale", "detail"]) || "—"
+    };
+  }
+
+  function _ccnRenderCriteria(ccn, objects){
+    const body = byId("orgCcnCriteriaBody");
+    if (!body) return;
+    const rows = _ccnCriteria(ccn).map(_ccnNormalizeCriterion);
+    body.innerHTML = "";
+    if (!rows.length){
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.className = "org-ccn-empty";
+      td.textContent = "Aucune grille de justification disponible.";
+      tr.appendChild(td);
+      body.appendChild(tr);
+    } else {
+      rows.forEach(row => {
+        const tr = document.createElement("tr");
+        const label = document.createElement("td");
+        label.textContent = row.label;
+        label.className = "org-ccn-criterion-label";
+        const level = document.createElement("td");
+        const levelBadge = document.createElement("span");
+        levelBadge.className = "ns-badge ns-badge-status ns-badge-status--info";
+        levelBadge.textContent = row.level;
+        level.appendChild(levelBadge);
+        const points = document.createElement("td");
+        points.textContent = row.points;
+        points.className = "col-center org-ccn-points";
+        const justification = document.createElement("td");
+        justification.textContent = row.justification;
+        justification.className = "org-ccn-criterion-justification";
+        tr.append(label, level, points, justification);
+        body.appendChild(tr);
+      });
+    }
+    const total = _ccnFirstValue(objects, ["points_calcules", "total_points", "points", "score_total", "score"]);
+    _setText("orgCcnTotalPoints", total || "—");
+  }
+
   function fillPosteCotationTab(detail){
     const ccn = detail?.ccn || {};
+    const validation = _ccnParseJson(ccn?.validation_json) || _ccnParseJson(ccn?.validation) || {};
+    const proposition = _ccnParseJson(ccn?.proposition_json) || _ccnParseJson(ccn?.proposition) || {};
+    const objects = [ccn, validation, proposition];
     const status = String(ccn?.statut || "none").trim().toLowerCase();
     const statusLabel = status === "validated" ? "Validée" : status === "draft" ? "Brouillon" : status === "unsupported" ? "Convention non supportée" : "Aucune cotation";
     const result = String(ccn?.resultat || "").trim() || "—";
-    const category = String(ccn?.categorie || "").trim() || "—";
-    const justification = String(ccn?.justification || "").trim() || "—";
-    const convention = [ccn?.convention_label, ccn?.version_label].map(value => String(value || "").trim()).filter(Boolean).join(" · ") || "—";
+    const category = String(_ccnFirstValue(objects, ["categorie", "categorie_professionnelle", "category"]) || "").trim() || "—";
+    const justification = String(_ccnFirstValue(objects, ["justification", "justification_retenue", "justification_ia", "synthese"]) || "").trim() || "—";
+    const conventionLabel = String(ccn?.convention_label || "").trim() || "—";
+    const versionLabel = String(ccn?.version_label || "").trim() || "—";
+    const idcc = String(_ccnFirstValue(objects, ["idcc"]) || "").trim();
     const dateMaj = formatDateOnly(ccn?.date_maj) || "—";
+    const validatedBy = String(_ccnFirstValue(objects, ["validated_by", "updated_by_name", "validateur", "auteur", "updated_by"]) || "").trim() || "—";
 
-    _setText("orgCcnConvention", convention);
+    let coefficient = String(_ccnFirstValue(objects, ["coefficient", "coefficient_retenu", "coef"]) || "").trim();
+    let palier = String(_ccnFirstValue(objects, ["palier", "palier_retenu", "niveau_retenu"]) || "").trim();
+    if ((!coefficient || !palier) && result !== "—"){
+      const coefMatch = result.match(/(?:coef(?:ficient)?\.?)[^0-9]*([0-9]+)/i);
+      const palierMatch = result.match(/palier[^0-9]*([0-9]+)/i);
+      if (!coefficient && coefMatch) coefficient = coefMatch[1];
+      if (!palier && palierMatch) palier = palierMatch[1];
+    }
+    coefficient = coefficient || "—";
+    palier = palier || "—";
+
+    _setText("orgCcnKpiConvention", idcc ? `IDCC ${idcc}` : conventionLabel);
+    _setText("orgCcnKpiConventionMeta", conventionLabel);
+    _setText("orgCcnKpiReferentiel", versionLabel);
+    _setText("orgCcnKpiReferentielMeta", versionLabel === "—" ? "—" : "Référentiel utilisé");
+    _setText("orgCcnKpiStatus", statusLabel);
+    _setText("orgCcnKpiStatusMeta", status === "validated" ? `Depuis le ${dateMaj}` : "—");
+    _setText("orgCcnKpiCategory", category);
+    _setText("orgCcnKpiResult", coefficient !== "—" ? `Coef. ${coefficient}` : result);
+    _setText("orgCcnKpiResultMeta", palier !== "—" ? `Palier ${palier}` : "—");
+    _setText("orgCcnKpiDateMaj", dateMaj);
+    _setText("orgCcnKpiAuthor", validatedBy);
+
+    _setText("orgCcnConvention", [idcc ? `IDCC ${idcc}` : "", conventionLabel].filter(Boolean).join(" · ") || "—");
+    _setText("orgCcnReferentiel", versionLabel);
     _setText("orgCcnStatus", statusLabel);
-    _setText("orgCcnResult", result);
+    _setText("orgCcnCoefficient", coefficient);
+    _setText("orgCcnPalier", palier);
     _setText("orgCcnCategory", category);
     _setText("orgCcnDateMaj", dateMaj);
+    _setText("orgCcnValidatedBy", validatedBy);
     _setText("orgCcnJustification", justification);
+    _setText("orgCcnGridTitle", idcc ? `Grille de justification (référentiel IDCC ${idcc})` : "Grille de justification");
+    _ccnRenderCriteria(ccn, objects);
 
     const summary = status === "validated"
       ? [result, category !== "—" ? category : ""].filter(Boolean).join(" · ")

@@ -773,42 +773,78 @@
   </span>
   <div class="card-title">Cotation conventionnelle</div>
   </div>
-  <div class="org-ccn-grid">
-  <div class="org-rh-sheet">
-  <table class="org-rh-view-table">
-  <tbody>
-  <tr>
-  <th>Convention</th>
-  <td id="orgCcnConvention">—</td>
-  </tr>
-  <tr>
-  <th>État</th>
-  <td id="orgCcnStatus">—</td>
-  </tr>
-  <tr>
-  <th>Résultat retenu</th>
-  <td id="orgCcnResult">—</td>
-  </tr>
-  <tr>
-  <th>Catégorie professionnelle</th>
-  <td id="orgCcnCategory">—</td>
-  </tr>
-  <tr>
-  <th>Dernière mise à jour</th>
-  <td id="orgCcnDateMaj">—</td>
-  </tr>
-  </tbody>
-  </table>
+
+  <div class="studio-poste-kpis org-ccn-kpis">
+  <div class="studio-poste-kpi studio-poste-kpi--competences">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-ccn"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Convention</span><strong id="orgCcnKpiConvention">—</strong><small class="studio-poste-kpi__label" id="orgCcnKpiConventionMeta">—</small></span>
   </div>
-  <div class="info-item org-ccn-justification">
-  <div class="label">Justification enregistrée</div>
-  <div class="value org-poste-overview-text" id="orgCcnJustification">—</div>
+  <div class="studio-poste-kpi studio-poste-kpi--certifications">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-info"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Référentiel</span><strong id="orgCcnKpiReferentiel">—</strong><small class="studio-poste-kpi__label" id="orgCcnKpiReferentielMeta">—</small></span>
   </div>
+  <div class="studio-poste-kpi studio-poste-kpi--collabs">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Statut</span><strong id="orgCcnKpiStatus">—</strong><small class="studio-poste-kpi__label" id="orgCcnKpiStatusMeta">—</small></span>
   </div>
+  <div class="studio-poste-kpi studio-poste-kpi--criticite">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Catégorie professionnelle</span><strong id="orgCcnKpiCategory">—</strong></span>
   </div>
+  <div class="studio-poste-kpi studio-poste-kpi--competences">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-analysis"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Résultat retenu</span><strong id="orgCcnKpiResult">—</strong><small class="studio-poste-kpi__label" id="orgCcnKpiResultMeta">—</small></span>
+  </div>
+  <div class="studio-poste-kpi studio-poste-kpi--certifications">
+  <span aria-hidden="true" class="studio-poste-kpi__icon"><svg class="ns-icon-use" viewBox="0 0 24 24"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg></span>
+  <span class="studio-poste-kpi__content"><span class="studio-poste-kpi__label">Dernière mise à jour</span><strong id="orgCcnKpiDateMaj">—</strong><small class="studio-poste-kpi__label" id="orgCcnKpiAuthor">—</small></span>
   </div>
   </div>
 
+  <section class="studio-rh-panel studio-poste-overview-card org-ccn-recommendation">
+  <div class="studio-poste-overview-card__head">
+  <span aria-hidden="true" class="studio-poste-overview-card__icon studio-poste-overview-card__icon--blue"><svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20"><use href="/novoskill_icons.svg#ns-icon-info"></use></svg></span>
+  <div class="studio-rh-panel-title">Justification enregistrée</div>
+  </div>
+  <div class="studio-poste-overview-text" id="orgCcnJustification">—</div>
+  </section>
+
+  <div class="org-ccn-reading-grid">
+  <section class="studio-rh-panel studio-poste-overview-card org-ccn-criteria-card">
+  <div class="studio-poste-overview-card__head">
+  <span aria-hidden="true" class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet"><svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg></span>
+  <div class="studio-rh-panel-title" id="orgCcnGridTitle">Grille de justification</div>
+  </div>
+  <div class="table-wrap org-ccn-table-wrap">
+  <table class="sb-table sb-table--airy sb-table--zebra org-ccn-table">
+  <thead><tr><th>Critère / Bonification</th><th>Niveau</th><th>Points</th><th>Justification</th></tr></thead>
+  <tbody id="orgCcnCriteriaBody"><tr><td colspan="4" class="org-ccn-empty">Aucune grille de justification disponible.</td></tr></tbody>
+  <tfoot><tr><th colspan="2">Total des points</th><th id="orgCcnTotalPoints">—</th><th></th></tr></tfoot>
+  </table>
+  </div>
+  </section>
+
+  <aside class="studio-rh-panel studio-poste-overview-card org-ccn-summary-card">
+  <div class="studio-poste-overview-card__head">
+  <span aria-hidden="true" class="studio-poste-overview-card__icon studio-poste-overview-card__icon--ccn"><svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20"><use href="/novoskill_icons.svg#ns-icon-ccn"></use></svg></span>
+  <div class="studio-rh-panel-title">Synthèse de la cotation</div>
+  </div>
+  <div class="org-rh-sheet">
+  <table class="org-rh-view-table"><tbody>
+  <tr><th>Coefficient retenu</th><td id="orgCcnCoefficient">—</td></tr>
+  <tr><th>Palier retenu</th><td id="orgCcnPalier">—</td></tr>
+  <tr><th>Catégorie professionnelle</th><td id="orgCcnCategory">—</td></tr>
+  <tr><th>Convention</th><td id="orgCcnConvention">—</td></tr>
+  <tr><th>Référentiel</th><td id="orgCcnReferentiel">—</td></tr>
+  <tr><th>Statut</th><td id="orgCcnStatus">—</td></tr>
+  <tr><th>Validée le</th><td id="orgCcnDateMaj">—</td></tr>
+  <tr><th>Validée par</th><td id="orgCcnValidatedBy">—</td></tr>
+  </tbody></table>
+  </div>
+  </aside>
+  </div>
+  </div>
+  </div>
   </div>
   </div>
 
