@@ -129,6 +129,13 @@
   </svg>
   <span>Exigences</span>
   </button>
+  <button aria-selected="false" class="studio-poste-nav-btn" data-tab="comp" role="tab" type="button">
+  <svg aria-hidden="true" class="ns-icon-use" viewBox="0 0 24 24" width="18" height="18">
+  <use href="/novoskill_icons.svg#ns-icon-competence">
+  </use>
+  </svg>
+  <span>Compétences</span>
+  </button>
   <button aria-selected="false" class="studio-poste-nav-btn" data-tab="rh" role="tab" type="button">
   <svg aria-hidden="true" class="ns-icon-use" viewBox="0 0 24 24" width="18" height="18">
   <use href="/novoskill_icons.svg#ns-icon-settings">
@@ -256,7 +263,7 @@
   </div>
   <div class="studio-poste-overview-list" id="orgPosteOverviewCompList">
   </div>
-  <button class="sb-btn sb-btn--soft studio-poste-overview-link" data-go-tab="exi" type="button">Voir toutes les compétences</button>
+  <button class="sb-btn sb-btn--soft studio-poste-overview-link" data-go-tab="comp" type="button">Voir toutes les compétences</button>
   </section>
   <section class="studio-rh-panel studio-poste-overview-card">
   <div class="studio-poste-overview-card__head">
@@ -482,6 +489,45 @@
   <div class="org-section-titleline">
   <span aria-hidden="true" class="org-section-titleline__icon">
   <svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20">
+  <use href="/novoskill_icons.svg#ns-icon-certification">
+  </use>
+  </svg>
+  </span>
+  <div class="card-title" style="margin:0;">Certifications requises</div>
+  </div>
+  <div class="table-wrap org-exi-table-wrap">
+  <table class="sb-table" id="orgPosteCertTable">
+  <thead>
+  <tr>
+  <th>Certification</th>
+  <th style="width:170px;">Catégorie</th>
+  <th style="width:120px; text-align:center;">Validité</th>
+  <th style="width:120px; text-align:center;">Exigence</th>
+  <th style="width:58px;">
+  </th>
+  </tr>
+  </thead>
+  <tbody id="orgPosteCertTbody">
+  </tbody>
+  </table>
+  </div>
+  <div class="org-exi-empty" id="orgPosteCertEmpty" style="display:none;">
+  <span aria-hidden="true" class="org-exi-empty__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24" width="18" height="18">
+  <use href="/novoskill_icons.svg#ns-icon-certification">
+  </use>
+  </svg>
+  </span>
+  <span>Aucune certification requise pour ce poste.</span>
+  </div>
+  </div>
+  </div>
+  <!-- Compétences -->
+  <div class="sb-tab-panel" data-panel="comp">
+  <div class="card sb-card-compact org-exi-card org-exi-table-card">
+  <div class="org-section-titleline">
+  <span aria-hidden="true" class="org-section-titleline__icon">
+  <svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20">
   <use href="/novoskill_icons.svg#ns-icon-competence">
   </use>
   </svg>
@@ -516,42 +562,6 @@
   </svg>
   </span>
   <span>Aucune compétence requise pour ce poste.</span>
-  </div>
-  </div>
-  <div class="card sb-card-compact org-exi-card org-exi-table-card">
-  <div class="org-section-titleline">
-  <span aria-hidden="true" class="org-section-titleline__icon">
-  <svg class="ns-icon-use" viewBox="0 0 24 24" width="20" height="20">
-  <use href="/novoskill_icons.svg#ns-icon-certification">
-  </use>
-  </svg>
-  </span>
-  <div class="card-title" style="margin:0;">Certifications requises</div>
-  </div>
-  <div class="table-wrap org-exi-table-wrap">
-  <table class="sb-table" id="orgPosteCertTable">
-  <thead>
-  <tr>
-  <th>Certification</th>
-  <th style="width:170px;">Catégorie</th>
-  <th style="width:120px; text-align:center;">Validité</th>
-  <th style="width:120px; text-align:center;">Exigence</th>
-  <th style="width:58px;">
-  </th>
-  </tr>
-  </thead>
-  <tbody id="orgPosteCertTbody">
-  </tbody>
-  </table>
-  </div>
-  <div class="org-exi-empty" id="orgPosteCertEmpty" style="display:none;">
-  <span aria-hidden="true" class="org-exi-empty__icon">
-  <svg class="ns-icon-use" viewBox="0 0 24 24" width="18" height="18">
-  <use href="/novoskill_icons.svg#ns-icon-certification">
-  </use>
-  </svg>
-  </span>
-  <span>Aucune certification requise pour ce poste.</span>
   </div>
   </div>
   </div>
