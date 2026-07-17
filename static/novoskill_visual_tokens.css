@@ -11,6 +11,7 @@
   --ns-danger-text: #991b1b; --ns-danger-bg: #fef2f2; --ns-danger-border: #fecaca;
   --ns-info-text: #1e40af; --ns-info-bg: #eff6ff; --ns-info-border: #bfdbfe;
   --ns-neutral-text: #475569; --ns-neutral-bg: #f8fafc; --ns-neutral-border: #cbd5e1;
+  --ns-status-active: #22c55e;
   --ns-criticality-low-text: #6d28d9; --ns-criticality-low-bg: #faf5ff; --ns-criticality-low-border: #e9d5ff;
   --ns-criticality-moderate-text: #6d28d9; --ns-criticality-moderate-bg: #f3e8ff; --ns-criticality-moderate-border: #d8b4fe;
   --ns-criticality-high-text: #5b21b6; --ns-criticality-high-bg: #ede9fe; --ns-criticality-high-border: #c4b5fd;
@@ -20,7 +21,7 @@
 .ns-icon-use use { pointer-events:none; }
 .ns-collab-status { display:inline-flex; align-items:center; gap:.4rem; color:var(--ns-text-secondary); font-size:var(--ns-text-xs,.75rem); font-weight:var(--ns-weight-medium,500); line-height:var(--ns-leading-tight,1.15); white-space:nowrap; }
 .ns-collab-status__dot { width:7px; height:7px; flex:0 0 7px; border-radius:999px; background:var(--ns-neutral-text); }
-.ns-collab-status--active .ns-collab-status__dot { background:var(--ns-success-text); }
+.ns-collab-status--active .ns-collab-status__dot { background:var(--ns-status-active); }
 .ns-collab-status--inactive .ns-collab-status__dot { background:var(--ns-neutral-text); }
 .ns-collab-status--unavailable .ns-collab-status__dot { background:var(--ns-danger-text); }
 .ns-collab-status--archived .ns-collab-status__dot { background:var(--ns-neutral-text); }
