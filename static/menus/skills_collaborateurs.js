@@ -757,7 +757,11 @@
     if (body) {
       body.innerHTML = `
         <div class="sb-collab-modal-nav" role="tablist" aria-label="Onglets collaborateur">
-          <button type="button" class="sb-collab-nav-btn" data-tab="ident" role="tab" aria-selected="true">
+          <button type="button" class="sb-collab-nav-btn" data-tab="overview" role="tab" aria-selected="true">
+            ${collabIcon("trend")}
+            <span>Vue d’ensemble</span>
+          </button>
+          <button type="button" class="sb-collab-nav-btn" data-tab="ident" role="tab" aria-selected="false">
             ${collabIcon("user")}
             <span>Identification</span>
           </button>
@@ -775,7 +779,13 @@
           </button>
         </div>
 
-        <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
+        <div class="sb-tab-panel is-active" data-panel="overview" role="tabpanel">
+          <div id="collabOverviewPanel">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
+          </div>
+        </div>
+
+        <div class="sb-tab-panel" data-panel="ident" role="tabpanel">
           <div id="collabIdentPanel" class="sb-collab-ident-panel">
             <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
@@ -907,7 +917,7 @@
       });
 
       // sécurité: force l’onglet par défaut à chaque ouverture
-      setActiveTab("ident");
+      setActiveTab("overview");
 
       // Accordéons (Historique)
       const accHeads = Array.from(body.querySelectorAll(".sb-acc-head[data-acc]"));
@@ -1143,6 +1153,137 @@
       });
 
 
+
+      // Chargement Vue d’ensemble
+      const overviewHost = body.querySelector("#collabOverviewPanel");
+      if (overviewHost) {
+        const id_contact = window.portal?.contactId;
+
+        if (!id_contact || !it?.id_effectif) {
+          overviewHost.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur : identifiants manquants.</div>`;
+        } else {
+          Promise.all([
+            loadIdentification(id_contact, it.id_effectif),
+            loadCompetences(id_contact, it.id_effectif),
+            loadCertifications(id_contact, it.id_effectif),
+          ])
+            .then(async ([ident, skillsData, certsData]) => {
+              const skills = Array.isArray(skillsData?.items) ? skillsData.items : [];
+              const certs = Array.isArray(certsData?.items) ? certsData.items : [];
+              const requiredSkills = skills.filter(x => !!x?.is_required);
+
+              const order = { A: 1, B: 2, C: 3, D: 4 };
+              const levelKey = (v) => (window.NovoskillLevels && typeof window.NovoskillLevels.key === "function")
+                ? window.NovoskillLevels.key(v)
+                : String(v || "").trim().toUpperCase().slice(0, 1);
+
+              const validatedSkills = requiredSkills.filter(x => {
+                const current = levelKey(x?.niveau_actuel);
+                const required = levelKey(x?.niveau_requis);
+                return !!current && !!required && (order[current] || 0) >= (order[required] || 0);
+              }).length;
+
+              const notEvaluatedSkills = requiredSkills.filter(x => !String(x?.niveau_actuel || "").trim()).length;
+              const skillsToStrengthen = Math.max(0, requiredSkills.length - validatedSkills - notEvaluatedSkills);
+              const acquiredCerts = certs.filter(x => !!x?.is_acquired).length;
+              const certsToWatch = certs.filter(x => ["a_renouveler", "expiree"].includes(String(x?.statut_validite || "").toLowerCase())).length;
+
+              let unavailableToday = false;
+              try {
+                unavailableToday = await isEffectifIndispoToday(id_contact, it.id_effectif);
+              } catch (_) {}
+
+              const roles = [];
+              if (ident?.ismanager) roles.push("Manager");
+              if (ident?.isformateur) roles.push("Formateur");
+              if (ident?.is_temp) roles.push("Temporaire");
+
+              const statusLabel = ident?.archive
+                ? "Archivé"
+                : (ident?.statut_actif ? (unavailableToday ? "Indisponible" : "Actif") : "Inactif");
+
+              overviewHost.innerHTML = `
+                <div class="sb-collab-summary-strip">
+                  ${renderModalSummaryItem("building", "Service", ident?.nom_service || "Non lié")}
+                  ${renderModalSummaryItem("briefcase", "Poste actuel", ident?.intitule_poste || "–")}
+                  ${renderModalSummaryItem("contract", "Type de contrat", ident?.type_contrat || "–")}
+                  ${renderModalSummaryItem("calendar", "Date d’entrée", formatDateFR(ident?.date_entree_entreprise_effectif))}
+                </div>
+
+                <div class="sb-collab-metrics">
+                  <div class="sb-collab-metric sb-collab-metric--red">
+                    <span aria-hidden="true">${collabIcon("contract")}</span>
+                    <strong>${requiredSkills.length}</strong>
+                    <em>Compétences requises<br>par le poste</em>
+                  </div>
+                  <div class="sb-collab-metric sb-collab-metric--blue">
+                    <span aria-hidden="true">${collabIcon("skills")}</span>
+                    <strong>${validatedSkills}</strong>
+                    <em>Compétences validées<br>au niveau requis</em>
+                  </div>
+                  <div class="sb-collab-metric sb-collab-metric--green">
+                    <span aria-hidden="true">${collabIcon("certs")}</span>
+                    <strong>${acquiredCerts}</strong>
+                    <em>Certifications<br>acquises</em>
+                  </div>
+                </div>
+
+                <div class="sb-collab-block">
+                  <div class="sb-collab-block-title">
+                    <span aria-hidden="true">${collabIcon("user")}</span>
+                    Situation actuelle
+                  </div>
+                  <div class="sb-collab-grid">
+                    <div class="sb-field">
+                      <div class="sb-label">Statut</div>
+                      <div>${escapeHtml(statusLabel)}</div>
+                    </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Rôles</div>
+                      <div>${escapeHtml(roles.join(" · ") || "Aucun rôle spécifique")}</div>
+                    </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Début dans le poste</div>
+                      <div>${escapeHtml(formatDateFR(ident?.date_debut_poste_actuel))}</div>
+                    </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Sortie prévue</div>
+                      <div>${escapeHtml(formatDateFR(ident?.date_sortie_prevue))}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sb-collab-block">
+                  <div class="sb-collab-block-title">
+                    <span aria-hidden="true">${collabIcon("trend")}</span>
+                    Points à suivre
+                  </div>
+                  <div class="sb-collab-metrics">
+                    <div class="sb-collab-metric sb-collab-metric--red">
+                      <span aria-hidden="true">${collabIcon("skills")}</span>
+                      <strong>${skillsToStrengthen}</strong>
+                      <em>Compétences<br>à renforcer</em>
+                    </div>
+                    <div class="sb-collab-metric sb-collab-metric--blue">
+                      <span aria-hidden="true">${collabIcon("audit")}</span>
+                      <strong>${notEvaluatedSkills}</strong>
+                      <em>Compétences requises<br>non évaluées</em>
+                    </div>
+                    <div class="sb-collab-metric sb-collab-metric--green">
+                      <span aria-hidden="true">${collabIcon("calendar")}</span>
+                      <strong>${certsToWatch}</strong>
+                      <em>Certifications<br>à surveiller</em>
+                    </div>
+                  </div>
+                </div>
+              `;
+            })
+            .catch(e => {
+              overviewHost.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement vue d’ensemble : ${escapeHtml(e.message || String(e))}</div>`;
+              console.error(e);
+            });
+        }
+      }
 
       // Chargement Identification (API) + rendu
       const identHost = body.querySelector("#collabIdentPanel");
