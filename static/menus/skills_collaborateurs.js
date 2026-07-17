@@ -756,29 +756,6 @@
 
     if (body) {
       body.innerHTML = `
-        <div class="sb-collab-modal-nav" role="tablist" aria-label="Onglets collaborateur">
-          <button type="button" class="sb-collab-nav-btn" data-tab="overview" role="tab" aria-selected="true">
-            ${collabIcon("trend")}
-            <span>Vue d’ensemble</span>
-          </button>
-          <button type="button" class="sb-collab-nav-btn" data-tab="ident" role="tab" aria-selected="false">
-            ${collabIcon("user")}
-            <span>Identification</span>
-          </button>
-          <button type="button" class="sb-collab-nav-btn" data-tab="skills" role="tab" aria-selected="false">
-            ${collabIcon("skills")}
-            <span>Compétences</span>
-          </button>
-          <button type="button" class="sb-collab-nav-btn" data-tab="certs" role="tab" aria-selected="false">
-            ${collabIcon("certs")}
-            <span>Certifications</span>
-          </button>
-          <button type="button" class="sb-collab-nav-btn" data-tab="history" role="tab" aria-selected="false">
-            ${collabIcon("history")}
-            <span>Historique</span>
-          </button>
-        </div>
-
         <div class="sb-tab-panel is-active" data-panel="overview" role="tabpanel">
           <div id="collabOverviewPanel">
             <div class="card-sub" style="margin:0;">Chargement…</div>
@@ -894,7 +871,7 @@
 
         // Onglets modal (Identification / Compétences / Certifications)
     if (body) {
-      const tabs = Array.from(body.querySelectorAll(".sb-collab-modal-nav [data-tab]"));
+      const tabs = Array.from(modal?.querySelectorAll("#collabModalTabbar [data-tab]") || []);
       const panels = Array.from(body.querySelectorAll(".sb-tab-panel[data-panel]"));
 
       const setActiveTab = (key) => {
@@ -1203,11 +1180,39 @@
                 : (ident?.statut_actif ? (unavailableToday ? "Indisponible" : "Actif") : "Inactif");
 
               overviewHost.innerHTML = `
-                <div class="sb-collab-summary-strip">
-                  ${renderModalSummaryItem("building", "Service", ident?.nom_service || "Non lié")}
-                  ${renderModalSummaryItem("briefcase", "Poste actuel", ident?.intitule_poste || "–")}
-                  ${renderModalSummaryItem("contract", "Type de contrat", ident?.type_contrat || "–")}
-                  ${renderModalSummaryItem("calendar", "Date d’entrée", formatDateFR(ident?.date_entree_entreprise_effectif))}
+                <div class="studio-poste-kpis">
+                  <div class="studio-poste-kpi studio-poste-kpi--collabs">
+                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("building")}</span>
+                    <span class="studio-poste-kpi__content">
+                      <span class="studio-poste-kpi__label">Service</span>
+                      <strong class="studio-poste-kpi__value">${escapeHtml(ident?.nom_service || "Non lié")}</strong>
+                      <small class="studio-poste-kpi__label">Affectation actuelle</small>
+                    </span>
+                  </div>
+                  <div class="studio-poste-kpi studio-poste-kpi--competences">
+                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("briefcase")}</span>
+                    <span class="studio-poste-kpi__content">
+                      <span class="studio-poste-kpi__label">Poste actuel</span>
+                      <strong class="studio-poste-kpi__value">${escapeHtml(ident?.intitule_poste || "–")}</strong>
+                      <small class="studio-poste-kpi__label">Situation professionnelle</small>
+                    </span>
+                  </div>
+                  <div class="studio-poste-kpi studio-poste-kpi--certifications">
+                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("contract")}</span>
+                    <span class="studio-poste-kpi__content">
+                      <span class="studio-poste-kpi__label">Type de contrat</span>
+                      <strong class="studio-poste-kpi__value">${escapeHtml(ident?.type_contrat || "–")}</strong>
+                      <small class="studio-poste-kpi__label">Contrat en cours</small>
+                    </span>
+                  </div>
+                  <div class="studio-poste-kpi studio-poste-kpi--criticite">
+                    <span aria-hidden="true" class="studio-poste-kpi__icon">${collabIcon("calendar")}</span>
+                    <span class="studio-poste-kpi__content">
+                      <span class="studio-poste-kpi__label">Date d’entrée</span>
+                      <strong class="studio-poste-kpi__value">${escapeHtml(formatDateFR(ident?.date_entree_entreprise_effectif))}</strong>
+                      <small class="studio-poste-kpi__label">Entrée dans l’entreprise</small>
+                    </span>
+                  </div>
                 </div>
 
                 <div class="sb-collab-metrics">
