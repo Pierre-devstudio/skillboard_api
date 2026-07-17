@@ -23784,18 +23784,74 @@ body{
 #orgPostePage .org-exi-constraints-grid{
   display:grid;
   grid-template-columns:1fr 1.15fr;
-  gap:16px 28px;
-  margin-top:8px;
+  gap:14px;
+  margin-top:14px;
 }
 
 #orgPostePage .org-exi-col{
   display:grid;
   grid-template-columns:1fr;
-  gap:9px;
+  gap:12px;
   min-width:0;
 }
 
-#orgPostePage #orgPosteBlocContraintes .sb-field .label{
+#orgPostePage .org-exi-field{
+  display:grid;
+  grid-template-columns:40px minmax(0, 1fr);
+  gap:12px;
+  align-items:start;
+  min-width:0;
+  min-height:62px;
+  margin:0;
+  padding:12px 14px;
+  border:1px solid var(--org-border, #e5e7eb);
+  border-radius:12px;
+  background:#ffffff;
+  box-sizing:border-box;
+}
+
+#orgPostePage .org-exi-field__icon{
+  width:36px;
+  height:36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 36px;
+  border-radius:10px;
+  color:var(--ns-info-text);
+  background:var(--ns-info-bg);
+}
+
+#orgPostePage .org-exi-field__icon svg{
+  width:20px;
+  height:20px;
+}
+
+#orgPostePage .org-exi-field--risk .org-exi-field__icon{
+  color:var(--ns-danger-text);
+  background:var(--ns-danger-bg);
+}
+
+#orgPostePage .org-exi-field--constraints .org-exi-field__icon{
+  color:var(--ns-warning-text);
+  background:var(--ns-warning-bg);
+}
+
+#orgPostePage .org-exi-field--diploma .org-exi-field__icon,
+#orgPostePage .org-exi-field--evolution .org-exi-field__icon{
+  color:var(--org-violet, #6d28d9);
+  background:var(--org-violet-soft, #f3edff);
+}
+
+#orgPostePage .org-exi-field--details{
+  min-height:90px;
+}
+
+#orgPostePage .org-exi-field__body{
+  min-width:0;
+}
+
+#orgPostePage #orgPosteBlocContraintes .org-exi-field .label{
   margin:0 0 4px 0;
   font-size:var(--ns-text-xs, 0.75rem);
   font-weight:var(--ns-weight-semibold, 600);
@@ -23808,6 +23864,30 @@ body{
   min-height:34px;
   box-sizing:border-box;
   font-size:var(--ns-text-sm, 0.8125rem);
+}
+
+#orgPostePage #orgPosteBlocContraintes:not(.is-editing) select,
+#orgPostePage #orgPosteBlocContraintes:not(.is-editing) textarea{
+  min-height:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:var(--org-text, #111827);
+  box-shadow:none;
+  opacity:1;
+  appearance:none;
+  -webkit-appearance:none;
+  resize:none;
+}
+
+#orgPostePage #orgPosteBlocContraintes:not(.is-editing) textarea{
+  line-height:var(--ns-leading-ui, 1.35);
+  overflow:visible;
+}
+
+#orgPostePage #orgPosteBlocContraintes.is-editing .org-exi-field{
+  background:#fafafa;
 }
 
 #orgPostePage #orgPosteBlocContraintes textarea{
