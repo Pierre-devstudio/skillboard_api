@@ -4568,7 +4568,7 @@ body{
 }
 
 #view-votre-organisation .org-layout-split__services{
-  flex:0 0 390px;
+  flex:0 0 360px;
   min-width:0;
 }
 
@@ -31040,7 +31040,7 @@ body{
 
 #view-votre-organisation .org-postes-table th:nth-child(3),
 #view-votre-organisation .org-postes-table td:nth-child(3){
-  width:190px;
+  width:240px;
 }
 
 #view-votre-organisation .org-postes-table th:nth-child(4),
@@ -31052,7 +31052,7 @@ body{
 #view-votre-organisation .org-postes-table th:nth-child(5),
 #view-votre-organisation .org-postes-table td:nth-child(5){
   width:94px;
-  text-align:right;
+  text-align:center;
 }
 
 #view-votre-organisation .org-postes-table td{
