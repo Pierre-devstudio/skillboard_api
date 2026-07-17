@@ -450,8 +450,6 @@
     const btnCtrEdit = byId("orgCtrBtnEdit");
     const btnCtrSave = byId("orgCtrBtnSave");
     const btnCtrCancel = byId("orgCtrBtnCancel");
-    const btnCompMore = byId("orgPosteCompMore");
-
     if (btnCtrEdit && !btnCtrEdit._sbBound){
       btnCtrEdit._sbBound = true;
       btnCtrEdit.addEventListener("click", (e) => { e.preventDefault(); _ctrEnterEditMode(); });
@@ -464,15 +462,6 @@
       btnCtrSave._sbBound = true;
       btnCtrSave.addEventListener("click", (e) => { e.preventDefault(); _ctrSaveEdit(); });
     }
-    if (btnCompMore && !btnCompMore._sbBound){
-      btnCompMore._sbBound = true;
-      btnCompMore.addEventListener("click", (e) => {
-        e.preventDefault();
-        _orgCompState.expanded = !_orgCompState.expanded;
-        _renderPosteCompetencesRows();
-      });
-    }
-
     bindOrgCompCritModalOnce();
     bindOrgCertValidModalOnce();
 
@@ -1367,7 +1356,7 @@
   let _contraintesSelectsInit = false;
   let _ctrEdit = { editing:false, snapshot:null };
   let _ctrNsfGroupes = [];
-  let _orgCompState = { list:[], expanded:false };
+  let _orgCompState = { list:[], sortKey:"intitule", sortDir:"asc" };
   let _orgCompCritEdit = null;
   let _orgCertValidEdit = null;
   const _inlineMsgTimers = Object.create(null);
@@ -1672,25 +1661,62 @@
 
   function fillPosteCompetencesTab(detail){
     _orgCompState.list = Array.isArray(detail?.competences) ? detail.competences : [];
-    _orgCompState.expanded = false;
     _renderPosteCompetencesRows();
+  }
+
+  function _orgCompSortValue(item, key){
+    if (key === "code") return String(item?.code || "").trim();
+    if (key === "niveau") {
+      const order = { A:1, B:2, C:3, D:4 };
+      return order[String(item?.niveau_requis || "").trim().toUpperCase()] || 0;
+    }
+    if (key === "criticite") {
+      const value = Number(item?.poids_criticite);
+      return Number.isFinite(value) ? value : -1;
+    }
+    return String(item?.intitule || "").trim();
+  }
+
+  function _sortOrgCompetences(list){
+    const key = _orgCompState.sortKey || "intitule";
+    const dir = _orgCompState.sortDir === "desc" ? -1 : 1;
+    return list.slice().sort((a, b) => {
+      const av = _orgCompSortValue(a, key);
+      const bv = _orgCompSortValue(b, key);
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), "fr", { sensitivity:"base", numeric:true }) * dir;
+    });
   }
 
   function _renderPosteCompetencesRows(){
     const tbody = byId("orgPosteCompTbody");
     const empty = byId("orgPosteCompEmpty");
-    const btnMore = byId("orgPosteCompMore");
-    const btnText = byId("orgPosteCompMoreText");
     if (!tbody || !empty) return;
 
     const list = Array.isArray(_orgCompState.list) ? _orgCompState.list : [];
-    const limit = 5;
-    const visible = _orgCompState.expanded ? list : list.slice(0, limit);
+    const visible = _sortOrgCompetences(list);
+
+    const table = byId("orgPosteCompTable");
+    table?.querySelectorAll("[data-comp-sort]").forEach(btn => {
+      const key = btn.getAttribute("data-comp-sort") || "";
+      const active = key === _orgCompState.sortKey;
+      btn.classList.toggle("is-active", active);
+      const arrows = btn.querySelectorAll(".org-poste-sort-arrow");
+      arrows[0]?.classList.toggle("is-active", active && _orgCompState.sortDir === "asc");
+      arrows[1]?.classList.toggle("is-active", active && _orgCompState.sortDir === "desc");
+      if (!btn._sbCompSortBound){
+        btn._sbCompSortBound = true;
+        btn.addEventListener("click", () => {
+          if (_orgCompState.sortKey === key) _orgCompState.sortDir = _orgCompState.sortDir === "asc" ? "desc" : "asc";
+          else { _orgCompState.sortKey = key; _orgCompState.sortDir = "asc"; }
+          _renderPosteCompetencesRows();
+        });
+      }
+    });
 
     tbody.innerHTML = "";
     if (!list.length){
       empty.style.display = "";
-      if (btnMore) btnMore.style.display = "none";
       return;
     }
     empty.style.display = "none";
@@ -1763,14 +1789,6 @@
       tbody.appendChild(tr);
     });
 
-    if (btnMore){
-      const hidden = Math.max(0, list.length - limit);
-      btnMore.style.display = hidden > 0 ? "flex" : "none";
-      btnMore.classList.toggle("is-expanded", !!_orgCompState.expanded);
-      if (btnText) btnText.textContent = _orgCompState.expanded
-        ? "Voir moins de compétences"
-        : `Voir plus de compétences (${hidden})`;
-    }
   }
 
   function fillPosteCertificationsTab(detail){

@@ -23766,7 +23766,8 @@ body{
   line-height:var(--ns-leading-ui, 1.35);
 }
 
-#orgPostePage .sb-tab-panel[data-panel="exi"]{
+#orgPostePage .sb-tab-panel[data-panel="exi"],
+#orgPostePage .sb-tab-panel[data-panel="comp"]{
   padding-top:12px;
 }
 
