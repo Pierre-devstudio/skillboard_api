@@ -16,6 +16,7 @@
   let _handlersBound = false;
   let _searchTimer = null;
   let _collabInlineMsgTimer = null;
+  let _collabHistoryBound = false;
 
   // Indisponibilités (KPI + filtre table)
   let _lastListItems = [];
@@ -26,6 +27,70 @@
 
   function byId(id) {
     return document.getElementById(id);
+  }
+
+  function setCollaborateurPageMode(enabled) {
+    const root = byId("view-vos-collaborateurs");
+    const page = byId("modalCollaborateur");
+    const content = root?.closest(".content");
+    if (!root || !page) return;
+
+    Array.from(root.children).forEach(child => {
+      child.style.display = child === page ? (enabled ? "" : "none") : (enabled ? "none" : "");
+    });
+
+    root.classList.toggle("is-poste-page", !!enabled);
+    if (content) content.classList.toggle("is-poste-page", !!enabled);
+    page.setAttribute("aria-hidden", enabled ? "false" : "true");
+  }
+
+  function showCollaborateursIndex() {
+    const page = byId("modalCollaborateur");
+    setCollaborateurPageMode(false);
+    if (page) {
+      page.removeAttribute("data-id-effectif");
+    }
+  }
+
+  function showCollaborateurPage(idEffectif) {
+    const page = byId("modalCollaborateur");
+    if (page) page.setAttribute("data-id-effectif", String(idEffectif || ""));
+    setCollaborateurPageMode(true);
+  }
+
+  function pushCollaborateurHistory(idEffectif) {
+    const id = String(idEffectif || "").trim();
+    if (!id || String(window.history.state?.skillsCollaborateurDetail || "") === id) return;
+    try {
+      const state = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.pushState({ ...state, skillsCollaborateurDetail: id }, "", window.location.href);
+    } catch (_) {}
+  }
+
+  function bindCollaborateurHistoryOnce() {
+    if (_collabHistoryBound) return;
+    _collabHistoryBound = true;
+
+    window.addEventListener("popstate", async event => {
+      const root = byId("view-vos-collaborateurs");
+      if (!root || root.style.display === "none") return;
+
+      const idEffectif = String(event.state?.skillsCollaborateurDetail || "").trim();
+      if (!idEffectif) {
+        showCollaborateursIndex();
+        return;
+      }
+
+      try {
+        const idContact = window.portal?.contactId;
+        if (!idContact) throw new Error("Contact introuvable.");
+        const detail = await loadIdentification(idContact, idEffectif);
+        openCollaborateurModal(detail, { pushHistory: false });
+      } catch (e) {
+        window.portal?.showAlert?.("error", "Erreur fiche collaborateur : " + (e?.message || String(e)));
+        showCollaborateursIndex();
+      }
+    });
   }
 
   function escapeHtml(s) {
@@ -669,8 +734,11 @@
     selectCollaborateurRow(selected?.id_effectif);
   }
 
-  function openCollaborateurModal(it) {
+  function openCollaborateurModal(it, options) {
     const modal = byId("modalCollaborateur");
+    const idEffectif = String(it?.id_effectif || "").trim();
+    showCollaborateurPage(idEffectif);
+    if (options?.pushHistory !== false) pushCollaborateurHistory(idEffectif);
     const title = byId("collabModalTitle");
     const sub = byId("collabModalSub");
     const body = byId("collabModalBody");
@@ -2115,18 +2183,11 @@
     }
 
 
-    if (modal) {
-      modal.classList.add("show");
-      modal.setAttribute("aria-hidden", "false");
-    }
+    if (modal) modal.setAttribute("aria-hidden", "false");
   }
 
   function closeCollaborateurModal() {
-    const modal = byId("modalCollaborateur");
-    if (modal) {
-      modal.classList.remove("show");
-      modal.setAttribute("aria-hidden", "true");
-    }
+    showCollaborateursIndex();
   }
 
   async function refreshAll(id_contact) {
@@ -2171,6 +2232,13 @@
   async function initMenu(portalCtx) {
     const id_contact = portalCtx?.contactId || window.portal.contactId;
     if (!id_contact) return;
+
+    bindCollaborateurHistoryOnce();
+    showCollaborateursIndex();
+    try {
+      const state = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.replaceState({ ...state, skillsCollaborateurDetail: null }, "", window.location.href);
+    } catch (_) {}
 
     // Bind handlers une seule fois
     if (!_handlersBound) {
@@ -2315,17 +2383,6 @@
       }
 
 
-      const btnClose = byId("btnCloseCollabModal");
-      const btnClose2 = byId("btnCollabModalClose");
-      const modal = byId("modalCollaborateur");
-
-      if (btnClose) btnClose.addEventListener("click", () => closeCollaborateurModal());
-      if (btnClose2) btnClose2.addEventListener("click", () => closeCollaborateurModal());
-      if (modal) {
-        modal.addEventListener("click", (e) => {
-          if (e.target === modal) closeCollaborateurModal();
-        });
-      }
     }
 
     // Services (source unique + anti-doublons)

@@ -296,27 +296,26 @@
     </aside>
   </div>
 
-  <!-- Modal détail collaborateur (squelette pour la suite) -->
-  <div class="modal" id="modalCollaborateur" aria-hidden="true">
-    <div class="modal-card modal-card--xl">
+  <!-- ======================================================
+      Page dédiée Collaborateur
+      ====================================================== -->
+  <div id="modalCollaborateur" style="display:none;" aria-hidden="true">
+    <div class="card">
       <div class="modal-header sb-collab-profile-header">
-        <div class="sb-collab-profile-head">
-          <div class="sb-collab-profile-avatar" id="collabModalAvatar" aria-hidden="true">–</div>
-          <div class="sb-collab-profile-titlewrap">
-            <div class="card-title" id="collabModalTitle">Collaborateur</div>
-            <div id="collabModalBadges" class="sb-collab-modal-badges"></div>
+        <div>
+          <div class="sb-collab-profile-head">
+            <div class="sb-collab-profile-avatar" id="collabModalAvatar" aria-hidden="true">–</div>
+            <div class="sb-collab-profile-titlewrap">
+              <div class="card-title" id="collabModalTitle">Collaborateur</div>
+              <div id="collabModalBadges" class="sb-collab-modal-badges"></div>
+            </div>
           </div>
         </div>
-
-        <button type="button" class="modal-x" id="btnCloseCollabModal" aria-label="Fermer">×</button>
       </div>
 
       <div class="modal-body">
-        <div class="card-sub" id="collabModalSub">Détail du collaborateur.</div>
+        <div class="card-sub" id="collabModalSub" style="display:none;"></div>
         <div id="collabModalBody" class="sb-modal-content"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="sb-btn sb-btn--soft sb-modal-close-btn" id="btnCollabModalClose">Fermer</button>
       </div>
     </div>
   </div>
