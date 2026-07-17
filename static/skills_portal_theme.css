@@ -23766,6 +23766,10 @@ body{
   line-height:var(--ns-leading-ui, 1.35);
 }
 
+#orgPostePage .sb-tab-panel[data-panel="exi"]{
+  padding-top:12px;
+}
+
 #orgPostePage .org-exi-card{
   border:1px solid #e5e7eb;
   border-radius:16px;
