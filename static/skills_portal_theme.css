@@ -31600,7 +31600,7 @@ body{
 }
 
 #orgPostePage .studio-poste-overview-highlight-grid > .studio-poste-overview-card{
-  height:100%;
+  min-width:0;
 }
 
 #orgPostePage .studio-poste-overview-card__head{
