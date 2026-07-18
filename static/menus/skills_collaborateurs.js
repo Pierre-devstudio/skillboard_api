@@ -1175,7 +1175,26 @@
               const notEvaluatedSkills = requiredSkills.filter(x => !String(x?.niveau_actuel || "").trim()).length;
               const skillsToStrengthen = Math.max(0, requiredSkills.length - validatedSkills - notEvaluatedSkills);
               const acquiredCerts = certs.filter(x => !!x?.is_acquired).length;
-              const certsToWatch = certs.filter(x => ["a_renouveler", "expiree"].includes(String(x?.statut_validite || "").toLowerCase())).length;
+              const validCerts = certs.filter(x => String(x?.statut_validite || "").toLowerCase() === "valide").length;
+              const renewCerts = certs.filter(x => String(x?.statut_validite || "").toLowerCase() === "a_renouveler").length;
+              const expiredCerts = certs.filter(x => String(x?.statut_validite || "").toLowerCase() === "expiree").length;
+              const adequationPercent = requiredSkills.length
+                ? Math.round((validatedSkills / requiredSkills.length) * 100)
+                : 0;
+
+              const formatSeniority = (iso) => {
+                const raw = String(iso || "").trim();
+                if (!raw) return "–";
+                const start = new Date(raw);
+                if (Number.isNaN(start.getTime())) return "–";
+                const now = new Date();
+                let years = now.getFullYear() - start.getFullYear();
+                const anniversaryPending = now.getMonth() < start.getMonth()
+                  || (now.getMonth() === start.getMonth() && now.getDate() < start.getDate());
+                if (anniversaryPending) years -= 1;
+                if (years <= 0) return "Moins d’un an";
+                return `${years} an${years > 1 ? "s" : ""}`;
+              };
 
               let unavailableToday = false;
               try {
@@ -1191,70 +1210,50 @@
                 ? "Archivé"
                 : (ident?.statut_actif ? (unavailableToday ? "Indisponible" : "Actif") : "Inactif");
 
+              const statusBadgeClass = ident?.archive || !ident?.statut_actif
+                ? "ns-badge-status--neutral"
+                : (unavailableToday ? "ns-badge-status--warning" : "ns-badge-status--success");
+
               overviewHost.innerHTML = `
-                <div class="sb-collab-metrics">
-                  <div class="sb-collab-metric sb-collab-metric--red">
-                    <span aria-hidden="true">${collabIcon("contract")}</span>
-                    <strong>${requiredSkills.length}</strong>
-                    <em>Compétences requises<br>par le poste</em>
-                  </div>
-                  <div class="sb-collab-metric sb-collab-metric--blue">
-                    <span aria-hidden="true">${collabIcon("skills")}</span>
-                    <strong>${validatedSkills}</strong>
-                    <em>Compétences validées<br>au niveau requis</em>
-                  </div>
-                  <div class="sb-collab-metric sb-collab-metric--green">
-                    <span aria-hidden="true">${collabIcon("certs")}</span>
-                    <strong>${acquiredCerts}</strong>
-                    <em>Certifications<br>acquises</em>
-                  </div>
-                </div>
+                <div class="sb-form-grid">
+                  <div class="sb-collab-metrics sb-span-2">
+                    <div class="sb-collab-block">
+                      <div class="sb-collab-block-title">
+                        <span aria-hidden="true">${collabIcon("user")}</span>
+                        Situation
+                      </div>
+                      <div class="sb-stack">
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Ancienneté</span><strong>${escapeHtml(formatSeniority(ident?.date_entree_entreprise_effectif))}</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Type de contrat</span><strong>${escapeHtml(ident?.type_contrat || "–")}</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Statut</span><strong><span class="ns-badge ns-badge-status ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Service</span><strong>${escapeHtml(ident?.nom_service || it?.nom_service || "–")}</strong></span></div>
+                      </div>
+                    </div>
 
-                <div class="sb-collab-block">
-                  <div class="sb-collab-block-title">
-                    <span aria-hidden="true">${collabIcon("user")}</span>
-                    Situation actuelle
-                  </div>
-                  <div class="sb-collab-grid">
-                    <div class="sb-field">
-                      <div class="sb-label">Statut</div>
-                      <div>${escapeHtml(statusLabel)}</div>
+                    <div class="sb-collab-block">
+                      <div class="sb-collab-block-title">
+                        <span aria-hidden="true">${collabIcon("skills")}</span>
+                        Compétences
+                      </div>
+                      <div class="sb-stack">
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Adéquation au poste</span><strong>${adequationPercent}%</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Compétences maîtrisées</span><strong>${validatedSkills}</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Compétences à renforcer</span><strong>${skillsToStrengthen}</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Compétences non évaluées</span><strong>${notEvaluatedSkills}</strong></span></div>
+                      </div>
                     </div>
-                    <div class="sb-field">
-                      <div class="sb-label">Rôles</div>
-                      <div>${escapeHtml(roles.join(" · ") || "Aucun rôle spécifique")}</div>
-                    </div>
-                    <div class="sb-field">
-                      <div class="sb-label">Début dans le poste</div>
-                      <div>${escapeHtml(formatDateFR(ident?.date_debut_poste_actuel))}</div>
-                    </div>
-                    <div class="sb-field">
-                      <div class="sb-label">Sortie prévue</div>
-                      <div>${escapeHtml(formatDateFR(ident?.date_sortie_prevue))}</div>
-                    </div>
-                  </div>
-                </div>
 
-                <div class="sb-collab-block">
-                  <div class="sb-collab-block-title">
-                    <span aria-hidden="true">${collabIcon("trend")}</span>
-                    Points à suivre
-                  </div>
-                  <div class="sb-collab-metrics">
-                    <div class="sb-collab-metric sb-collab-metric--red">
-                      <span aria-hidden="true">${collabIcon("skills")}</span>
-                      <strong>${skillsToStrengthen}</strong>
-                      <em>Compétences<br>à renforcer</em>
-                    </div>
-                    <div class="sb-collab-metric sb-collab-metric--blue">
-                      <span aria-hidden="true">${collabIcon("audit")}</span>
-                      <strong>${notEvaluatedSkills}</strong>
-                      <em>Compétences requises<br>non évaluées</em>
-                    </div>
-                    <div class="sb-collab-metric sb-collab-metric--green">
-                      <span aria-hidden="true">${collabIcon("calendar")}</span>
-                      <strong>${certsToWatch}</strong>
-                      <em>Certifications<br>à surveiller</em>
+                    <div class="sb-collab-block">
+                      <div class="sb-collab-block-title">
+                        <span aria-hidden="true">${collabIcon("certs")}</span>
+                        Certifications
+                      </div>
+                      <div class="sb-stack">
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Certification valide</span><strong>${validCerts}</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">À renouveler prochainement</span><strong>${renewCerts}</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Expirée</span><strong>${expiredCerts}</strong></span></div>
+                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Certifications acquises</span><strong>${acquiredCerts}</strong></span></div>
+                      </div>
                     </div>
                   </div>
                 </div>
