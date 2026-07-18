@@ -1242,6 +1242,7 @@
                     </div>
                     <div class="studio-poste-overview-list">
                       <div>
+                        <span aria-hidden="true"></span>
                         <span class="sb-modal-titleline">
                           <span>Maitrise du poste</span>
                           <span class="sim-result-modern-ring" style="--sim-ring:${adequationPercent};--accent:hsl(${adequationHue} 72% 42%)">
