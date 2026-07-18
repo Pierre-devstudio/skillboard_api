@@ -1,0 +1,83 @@
+--- a/static/menus/skills_collaborateurs.js	2026-07-18 16:14:39.345346463 +0000
++++ b/static/menus/skills_collaborateurs.js	2026-07-18 16:27:40.267677022 +0000
+@@ -1713,7 +1713,7 @@
+ 
+                 <div class="sb-collab-block sb-collab-block--projection">
+                   <div class="sb-collab-block-title">
+-                    <span aria-hidden="true">${collabIcon("graduation")}</span>
++                    <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("graduation")}</span>
+                     <span>Parcours et projection</span>
+                     <div class="sb-collab-ident-actions sb-modal-edit-actions">
+                       <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabProjectionBtnCancel" style="display:none;">
+@@ -1814,7 +1814,7 @@
+ 
+                 <div class="sb-collab-block sb-collab-block--roles">
+                   <div class="sb-collab-block-title">
+-                    <span aria-hidden="true">${collabIcon("org")}</span>
++                    <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("org")}</span>
+                     <span>Rôles et responsabilités</span>
+                   </div>
+                   <div class="sb-collab-roles-grid">
+@@ -1837,7 +1837,7 @@
+ 
+                 <div class="sb-collab-block sb-collab-comment-card">
+                   <div class="sb-collab-block-title">
+-                    <span aria-hidden="true">${collabIcon("comment")}</span>
++                    <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("comment")}</span>
+                     <span>Commentaire interne</span>
+                     <div class="sb-collab-ident-actions sb-modal-edit-actions">
+                       <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabCommentBtnCancel" style="display:none;">
+--- a/static/skills_portal_theme.css	2026-07-18 16:14:09.899754053 +0000
++++ b/static/skills_portal_theme.css	2026-07-18 16:27:40.475671431 +0000
+@@ -32982,3 +32982,51 @@
+     grid-template-columns:1fr;
+   }
+ }
++
++/* Fiche collaborateur dédiée — ajustements finaux onglet Identification */
++#modalCollaborateur .sb-collab-company-cell strong,
++#modalCollaborateur .sb-collab-projection-item strong,
++#modalCollaborateur .sb-collab-role-item strong{
++  font-size:var(--ns-text-sm, 0.8125rem);
++  line-height:var(--ns-leading-title, 1.25);
++}
++
++#modalCollaborateur .sb-collab-block--projection .sb-collab-block-title,
++#modalCollaborateur .sb-collab-comment-card .sb-collab-block-title{
++  flex-wrap:nowrap;
++}
++
++#modalCollaborateur .sb-collab-block--projection .sb-collab-block-title > span:nth-child(2),
++#modalCollaborateur .sb-collab-comment-card .sb-collab-block-title > span:nth-child(2){
++  white-space:nowrap;
++}
++
++#modalCollaborateur .sb-collab-block--company > .sb-collab-block-title > .sb-collab-overview-event__icon{
++  color:var(--sb-warning);
++  background:var(--ns-warning-bg, #fffbeb);
++}
++
++#modalCollaborateur .sb-collab-block--projection > .sb-collab-block-title > .sb-collab-overview-event__icon{
++  color:var(--ns-success-text, #166534);
++  background:var(--ns-success-bg, #f0fdf4);
++}
++
++#modalCollaborateur .sb-collab-block--roles > .sb-collab-block-title > .sb-collab-overview-event__icon{
++  color:var(--accent);
++  background:color-mix(in srgb, var(--accent) 8%, #ffffff);
++}
++
++#modalCollaborateur .sb-collab-comment-card > .sb-collab-block-title > .sb-collab-overview-event__icon{
++  color:var(--sb-candidat);
++  background:color-mix(in srgb, var(--sb-candidat) 8%, #ffffff);
++}
++
++#modalCollaborateur .sb-collab-role-item:nth-child(1) .sb-collab-summary-icon{
++  color:var(--sb-manager);
++  background:color-mix(in srgb, var(--sb-manager) 8%, #ffffff);
++}
++
++#modalCollaborateur .sb-collab-role-item:nth-child(2) .sb-collab-summary-icon{
++  color:var(--sb-badge-formateur-border);
++  background:color-mix(in srgb, var(--sb-badge-formateur-border) 8%, #ffffff);
++}

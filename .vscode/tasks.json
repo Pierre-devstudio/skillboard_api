@@ -21,6 +21,25 @@
         "panel": "dedicated",
         "clear": true
       }
+    },
+    {
+      "label": "Novoskill : lancer la prévisualisation locale",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "${workspaceFolder}\\local_preview_novoskill_all.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false
+      }
     }
   ]
 }

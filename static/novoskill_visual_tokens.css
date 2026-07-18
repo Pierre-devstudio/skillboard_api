@@ -11,6 +11,8 @@
   --ns-danger-text: #991b1b; --ns-danger-bg: #fef2f2; --ns-danger-border: #fecaca;
   --ns-info-text: #1e40af; --ns-info-bg: #eff6ff; --ns-info-border: #bfdbfe;
   --ns-neutral-text: #475569; --ns-neutral-bg: #f8fafc; --ns-neutral-border: #cbd5e1;
+  --ns-role-manager-text: var(--ns-info-text); --ns-role-manager-bg: var(--ns-info-bg); --ns-role-manager-border: var(--ns-info-border);
+  --ns-role-formateur-text: #be185d; --ns-role-formateur-bg: #fdf2f8; --ns-role-formateur-border: #fbcfe8;
   --ns-status-active: #22c55e;
   --ns-criticality-low-text: #6d28d9; --ns-criticality-low-bg: #faf5ff; --ns-criticality-low-border: #e9d5ff;
   --ns-criticality-moderate-text: #6d28d9; --ns-criticality-moderate-bg: #f3e8ff; --ns-criticality-moderate-border: #d8b4fe;
@@ -45,6 +47,8 @@
 .ns-badge-criticality--moderate { color:var(--ns-criticality-moderate-text); background:var(--ns-criticality-moderate-bg); border-color:var(--ns-criticality-moderate-border); }
 .ns-badge-criticality--high { color:var(--ns-criticality-high-text); background:var(--ns-criticality-high-bg); border-color:var(--ns-criticality-high-border); }
 .ns-badge-criticality--critical { color:var(--ns-criticality-critical-text); background:var(--ns-criticality-critical-bg); border-color:var(--ns-criticality-critical-border); }
-.ns-badge-role { color:var(--ns-info-text); background:var(--ns-info-bg); border-color:var(--ns-info-border); }
+.ns-badge-role { --ns-role-text:var(--ns-info-text); --ns-role-bg:var(--ns-info-bg); --ns-role-border:var(--ns-info-border); color:var(--ns-role-text); background:var(--ns-role-bg); border-color:var(--ns-role-border); }
+.ns-badge-role--manager { --ns-role-text:var(--ns-role-manager-text); --ns-role-bg:var(--ns-role-manager-bg); --ns-role-border:var(--ns-role-manager-border); }
+.ns-badge-role--formateur { --ns-role-text:var(--ns-role-formateur-text); --ns-role-bg:var(--ns-role-formateur-bg); --ns-role-border:var(--ns-role-formateur-border); }
 .ns-badge-requirement { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }
 .ns-badge-category { color:var(--ns-neutral-text); background:var(--ns-neutral-bg); border-color:var(--ns-neutral-border); }
