@@ -1215,49 +1215,60 @@
                 : (unavailableToday ? "ns-badge-status--warning" : "ns-badge-status--success");
 
               overviewHost.innerHTML = `
-                <div class="sb-form-grid">
-                  <div class="sb-collab-metrics sb-span-2">
-                    <div class="sb-collab-block">
-                      <div class="sb-collab-block-title">
-                        <span aria-hidden="true">${collabIcon("user")}</span>
-                        Situation
-                      </div>
-                      <div class="sb-stack">
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Ancienneté</span><strong>${escapeHtml(formatSeniority(ident?.date_entree_entreprise_effectif))}</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Type de contrat</span><strong>${escapeHtml(ident?.type_contrat || "–")}</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Statut</span><strong><span class="ns-badge ns-badge-status ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Service</span><strong>${escapeHtml(ident?.nom_service || it?.nom_service || "–")}</strong></span></div>
-                      </div>
+                <div class="sb-collab-metrics">
+                  <div class="sb-collab-block">
+                    <div class="sb-collab-block-title">
+                      <span class="collab-kpi-card__icon" aria-hidden="true">${collabIcon("user")}</span>
+                      Situation
                     </div>
+                    <div>
+                      <div class="sim2-read-row"><strong>Ancienneté</strong><span>${escapeHtml(formatSeniority(ident?.date_entree_entreprise_effectif))}</span></div>
+                      <div class="sim2-read-row"><strong>Type de contrat</strong><span>${escapeHtml(ident?.type_contrat || "–")}</span></div>
+                      <div class="sim2-read-row"><strong>Statut</strong><span class="ns-badge ns-badge-status ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></div>
+                      <div class="sim2-read-row"><strong>Service</strong><span>${escapeHtml(ident?.nom_service || it?.nom_service || "–")}</span></div>
+                    </div>
+                  </div>
 
-                    <div class="sb-collab-block">
-                      <div class="sb-collab-block-title">
-                        <span aria-hidden="true">${collabIcon("skills")}</span>
-                        Compétences
-                      </div>
-                      <div class="sb-stack">
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Adéquation au poste</span><strong>${adequationPercent}%</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Compétences maîtrisées</span><strong>${validatedSkills}</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Compétences à renforcer</span><strong>${skillsToStrengthen}</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Compétences non évaluées</span><strong>${notEvaluatedSkills}</strong></span></div>
-                      </div>
+                  <div class="sb-collab-block">
+                    <div class="sb-collab-block-title">
+                      <span class="collab-kpi-card__icon" aria-hidden="true">${collabIcon("skills")}</span>
+                      Compétences
                     </div>
+                    <div class="sim-result-focus-ui">
+                      <div class="sim-result-modern-ring" style="--sim-ring:${adequationPercent}">
+                        <span>${adequationPercent}%</span>
+                      </div>
+                      <div class="sim-result-focus-text"><div><strong>Adéquation au poste</strong></div></div>
+                    </div>
+                    <div>
+                      <div class="sim2-read-row"><strong>Compétences maîtrisées</strong><span>${validatedSkills}</span></div>
+                      <div class="sim2-read-row"><strong>Compétences à renforcer</strong><span>${skillsToStrengthen}</span></div>
+                      <div class="sim2-read-row"><strong>Compétences non évaluées</strong><span>${notEvaluatedSkills}</span></div>
+                    </div>
+                    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-overview-tab="skills">Voir le détail des compétences</button>
+                  </div>
 
-                    <div class="sb-collab-block">
-                      <div class="sb-collab-block-title">
-                        <span aria-hidden="true">${collabIcon("certs")}</span>
-                        Certifications
-                      </div>
-                      <div class="sb-stack">
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Certification valide</span><strong>${validCerts}</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">À renouveler prochainement</span><strong>${renewCerts}</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Expirée</span><strong>${expiredCerts}</strong></span></div>
-                        <div class="sb-collab-summary-item"><span><span class="sb-collab-summary-label">Certifications acquises</span><strong>${acquiredCerts}</strong></span></div>
-                      </div>
+                  <div class="sb-collab-block">
+                    <div class="sb-collab-block-title">
+                      <span class="collab-kpi-card__icon" aria-hidden="true">${collabIcon("certs")}</span>
+                      Certifications
                     </div>
+                    <div>
+                      <div class="sim2-read-row"><strong>Certification valide</strong><span>${validCerts}</span></div>
+                      <div class="sim2-read-row"><strong>À renouveler prochainement</strong><span>${renewCerts}</span></div>
+                      <div class="sim2-read-row"><strong>Expirée</strong><span>${expiredCerts}</span></div>
+                    </div>
+                    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-overview-tab="certs">Voir le détail des certifications</button>
                   </div>
                 </div>
               `;
+
+              overviewHost.querySelectorAll("[data-overview-tab]").forEach((button) => {
+                button.addEventListener("click", () => {
+                  const tab = button.getAttribute("data-overview-tab");
+                  modal?.querySelector(`[data-tab="${tab}"]`)?.click();
+                });
+              });
             })
             .catch(e => {
               overviewHost.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement vue d’ensemble : ${escapeHtml(e.message || String(e))}</div>`;
