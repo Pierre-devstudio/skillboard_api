@@ -32551,12 +32551,85 @@ body{
 
 #modalCollaborateur .sb-collab-ident-read-grid{
   display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
-  gap:14px 18px;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
 }
 
-#modalCollaborateur .sb-collab-ident-field--address{
-  grid-column:1 / -1;
+#modalCollaborateur .sb-collab-ident-read-grid > .sb-collab-summary-strip{
+  grid-template-columns:1fr;
+  min-width:0;
+  padding:12px 14px;
+  border-radius:12px;
+}
+
+#modalCollaborateur .sb-collab-ident-read-grid .sb-collab-summary-item{
+  align-items:flex-start;
+}
+
+#modalCollaborateur .sb-collab-ident-read-grid .sb-collab-summary-item > span:last-child{
+  width:100%;
+}
+
+#modalCollaborateur .sb-collab-ident-read-grid > .sb-collab-summary-strip:nth-child(1) .sb-collab-summary-icon,
+#modalCollaborateur .sb-collab-ident-read-grid > .sb-collab-summary-strip:nth-child(4) .sb-collab-summary-icon{
+  color:var(--ns-info-text);
+  background:var(--ns-info-bg);
+}
+
+#modalCollaborateur .sb-collab-ident-read-grid > .sb-collab-summary-strip:nth-child(2) .sb-collab-summary-icon,
+#modalCollaborateur .sb-collab-ident-read-grid > .sb-collab-summary-strip:nth-child(5) .sb-collab-summary-icon{
+  color:var(--ns-success-text);
+  background:var(--ns-success-bg);
+}
+
+#modalCollaborateur .sb-collab-ident-read-grid > .sb-collab-summary-strip:nth-child(3) .sb-collab-summary-icon,
+#modalCollaborateur .sb-collab-ident-read-grid > .sb-collab-summary-strip:nth-child(6) .sb-collab-summary-icon{
+  color:var(--ns-warning-text);
+  background:var(--ns-warning-bg);
+}
+
+#modalCollaborateur .sb-collab-block--personal > .sb-collab-block-title{
+  min-height:34px;
+}
+
+#modalCollaborateur .sb-collab-block--personal .sb-collab-ident-actions{
+  width:auto;
+  min-height:0;
+  margin-left:auto;
+}
+
+#modalCollaborateur .sb-collab-name-fields,
+#modalCollaborateur .sb-collab-address-fields,
+#modalCollaborateur .sb-collab-address-line{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+}
+
+#modalCollaborateur .sb-collab-address-fields{
+  align-items:flex-start;
+  flex-direction:column;
+}
+
+#modalCollaborateur .sb-collab-address-line{
+  width:100%;
+}
+
+#modalCollaborateur .sb-collab-name-fields #collabCiv{
+  flex:0 0 64px;
+}
+
+#modalCollaborateur .sb-collab-name-fields #collabPrenom,
+#modalCollaborateur .sb-collab-name-fields #collabNom,
+#modalCollaborateur .sb-collab-address-fields #collabAdr,
+#modalCollaborateur .sb-collab-address-line #collabVille{
+  min-width:0;
+  flex:1 1 auto;
+}
+
+#modalCollaborateur .sb-collab-address-line #collabCP{
+  flex:0 0 88px;
 }
 
 #modalCollaborateur .sb-collab-company-list{
@@ -32590,8 +32663,10 @@ body{
   min-height:72px;
 }
 
-#modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-ident-main .sb-ctrl,
-#modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-ident-main .sb-select,
+#modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-block--personal .sb-ctrl,
+#modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-block--personal .sb-select,
+#modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-block--company .sb-ctrl,
+#modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-block--company .sb-select,
 #modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-block--projection .sb-ctrl,
 #modalCollaborateur .sb-collab-ident-panel:not(.is-editing) .sb-collab-block--projection .sb-select{
   min-height:auto;
@@ -32614,10 +32689,8 @@ body{
   align-self:center;
 }
 
-#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-collab-ident-main .sb-ctrl,
-#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-collab-ident-main .sb-select,
-#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-collab-block--projection .sb-ctrl,
-#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-collab-block--projection .sb-select{
+#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-collab-block--personal .sb-ctrl,
+#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-collab-block--personal .sb-select{
   min-height:37px;
 }
 
@@ -32639,9 +32712,6 @@ body{
     grid-template-columns:1fr;
   }
 
-  #modalCollaborateur .sb-collab-ident-field--address{
-    grid-column:auto;
-  }
 
   #modalCollaborateur .sb-collab-projection-section + .sb-collab-projection-section{
     border-left:0;

@@ -1513,88 +1513,100 @@
 
               // Rendu HTML
               identHost.innerHTML = `
-                <div class="sb-collab-ident-actions sb-modal-edit-actions">
-                  <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabBtnCancel" style="display:none;">
-                    <span aria-hidden="true">${collabIcon("cancel")}</span>
-                    Annuler
-                  </button>
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--save" id="collabBtnSave" style="display:none;">
-                    <span aria-hidden="true">${collabIcon("save")}</span>
-                    Enregistrer
-                  </button>
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--edit" id="collabBtnEdit">
-                    <span aria-hidden="true">${collabIcon("edit")}</span>
-                    Modifier
-                  </button>
-                </div>
-
-                <div class="sb-collab-summary-strip">
-                  ${renderModalSummaryItem("building", "Service", d.nom_service || "Non lié")}
-                  ${renderModalSummaryItem("briefcase", "Poste actuel", d.intitule_poste || "–")}
-                  ${renderModalSummaryItem("contract", "Type de contrat", d.type_contrat || "–")}
-                  ${renderModalSummaryItem("calendar", "Date d’entrée", formatDateFR(d.date_entree_entreprise_effectif))}
-                </div>
-
                 <div class="sb-collab-ident-main">
                   <div class="sb-collab-block sb-collab-block--personal">
                     <div class="sb-collab-block-title">
-                      <span aria-hidden="true">${collabIcon("user")}</span>
-                      Identité et coordonnées
+                      <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("user")}</span>
+                      <span>Identité et coordonnées</span>
+                      <div class="sb-collab-ident-actions sb-modal-edit-actions">
+                        <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
+                        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabBtnCancel" style="display:none;">
+                          <span aria-hidden="true">${collabIcon("cancel")}</span>
+                          Annuler
+                        </button>
+                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--save" id="collabBtnSave" style="display:none;">
+                          <span aria-hidden="true">${collabIcon("save")}</span>
+                          Enregistrer
+                        </button>
+                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--edit" id="collabBtnEdit">
+                          <span aria-hidden="true">${collabIcon("edit")}</span>
+                          Modifier
+                        </button>
+                      </div>
                     </div>
                     <div class="sb-collab-ident-read-grid">
-                      <div class="sb-field sb-collab-ident-field--civility">
-                        <div class="sb-label">Civilité</div>
-                        <select class="sb-select" id="collabCiv" disabled>
-                          <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
-                          <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
-                          <option value="-"${civLabel === "-" ? " selected" : ""}>-</option>
-                        </select>
+                      <div class="sb-collab-summary-strip">
+                        <div class="sb-collab-summary-item">
+                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("user")}</span>
+                          <span>
+                            <span class="sb-collab-summary-label">Nom</span>
+                            <span class="sb-collab-name-fields">
+                              <select class="sb-select" id="collabCiv" disabled>
+                                <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
+                                <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
+                                <option value="-"${civLabel === "-" ? " selected" : ""}>-</option>
+                              </select>
+                              <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
+                              <input class="sb-ctrl" id="collabNom" type="text" value="${escapeHtml(v(d.nom_effectif))}" disabled />
+                            </span>
+                          </span>
+                        </div>
                       </div>
 
-                      <div class="sb-field">
-                        <div class="sb-label">Prénom</div>
-                        <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
+                      <div class="sb-collab-summary-strip">
+                        <div class="sb-collab-summary-item">
+                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("comment")}</span>
+                          <span>
+                            <span class="sb-collab-summary-label">Email</span>
+                            <input class="sb-ctrl" id="collabEmail" type="text" value="${escapeHtml(v(d.email_effectif))}" disabled />
+                          </span>
+                        </div>
                       </div>
 
-                      <div class="sb-field">
-                        <div class="sb-label">Nom</div>
-                        <input class="sb-ctrl" id="collabNom" type="text" value="${escapeHtml(v(d.nom_effectif))}" disabled />
+                      <div class="sb-collab-summary-strip">
+                        <div class="sb-collab-summary-item">
+                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("building")}</span>
+                          <span>
+                            <span class="sb-collab-summary-label">Adresse</span>
+                            <span class="sb-collab-address-fields">
+                              <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
+                              <span class="sb-collab-address-line">
+                                <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
+                                <input class="sb-ctrl" id="collabVille" type="text" value="${escapeHtml(v(d.ville_effectif))}" disabled />
+                              </span>
+                            </span>
+                          </span>
+                        </div>
                       </div>
 
-                      <div class="sb-field">
-                        <div class="sb-label">Date de naissance</div>
-                        <input class="sb-ctrl" id="collabNaissance" type="date" value="${escapeHtml(dateNaiss)}" disabled />
+                      <div class="sb-collab-summary-strip">
+                        <div class="sb-collab-summary-item">
+                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("org")}</span>
+                          <span>
+                            <span class="sb-collab-summary-label">Pays</span>
+                            <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />
+                          </span>
+                        </div>
                       </div>
 
-                      <div class="sb-field">
-                        <div class="sb-label">Téléphone</div>
-                        <input class="sb-ctrl" id="collabTel" type="text" inputmode="numeric" maxlength="14" placeholder="00 00 00 00 00" value="${escapeHtml(formatPhoneFr(d.telephone_effectif))}" disabled />
+                      <div class="sb-collab-summary-strip">
+                        <div class="sb-collab-summary-item">
+                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("phone")}</span>
+                          <span>
+                            <span class="sb-collab-summary-label">Téléphone</span>
+                            <input class="sb-ctrl" id="collabTel" type="text" inputmode="numeric" maxlength="14" placeholder="00 00 00 00 00" value="${escapeHtml(formatPhoneFr(d.telephone_effectif))}" disabled />
+                          </span>
+                        </div>
                       </div>
 
-                      <div class="sb-field">
-                        <div class="sb-label">Email</div>
-                        <input class="sb-ctrl" id="collabEmail" type="text" value="${escapeHtml(v(d.email_effectif))}" disabled />
-                      </div>
-
-                      <div class="sb-field sb-collab-ident-field--address">
-                        <div class="sb-label">Adresse</div>
-                        <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
-                      </div>
-
-                      <div class="sb-field">
-                        <div class="sb-label">Code postal</div>
-                        <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
-                      </div>
-
-                      <div class="sb-field">
-                        <div class="sb-label">Ville</div>
-                        <input class="sb-ctrl" id="collabVille" type="text" value="${escapeHtml(v(d.ville_effectif))}" disabled />
-                      </div>
-
-                      <div class="sb-field">
-                        <div class="sb-label">Pays</div>
-                        <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />
+                      <div class="sb-collab-summary-strip">
+                        <div class="sb-collab-summary-item">
+                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("calendar")}</span>
+                          <span>
+                            <span class="sb-collab-summary-label">Date de naissance</span>
+                            <input class="sb-ctrl" id="collabNaissance" type="date" value="${escapeHtml(dateNaiss)}" disabled />
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1726,7 +1738,7 @@
               `;
 
               // -------------------------
-              // Mode édition (toggle global sur l’onglet Identification)
+              // Mode édition ciblé sur la carte Identité et coordonnées
               // -------------------------
               const editBtn = identHost.querySelector("#collabBtnEdit");
               const saveBtn = identHost.querySelector("#collabBtnSave");
@@ -1744,20 +1756,6 @@
                 "#collabTel",
                 "#collabEmail",
                 "#collabNaissance",
-
-                "#collabMatricule",
-                "#collabService",
-                "#collabPoste",
-                "#collabEntree",
-                "#collabContrat",
-                "#collabDebutPoste",
-
-                "#collabEduNiv",
-                "#collabEduDom",
-                "#collabDateSortie",
-                "#collabMotifSortie",
-                "#collabComment",
-                "#collabChkSortie",
               ];
 
               const getEditableNodes = () => {
@@ -1807,8 +1805,6 @@
                 if (saveBtn) saveBtn.style.display = isEdit ? "" : "none";
                 if (cancelBtn) cancelBtn.style.display = isEdit ? "" : "none";
 
-                // Sortie prévue: dépendances
-                syncSortie();
               };
 
 
