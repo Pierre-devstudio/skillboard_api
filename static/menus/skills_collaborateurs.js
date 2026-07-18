@@ -1242,10 +1242,12 @@
                     </div>
                     <div class="studio-poste-overview-list">
                       <div>
-                        <span>Maitrise du poste</span>
-                        <div class="sim-result-modern-ring" style="--sim-ring:${adequationPercent};--accent:hsl(${adequationHue} 72% 42%)">
-                          <span>${adequationPercent}%</span>
-                        </div>
+                        <span class="sb-modal-titleline">
+                          <span>Maitrise du poste</span>
+                          <span class="sim-result-modern-ring" style="--sim-ring:${adequationPercent};--accent:hsl(${adequationHue} 72% 42%)">
+                            <span>${adequationPercent}%</span>
+                          </span>
+                        </span>
                       </div>
                       <div><span class="sb-modal-titleline"><span class="ns-badge ns-badge-level ns-badge-level--beginner">Débutant</span><strong style="color:var(--ns-danger-text)">${levelCounts.A}</strong> compétence${levelCounts.A > 1 ? "s" : ""} acquise${levelCounts.A > 1 ? "s" : ""} au niveau Débutant</span></div>
                       <div><span class="sb-modal-titleline"><span class="ns-badge ns-badge-level ns-badge-level--intermediate">Intermédiaire</span><strong style="color:var(--ns-warning-text)">${levelCounts.B}</strong> compétence${levelCounts.B > 1 ? "s" : ""} acquise${levelCounts.B > 1 ? "s" : ""} au niveau Intermédiaire</span></div>
@@ -1261,9 +1263,9 @@
                       <div class="studio-rh-panel-title">Certifications</div>
                     </div>
                     <div class="studio-poste-overview-list">
-                      <div><span><span class="sb-tip-dot sb-tip-dot--g" aria-hidden="true"></span> Certification valide</span><strong>${validCerts}</strong></div>
-                      <div><span><span class="sb-tip-dot sb-tip-dot--y" aria-hidden="true"></span> À renouveler prochainement</span><strong>${renewCerts}</strong></div>
-                      <div><span><span class="sb-tip-dot sb-tip-dot--r" aria-hidden="true"></span> Expirée</span><strong>${expiredCerts}</strong></div>
+                      <div><span class="sb-modal-titleline"><span class="sb-tip-dot sb-tip-dot--g" aria-hidden="true"></span><strong>${validCerts}</strong><span>Certification valide</span></span></div>
+                      <div><span class="sb-modal-titleline"><span class="sb-tip-dot sb-tip-dot--y" aria-hidden="true"></span><strong>${renewCerts}</strong><span>À renouveler prochainement</span></span></div>
+                      <div><span class="sb-modal-titleline"><span class="sb-tip-dot sb-tip-dot--r" aria-hidden="true"></span><strong>${expiredCerts}</strong><span>Expirée</span></span></div>
                     </div>
                     <button type="button" class="studio-poste-overview-link" data-overview-tab="certs">Voir le détail des certifications →</button>
                   </section>

@@ -32406,3 +32406,26 @@ body{
     grid-template-columns:1fr;
   }
 }
+
+/* Fiche collaborateur dédiée — alignement et lecture des cartes de synthèse */
+#modalCollaborateur .sb-collab-metrics > .sb-collab-block{
+  align-self:stretch;
+  height:auto;
+  margin-top:0;
+}
+
+#modalCollaborateur .collab-kpi-card--manager .studio-poste-overview-list .sb-modal-titleline > svg{
+  color:#2563eb;
+}
+
+#modalCollaborateur .collab-kpi-card--formateur .studio-poste-overview-list > div:nth-child(1) strong{
+  color:#16a34a;
+}
+
+#modalCollaborateur .collab-kpi-card--formateur .studio-poste-overview-list > div:nth-child(2) strong{
+  color:#f59e0b;
+}
+
+#modalCollaborateur .collab-kpi-card--formateur .studio-poste-overview-list > div:nth-child(3) strong{
+  color:var(--accent);
+}
