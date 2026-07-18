@@ -1222,10 +1222,10 @@
                       <div class="studio-rh-panel-title">Situation</div>
                     </div>
                     <div class="studio-poste-overview-list">
-                      <div><span>Ancienneté</span><strong>${escapeHtml(formatSeniority(ident?.date_entree_entreprise_effectif))}</strong></div>
-                      <div><span>Type de contrat</span><strong>${escapeHtml(ident?.type_contrat || "–")}</strong></div>
-                      <div><span>Statut</span><strong><span class="ns-badge ns-badge-status ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></strong></div>
-                      <div><span>Service</span><strong>${escapeHtml(ident?.nom_service || it?.nom_service || "–")}</strong></div>
+                      <div><span class="sb-modal-titleline"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg>Ancienneté</span><strong>${escapeHtml(formatSeniority(ident?.date_entree_entreprise_effectif))}</strong></div>
+                      <div><span class="sb-modal-titleline"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-c489f3162892"></use></svg>Type de contrat</span><strong>${escapeHtml(ident?.type_contrat || "–")}</strong></div>
+                      <div><span class="sb-modal-titleline"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>Statut</span><strong><span class="ns-badge ns-badge-status ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></strong></div>
+                      <div><span class="sb-modal-titleline"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-organisation"></use></svg>Service</span><strong>${escapeHtml(ident?.nom_service || it?.nom_service || "–")}</strong></div>
                     </div>
                   </section>
 
