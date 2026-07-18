@@ -3489,6 +3489,7 @@ textarea.sb-ctrl{
   display:flex;
   flex-direction:column;
   gap:14px;
+  padding-top:14px;
 }
 
 #modalCollaborateur .sb-collab-ident-actions{
@@ -32617,6 +32618,7 @@ body{
 }
 
 #modalCollaborateur .sb-collab-name-fields #collabCiv{
+  width:auto;
   flex:0 0 64px;
 }
 
@@ -32624,11 +32626,13 @@ body{
 #modalCollaborateur .sb-collab-name-fields #collabNom,
 #modalCollaborateur .sb-collab-address-fields #collabAdr,
 #modalCollaborateur .sb-collab-address-line #collabVille{
+  width:auto;
   min-width:0;
-  flex:1 1 auto;
+  flex:1 1 0;
 }
 
 #modalCollaborateur .sb-collab-address-line #collabCP{
+  width:auto;
   flex:0 0 88px;
 }
 

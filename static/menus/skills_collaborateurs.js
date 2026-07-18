@@ -513,6 +513,7 @@
       comment: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-comment"></use></svg>`,
       school: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-0476721b1003"></use></svg>`,
       org: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-organisation"></use></svg>`,
+      globe: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-globe"></use></svg>`,
       audit: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-legacy-c675e9d5bc92"></use></svg>`,
       medal: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-certification"></use></svg>`,
       edit: `<svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>`,
@@ -1528,9 +1529,8 @@
                           <span aria-hidden="true">${collabIcon("save")}</span>
                           Enregistrer
                         </button>
-                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--edit" id="collabBtnEdit">
-                          <span aria-hidden="true">${collabIcon("edit")}</span>
-                          Modifier
+                        <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="collabBtnEdit" title="Modifier" aria-label="Modifier l’identité et les coordonnées">
+                          ${collabIcon("edit")}
                         </button>
                       </div>
                     </div>
@@ -1581,7 +1581,7 @@
 
                       <div class="sb-collab-summary-strip">
                         <div class="sb-collab-summary-item">
-                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("org")}</span>
+                          <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("globe")}</span>
                           <span>
                             <span class="sb-collab-summary-label">Pays</span>
                             <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />

@@ -71,6 +71,12 @@
   <symbol id="ns-icon-info" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><path d="M12 7h.01"/>
   </symbol>
+  <symbol id="ns-icon-globe" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M3 12h18"/>
+    <path d="M12 3a15 15 0 0 1 0 18"/>
+    <path d="M12 3a15 15 0 0 0 0 18"/>
+  </symbol>
   <symbol id="ns-icon-chevron-down" viewBox="0 0 24 24">
     <path d="m6 9 6 6 6-6"/>
   </symbol>
