@@ -1536,188 +1536,191 @@
                   ${renderModalSummaryItem("calendar", "Date d’entrée", formatDateFR(d.date_entree_entreprise_effectif))}
                 </div>
 
-                <div class="sb-collab-block sb-collab-block--personal">
-                  <div class="sb-collab-block-title">
-                    <span aria-hidden="true">${collabIcon("user")}</span>
-                    Informations personnelles
-                  </div>
-                  <div class="sb-collab-grid">
-                    <div class="sb-field">
-                      <div class="sb-label">Civilité</div>
-                      <select class="sb-select" id="collabCiv" disabled>
-                        <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
-                        <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
-                        <option value="-"${civLabel === "-" ? " selected" : ""}>-</option>
-                      </select>
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Nom</div>
-                      <input class="sb-ctrl" id="collabNom" type="text" value="${escapeHtml(v(d.nom_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Prénom</div>
-                      <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field sb-span-3">
-                      <div class="sb-label">Adresse</div>
-                      <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
-                    </div>
-                  </div>
-
-                  <div class="sb-collab-block-subtitle">
-                    <span aria-hidden="true">${collabIcon("phone")}</span>
-                    Coordonnées
-                  </div>
-                  <div class="sb-collab-grid">
-                    <div class="sb-field">
-                      <div class="sb-label">CP</div>
-                      <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Ville</div>
-                      <input class="sb-ctrl" id="collabVille" type="text" value="${escapeHtml(v(d.ville_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Pays</div>
-                      <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Téléphone</div>
-                      <input class="sb-ctrl" id="collabTel" type="text" inputmode="numeric" maxlength="14" placeholder="00 00 00 00 00" value="${escapeHtml(formatPhoneFr(d.telephone_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Email</div>
-                      <input class="sb-ctrl" id="collabEmail" type="text" value="${escapeHtml(v(d.email_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Date de naissance</div>
-                      <input class="sb-ctrl" id="collabNaissance" type="date" value="${escapeHtml(dateNaiss)}" disabled />
-                    </div>
-                  </div>
-                </div>
-
-                <div class="sb-collab-block">
-                  <div class="sb-collab-block-title">
-                    <span aria-hidden="true">${collabIcon("briefcase")}</span>
-                    Situation dans l'entreprise
-                  </div>
-                  <div class="sb-collab-grid">
-                    <div class="sb-field">
-                      <div class="sb-label">Matricule</div>
-                      <input class="sb-ctrl" id="collabMatricule" type="text" value="${escapeHtml(v(d.matricule))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Service</div>
-                      <select class="sb-select" id="collabService" disabled>
-                        <option value="">Chargement…</option>
-                      </select>
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Poste actuel</div>
-                      <select class="sb-select" id="collabPoste" disabled>
-                        <option value="">Chargement…</option>
-                      </select>
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Date entrée entreprise</div>
-                      <input class="sb-ctrl" id="collabEntree" type="date" value="${escapeHtml(dateEntree)}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Type de contrat</div>
-                      <select class="sb-select" id="collabContrat" disabled>
-                        <option value=""></option>
-                        ${contratOptions.map(x => {
-                          const sel = (String(d.type_contrat || "").trim() === x) ? " selected" : "";
-                          return `<option value="${escapeHtml(x)}"${sel}>${escapeHtml(x)}</option>`;
-                        }).join("")}
-                      </select>
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Date début poste actuel</div>
-                      <input class="sb-ctrl" id="collabDebutPoste" type="date" value="${escapeHtml(dateDebutPoste)}" disabled />
-                    </div>
-                  </div>
-                </div>
-
-                <div class="sb-collab-ident-bottom">
-                  <div class="sb-collab-block">
+                <div class="sb-collab-ident-main">
+                  <div class="sb-collab-block sb-collab-block--personal">
                     <div class="sb-collab-block-title">
-                      <span aria-hidden="true">${collabIcon("graduation")}</span>
-                      Parcours / projection
+                      <span aria-hidden="true">${collabIcon("user")}</span>
+                      Identité et coordonnées
                     </div>
-                    <div class="sb-collab-grid sb-collab-projection-grid">
-                      <input type="hidden" id="collabDist" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" />
-                      <div class="sb-field sb-collab-projection-field--education">
-                        <div class="sb-label">Dernier diplôme obtenu</div>
-                        <select class="sb-select" id="collabEduNiv" disabled>
-                          <option value=""></option>
-                          <option value="3"${eduCode === "3" ? " selected" : ""}>Niveau 3 : CAP / BEP</option>
-                          <option value="4"${eduCode === "4" ? " selected" : ""}>Niveau 4 : Bac</option>
-                          <option value="5"${eduCode === "5" ? " selected" : ""}>Niveau 5 : Bac+2 (BTS, DUT)</option>
-                          <option value="6"${eduCode === "6" ? " selected" : ""}>Niveau 6 : Bac+3 (Licence, BUT)</option>
-                          <option value="7"${eduCode === "7" ? " selected" : ""}>Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)</option>
-                          <option value="8"${eduCode === "8" ? " selected" : ""}>Niveau 8 : Doctorat</option>
-                          <option value="0"${eduCode === "0" ? " selected" : ""}>Aucun diplôme</option>
+                    <div class="sb-collab-ident-read-grid">
+                      <div class="sb-field sb-collab-ident-field--civility">
+                        <div class="sb-label">Civilité</div>
+                        <select class="sb-select" id="collabCiv" disabled>
+                          <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
+                          <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
+                          <option value="-"${civLabel === "-" ? " selected" : ""}>-</option>
                         </select>
                       </div>
 
-                      <div class="sb-field sb-collab-projection-field--domain">
-                        <div class="sb-label">Domaine d'éducation</div>
-                        <select class="sb-select" id="collabEduDom" disabled>
+                      <div class="sb-field">
+                        <div class="sb-label">Prénom</div>
+                        <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Nom</div>
+                        <input class="sb-ctrl" id="collabNom" type="text" value="${escapeHtml(v(d.nom_effectif))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Date de naissance</div>
+                        <input class="sb-ctrl" id="collabNaissance" type="date" value="${escapeHtml(dateNaiss)}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Téléphone</div>
+                        <input class="sb-ctrl" id="collabTel" type="text" inputmode="numeric" maxlength="14" placeholder="00 00 00 00 00" value="${escapeHtml(formatPhoneFr(d.telephone_effectif))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Email</div>
+                        <input class="sb-ctrl" id="collabEmail" type="text" value="${escapeHtml(v(d.email_effectif))}" disabled />
+                      </div>
+
+                      <div class="sb-field sb-collab-ident-field--address">
+                        <div class="sb-label">Adresse</div>
+                        <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Code postal</div>
+                        <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Ville</div>
+                        <input class="sb-ctrl" id="collabVille" type="text" value="${escapeHtml(v(d.ville_effectif))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Pays</div>
+                        <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="sb-collab-block sb-collab-block--company">
+                    <div class="sb-collab-block-title">
+                      <span aria-hidden="true">${collabIcon("briefcase")}</span>
+                      Situation dans l'entreprise
+                    </div>
+                    <div class="sb-collab-company-list">
+                      <div class="sb-field">
+                        <div class="sb-label">Matricule</div>
+                        <input class="sb-ctrl" id="collabMatricule" type="text" value="${escapeHtml(v(d.matricule))}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Service</div>
+                        <select class="sb-select" id="collabService" disabled>
                           <option value="">Chargement…</option>
                         </select>
                       </div>
 
-
-                      <div class="sb-field sb-collab-projection-field--retirement">
-                        <div class="sb-label">Retraite estimée</div>
-                        <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
+                      <div class="sb-field">
+                        <div class="sb-label">Poste actuel</div>
+                        <select class="sb-select" id="collabPoste" disabled>
+                          <option value="">Chargement…</option>
+                        </select>
                       </div>
 
-                      <label class="sb-check sb-collab-sortie-check sb-collab-projection-field--exit-check">
-                        <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
-                        <span>Sortie prévue</span>
-                      </label>
-
-                      <div class="sb-field sb-collab-projection-field--exit-date">
-                        <div class="sb-label">Date de sortie prévue</div>
-                        <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
+                      <div class="sb-field">
+                        <div class="sb-label">Date d'entrée</div>
+                        <input class="sb-ctrl" id="collabEntree" type="date" value="${escapeHtml(dateEntree)}" disabled />
                       </div>
 
-                      <div class="sb-field sb-collab-projection-field--exit-reason">
-                        <div class="sb-label">Motif de sortie</div>
-                        <select class="sb-select" id="collabMotifSortie" disabled>
+                      <div class="sb-field">
+                        <div class="sb-label">Début dans le poste</div>
+                        <input class="sb-ctrl" id="collabDebutPoste" type="date" value="${escapeHtml(dateDebutPoste)}" disabled />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="sb-label">Type de contrat</div>
+                        <select class="sb-select" id="collabContrat" disabled>
                           <option value=""></option>
-                          ${motifOptions.map(x => {
-                            const sel = (String(d.motif_sortie || "").trim() === x) ? " selected" : "";
+                          ${contratOptions.map(x => {
+                            const sel = (String(d.type_contrat || "").trim() === x) ? " selected" : "";
                             return `<option value="${escapeHtml(x)}"${sel}>${escapeHtml(x)}</option>`;
                           }).join("")}
                         </select>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  <div class="sb-collab-block sb-collab-comment-card">
-                    <div class="sb-collab-block-title">
-                      <span aria-hidden="true">${collabIcon("comment")}</span>
-                      Commentaires
+                <div class="sb-collab-block sb-collab-block--projection">
+                  <div class="sb-collab-block-title">
+                    <span aria-hidden="true">${collabIcon("graduation")}</span>
+                    Parcours et projection
+                  </div>
+                  <div class="sb-collab-projection-sections">
+                    <div class="sb-collab-projection-section">
+                      <div class="sb-collab-block-subtitle">Formation</div>
+                      <div class="sb-collab-projection-fields">
+                        <input type="hidden" id="collabDist" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" />
+                        <div class="sb-field">
+                          <div class="sb-label">Dernier diplôme obtenu</div>
+                          <select class="sb-select" id="collabEduNiv" disabled>
+                            <option value=""></option>
+                            <option value="3"${eduCode === "3" ? " selected" : ""}>Niveau 3 : CAP / BEP</option>
+                            <option value="4"${eduCode === "4" ? " selected" : ""}>Niveau 4 : Bac</option>
+                            <option value="5"${eduCode === "5" ? " selected" : ""}>Niveau 5 : Bac+2 (BTS, DUT)</option>
+                            <option value="6"${eduCode === "6" ? " selected" : ""}>Niveau 6 : Bac+3 (Licence, BUT)</option>
+                            <option value="7"${eduCode === "7" ? " selected" : ""}>Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)</option>
+                            <option value="8"${eduCode === "8" ? " selected" : ""}>Niveau 8 : Doctorat</option>
+                            <option value="0"${eduCode === "0" ? " selected" : ""}>Aucun diplôme</option>
+                          </select>
+                        </div>
+
+                        <div class="sb-field">
+                          <div class="sb-label">Domaine d'éducation</div>
+                          <select class="sb-select" id="collabEduDom" disabled>
+                            <option value="">Chargement…</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    <div class="sb-field">
-                      <textarea class="sb-ctrl" id="collabComment" disabled>${escapeHtml(v(d.note_commentaire))}</textarea>
+
+                    <div class="sb-collab-projection-section">
+                      <div class="sb-collab-block-subtitle">Projection</div>
+                      <div class="sb-collab-projection-fields">
+                        <div class="sb-field">
+                          <div class="sb-label">Retraite estimée</div>
+                          <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
+                        </div>
+
+                        <label class="sb-check sb-collab-sortie-check">
+                          <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
+                          <span>Sortie prévue</span>
+                        </label>
+
+                        <div class="sb-field">
+                          <div class="sb-label">Date de sortie prévue</div>
+                          <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
+                        </div>
+
+                        <div class="sb-field">
+                          <div class="sb-label">Motif de sortie</div>
+                          <select class="sb-select" id="collabMotifSortie" disabled>
+                            <option value=""></option>
+                            ${motifOptions.map(x => {
+                              const sel = (String(d.motif_sortie || "").trim() === x) ? " selected" : "";
+                              return `<option value="${escapeHtml(x)}"${sel}>${escapeHtml(x)}</option>`;
+                            }).join("")}
+                          </select>
+                        </div>
+                      </div>
                     </div>
+                  </div>
+                </div>
+
+                <div class="sb-collab-block sb-collab-comment-card">
+                  <div class="sb-collab-block-title">
+                    <span aria-hidden="true">${collabIcon("comment")}</span>
+                    Commentaire interne
+                  </div>
+                  <div class="sb-field">
+                    <textarea class="sb-ctrl" id="collabComment" disabled>${escapeHtml(v(d.note_commentaire))}</textarea>
                   </div>
                 </div>
               `;
