@@ -1155,10 +1155,12 @@
             loadIdentification(id_contact, it.id_effectif),
             loadCompetences(id_contact, it.id_effectif),
             loadCertifications(id_contact, it.id_effectif),
+            loadHistoriqueFormationsJmb(id_contact, it.id_effectif, null, false),
           ])
-            .then(async ([ident, skillsData, certsData]) => {
+            .then(async ([ident, skillsData, certsData, formationsData]) => {
               const skills = Array.isArray(skillsData?.items) ? skillsData.items : [];
               const certs = Array.isArray(certsData?.items) ? certsData.items : [];
+              const formations = Array.isArray(formationsData?.items) ? formationsData.items : [];
               const requiredSkills = skills.filter(x => !!x?.is_required);
 
               const order = { A: 1, B: 2, C: 3, D: 4 };
@@ -1187,6 +1189,85 @@
                 const current = levelKey(skill?.niveau_actuel);
                 if (Object.prototype.hasOwnProperty.call(levelCounts, current)) levelCounts[current] += 1;
               });
+
+              const formatDate = (iso) => {
+                const raw = String(iso || "").trim();
+                if (!raw) return "–";
+                const parsed = new Date(raw);
+                if (Number.isNaN(parsed.getTime())) return "–";
+                return parsed.toLocaleDateString("fr-FR");
+              };
+
+              const latestByDate = (items, fields) => {
+                return [...items].sort((a, b) => {
+                  const dateA = fields.map(field => a?.[field]).find(Boolean);
+                  const dateB = fields.map(field => b?.[field]).find(Boolean);
+                  return new Date(dateB || 0).getTime() - new Date(dateA || 0).getTime();
+                })[0] || null;
+              };
+
+              const latestEvaluatedSkill = latestByDate(
+                skills.filter(skill => skill?.date_derniere_eval),
+                ["date_derniere_eval"]
+              );
+              const latestFormation = latestByDate(
+                formations,
+                ["date_fin_formation", "date_debut_formation"]
+              );
+              const latestCertification = latestByDate(
+                certs.filter(cert => cert?.is_acquired),
+                ["date_obtention", "date_expiration_calculee", "date_expiration"]
+              );
+              const nearestCertification = [...certs]
+                .filter(cert => cert?.is_acquired && (cert?.date_expiration_calculee || cert?.date_expiration))
+                .sort((a, b) => new Date(a.date_expiration_calculee || a.date_expiration).getTime() - new Date(b.date_expiration_calculee || b.date_expiration).getTime())[0] || null;
+
+              const activityRows = [
+                {
+                  icon: "audit",
+                  title: "Dernière évaluation",
+                  detail: latestEvaluatedSkill
+                    ? `${latestEvaluatedSkill.code ? `${latestEvaluatedSkill.code} · ` : ""}${latestEvaluatedSkill.intitule || "Compétence évaluée"}`
+                    : "Aucune évaluation enregistrée",
+                  meta: latestEvaluatedSkill ? formatDate(latestEvaluatedSkill.date_derniere_eval) : "–",
+                },
+                {
+                  icon: "graduation",
+                  title: "Dernière formation",
+                  detail: latestFormation?.titre_formation || "Aucune formation enregistrée",
+                  meta: latestFormation ? formatDate(latestFormation.date_fin_formation || latestFormation.date_debut_formation) : "–",
+                },
+                {
+                  icon: "certs",
+                  title: "Dernière certification",
+                  detail: latestCertification?.nom_certification || "Aucune certification enregistrée",
+                  meta: latestCertification
+                    ? (latestCertification.date_expiration_calculee || latestCertification.date_expiration
+                      ? `Valide jusqu’au ${formatDate(latestCertification.date_expiration_calculee || latestCertification.date_expiration)}`
+                      : formatDate(latestCertification.date_obtention))
+                    : "–",
+                },
+                {
+                  icon: "calendar",
+                  title: "Prochaine échéance RH",
+                  detail: nearestCertification?.nom_certification || "Aucune échéance identifiée",
+                  meta: nearestCertification
+                    ? `Échéance : ${formatDate(nearestCertification.date_expiration_calculee || nearestCertification.date_expiration)}`
+                    : "–",
+                },
+              ];
+
+              const attentionRows = [
+                requiredSkills.length && validatedSkills === requiredSkills
+                  ? { state: "ok", title: "Aucun point bloquant", detail: "Toutes les compétences requises sont maîtrisées." }
+                  : { state: "danger", title: `${requiredSkills.length - validatedSkills} compétence${requiredSkills.length - validatedSkills > 1 ? "s" : ""} à renforcer`, detail: "Le niveau requis du poste reste à atteindre." },
+                renewCerts || expiredCerts
+                  ? { state: "warning", title: `${renewCerts + expiredCerts} certification${renewCerts + expiredCerts > 1 ? "s" : ""} à surveiller`, detail: expiredCerts ? `${expiredCerts} expirée${expiredCerts > 1 ? "s" : ""}` : "Renouvellement prochain" }
+                  : { state: "ok", title: "Certifications à jour", detail: "Aucune certification à renouveler prochainement." },
+                skillsToStrengthen || notEvaluatedSkills
+                  ? { state: "info", title: "1 action RH à planifier", detail: notEvaluatedSkills ? "Planifier les évaluations manquantes." : "Prévoir une action de développement des compétences." }
+                  : { state: "ok", title: "Aucune action RH prioritaire", detail: "La situation ne nécessite pas d’action immédiate." },
+              ];
 
               const formatSeniority = (iso) => {
                 const raw = String(iso || "").trim();
@@ -1269,6 +1350,45 @@
                       <div><span class="sb-modal-titleline"><span class="sb-tip-dot sb-tip-dot--r" aria-hidden="true"></span><strong>${expiredCerts}</strong><span>Expirée</span></span></div>
                     </div>
                     <button type="button" class="studio-poste-overview-link" data-overview-tab="certs">Voir le détail des certifications →</button>
+                  </section>
+                </div>
+
+                <div class="sb-collab-overview-secondary">
+                  <section class="sb-collab-block studio-poste-overview-card">
+                    <div class="studio-poste-overview-card__head">
+                      <span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--blue" aria-hidden="true">${collabIcon("history")}</span>
+                      <div class="studio-rh-panel-title">Activité récente</div>
+                    </div>
+                    <div class="sb-collab-overview-events">
+                      ${activityRows.map(row => `
+                        <div class="sb-collab-overview-event">
+                          <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon(row.icon)}</span>
+                          <span class="sb-collab-overview-event__content">
+                            <strong>${escapeHtml(row.title)}</strong>
+                            <span>${escapeHtml(row.detail)}</span>
+                          </span>
+                          <span class="sb-collab-overview-event__meta">${escapeHtml(row.meta)}</span>
+                        </div>
+                      `).join("")}
+                    </div>
+                  </section>
+
+                  <section class="sb-collab-block studio-poste-overview-card">
+                    <div class="studio-poste-overview-card__head">
+                      <span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--orange" aria-hidden="true">${collabIcon("trend")}</span>
+                      <div class="studio-rh-panel-title">Points d’attention</div>
+                    </div>
+                    <div class="sb-collab-overview-events">
+                      ${attentionRows.map(row => `
+                        <div class="sb-collab-overview-event">
+                          <span class="sb-collab-overview-state sb-collab-overview-state--${row.state}" aria-hidden="true"></span>
+                          <span class="sb-collab-overview-event__content">
+                            <strong>${escapeHtml(row.title)}</strong>
+                            <span>${escapeHtml(row.detail)}</span>
+                          </span>
+                        </div>
+                      `).join("")}
+                    </div>
                   </section>
                 </div>
               `;
