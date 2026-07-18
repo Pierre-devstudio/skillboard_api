@@ -1181,6 +1181,12 @@
               const adequationPercent = requiredSkills.length
                 ? Math.round((validatedSkills / requiredSkills.length) * 100)
                 : 0;
+              const adequationHue = Math.round((Math.max(0, Math.min(100, adequationPercent)) / 100) * 120);
+              const levelCounts = { A: 0, B: 0, C: 0, D: 0 };
+              skills.forEach((skill) => {
+                const current = levelKey(skill?.niveau_actuel);
+                if (Object.prototype.hasOwnProperty.call(levelCounts, current)) levelCounts[current] += 1;
+              });
 
               const formatSeniority = (iso) => {
                 const raw = String(iso || "").trim();
@@ -1231,19 +1237,20 @@
 
                   <section class="sb-collab-block collab-kpi-card--manager studio-poste-overview-card">
                     <div class="studio-poste-overview-card__head">
-                      <span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--blue" aria-hidden="true">${collabIcon("skills")}</span>
+                      <span class="studio-poste-overview-card__icon" aria-hidden="true">${collabIcon("skills")}</span>
                       <div class="studio-rh-panel-title">Compétences</div>
                     </div>
-                    <div class="sim-result-focus-ui">
-                      <div class="sim-result-modern-ring" style="--sim-ring:${adequationPercent}">
-                        <span>${adequationPercent}%</span>
-                      </div>
-                      <div class="sim-result-focus-text"><div>Adéquation<br>au poste</div></div>
-                    </div>
                     <div class="studio-poste-overview-list">
-                      <div><span><span class="sb-tip-dot sb-tip-dot--g" aria-hidden="true"></span> Compétences maîtrisées</span><strong>${validatedSkills}</strong></div>
-                      <div><span><span class="sb-tip-dot sb-tip-dot--y" aria-hidden="true"></span> Compétences à renforcer</span><strong>${skillsToStrengthen}</strong></div>
-                      <div><span><span class="sb-tip-dot" aria-hidden="true"></span> Compétences non évaluées</span><strong>${notEvaluatedSkills}</strong></div>
+                      <div>
+                        <span>Maitrise du poste</span>
+                        <div class="sim-result-modern-ring" style="--sim-ring:${adequationPercent};--accent:hsl(${adequationHue} 72% 42%)">
+                          <span>${adequationPercent}%</span>
+                        </div>
+                      </div>
+                      <div><span class="sb-modal-titleline"><span class="ns-badge ns-badge-level ns-badge-level--beginner">Débutant</span><strong style="color:var(--ns-danger-text)">${levelCounts.A}</strong> compétence${levelCounts.A > 1 ? "s" : ""} acquise${levelCounts.A > 1 ? "s" : ""} au niveau Débutant</span></div>
+                      <div><span class="sb-modal-titleline"><span class="ns-badge ns-badge-level ns-badge-level--intermediate">Intermédiaire</span><strong style="color:var(--ns-warning-text)">${levelCounts.B}</strong> compétence${levelCounts.B > 1 ? "s" : ""} acquise${levelCounts.B > 1 ? "s" : ""} au niveau Intermédiaire</span></div>
+                      <div><span class="sb-modal-titleline"><span class="ns-badge ns-badge-level ns-badge-level--advanced">Avancé</span><strong style="color:var(--ns-info-text)">${levelCounts.C}</strong> compétence${levelCounts.C > 1 ? "s" : ""} acquise${levelCounts.C > 1 ? "s" : ""} au niveau Avancé</span></div>
+                      <div><span class="sb-modal-titleline"><span class="ns-badge ns-badge-level ns-badge-level--expert">Expert</span><strong style="color:var(--ns-success-text)">${levelCounts.D}</strong> compétence${levelCounts.D > 1 ? "s" : ""} acquise${levelCounts.D > 1 ? "s" : ""} au niveau Expert</span></div>
                     </div>
                     <button type="button" class="studio-poste-overview-link" data-overview-tab="skills">Voir le détail des compétences →</button>
                   </section>
