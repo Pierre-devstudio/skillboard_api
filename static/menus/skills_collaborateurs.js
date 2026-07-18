@@ -1216,50 +1216,50 @@
 
               overviewHost.innerHTML = `
                 <div class="sb-collab-metrics">
-                  <div class="sb-collab-block">
-                    <div class="sb-collab-block-title">
-                      <span class="collab-kpi-card__icon" aria-hidden="true">${collabIcon("user")}</span>
-                      Situation
+                  <section class="sb-collab-block collab-kpi-card--manager studio-poste-overview-card">
+                    <div class="studio-poste-overview-card__head">
+                      <span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--blue" aria-hidden="true">${collabIcon("user")}</span>
+                      <div class="studio-rh-panel-title">Situation</div>
                     </div>
-                    <div>
-                      <div class="sim2-read-row"><strong>Ancienneté</strong><span>${escapeHtml(formatSeniority(ident?.date_entree_entreprise_effectif))}</span></div>
-                      <div class="sim2-read-row"><strong>Type de contrat</strong><span>${escapeHtml(ident?.type_contrat || "–")}</span></div>
-                      <div class="sim2-read-row"><strong>Statut</strong><span class="ns-badge ns-badge-status ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></div>
-                      <div class="sim2-read-row"><strong>Service</strong><span>${escapeHtml(ident?.nom_service || it?.nom_service || "–")}</span></div>
+                    <div class="studio-poste-overview-list">
+                      <div><span>Ancienneté</span><strong>${escapeHtml(formatSeniority(ident?.date_entree_entreprise_effectif))}</strong></div>
+                      <div><span>Type de contrat</span><strong>${escapeHtml(ident?.type_contrat || "–")}</strong></div>
+                      <div><span>Statut</span><strong><span class="ns-badge ns-badge-status ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></strong></div>
+                      <div><span>Service</span><strong>${escapeHtml(ident?.nom_service || it?.nom_service || "–")}</strong></div>
                     </div>
-                  </div>
+                  </section>
 
-                  <div class="sb-collab-block">
-                    <div class="sb-collab-block-title">
-                      <span class="collab-kpi-card__icon" aria-hidden="true">${collabIcon("skills")}</span>
-                      Compétences
+                  <section class="sb-collab-block collab-kpi-card--manager studio-poste-overview-card">
+                    <div class="studio-poste-overview-card__head">
+                      <span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--blue" aria-hidden="true">${collabIcon("skills")}</span>
+                      <div class="studio-rh-panel-title">Compétences</div>
                     </div>
                     <div class="sim-result-focus-ui">
                       <div class="sim-result-modern-ring" style="--sim-ring:${adequationPercent}">
                         <span>${adequationPercent}%</span>
                       </div>
-                      <div class="sim-result-focus-text"><div><strong>Adéquation au poste</strong></div></div>
+                      <div class="sim-result-focus-text"><div>Adéquation<br>au poste</div></div>
                     </div>
-                    <div>
-                      <div class="sim2-read-row"><strong>Compétences maîtrisées</strong><span>${validatedSkills}</span></div>
-                      <div class="sim2-read-row"><strong>Compétences à renforcer</strong><span>${skillsToStrengthen}</span></div>
-                      <div class="sim2-read-row"><strong>Compétences non évaluées</strong><span>${notEvaluatedSkills}</span></div>
+                    <div class="studio-poste-overview-list">
+                      <div><span><span class="sb-tip-dot sb-tip-dot--g" aria-hidden="true"></span> Compétences maîtrisées</span><strong>${validatedSkills}</strong></div>
+                      <div><span><span class="sb-tip-dot sb-tip-dot--y" aria-hidden="true"></span> Compétences à renforcer</span><strong>${skillsToStrengthen}</strong></div>
+                      <div><span><span class="sb-tip-dot" aria-hidden="true"></span> Compétences non évaluées</span><strong>${notEvaluatedSkills}</strong></div>
                     </div>
-                    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-overview-tab="skills">Voir le détail des compétences</button>
-                  </div>
+                    <button type="button" class="studio-poste-overview-link" data-overview-tab="skills">Voir le détail des compétences →</button>
+                  </section>
 
-                  <div class="sb-collab-block">
-                    <div class="sb-collab-block-title">
-                      <span class="collab-kpi-card__icon" aria-hidden="true">${collabIcon("certs")}</span>
-                      Certifications
+                  <section class="sb-collab-block collab-kpi-card--formateur studio-poste-overview-card">
+                    <div class="studio-poste-overview-card__head">
+                      <span class="studio-poste-overview-card__icon studio-poste-overview-card__icon--violet" aria-hidden="true">${collabIcon("certs")}</span>
+                      <div class="studio-rh-panel-title">Certifications</div>
                     </div>
-                    <div>
-                      <div class="sim2-read-row"><strong>Certification valide</strong><span>${validCerts}</span></div>
-                      <div class="sim2-read-row"><strong>À renouveler prochainement</strong><span>${renewCerts}</span></div>
-                      <div class="sim2-read-row"><strong>Expirée</strong><span>${expiredCerts}</span></div>
+                    <div class="studio-poste-overview-list">
+                      <div><span><span class="sb-tip-dot sb-tip-dot--g" aria-hidden="true"></span> Certification valide</span><strong>${validCerts}</strong></div>
+                      <div><span><span class="sb-tip-dot sb-tip-dot--y" aria-hidden="true"></span> À renouveler prochainement</span><strong>${renewCerts}</strong></div>
+                      <div><span><span class="sb-tip-dot sb-tip-dot--r" aria-hidden="true"></span> Expirée</span><strong>${expiredCerts}</strong></div>
                     </div>
-                    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-overview-tab="certs">Voir le détail des certifications</button>
-                  </div>
+                    <button type="button" class="studio-poste-overview-link" data-overview-tab="certs">Voir le détail des certifications →</button>
+                  </section>
                 </div>
               `;
 
