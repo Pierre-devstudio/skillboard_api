@@ -3562,11 +3562,13 @@ textarea.sb-ctrl{
   font-weight:var(--ns-weight-bold, 700);
   font-size:var(--ns-text-md, 0.875rem);
   color:#0f2742;
+  white-space:nowrap;
 }
 
-#modalCollaborateur .sb-collab-block-title span,
-#modalCollaborateur .sb-collab-block-subtitle span{
+#modalCollaborateur .sb-collab-block-title > span,
+#modalCollaborateur .sb-collab-block-subtitle > span{
   color:#0f2742;
+  min-width:0;
 }
 
 #modalCollaborateur .sb-collab-block-subtitle{
@@ -32574,23 +32576,89 @@ body{
   width:100%;
 }
 
-#modalCollaborateur .sb-collab-name-fields #collabCiv{
+#modalCollaborateur .sb-collab-name-fields > #collabCiv{
   width:auto;
   flex:0 0 64px;
 }
 
-#modalCollaborateur .sb-collab-name-fields #collabPrenom,
-#modalCollaborateur .sb-collab-name-fields #collabNom,
-#modalCollaborateur .sb-collab-address-fields #collabAdr,
-#modalCollaborateur .sb-collab-address-line #collabVille{
+#modalCollaborateur .sb-collab-name-fields > #collabPrenom,
+#modalCollaborateur .sb-collab-name-fields > #collabNom,
+#modalCollaborateur .sb-collab-address-fields > #collabAdr,
+#modalCollaborateur .sb-collab-address-line > #collabVille{
   width:auto;
   min-width:0;
   flex:1 1 0;
 }
 
-#modalCollaborateur .sb-collab-address-line #collabCP{
+#modalCollaborateur .sb-collab-address-line > #collabCP{
   width:auto;
   flex:0 0 88px;
+}
+
+#modalCollaborateur .sb-collab-ident-panel.is-editing .sb-collab-ident-read-grid > .sb-collab-summary-strip:nth-child(3){
+  grid-column:1 / -1;
+}
+
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field{
+  margin:0;
+  min-width:0;
+}
+
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field--civ{
+  flex:0 0 72px;
+}
+
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field--prenom,
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field--nom{
+  flex:1 1 0;
+}
+
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field .sb-label{
+  margin-bottom:4px;
+}
+
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field .sb-ctrl,
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field .sb-select{
+  width:100%;
+}
+
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field .sb-select,
+#modalCollaborateur .sb-collab-name-fields .sb-collab-name-field .sb-ctrl{
+  flex:0 0 auto;
+}
+
+#modalCollaborateur .sb-collab-summary-item--address > span:not(.sb-collab-summary-icon){
+  flex:1 1 auto;
+}
+
+#modalCollaborateur .sb-collab-address-fields .sb-collab-address-field{
+  margin:0;
+  min-width:0;
+}
+
+#modalCollaborateur .sb-collab-address-fields .sb-collab-address-field--street{
+  width:100%;
+}
+
+#modalCollaborateur .sb-collab-address-fields .sb-collab-address-field--cp{
+  flex:0 0 176px;
+}
+
+#modalCollaborateur .sb-collab-address-fields .sb-collab-address-field--city{
+  flex:1 1 auto;
+}
+
+#modalCollaborateur .sb-collab-address-fields .sb-collab-address-field .sb-label{
+  margin-bottom:4px;
+}
+
+#modalCollaborateur .sb-collab-address-fields .sb-collab-address-field .sb-ctrl{
+  width:100%;
+  flex:0 0 auto;
+}
+
+#modalCollaborateur .sb-collab-role-check{
+  margin-top:0;
 }
 
 #modalCollaborateur .sb-collab-company-list{

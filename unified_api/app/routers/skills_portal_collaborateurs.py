@@ -168,9 +168,8 @@ class CollaborateurIdentification(BaseModel):
     # Commentaire
     note_commentaire: Optional[str] = None
 
-class CollaborateurIdentificationUpdate(BaseModel):
-    # Bloc 1
-    civilite_label: Optional[str] = None   # "M." / "Mme" / "-"
+class CollaborateurIdentificationIdentityUpdate(BaseModel):
+    civilite_label: Optional[str] = None
     nom_effectif: Optional[str] = None
     prenom_effectif: Optional[str] = None
     adresse_effectif: Optional[str] = None
@@ -179,22 +178,33 @@ class CollaborateurIdentificationUpdate(BaseModel):
     pays_effectif: Optional[str] = None
     telephone_effectif: Optional[str] = None
     email_effectif: Optional[str] = None
-    date_naissance_effectif: Optional[str] = None  # "YYYY-MM-DD" ou ""
+    date_naissance_effectif: Optional[str] = None
 
-    # Bloc 2
+
+class CollaborateurIdentificationCompanyUpdate(BaseModel):
     matricule_interne: Optional[str] = None
     id_service: Optional[str] = None
     id_poste_actuel: Optional[str] = None
-    date_entree_entreprise_effectif: Optional[str] = None  # "YYYY-MM-DD" ou ""
+    date_entree_entreprise_effectif: Optional[str] = None
     type_contrat: Optional[str] = None
-    date_debut_poste_actuel: Optional[str] = None  # "YYYY-MM-DD" ou ""
+    date_debut_poste_actuel: Optional[str] = None
 
-    # Bloc 3
-    niveau_education: Optional[str] = None          # code "0".."8" (ou "")
-    domaine_education: Optional[str] = None         # TITRE (string)
+
+class CollaborateurIdentificationProjectionUpdate(BaseModel):
+    niveau_education: Optional[str] = None
+    domaine_education: Optional[str] = None
     distance_km_entreprise: Optional[float] = None
-    date_sortie_prevue: Optional[str] = None        # "YYYY-MM-DD" ou ""
-    motif_sortie: Optional[str] = None              # "Volontaire" / "Subi" / "Légal" / "Non renseigné" / ""
+    retraite_estimee: Optional[int] = None
+    date_sortie_prevue: Optional[str] = None
+    motif_sortie: Optional[str] = None
+
+
+class CollaborateurIdentificationRolesUpdate(BaseModel):
+    ismanager: bool = False
+    isformateur: bool = False
+
+
+class CollaborateurIdentificationCommentUpdate(BaseModel):
     note_commentaire: Optional[str] = None
 
 class CollaborateurCompetenceItem(BaseModel):
@@ -372,6 +382,40 @@ def _civilite_db_from_label(v: Optional[str]) -> Optional[str]:
         return "Mme"
 
     return None
+
+
+def _trim_optional(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s if s != "" else None
+
+
+def _date_optional(v: Optional[str]) -> Optional[str]:
+    return _trim_optional(v)
+
+
+def _normalize_motif_sortie(v: Optional[str]) -> Optional[str]:
+    motif = _trim_optional(v)
+    if motif not in ("Volontaire", "Subi", "Légal", "Non renseigné"):
+        return None
+    return motif
+
+
+def _ensure_collaborateur_editable(cur, id_ent: str, id_effectif: str):
+    cur.execute(
+        """
+        SELECT COALESCE(archive, FALSE) AS archive
+        FROM public.tbl_effectif_client
+        WHERE id_ent = %s AND id_effectif = %s
+        """,
+        (id_ent, id_effectif),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+    if bool(row.get("archive")):
+        raise HTTPException(status_code=400, detail="Collaborateur archivé: modification interdite.")
 
 # ------------------------
 # Breaks helpers
@@ -1114,67 +1158,26 @@ def _cors_headers_for_request(request: Request) -> Dict[str, str]:
     }
 
 
-@router.options("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
-def options_update_collaborateur_identification(id_contact: str, id_effectif: str, request: Request):
-    # Preflight CORS (obligatoire pour POST/PUT JSON)
+@router.options("/skills/collaborateurs/identification/{id_contact}/{id_effectif}/{section}")
+def options_update_collaborateur_identification_section(id_contact: str, id_effectif: str, section: str, request: Request):
+    # Preflight CORS pour les cinq endpoints d'enregistrement par carte.
     return Response(status_code=204, headers=_cors_headers_for_request(request))
 
 
-@router.put("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
-@router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
-def update_collaborateur_identification(
+@router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}/identite")
+def update_collaborateur_identification_identity(
     id_contact: str,
     id_effectif: str,
-    payload: CollaborateurIdentificationUpdate,
+    payload: CollaborateurIdentificationIdentityUpdate,
     request: Request,
 ):
-    """
-    Mise à jour des informations Identification (mode édition).
-    Règles:
-    - civilite_label UI ("M."/"Mme"/"-") => DB civilite_effectif ("M."/"Mme"/NULL)
-    - matricule: toujours enregistré dans ec.matricule_interne
-    - domaine_education: stocke le TITRE (string)
-    """
+    """Mise à jour ciblée de la carte Identité et coordonnées."""
     try:
-        def _trim(v):
-            if v is None:
-                return None
-            s = str(v).strip()
-            return s if s != "" else None
-
-        def _date(v):
-            # On accepte "YYYY-MM-DD" ou "" / None
-            v = _trim(v)
-            return v  # psycopg gère le cast si la colonne est date/timestamp
-
-        # Civilité : alignement Studio
         civ_db = _civilite_db_from_label(payload.civilite_label)
-
-        # Motif sortie: on stocke la catégorie uniquement
-        motif = _trim(payload.motif_sortie)
-        if motif not in ("Volontaire", "Subi", "Légal", "Non renseigné"):
-            motif = None
-
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-
-                # Sécurité: on vérifie existence + archive
-                cur.execute(
-                    """
-                    SELECT COALESCE(archive, FALSE) AS archive
-                    FROM public.tbl_effectif_client
-                    WHERE id_ent = %s AND id_effectif = %s
-                    """,
-                    (id_ent, id_effectif),
-                )
-                row = cur.fetchone()
-                if not row:
-                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
-                if bool(row.get("archive")):
-                    raise HTTPException(status_code=400, detail="Collaborateur archivé: modification interdite.")
-
-                # Update
+                _ensure_collaborateur_editable(cur, id_ent, id_effectif)
                 cur.execute(
                     """
                     UPDATE public.tbl_effectif_client
@@ -1182,79 +1185,238 @@ def update_collaborateur_identification(
                       civilite_effectif = %s,
                       nom_effectif = COALESCE(%s, nom_effectif),
                       prenom_effectif = COALESCE(%s, prenom_effectif),
-
                       adresse_effectif = %s,
                       code_postal_effectif = %s,
                       ville_effectif = %s,
                       pays_effectif = %s,
-
                       telephone_effectif = %s,
                       email_effectif = %s,
                       date_naissance_effectif = %s,
+                      dernier_update = NOW()
+                    WHERE id_ent = %s
+                      AND id_effectif = %s
+                    RETURNING id_effectif
+                    """,
+                    (
+                        civ_db,
+                        _trim_optional(payload.nom_effectif),
+                        _trim_optional(payload.prenom_effectif),
+                        _trim_optional(payload.adresse_effectif),
+                        _trim_optional(payload.code_postal_effectif),
+                        _trim_optional(payload.ville_effectif),
+                        _trim_optional(payload.pays_effectif),
+                        _trim_optional(payload.telephone_effectif),
+                        _trim_optional(payload.email_effectif),
+                        _date_optional(payload.date_naissance_effectif),
+                        id_ent,
+                        id_effectif,
+                    ),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=500, detail="Aucune ligne mise à jour.")
+                conn.commit()
 
+        return JSONResponse({"ok": True, "section": "identite"}, headers=_cors_headers_for_request(request))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}/situation")
+def update_collaborateur_identification_company(
+    id_contact: str,
+    id_effectif: str,
+    payload: CollaborateurIdentificationCompanyUpdate,
+    request: Request,
+):
+    """Mise à jour ciblée de la carte Situation dans l'entreprise."""
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                _ensure_collaborateur_editable(cur, id_ent, id_effectif)
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client
+                    SET
                       matricule_interne = %s,
                       id_service = %s,
                       id_poste_actuel = %s,
                       date_entree_entreprise_effectif = %s,
                       type_contrat = %s,
                       date_debut_poste_actuel = %s,
-
-                      niveau_education = %s,
-                      domaine_education = %s,
-                      distance_km_entreprise = %s,
-
-                      date_sortie_prevue = %s,
-                      motif_sortie = %s,
-                      note_commentaire = %s,
-
                       dernier_update = NOW()
                     WHERE id_ent = %s
                       AND id_effectif = %s
+                    RETURNING id_effectif
                     """,
                     (
-                        civ_db,
-                        _trim(payload.nom_effectif),
-                        _trim(payload.prenom_effectif),
-
-                        _trim(payload.adresse_effectif),
-                        _trim(payload.code_postal_effectif),
-                        _trim(payload.ville_effectif),
-                        _trim(payload.pays_effectif),
-
-                        _trim(payload.telephone_effectif),
-                        _trim(payload.email_effectif),
-                        _date(payload.date_naissance_effectif),
-
-                        # Règle métier: toujours dans matricule_interne
-                        _trim(payload.matricule_interne),
-
-                        _trim(payload.id_service),
-                        _trim(payload.id_poste_actuel),
-                        _date(payload.date_entree_entreprise_effectif),
-                        _trim(payload.type_contrat),
-                        _date(payload.date_debut_poste_actuel),
-
-                        _trim(payload.niveau_education),
-                        _trim(payload.domaine_education),   # TITRE (string)
-                        payload.distance_km_entreprise,
-
-                        _date(payload.date_sortie_prevue),
-                        motif,
-                        _trim(payload.note_commentaire),
-
+                        _trim_optional(payload.matricule_interne),
+                        _trim_optional(payload.id_service),
+                        _trim_optional(payload.id_poste_actuel),
+                        _date_optional(payload.date_entree_entreprise_effectif),
+                        _trim_optional(payload.type_contrat),
+                        _date_optional(payload.date_debut_poste_actuel),
                         id_ent,
                         id_effectif,
                     ),
                 )
-
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=500, detail="Aucune ligne mise à jour.")
                 conn.commit()
 
-        return JSONResponse({"ok": True}, headers=_cors_headers_for_request(request))
+        return JSONResponse({"ok": True, "section": "situation"}, headers=_cors_headers_for_request(request))
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}/parcours")
+def update_collaborateur_identification_projection(
+    id_contact: str,
+    id_effectif: str,
+    payload: CollaborateurIdentificationProjectionUpdate,
+    request: Request,
+):
+    """Mise à jour ciblée de la carte Parcours et projection."""
+    try:
+        motif = _normalize_motif_sortie(payload.motif_sortie)
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                _ensure_collaborateur_editable(cur, id_ent, id_effectif)
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client
+                    SET
+                      niveau_education = %s,
+                      domaine_education = %s,
+                      distance_km_entreprise = %s,
+                      retraite_estimee = %s,
+                      date_sortie_prevue = %s,
+                      motif_sortie = %s,
+                      dernier_update = NOW()
+                    WHERE id_ent = %s
+                      AND id_effectif = %s
+                    RETURNING id_effectif
+                    """,
+                    (
+                        _trim_optional(payload.niveau_education),
+                        _trim_optional(payload.domaine_education),
+                        payload.distance_km_entreprise,
+                        payload.retraite_estimee,
+                        _date_optional(payload.date_sortie_prevue),
+                        motif,
+                        id_ent,
+                        id_effectif,
+                    ),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=500, detail="Aucune ligne mise à jour.")
+                conn.commit()
+
+        return JSONResponse({"ok": True, "section": "parcours"}, headers=_cors_headers_for_request(request))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}/roles")
+def update_collaborateur_identification_roles(
+    id_contact: str,
+    id_effectif: str,
+    payload: CollaborateurIdentificationRolesUpdate,
+    request: Request,
+):
+    """Mise à jour ciblée de la carte Rôles et responsabilités."""
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                _ensure_collaborateur_editable(cur, id_ent, id_effectif)
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client
+                    SET
+                      ismanager = %s,
+                      isformateur = %s,
+                      dernier_update = NOW()
+                    WHERE id_ent = %s
+                      AND id_effectif = %s
+                    RETURNING
+                      COALESCE(ismanager, FALSE) AS ismanager,
+                      COALESCE(isformateur, FALSE) AS isformateur
+                    """,
+                    (
+                        bool(payload.ismanager),
+                        bool(payload.isformateur),
+                        id_ent,
+                        id_effectif,
+                    ),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=500, detail="Aucune ligne mise à jour.")
+                conn.commit()
+
+        return JSONResponse({"ok": True, "section": "roles", **row}, headers=_cors_headers_for_request(request))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}/commentaire")
+def update_collaborateur_identification_comment(
+    id_contact: str,
+    id_effectif: str,
+    payload: CollaborateurIdentificationCommentUpdate,
+    request: Request,
+):
+    """Mise à jour ciblée de la carte Commentaire interne."""
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                _ensure_collaborateur_editable(cur, id_ent, id_effectif)
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client
+                    SET
+                      note_commentaire = %s,
+                      dernier_update = NOW()
+                    WHERE id_ent = %s
+                      AND id_effectif = %s
+                    RETURNING id_effectif
+                    """,
+                    (
+                        _trim_optional(payload.note_commentaire),
+                        id_ent,
+                        id_effectif,
+                    ),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=500, detail="Aucune ligne mise à jour.")
+                conn.commit()
+
+        return JSONResponse({"ok": True, "section": "commentaire"}, headers=_cors_headers_for_request(request))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 
 # ------------------------
 # Collaborateurs - Listes (services / postes / domaines)

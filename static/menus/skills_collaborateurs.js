@@ -552,6 +552,13 @@
       _collabInlineMsgTimer = null;
     }
 
+    const scope = host?.closest?.("#collabIdentPanel") || host;
+    scope?.querySelectorAll?.(".sb-collab-inline-msg").forEach(other => {
+      if (other === msg) return;
+      other.textContent = "";
+      other.classList.remove("is-visible", "is-success", "is-error", "is-info");
+    });
+
     msg.textContent = text || "";
     msg.classList.remove("is-visible", "is-success", "is-error", "is-info");
 
@@ -1528,12 +1535,12 @@
                       <span>Identité et coordonnées</span>
                       <div class="sb-collab-ident-actions sb-modal-edit-actions">
                         <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
-                        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabBtnCancel" style="display:none;">
-                          <span aria-hidden="true">${collabIcon("cancel")}</span>
+                        <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="collabBtnCancel" style="display:none;">
+                          <span class="sb-btn-icon" aria-hidden="true">${collabIcon("cancel")}</span>
                           Annuler
                         </button>
-                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--save" id="collabBtnSave" style="display:none;">
-                          <span aria-hidden="true">${collabIcon("save")}</span>
+                        <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="collabBtnSave" style="display:none;">
+                          <span class="sb-btn-icon" aria-hidden="true">${collabIcon("save")}</span>
                           Enregistrer
                         </button>
                         <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="collabBtnEdit" title="Modifier" aria-label="Modifier l’identité et les coordonnées">
@@ -1549,13 +1556,22 @@
                             <span class="sb-collab-summary-label">Nom</span>
                             <strong id="collabNameRead">${escapeHtml([civLabel, v(d.prenom_effectif), v(d.nom_effectif)].filter(Boolean).join(" "))}</strong>
                             <span class="sb-collab-name-fields" id="collabNameEdit" hidden>
-                              <select class="sb-select" id="collabCiv" disabled>
-                                <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
-                                <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
-                                <option value="-"${civLabel === "-" ? " selected" : ""}>-</option>
-                              </select>
-                              <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
-                              <input class="sb-ctrl" id="collabNom" type="text" value="${escapeHtml(v(d.nom_effectif))}" disabled />
+                              <span class="sb-field sb-collab-name-field sb-collab-name-field--civ">
+                                <label class="sb-label" for="collabCiv">Civ.</label>
+                                <select class="sb-select" id="collabCiv" disabled>
+                                  <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
+                                  <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
+                                  <option value="-"${civLabel === "-" ? " selected" : ""}>-</option>
+                                </select>
+                              </span>
+                              <span class="sb-field sb-collab-name-field sb-collab-name-field--prenom">
+                                <label class="sb-label" for="collabPrenom">Prénom</label>
+                                <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
+                              </span>
+                              <span class="sb-field sb-collab-name-field sb-collab-name-field--nom">
+                                <label class="sb-label" for="collabNom">Nom</label>
+                                <input class="sb-ctrl" id="collabNom" type="text" value="${escapeHtml(v(d.nom_effectif))}" disabled />
+                              </span>
                             </span>
                           </span>
                         </div>
@@ -1575,7 +1591,7 @@
                       </div>
 
                       <div class="sb-collab-summary-strip">
-                        <div class="sb-collab-summary-item">
+                        <div class="sb-collab-summary-item sb-collab-summary-item--address">
                           <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("building")}</span>
                           <span>
                             <span class="sb-collab-summary-label">Adresse</span>
@@ -1584,10 +1600,19 @@
                               <span id="collabAddressReadLine2">${escapeHtml([v(d.code_postal_effectif), v(d.ville_effectif)].filter(Boolean).join(" "))}</span>
                             </strong>
                             <span class="sb-collab-address-fields" id="collabAddressEdit" hidden>
-                              <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
+                              <span class="sb-field sb-collab-address-field sb-collab-address-field--street">
+                                <label class="sb-label" for="collabAdr">Adresse</label>
+                                <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
+                              </span>
                               <span class="sb-collab-address-line">
-                                <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
-                                <input class="sb-ctrl" id="collabVille" type="text" value="${escapeHtml(v(d.ville_effectif))}" disabled />
+                                <span class="sb-field sb-collab-address-field sb-collab-address-field--cp">
+                                  <label class="sb-label" for="collabCP">Code postal</label>
+                                  <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
+                                </span>
+                                <span class="sb-field sb-collab-address-field sb-collab-address-field--city">
+                                  <label class="sb-label" for="collabVille">Ville</label>
+                                  <input class="sb-ctrl" id="collabVille" type="text" value="${escapeHtml(v(d.ville_effectif))}" disabled />
+                                </span>
                               </span>
                             </span>
                           </span>
@@ -1640,12 +1665,13 @@
                       <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("briefcase")}</span>
                       <span>Situation dans l'entreprise</span>
                       <div class="sb-collab-ident-actions sb-modal-edit-actions">
-                        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabCompanyBtnCancel" style="display:none;">
-                          <span aria-hidden="true">${collabIcon("cancel")}</span>
+                        <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
+                        <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="collabCompanyBtnCancel" style="display:none;">
+                          <span class="sb-btn-icon" aria-hidden="true">${collabIcon("cancel")}</span>
                           Annuler
                         </button>
-                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--save" id="collabCompanyBtnSave" style="display:none;">
-                          <span aria-hidden="true">${collabIcon("save")}</span>
+                        <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="collabCompanyBtnSave" style="display:none;">
+                          <span class="sb-btn-icon" aria-hidden="true">${collabIcon("save")}</span>
                           Enregistrer
                         </button>
                         <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="collabCompanyBtnEdit" title="Modifier" aria-label="Modifier la situation dans l’entreprise">
@@ -1723,12 +1749,13 @@
                     <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("graduation")}</span>
                     <span>Parcours et projection</span>
                     <div class="sb-collab-ident-actions sb-modal-edit-actions">
-                      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabProjectionBtnCancel" style="display:none;">
-                        <span aria-hidden="true">${collabIcon("cancel")}</span>
+                      <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
+                      <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="collabProjectionBtnCancel" style="display:none;">
+                        <span class="sb-btn-icon" aria-hidden="true">${collabIcon("cancel")}</span>
                         Annuler
                       </button>
-                      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--save" id="collabProjectionBtnSave" style="display:none;">
-                        <span aria-hidden="true">${collabIcon("save")}</span>
+                      <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="collabProjectionBtnSave" style="display:none;">
+                        <span class="sb-btn-icon" aria-hidden="true">${collabIcon("save")}</span>
                         Enregistrer
                       </button>
                       <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="collabProjectionBtnEdit" title="Modifier" aria-label="Modifier le parcours et la projection">
@@ -1823,13 +1850,31 @@
                   <div class="sb-collab-block-title">
                     <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("org")}</span>
                     <span>Rôles et responsabilités</span>
+                    <div class="sb-collab-ident-actions sb-modal-edit-actions">
+                      <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
+                      <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="collabRolesBtnCancel" style="display:none;">
+                        <span class="sb-btn-icon" aria-hidden="true">${collabIcon("cancel")}</span>
+                        Annuler
+                      </button>
+                      <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="collabRolesBtnSave" style="display:none;">
+                        <span class="sb-btn-icon" aria-hidden="true">${collabIcon("save")}</span>
+                        Enregistrer
+                      </button>
+                      <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="collabRolesBtnEdit" title="Modifier" aria-label="Modifier les rôles et responsabilités">
+                        ${collabIcon("edit")}
+                      </button>
+                    </div>
                   </div>
                   <div class="sb-collab-roles-grid">
                     <div class="sb-collab-role-item ${getCollaborateurRoleContextClass("Manager")}">
                       <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("user")}</span>
                       <span>
                         <span class="sb-collab-summary-label">Manager</span>
-                        <strong class="${d.ismanager ? "is-positive" : ""}">${d.ismanager ? "Oui" : "Non"}</strong>
+                        <strong id="collabIsManagerRead" class="${d.ismanager ? "is-positive" : ""}">${d.ismanager ? "Oui" : "Non"}</strong>
+                        <label class="sb-check sb-collab-role-check" id="collabIsManagerEdit" style="display:none;">
+                          <input id="collabIsManager" type="checkbox" ${d.ismanager ? "checked" : ""} disabled />
+                          <span>Manager</span>
+                        </label>
                       </span>
                     </div>
 
@@ -1837,7 +1882,11 @@
                       <span class="sb-collab-summary-icon" aria-hidden="true">${collabIcon("graduation")}</span>
                       <span>
                         <span class="sb-collab-summary-label">Formateur</span>
-                        <strong class="${d.isformateur ? "is-positive" : ""}">${d.isformateur ? "Oui" : "Non"}</strong>
+                        <strong id="collabIsFormateurRead" class="${d.isformateur ? "is-positive" : ""}">${d.isformateur ? "Oui" : "Non"}</strong>
+                        <label class="sb-check sb-collab-role-check" id="collabIsFormateurEdit" style="display:none;">
+                          <input id="collabIsFormateur" type="checkbox" ${d.isformateur ? "checked" : ""} disabled />
+                          <span>Formateur</span>
+                        </label>
                       </span>
                     </div>
                   </div>
@@ -1848,12 +1897,13 @@
                     <span class="sb-collab-overview-event__icon" aria-hidden="true">${collabIcon("comment")}</span>
                     <span>Commentaire interne</span>
                     <div class="sb-collab-ident-actions sb-modal-edit-actions">
-                      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-modal-btn sb-modal-btn--cancel" id="collabCommentBtnCancel" style="display:none;">
-                        <span aria-hidden="true">${collabIcon("cancel")}</span>
+                      <span class="sb-collab-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
+                      <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="collabCommentBtnCancel" style="display:none;">
+                        <span class="sb-btn-icon" aria-hidden="true">${collabIcon("cancel")}</span>
                         Annuler
                       </button>
-                      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs sb-modal-btn sb-modal-btn--save" id="collabCommentBtnSave" style="display:none;">
-                        <span aria-hidden="true">${collabIcon("save")}</span>
+                      <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="collabCommentBtnSave" style="display:none;">
+                        <span class="sb-btn-icon" aria-hidden="true">${collabIcon("save")}</span>
                         Enregistrer
                       </button>
                       <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="collabCommentBtnEdit" title="Modifier" aria-label="Modifier le commentaire interne">
@@ -1873,6 +1923,7 @@
               const editBtn = identHost.querySelector("#collabBtnEdit");
               const saveBtn = identHost.querySelector("#collabBtnSave");
               const cancelBtn = identHost.querySelector("#collabBtnCancel");
+              const personalActions = saveBtn?.closest(".sb-collab-ident-actions") || identHost;
 
               // Champs éditables (on les activera au clic)
               const editableSelectors = [
@@ -1910,6 +1961,11 @@
                 "#collabComment",
               ];
 
+              const roleEditableSelectors = [
+                "#collabIsManager",
+                "#collabIsFormateur",
+              ];
+
               const getEditableNodes = () => {
                 return editableSelectors
                   .map(sel => identHost.querySelector(sel))
@@ -1930,6 +1986,12 @@
 
               const getCommentEditableNodes = () => {
                 return commentEditableSelectors
+                  .map(sel => identHost.querySelector(sel))
+                  .filter(Boolean);
+              };
+
+              const getRoleEditableNodes = () => {
+                return roleEditableSelectors
                   .map(sel => identHost.querySelector(sel))
                   .filter(Boolean);
               };
@@ -1975,6 +2037,16 @@
                 return snap;
               };
 
+              const snapshotRoleValues = () => {
+                const snap = {};
+                roleEditableSelectors.forEach(sel => {
+                  const el = identHost.querySelector(sel);
+                  if (!el) return;
+                  snap[sel] = !!el.checked;
+                });
+                return snap;
+              };
+
               const restoreValues = (snap) => {
                 if (!snap) return;
                 editableSelectors.forEach(sel => {
@@ -2010,6 +2082,15 @@
                   const el = identHost.querySelector(sel);
                   if (!el) return;
                   el.value = (snap[sel] ?? "");
+                });
+              };
+
+              const restoreRoleValues = (snap) => {
+                if (!snap) return;
+                roleEditableSelectors.forEach(sel => {
+                  const el = identHost.querySelector(sel);
+                  if (!el) return;
+                  el.checked = !!snap[sel];
                 });
               };
 
@@ -2093,10 +2174,36 @@
                 setRead("#collabMotifSortieRead", selectedLabel("#collabMotifSortie"));
               };
 
+              const syncRoleReadValues = () => {
+                const setRoleRead = (readSelector, inputSelector) => {
+                  const readNode = identHost.querySelector(readSelector);
+                  const inputNode = identHost.querySelector(inputSelector);
+                  if (!readNode || !inputNode) return;
+                  const enabled = !!inputNode.checked;
+                  readNode.textContent = enabled ? "Oui" : "Non";
+                  readNode.classList.toggle("is-positive", enabled);
+                };
+
+                setRoleRead("#collabIsManagerRead", "#collabIsManager");
+                setRoleRead("#collabIsFormateurRead", "#collabIsFormateur");
+              };
+
+              const syncHeaderRoleBadges = () => {
+                const headerBadges = byId("collabModalBadges");
+                if (!headerBadges) return;
+                const badges = [];
+                if (d.is_temp) badges.push({ label: "Temp", cls: getCollaborateurRoleClass("Temporaire") });
+                if (!!identHost.querySelector("#collabIsManager")?.checked) badges.push({ label: "Manager", cls: getCollaborateurRoleClass("Manager") });
+                if (!!identHost.querySelector("#collabIsFormateur")?.checked) badges.push({ label: "Formateur", cls: getCollaborateurRoleClass("Formateur") });
+                headerBadges.innerHTML = badges
+                  .map(b => `<span class="${escapeHtml(b.cls)}">${escapeHtml(b.label)}</span>`)
+                  .join("");
+              };
+
               let setEditMode = (isEdit) => {
                 _collabIsEdit = !!isEdit;
                 identHost.classList.toggle("is-editing", !!isEdit);
-                if (isEdit) setInlineMsg(identHost, "info", "");
+                if (isEdit) setInlineMsg(personalActions, "info", "");
 
                 const nameRead = identHost.querySelector("#collabNameRead");
                 const nameEdit = identHost.querySelector("#collabNameEdit");
@@ -2132,6 +2239,7 @@
               const companyEditBtn = identHost.querySelector("#collabCompanyBtnEdit");
               const companySaveBtn = identHost.querySelector("#collabCompanyBtnSave");
               const companyCancelBtn = identHost.querySelector("#collabCompanyBtnCancel");
+              const companyActions = companySaveBtn?.closest(".sb-collab-ident-actions") || identHost;
               const companyReadEditPairs = [
                 [identHost.querySelector("#collabMatriculeRead"), identHost.querySelector("#collabMatriculeEdit")],
                 [identHost.querySelector("#collabServiceRead"), identHost.querySelector("#collabServiceEdit")],
@@ -2145,6 +2253,7 @@
               const projectionEditBtn = identHost.querySelector("#collabProjectionBtnEdit");
               const projectionSaveBtn = identHost.querySelector("#collabProjectionBtnSave");
               const projectionCancelBtn = identHost.querySelector("#collabProjectionBtnCancel");
+              const projectionActions = projectionSaveBtn?.closest(".sb-collab-ident-actions") || identHost;
               const projectionReadEditPairs = [
                 [identHost.querySelector("#collabEduNivRead"), identHost.querySelector("#collabEduNivEdit")],
                 [identHost.querySelector("#collabEduDomRead"), identHost.querySelector("#collabEduDomEdit")],
@@ -2157,6 +2266,16 @@
               const commentEditBtn = identHost.querySelector("#collabCommentBtnEdit");
               const commentSaveBtn = identHost.querySelector("#collabCommentBtnSave");
               const commentCancelBtn = identHost.querySelector("#collabCommentBtnCancel");
+              const commentActions = commentSaveBtn?.closest(".sb-collab-ident-actions") || identHost;
+
+              const rolesEditBtn = identHost.querySelector("#collabRolesBtnEdit");
+              const rolesSaveBtn = identHost.querySelector("#collabRolesBtnSave");
+              const rolesCancelBtn = identHost.querySelector("#collabRolesBtnCancel");
+              const rolesActions = rolesSaveBtn?.closest(".sb-collab-ident-actions") || identHost;
+              const roleReadEditPairs = [
+                [identHost.querySelector("#collabIsManagerRead"), identHost.querySelector("#collabIsManagerEdit")],
+                [identHost.querySelector("#collabIsFormateurRead"), identHost.querySelector("#collabIsFormateurEdit")],
+              ];
 
               let setCompanyEditMode = (isEdit) => {
                 identHost.classList.toggle("is-company-editing", !!isEdit);
@@ -2211,16 +2330,37 @@
                 if (commentCancelBtn) commentCancelBtn.style.display = isEdit ? "" : "none";
               };
 
+              let setRoleEditMode = (isEdit) => {
+                identHost.classList.toggle("is-roles-editing", !!isEdit);
+                if (!isEdit) syncRoleReadValues();
+
+                roleReadEditPairs.forEach(([readNode, editNode]) => {
+                  if (readNode) readNode.style.display = isEdit ? "none" : "";
+                  if (editNode) editNode.style.display = isEdit ? "flex" : "none";
+                });
+
+                getRoleEditableNodes().forEach(el => {
+                  if (!el) return;
+                  el.disabled = !isEdit;
+                });
+
+                if (rolesEditBtn) rolesEditBtn.style.display = isEdit ? "none" : "";
+                if (rolesSaveBtn) rolesSaveBtn.style.display = isEdit ? "" : "none";
+                if (rolesCancelBtn) rolesCancelBtn.style.display = isEdit ? "" : "none";
+              };
+
               let _collabEditSnap = snapshotValues();
               let _collabCompanyEditSnap = snapshotCompanyValues();
               let _collabProjectionEditSnap = snapshotProjectionValues();
               let _collabCommentEditSnap = snapshotCommentValues();
+              let _collabRoleEditSnap = snapshotRoleValues();
               var _collabIsEdit = false;
               var _collabProjectionIsEdit = false;
               setEditMode(false);
               setCompanyEditMode(false);
               setProjectionEditMode(false);
               setCommentEditMode(false);
+              setRoleEditMode(false);
               refreshSelectSelectedSoftState(identHost);
 
               identHost.addEventListener("change", (ev) => {
@@ -2303,6 +2443,13 @@
                 });
               }
 
+              if (rolesEditBtn) {
+                rolesEditBtn.addEventListener("click", () => {
+                  _collabRoleEditSnap = snapshotRoleValues();
+                  setRoleEditMode(true);
+                });
+              }
+
               // Bind une seule fois sur la checkbox sortie prévue
               const chkEl = identHost.querySelector("#collabChkSortie");
               if (chkEl && !chkEl._sbBoundSortie) {
@@ -2331,7 +2478,7 @@
                 cancelBtn.addEventListener("click", () => {
                   restoreValues(_collabEditSnap);
                   setEditMode(false);
-                  setInlineMsg(identHost, "info", "");
+                  setInlineMsg(personalActions, "info", "");
                 });
               }
 
@@ -2339,7 +2486,7 @@
                 companyCancelBtn.addEventListener("click", () => {
                   restoreCompanyValues(_collabCompanyEditSnap);
                   setCompanyEditMode(false);
-                  setInlineMsg(identHost, "info", "");
+                  setInlineMsg(companyActions, "info", "");
                 });
               }
 
@@ -2347,7 +2494,7 @@
                 projectionCancelBtn.addEventListener("click", () => {
                   restoreProjectionValues(_collabProjectionEditSnap);
                   setProjectionEditMode(false);
-                  setInlineMsg(identHost, "info", "");
+                  setInlineMsg(projectionActions, "info", "");
                 });
               }
 
@@ -2355,137 +2502,228 @@
                 commentCancelBtn.addEventListener("click", () => {
                   restoreCommentValues(_collabCommentEditSnap);
                   setCommentEditMode(false);
-                  setInlineMsg(identHost, "info", "");
+                  setInlineMsg(commentActions, "info", "");
                 });
               }
 
-              const saveCollaborateurIdentification = async () => {
-                  try {
-                    // Helpers
-                    const q = (sel) => identHost.querySelector(sel);
+              if (rolesCancelBtn) {
+                rolesCancelBtn.addEventListener("click", () => {
+                  restoreRoleValues(_collabRoleEditSnap);
+                  setRoleEditMode(false);
+                  setInlineMsg(rolesActions, "info", "");
+                });
+              }
 
-                    const t = (sel) => {
-                      const el = q(sel);
-                      if (!el) return null;
-                      const s = String(el.value ?? "").trim();
-                      return s === "" ? null : s;
-                    };
+              const q = (sel) => identHost.querySelector(sel);
 
-                    const dte = (sel) => {
-                      // input type=date -> "YYYY-MM-DD" ou null
-                      return t(sel);
-                    };
-
-                    const chk = (sel) => {
-                      const el = q(sel);
-                      return !!(el && el.checked);
-                    };
-
-                    const num = (sel) => {
-                      const el = q(sel);
-                      if (!el) return null;
-                      const s = String(el.value ?? "").trim().replace(",", ".");
-                      if (!s) return null;
-                      const n = Number(s);
-                      return Number.isFinite(n) ? n : null;
-                    };
-
-                    // Sortie prévue: si décoché -> NULL date + motif
-                    const sortieOn = chk("#collabChkSortie");
-
-                    const payload = {
-                      // Bloc 1
-                      civilite_label: t("#collabCiv"),
-                      nom_effectif: t("#collabNom"),
-                      prenom_effectif: t("#collabPrenom"),
-                      adresse_effectif: t("#collabAdr"),
-                      code_postal_effectif: t("#collabCP"),
-                      ville_effectif: t("#collabVille"),
-                      pays_effectif: t("#collabPays"),
-                      telephone_effectif: t("#collabTel"),
-                      email_effectif: t("#collabEmail"),
-                      date_naissance_effectif: dte("#collabNaissance"),
-
-                      // Bloc 2
-                      // Règle métier: toujours dans matricule_interne
-                      matricule_interne: t("#collabMatricule"),
-                      id_service: t("#collabService"),
-                      id_poste_actuel: t("#collabPoste"),
-                      date_entree_entreprise_effectif: dte("#collabEntree"),
-                      type_contrat: t("#collabContrat"),
-                      date_debut_poste_actuel: dte("#collabDebutPoste"),
-
-                      // Bloc 3
-                      niveau_education: t("#collabEduNiv"),
-                      // Domaine éducation: stocker le texte choisi (pas d'id derrière)
-                      domaine_education: t("#collabEduDom"),
-                      distance_km_entreprise: num("#collabDist"),
-
-                      date_sortie_prevue: sortieOn ? dte("#collabDateSortie") : null,
-                      motif_sortie: sortieOn ? t("#collabMotifSortie") : null,
-                      note_commentaire: t("#collabComment"),
-                    };
-
-
-                    // Appel API (POST JSON) - IMPORTANT: passer par portal.apiJson (auth + contexte entreprise)
-                    const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}`;
-
-                    const data = await window.portal.apiJson(
-                      url,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                      }
-                    );
-
-                    // Sécurité: l'API renvoie normalement { ok: true }
-                    if (!data || data.ok !== true) {
-                      const msg = (data && (data.detail || data.message))
-                        ? (data.detail || data.message)
-                        : "Erreur enregistrement (réponse invalide).";
-                      throw new Error(msg);
-                    }
-
-                    // Succès: on met à jour les snapshots et on repasse en lecture seule
-                    _collabEditSnap = snapshotValues();
-                    _collabCompanyEditSnap = snapshotCompanyValues();
-                    _collabProjectionEditSnap = snapshotProjectionValues();
-                    _collabCommentEditSnap = snapshotCommentValues();
-                    setEditMode(false);
-                    setCompanyEditMode(false);
-                    setProjectionEditMode(false);
-                    setCommentEditMode(false);
-                    setInlineMsg(identHost, "success", "Enregistré");
-                    refreshSelectSelectedSoftState(identHost);
-
-                    // Le titre modal suit les éventuelles corrections nom/prénom.
-                    if (title) {
-                      title.textContent = `${payload.prenom_effectif || ""} ${(payload.nom_effectif || "").toUpperCase()}`.trim() || "Collaborateur";
-                    }
-
-                  } catch (e) {
-                    console.error(e);
-                    const msg = (e && e.message) ? e.message : (typeof e === "string" ? e : JSON.stringify(e));
-                    setInlineMsg(identHost, "error", `Erreur enregistrement : ${msg}`);
-                  }
+              const t = (sel) => {
+                const el = q(sel);
+                if (!el) return null;
+                const s = String(el.value ?? "").trim();
+                return s === "" ? null : s;
               };
 
+              const dte = (sel) => t(sel);
+
+              const chk = (sel) => {
+                const el = q(sel);
+                return !!(el && el.checked);
+              };
+
+              const num = (sel) => {
+                const el = q(sel);
+                if (!el) return null;
+                const s = String(el.value ?? "").trim().replace(",", ".");
+                if (!s) return null;
+                const n = Number(s);
+                return Number.isFinite(n) ? n : null;
+              };
+
+              const intOrNull = (sel) => {
+                const el = q(sel);
+                if (!el) return null;
+                const s = String(el.value ?? "").trim();
+                if (!s) return null;
+                const n = parseInt(s, 10);
+                return Number.isFinite(n) ? n : null;
+              };
+
+              const postIdentificationSection = async (section, payload) => {
+                const allowedSections = new Set([
+                  "identite",
+                  "situation",
+                  "parcours",
+                  "roles",
+                  "commentaire",
+                ]);
+                if (!allowedSections.has(section)) {
+                  throw new Error(`Section d'identification inconnue : ${section}`);
+                }
+                const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}/${encodeURIComponent(section)}`;
+                const data = await window.portal.apiJson(
+                  url,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                  }
+                );
+
+                if (!data || data.ok !== true) {
+                  const msg = (data && (data.detail || data.message))
+                    ? (data.detail || data.message)
+                    : "Erreur enregistrement (réponse invalide).";
+                  throw new Error(msg);
+                }
+
+                return data;
+              };
+
+              const saveCollaborateurIdentity = async () => {
+                try {
+                  const payload = {
+                    civilite_label: t("#collabCiv"),
+                    nom_effectif: t("#collabNom"),
+                    prenom_effectif: t("#collabPrenom"),
+                    adresse_effectif: t("#collabAdr"),
+                    code_postal_effectif: t("#collabCP"),
+                    ville_effectif: t("#collabVille"),
+                    pays_effectif: t("#collabPays"),
+                    telephone_effectif: t("#collabTel"),
+                    email_effectif: t("#collabEmail"),
+                    date_naissance_effectif: dte("#collabNaissance"),
+                  };
+
+                  await postIdentificationSection("identite", payload);
+                  _collabEditSnap = snapshotValues();
+                  setEditMode(false);
+                  setInlineMsg(personalActions, "success", "Enregistré");
+
+                  if (title) {
+                    title.textContent = `${payload.prenom_effectif || ""} ${(payload.nom_effectif || "").toUpperCase()}`.trim() || "Collaborateur";
+                  }
+                } catch (e) {
+                  console.error(e);
+                  const msg = (e && e.message) ? e.message : (typeof e === "string" ? e : JSON.stringify(e));
+                  setInlineMsg(personalActions, "error", `Erreur enregistrement : ${msg}`);
+                }
+              };
+
+              const saveCollaborateurCompany = async () => {
+                try {
+                  const payload = {
+                    matricule_interne: t("#collabMatricule"),
+                    id_service: t("#collabService"),
+                    id_poste_actuel: t("#collabPoste"),
+                    date_entree_entreprise_effectif: dte("#collabEntree"),
+                    type_contrat: t("#collabContrat"),
+                    date_debut_poste_actuel: dte("#collabDebutPoste"),
+                  };
+
+                  await postIdentificationSection("situation", payload);
+                  _collabCompanyEditSnap = snapshotCompanyValues();
+                  setCompanyEditMode(false);
+                  setInlineMsg(companyActions, "success", "Enregistré");
+                  setText("collabModalPoste", identHost.querySelector("#collabPosteRead")?.textContent || "–");
+                  setText("collabModalService", identHost.querySelector("#collabServiceRead")?.textContent || "–");
+                  setText("collabModalDateEntree", identHost.querySelector("#collabEntreeRead")?.textContent || "–");
+                  setText("collabModalContrat", identHost.querySelector("#collabContratRead")?.textContent || "–");
+                  setText("collabModalDatePoste", identHost.querySelector("#collabDebutPosteRead")?.textContent || "–");
+                  refreshSelectSelectedSoftState(identHost);
+                } catch (e) {
+                  console.error(e);
+                  const msg = (e && e.message) ? e.message : (typeof e === "string" ? e : JSON.stringify(e));
+                  setInlineMsg(companyActions, "error", `Erreur enregistrement : ${msg}`);
+                }
+              };
+
+              const saveCollaborateurProjection = async () => {
+                try {
+                  const sortieOn = chk("#collabChkSortie");
+                  const payload = {
+                    niveau_education: t("#collabEduNiv"),
+                    domaine_education: t("#collabEduDom"),
+                    distance_km_entreprise: num("#collabDist"),
+                    retraite_estimee: intOrNull("#collabRetraite"),
+                    date_sortie_prevue: sortieOn ? dte("#collabDateSortie") : null,
+                    motif_sortie: sortieOn ? t("#collabMotifSortie") : null,
+                  };
+
+                  await postIdentificationSection("parcours", payload);
+                  _collabProjectionEditSnap = snapshotProjectionValues();
+                  setProjectionEditMode(false);
+                  setInlineMsg(projectionActions, "success", "Enregistré");
+                  refreshSelectSelectedSoftState(identHost);
+                } catch (e) {
+                  console.error(e);
+                  const msg = (e && e.message) ? e.message : (typeof e === "string" ? e : JSON.stringify(e));
+                  setInlineMsg(projectionActions, "error", `Erreur enregistrement : ${msg}`);
+                }
+              };
+
+              const saveCollaborateurComment = async () => {
+                try {
+                  const payload = {
+                    note_commentaire: t("#collabComment"),
+                  };
+
+                  await postIdentificationSection("commentaire", payload);
+                  _collabCommentEditSnap = snapshotCommentValues();
+                  setCommentEditMode(false);
+                  setInlineMsg(commentActions, "success", "Enregistré");
+                } catch (e) {
+                  console.error(e);
+                  const msg = (e && e.message) ? e.message : (typeof e === "string" ? e : JSON.stringify(e));
+                  setInlineMsg(commentActions, "error", `Erreur enregistrement : ${msg}`);
+                }
+              };
+
+              const saveCollaborateurRoles = async () => {
+                try {
+                  const payload = {
+                    ismanager: chk("#collabIsManager"),
+                    isformateur: chk("#collabIsFormateur"),
+                  };
+
+                  const data = await postIdentificationSection("roles", payload);
+                  const savedIsManager = (typeof data.ismanager === "boolean") ? data.ismanager : !!payload.ismanager;
+                  const savedIsFormateur = (typeof data.isformateur === "boolean") ? data.isformateur : !!payload.isformateur;
+                  const roleManagerInput = identHost.querySelector("#collabIsManager");
+                  const roleFormateurInput = identHost.querySelector("#collabIsFormateur");
+                  if (roleManagerInput) roleManagerInput.checked = savedIsManager;
+                  if (roleFormateurInput) roleFormateurInput.checked = savedIsFormateur;
+                  d.ismanager = savedIsManager;
+                  d.isformateur = savedIsFormateur;
+
+                  _collabRoleEditSnap = snapshotRoleValues();
+                  setRoleEditMode(false);
+                  syncHeaderRoleBadges();
+                  setInlineMsg(rolesActions, "success", "Enregistré");
+                } catch (e) {
+                  console.error(e);
+                  const msg = (e && e.message) ? e.message : (typeof e === "string" ? e : JSON.stringify(e));
+                  setInlineMsg(rolesActions, "error", `Erreur enregistrement : ${msg}`);
+                }
+              };
 
               if (saveBtn) {
-                saveBtn.addEventListener("click", saveCollaborateurIdentification);
+                saveBtn.addEventListener("click", saveCollaborateurIdentity);
               }
 
               if (companySaveBtn) {
-                companySaveBtn.addEventListener("click", saveCollaborateurIdentification);
+                companySaveBtn.addEventListener("click", saveCollaborateurCompany);
               }
 
               if (projectionSaveBtn) {
-                projectionSaveBtn.addEventListener("click", saveCollaborateurIdentification);
+                projectionSaveBtn.addEventListener("click", saveCollaborateurProjection);
               }
 
               if (commentSaveBtn) {
-                commentSaveBtn.addEventListener("click", saveCollaborateurIdentification);
+                commentSaveBtn.addEventListener("click", saveCollaborateurComment);
+              }
+
+              if (rolesSaveBtn) {
+                rolesSaveBtn.addEventListener("click", saveCollaborateurRoles);
               }
 
 
