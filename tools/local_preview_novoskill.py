@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import threading
 import time
 import webbrowser
@@ -10,8 +9,9 @@ from urllib.parse import urlsplit
 
 HOST = "127.0.0.1"
 PORT = 5500
-ROOT = Path(__file__).resolve().parent
-STATIC_DIR = ROOT / "static"
+TOOLS_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = TOOLS_DIR.parent
+STATIC_DIR = PROJECT_ROOT / "static"
 
 ROUTE_FILES = {
     "/insights": "skills_portal.html",
@@ -61,6 +61,7 @@ def main() -> None:
     if not STATIC_DIR.is_dir():
         raise SystemExit(f"Dossier introuvable : {STATIC_DIR}")
 
+    print("Dossier servi :", STATIC_DIR)
     print("Skills local :", START_URLS[0])
     print("Studio local :", START_URLS[1])
     print("People local :", START_URLS[2])
