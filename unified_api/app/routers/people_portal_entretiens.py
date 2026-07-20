@@ -1,3 +1,4 @@
+from datetime import date
 from typing import List, Optional
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Request
@@ -5,7 +6,10 @@ from pydantic import BaseModel
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
 from app.routers.skills_portal_common import get_conn
-from app.routers.people_portal_common import peoplepeople_fetch_profile_context
+from app.routers.people_portal_common import (
+    people_clean,
+    people_fetch_profile_context,
+)
 router = APIRouter()
 
 class PeopleAutoEvalItem(BaseModel):
@@ -86,7 +90,7 @@ def people_entretiens_auto_eval(id_effectif: str, request: Request):
             "entretien": {
                 "id_entretien": entretien.get("id_entretien") or "",
                 "statut": entretien.get("statut") or "",
-                "date_prevue": _clean(entretien.get("date_prevue")),
+                "date_prevue": people_clean(entretien.get("date_prevue")),
                 "auto_evaluation_people": prep.get("auto_evaluation_people") or {},
             },
             "items": items,
@@ -101,22 +105,22 @@ def people_entretiens_auto_eval(id_effectif: str, request: Request):
 def people_entretiens_save_auto_eval(id_effectif: str, payload: PeopleAutoEvalPayload, request: Request):
     clean_items = []
     for item in payload.items or []:
-        cid = _clean(item.id_comp)
+        cid = people_clean(item.id_comp)
         if not cid:
             continue
-        niv = _clean(item.niveau_auto).upper()
+        niv = people_clean(item.niveau_auto).upper()
         if niv not in ("A", "B", "C", ""):
             niv = ""
         clean_items.append({
             "id_comp": cid,
             "niveau_auto": niv,
-            "commentaire": _clean(item.commentaire),
+            "commentaire": people_clean(item.commentaire),
             "besoin_accompagnement": bool(item.besoin_accompagnement),
         })
 
     auto_payload = {
         "date_saisie": date.today().isoformat(),
-        "commentaire_general": _clean(payload.commentaire_general),
+        "commentaire_general": people_clean(payload.commentaire_general),
         "items": clean_items,
     }
 

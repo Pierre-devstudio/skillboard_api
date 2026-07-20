@@ -4,7 +4,10 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from psycopg.rows import dict_row
 from app.routers.skills_portal_common import get_conn
-from app.routers.people_portal_common import peoplepeople_fetch_profile_context
+from app.routers.people_portal_common import (
+    people_clean,
+    people_fetch_profile_context,
+)
 router = APIRouter()
 
 class PeopleAddCompetencePayload(BaseModel):
@@ -99,7 +102,7 @@ def people_competences_catalogue(id_effectif: str, request: Request, q: str = ""
                 _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
                 id_owner = profile.get("id_owner") or ""
                 id_poste = profile.get("id_poste_actuel") or ""
-                search = f"%{_clean(q).lower()}%"
+                search = f"%{people_clean(q).lower()}%"
 
                 cur.execute(
                     """
@@ -152,11 +155,11 @@ def people_competences_catalogue(id_effectif: str, request: Request, q: str = ""
 
 @router.post("/people/competences/{id_effectif}/add")
 def people_competences_add(id_effectif: str, payload: PeopleAddCompetencePayload, request: Request):
-    id_comp = _clean(payload.id_comp)
+    id_comp = people_clean(payload.id_comp)
     if not id_comp:
         raise HTTPException(status_code=400, detail="Compétence manquante.")
 
-    niveau = _clean(payload.niveau_actuel).upper()
+    niveau = people_clean(payload.niveau_actuel).upper()
     if niveau not in ("", "A", "B", "C", "D"):
         niveau = ""
 

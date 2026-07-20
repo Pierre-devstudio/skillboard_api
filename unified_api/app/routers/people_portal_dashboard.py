@@ -5,9 +5,9 @@ from app.routers.skills_portal_common import get_conn
 from app.routers.people_portal_common import (
     people_require_user,
     people_fetch_profile,
-    peoplepeople_fetch_profile_context,
-    peoplepeople_competence_score,
-    peoplepeople_clean,
+    people_fetch_profile_context,
+    people_competence_score,
+    people_clean,
 )
 
 router = APIRouter()
@@ -27,6 +27,7 @@ def people_context(id_effectif: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"people/context error: {e}")
 
+@router.get("/people/dashboard/{id_effectif}")
 def people_dashboard(id_effectif: str, request: Request):
     try:
         with get_conn() as conn:
@@ -131,4 +132,4 @@ def people_dashboard(id_effectif: str, request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"people/demo/dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=f"people/dashboard error: {e}")

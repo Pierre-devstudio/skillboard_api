@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from psycopg.rows import dict_row
 from app.routers.skills_portal_common import get_conn
-from app.routers.people_portal_common import peoplepeople_fetch_profile_context
+from app.routers.people_portal_common import people_fetch_profile_context
 router = APIRouter()
 
 @router.get("/people/parcours/{id_effectif}")

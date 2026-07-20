@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import get_conn
-from app.routers.people_portal_common import peoplepeople_fetch_profile_context, peoplepeople_clean
+from app.routers.people_portal_common import people_fetch_profile_context, people_clean
 
 router = APIRouter()
 
@@ -14,7 +14,7 @@ class PeopleBreakPayload(BaseModel):
     date_fin: str
 
 def _parse_date(value: str, field_name: str) -> date:
-    raw = peoplepeople_clean(value)
+    raw = people_clean(value)
     if not raw:
         raise HTTPException(status_code=400, detail=f"{field_name} manquant.")
     try:
