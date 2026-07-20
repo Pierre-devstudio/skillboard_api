@@ -1,29 +1,114 @@
-<section id="view-dashboard">
-  <div class="pp-hero">
-    <div>
-      <div class="pp-eyebrow">Console People</div>
-      <h1>Bienvenue <span id="ppDashPrenom"></span></h1>
-      <p id="ppDashIntro">Votre espace personnel pour suivre votre poste, vos compétences, vos formations et vos prochaines étapes.</p>
-    </div>
-    <img src="/Logo_NOVOSKILL.png" alt="Novoskill" class="pp-hero-logo">
+<section id="view-dashboard" class="people-dashboard">
+  <div class="sb-dashboard-logo-wrap people-dashboard-logo-wrap">
+    <img src="/Logo_NOVOSKILL.png" alt="Novoskill" class="sb-logo">
   </div>
 
-  <div class="pp-grid pp-grid-4" id="ppDashKpis">
-    <div class="pp-kpi-card"><div class="pp-kpi-label">Maîtrise du poste</div><div class="pp-kpi-big" id="ppDashMastery">-</div></div>
-    <div class="pp-kpi-card"><div class="pp-kpi-label">Compétences suivies</div><div class="pp-kpi-big" id="ppDashComps">-</div></div>
-    <div class="pp-kpi-card"><div class="pp-kpi-label">Formations programmées</div><div class="pp-kpi-big" id="ppDashForms">-</div></div>
-    <div class="pp-kpi-card"><div class="pp-kpi-label">Indisponibilités</div><div class="pp-kpi-big" id="ppDashBreaks">-</div></div>
+  <div class="card sb-dashboard-hero people-dashboard-hero">
+    <div class="sb-dashboard-hero-main">
+      <div class="card-title">Bienvenue <span id="ppDashPrenom"></span></div>
+    </div>
   </div>
 
-  <div class="pp-grid pp-grid-2">
-    <div class="card pp-card">
-      <div class="card-title">Situation actuelle</div>
-      <div class="pp-info-list" id="ppDashProfile"></div>
-    </div>
+  <div class="people-dashboard-grid people-dashboard-grid--top">
+    <article class="card people-dashboard-card people-dashboard-card--mastery">
+      <div class="people-dashboard-card-head">
+        <div>
+          <h2>Maîtrise du poste actuel</h2>
+          <p id="ppDashPoste">Poste actuel</p>
+        </div>
+        <span class="people-dashboard-card-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-job"></use></svg>
+        </span>
+      </div>
 
-    <div class="card pp-card">
-      <div class="card-title">Compétences prioritaires du poste</div>
-      <div class="pp-list" id="ppDashCompetences"></div>
-    </div>
+      <div class="people-dashboard-ring-wrap">
+        <svg class="people-dashboard-ring" viewBox="0 0 160 160" aria-label="Maîtrise du poste actuel">
+          <circle class="people-dashboard-ring-bg" cx="80" cy="80" r="62"></circle>
+          <circle id="ppDashMasteryRing" class="people-dashboard-ring-fg" cx="80" cy="80" r="62"></circle>
+        </svg>
+        <div class="people-dashboard-ring-center">
+          <strong id="ppDashMastery">—%</strong>
+          <span id="ppDashMasteryLevel">Non évalué</span>
+        </div>
+      </div>
+
+      <button type="button" class="people-dashboard-link" data-people-view="competences">
+        Voir le détail des compétences <span aria-hidden="true">›</span>
+      </button>
+    </article>
+
+    <article class="card people-dashboard-card people-dashboard-card--situation">
+      <div class="people-dashboard-card-head">
+        <div>
+          <h2>Situation actuelle</h2>
+          <p>Votre position dans l’entreprise</p>
+        </div>
+        <span class="people-dashboard-card-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-info"></use></svg>
+        </span>
+      </div>
+      <div class="pp-info-list people-dashboard-info-list" id="ppDashProfile"></div>
+      <button type="button" class="people-dashboard-link" data-people-view="informations">
+        Voir vos informations <span aria-hidden="true">›</span>
+      </button>
+    </article>
+
+    <article class="card people-dashboard-card people-dashboard-card--responses">
+      <div class="people-dashboard-card-head">
+        <div>
+          <h2>Réponses reçues</h2>
+          <p>Retours de votre manager ou des RH</p>
+        </div>
+        <span class="people-dashboard-card-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-comment"></use></svg>
+        </span>
+      </div>
+      <div class="people-dashboard-empty">
+        <strong>Suivi bientôt disponible</strong>
+        <span>Les réponses à vos demandes apparaîtront ici dès l’activation de la rubrique Vos échanges.</span>
+      </div>
+      <button type="button" class="people-dashboard-link" data-people-view="echanges">
+        Accéder à vos échanges <span aria-hidden="true">›</span>
+      </button>
+    </article>
+  </div>
+
+  <div class="people-dashboard-grid people-dashboard-grid--bottom">
+    <article class="card people-dashboard-card people-dashboard-card--training">
+      <div class="people-dashboard-card-head">
+        <div>
+          <h2>Formation programmée</h2>
+          <p>Votre prochaine action de formation</p>
+        </div>
+        <span class="people-dashboard-card-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg>
+        </span>
+      </div>
+      <div class="people-dashboard-empty">
+        <strong>Raccordement à venir</strong>
+        <span>La prochaine formation programmée sera affichée ici avec son accès direct.</span>
+      </div>
+      <button type="button" class="people-dashboard-link" data-people-view="formations">
+        Voir vos formations <span aria-hidden="true">›</span>
+      </button>
+    </article>
+
+    <article class="card people-dashboard-card people-dashboard-card--events">
+      <div class="people-dashboard-card-head">
+        <div>
+          <h2>Prochains événements</h2>
+          <p>Les prochaines dates de votre calendrier</p>
+        </div>
+        <span class="people-dashboard-card-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg>
+        </span>
+      </div>
+      <div class="people-dashboard-events" id="ppDashEvents">
+        <div class="people-dashboard-empty"><span>Chargement des prochains événements…</span></div>
+      </div>
+      <button type="button" class="people-dashboard-link" data-people-view="calendrier">
+        Ouvrir votre calendrier <span aria-hidden="true">›</span>
+      </button>
+    </article>
   </div>
 </section>

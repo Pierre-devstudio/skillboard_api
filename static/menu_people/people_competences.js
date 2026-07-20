@@ -18,7 +18,7 @@
   async function load() {
     const id = P.getEffectifId();
     if (!id) return;
-    const data = await P.api(`/people/demo/competences/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+    const data = await P.api(`/people/competences/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
     if (data.error) {
       const el = byId("ppPosteComps");
       if (el) el.innerHTML = P.itemEmpty(data.error);
@@ -50,7 +50,7 @@
     const el = byId("ppCatalogueList");
     if (!el) return;
     el.innerHTML = P.itemEmpty("Recherche en cours...");
-    const data = await P.api(`/people/demo/competences/${encodeURIComponent(id)}/catalogue?q=${encodeURIComponent(q)}`).catch(err => ({ error: err.message }));
+    const data = await P.api(`/people/competences/${encodeURIComponent(id)}/catalogue?q=${encodeURIComponent(q)}`).catch(err => ({ error: err.message }));
     if (data.error) {
       el.innerHTML = P.itemEmpty(data.error);
       return;
@@ -76,7 +76,7 @@
     const id = P.getEffectifId();
     const msg = byId("ppCompMsg");
     if (msg) msg.textContent = "Ajout en cours…";
-    const res = await P.api(`/people/demo/competences/${encodeURIComponent(id)}/add`, {
+    const res = await P.api(`/people/competences/${encodeURIComponent(id)}/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id_comp: selectedComp, niveau_actuel: byId("ppCompLevel")?.value || "" })

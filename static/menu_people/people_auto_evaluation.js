@@ -22,7 +22,7 @@
   async function load() {
     const id = P.getEffectifId();
     if (!id) return;
-    const data = await P.api(`/people/demo/auto-evaluation/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+    const data = await P.api(`/people/entretiens/auto-evaluation/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
     const el = byId("ppAutoList");
     if (!el) return;
     if (data.error) {
@@ -45,7 +45,7 @@
       commentaire: row.querySelector(".pp-auto-comment")?.value || "",
       besoin_accompagnement: !!row.querySelector(".pp-auto-need")?.checked
     }));
-    const res = await P.api(`/people/demo/auto-evaluation/${encodeURIComponent(id)}/save`, {
+    const res = await P.api(`/people/entretiens/auto-evaluation/${encodeURIComponent(id)}/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items, commentaire_general: byId("ppAutoComment")?.value || "" })

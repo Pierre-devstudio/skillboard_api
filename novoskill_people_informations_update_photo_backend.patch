@@ -1,0 +1,3820 @@
+diff --git a/sql/20260720_people_profile_photo.sql b/sql/20260720_people_profile_photo.sql
+new file mode 100644
+index 0000000..721ab05
+--- /dev/null
++++ b/sql/20260720_people_profile_photo.sql
+@@ -0,0 +1,18 @@
++ALTER TABLE public.tbl_effectif_client
++  ADD COLUMN IF NOT EXISTS photo_storage_path text;
++
++ALTER TABLE public.tbl_utilisateur
++  ADD COLUMN IF NOT EXISTS photo_storage_path text;
++
++INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
++VALUES (
++  'people-profile-photos',
++  'people-profile-photos',
++  FALSE,
++  5242880,
++  ARRAY['image/jpeg', 'image/png', 'image/webp']
++)
++ON CONFLICT (id) DO UPDATE
++SET public = EXCLUDED.public,
++    file_size_limit = EXCLUDED.file_size_limit,
++    allowed_mime_types = EXCLUDED.allowed_mime_types;
+diff --git a/static/menu_people/people_auto_evaluation.js b/static/menu_people/people_auto_evaluation.js
+index 909f0a9..ea2ccc6 100644
+--- a/static/menu_people/people_auto_evaluation.js
++++ b/static/menu_people/people_auto_evaluation.js
+@@ -1,65 +1,65 @@
+-(function () {
+-  const P = window.PeoplePortal;
+-  if (!P) return;
+-  let lastItems = [];
+-  function byId(id){ return document.getElementById(id); }
+-
+-  function row(r, saved) {
+-    const s = saved && Array.isArray(saved.items) ? saved.items.find(x => x.id_comp === r.id_comp) : null;
+-    const val = s?.niveau_auto || r.niveau_actuel || "";
+-    const comment = s?.commentaire || "";
+-    const checked = s?.besoin_accompagnement ? "checked" : "";
+-    return `<div class="pp-auto-row" data-id="${P.escapeHtml(r.id_comp)}">
+-      <div class="pp-auto-main"><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · Niveau attendu ${P.levelLabel(r.niveau_requis)} · Niveau actuel ${P.levelLabel(r.niveau_actuel)}</div></div>
+-      <div class="pp-auto-fields">
+-        <select class="pp-auto-level"><option value="">Niveau</option><option value="A" ${val === "A" ? "selected" : ""}>A</option><option value="B" ${val === "B" ? "selected" : ""}>B</option><option value="C" ${val === "C" ? "selected" : ""}>C</option></select>
+-        <label class="pp-check"><input type="checkbox" class="pp-auto-need" ${checked}> Besoin d’accompagnement</label>
+-        <input type="text" class="pp-auto-comment" placeholder="Commentaire" value="${P.escapeHtml(comment)}">
+-      </div>
+-    </div>`;
+-  }
+-
+-  async function load() {
+-    const id = P.getEffectifId();
+-    if (!id) return;
+-    const data = await P.api(`/people/demo/auto-evaluation/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+-    const el = byId("ppAutoList");
+-    if (!el) return;
+-    if (data.error) {
+-      el.innerHTML = P.itemEmpty(data.error);
+-      return;
+-    }
+-    lastItems = data.items || [];
+-    const saved = data.entretien?.auto_evaluation_people || {};
+-    el.innerHTML = lastItems.length ? lastItems.map(r => row(r, saved)).join("") : P.itemEmpty("Aucune compétence à préparer pour le poste actuel.");
+-    if (byId("ppAutoComment")) byId("ppAutoComment").value = saved.commentaire_general || "";
+-  }
+-
+-  async function save() {
+-    const id = P.getEffectifId();
+-    const msg = byId("ppAutoMsg");
+-    if (msg) msg.textContent = "Enregistrement…";
+-    const items = Array.from(document.querySelectorAll(".pp-auto-row")).map(row => ({
+-      id_comp: row.getAttribute("data-id") || "",
+-      niveau_auto: row.querySelector(".pp-auto-level")?.value || "",
+-      commentaire: row.querySelector(".pp-auto-comment")?.value || "",
+-      besoin_accompagnement: !!row.querySelector(".pp-auto-need")?.checked
+-    }));
+-    const res = await P.api(`/people/demo/auto-evaluation/${encodeURIComponent(id)}/save`, {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ items, commentaire_general: byId("ppAutoComment")?.value || "" })
+-    }).catch(err => ({ error: err.message }));
+-    if (res.error) {
+-      if (msg) msg.textContent = res.error;
+-      return;
+-    }
+-    if (msg) {
+-      msg.textContent = "Enregistré avec succès";
+-      setTimeout(() => { msg.textContent = ""; }, 5000);
+-    }
+-  }
+-
+-  byId("ppAutoSave")?.addEventListener("click", save);
+-  load();
+-})();
++(function () {
++  const P = window.PeoplePortal;
++  if (!P) return;
++  let lastItems = [];
++  function byId(id){ return document.getElementById(id); }
++
++  function row(r, saved) {
++    const s = saved && Array.isArray(saved.items) ? saved.items.find(x => x.id_comp === r.id_comp) : null;
++    const val = s?.niveau_auto || r.niveau_actuel || "";
++    const comment = s?.commentaire || "";
++    const checked = s?.besoin_accompagnement ? "checked" : "";
++    return `<div class="pp-auto-row" data-id="${P.escapeHtml(r.id_comp)}">
++      <div class="pp-auto-main"><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · Niveau attendu ${P.levelLabel(r.niveau_requis)} · Niveau actuel ${P.levelLabel(r.niveau_actuel)}</div></div>
++      <div class="pp-auto-fields">
++        <select class="pp-auto-level"><option value="">Niveau</option><option value="A" ${val === "A" ? "selected" : ""}>A</option><option value="B" ${val === "B" ? "selected" : ""}>B</option><option value="C" ${val === "C" ? "selected" : ""}>C</option></select>
++        <label class="pp-check"><input type="checkbox" class="pp-auto-need" ${checked}> Besoin d’accompagnement</label>
++        <input type="text" class="pp-auto-comment" placeholder="Commentaire" value="${P.escapeHtml(comment)}">
++      </div>
++    </div>`;
++  }
++
++  async function load() {
++    const id = P.getEffectifId();
++    if (!id) return;
++    const data = await P.api(`/people/entretiens/auto-evaluation/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++    const el = byId("ppAutoList");
++    if (!el) return;
++    if (data.error) {
++      el.innerHTML = P.itemEmpty(data.error);
++      return;
++    }
++    lastItems = data.items || [];
++    const saved = data.entretien?.auto_evaluation_people || {};
++    el.innerHTML = lastItems.length ? lastItems.map(r => row(r, saved)).join("") : P.itemEmpty("Aucune compétence à préparer pour le poste actuel.");
++    if (byId("ppAutoComment")) byId("ppAutoComment").value = saved.commentaire_general || "";
++  }
++
++  async function save() {
++    const id = P.getEffectifId();
++    const msg = byId("ppAutoMsg");
++    if (msg) msg.textContent = "Enregistrement…";
++    const items = Array.from(document.querySelectorAll(".pp-auto-row")).map(row => ({
++      id_comp: row.getAttribute("data-id") || "",
++      niveau_auto: row.querySelector(".pp-auto-level")?.value || "",
++      commentaire: row.querySelector(".pp-auto-comment")?.value || "",
++      besoin_accompagnement: !!row.querySelector(".pp-auto-need")?.checked
++    }));
++    const res = await P.api(`/people/entretiens/auto-evaluation/${encodeURIComponent(id)}/save`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ items, commentaire_general: byId("ppAutoComment")?.value || "" })
++    }).catch(err => ({ error: err.message }));
++    if (res.error) {
++      if (msg) msg.textContent = res.error;
++      return;
++    }
++    if (msg) {
++      msg.textContent = "Enregistré avec succès";
++      setTimeout(() => { msg.textContent = ""; }, 5000);
++    }
++  }
++
++  byId("ppAutoSave")?.addEventListener("click", save);
++  load();
++})();
+diff --git a/static/menu_people/people_calendrier.js b/static/menu_people/people_calendrier.js
+index a07344b..f6fff62 100644
+--- a/static/menu_people/people_calendrier.js
++++ b/static/menu_people/people_calendrier.js
+@@ -1,91 +1,91 @@
+-(function () {
+-  const P = window.PeoplePortal;
+-  if (!P) return;
+-  let cache = null;
+-  function byId(id){ return document.getElementById(id); }
+-
+-  function openModal() {
+-    const m = byId("ppBreakModal");
+-    if (m) m.style.display = "flex";
+-    const today = new Date().toISOString().slice(0,10);
+-    if (byId("ppBreakStart") && !byId("ppBreakStart").value) byId("ppBreakStart").value = today;
+-    if (byId("ppBreakEnd") && !byId("ppBreakEnd").value) byId("ppBreakEnd").value = today;
+-  }
+-  function closeModal() {
+-    const m = byId("ppBreakModal");
+-    if (m) m.style.display = "none";
+-    const msg = byId("ppBreakMsg");
+-    if (msg) msg.textContent = "";
+-  }
+-
+-  function renderBreaks(rows) {
+-    const el = byId("ppBreakList");
+-    if (!el) return;
+-    if (!rows.length) {
+-      el.innerHTML = P.itemEmpty("Aucune indisponibilité déclarée.");
+-      return;
+-    }
+-    el.innerHTML = rows.map(r => `<div class="pp-list-row">
+-      <div><div class="pp-row-title">${P.fmtDate(r.date_debut)} → ${P.fmtDate(r.date_fin)}</div><div class="pp-row-sub">Indisponibilité déclarée</div></div>
+-      <button class="pp-icon-btn" data-break-archive="${P.escapeHtml(r.id_break)}" title="Archiver">🗑</button>
+-    </div>`).join("");
+-    el.querySelectorAll("[data-break-archive]").forEach(btn => {
+-      btn.onclick = async () => {
+-        const idEffectif = P.getEffectifId();
+-        await P.api(`/people/demo/calendar/${encodeURIComponent(idEffectif)}/breaks/${encodeURIComponent(btn.getAttribute("data-break-archive"))}/archive`, { method: "POST" }).catch(() => null);
+-        load();
+-      };
+-    });
+-  }
+-
+-  function renderTrainings(rows) {
+-    const el = byId("ppTrainingList");
+-    if (!el) return;
+-    if (!rows.length) {
+-      el.innerHTML = P.itemEmpty("Aucune formation programmée.");
+-      return;
+-    }
+-    el.innerHTML = rows.map(r => `<div class="pp-list-row">
+-      <div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} → ${P.fmtDate(r.date_fin_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>
+-      ${P.badge(r.etat_action || r.etat_invitation || "programmé", "soft")}
+-    </div>`).join("");
+-  }
+-
+-  async function load() {
+-    const id = P.getEffectifId();
+-    if (!id) return;
+-    cache = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+-    if (cache.error) {
+-      const el = byId("ppBreakList");
+-      if (el) el.innerHTML = P.itemEmpty(cache.error);
+-      return;
+-    }
+-    renderBreaks(cache.indisponibilites || []);
+-    renderTrainings(cache.formations || []);
+-  }
+-
+-  async function saveBreak() {
+-    const id = P.getEffectifId();
+-    const msg = byId("ppBreakMsg");
+-    const start = byId("ppBreakStart")?.value || "";
+-    const end = byId("ppBreakEnd")?.value || "";
+-    if (msg) msg.textContent = "Enregistrement…";
+-    const res = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}/breaks`, {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ date_debut: start, date_fin: end })
+-    }).catch(err => ({ error: err.message }));
+-    if (res.error) {
+-      if (msg) msg.textContent = res.error;
+-      return;
+-    }
+-    closeModal();
+-    load();
+-  }
+-
+-  byId("ppBtnOpenBreak")?.addEventListener("click", openModal);
+-  byId("ppBreakClose")?.addEventListener("click", closeModal);
+-  byId("ppBreakCancel")?.addEventListener("click", closeModal);
+-  byId("ppBreakSave")?.addEventListener("click", saveBreak);
+-  load();
+-})();
++(function () {
++  const P = window.PeoplePortal;
++  if (!P) return;
++  let cache = null;
++  function byId(id){ return document.getElementById(id); }
++
++  function openModal() {
++    const m = byId("ppBreakModal");
++    if (m) m.style.display = "flex";
++    const today = new Date().toISOString().slice(0,10);
++    if (byId("ppBreakStart") && !byId("ppBreakStart").value) byId("ppBreakStart").value = today;
++    if (byId("ppBreakEnd") && !byId("ppBreakEnd").value) byId("ppBreakEnd").value = today;
++  }
++  function closeModal() {
++    const m = byId("ppBreakModal");
++    if (m) m.style.display = "none";
++    const msg = byId("ppBreakMsg");
++    if (msg) msg.textContent = "";
++  }
++
++  function renderBreaks(rows) {
++    const el = byId("ppBreakList");
++    if (!el) return;
++    if (!rows.length) {
++      el.innerHTML = P.itemEmpty("Aucune indisponibilité déclarée.");
++      return;
++    }
++    el.innerHTML = rows.map(r => `<div class="pp-list-row">
++      <div><div class="pp-row-title">${P.fmtDate(r.date_debut)} → ${P.fmtDate(r.date_fin)}</div><div class="pp-row-sub">Indisponibilité déclarée</div></div>
++      <button class="pp-icon-btn" data-break-archive="${P.escapeHtml(r.id_break)}" title="Archiver">🗑</button>
++    </div>`).join("");
++    el.querySelectorAll("[data-break-archive]").forEach(btn => {
++      btn.onclick = async () => {
++        const idEffectif = P.getEffectifId();
++        await P.api(`/people/calendrier/${encodeURIComponent(idEffectif)}/breaks/${encodeURIComponent(btn.getAttribute("data-break-archive"))}/archive`, { method: "POST" }).catch(() => null);
++        load();
++      };
++    });
++  }
++
++  function renderTrainings(rows) {
++    const el = byId("ppTrainingList");
++    if (!el) return;
++    if (!rows.length) {
++      el.innerHTML = P.itemEmpty("Aucune formation programmée.");
++      return;
++    }
++    el.innerHTML = rows.map(r => `<div class="pp-list-row">
++      <div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} → ${P.fmtDate(r.date_fin_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>
++      ${P.badge(r.etat_action || r.etat_invitation || "programmé", "soft")}
++    </div>`).join("");
++  }
++
++  async function load() {
++    const id = P.getEffectifId();
++    if (!id) return;
++    cache = await P.api(`/people/calendrier/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++    if (cache.error) {
++      const el = byId("ppBreakList");
++      if (el) el.innerHTML = P.itemEmpty(cache.error);
++      return;
++    }
++    renderBreaks(cache.indisponibilites || []);
++    renderTrainings(cache.formations || []);
++  }
++
++  async function saveBreak() {
++    const id = P.getEffectifId();
++    const msg = byId("ppBreakMsg");
++    const start = byId("ppBreakStart")?.value || "";
++    const end = byId("ppBreakEnd")?.value || "";
++    if (msg) msg.textContent = "Enregistrement…";
++    const res = await P.api(`/people/calendrier/${encodeURIComponent(id)}/breaks`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ date_debut: start, date_fin: end })
++    }).catch(err => ({ error: err.message }));
++    if (res.error) {
++      if (msg) msg.textContent = res.error;
++      return;
++    }
++    closeModal();
++    load();
++  }
++
++  byId("ppBtnOpenBreak")?.addEventListener("click", openModal);
++  byId("ppBreakClose")?.addEventListener("click", closeModal);
++  byId("ppBreakCancel")?.addEventListener("click", closeModal);
++  byId("ppBreakSave")?.addEventListener("click", saveBreak);
++  load();
++})();
+diff --git a/static/menu_people/people_competences.js b/static/menu_people/people_competences.js
+index 128703b..716c344 100644
+--- a/static/menu_people/people_competences.js
++++ b/static/menu_people/people_competences.js
+@@ -1,101 +1,101 @@
+-(function () {
+-  const P = window.PeoplePortal;
+-  if (!P) return;
+-  let selectedComp = "";
+-  let searchTimer = null;
+-  function byId(id){ return document.getElementById(id); }
+-
+-  function compRow(r, required) {
+-    return `<div class="pp-list-row">
+-      <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · ${P.escapeHtml(r.domaine || "Domaine non renseigné")}</div></div>
+-      <div class="pp-row-badges">
+-        ${required ? P.levelBadge(r.niveau_requis) : ""}
+-        ${P.levelBadge(r.niveau_actuel)}
+-      </div>
+-    </div>`;
+-  }
+-
+-  async function load() {
+-    const id = P.getEffectifId();
+-    if (!id) return;
+-    const data = await P.api(`/people/demo/competences/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+-    if (data.error) {
+-      const el = byId("ppPosteComps");
+-      if (el) el.innerHTML = P.itemEmpty(data.error);
+-      return;
+-    }
+-    const poste = byId("ppPosteComps");
+-    const autres = byId("ppOtherComps");
+-    if (poste) poste.innerHTML = (data.poste || []).length ? data.poste.map(r => compRow(r, true)).join("") : P.itemEmpty("Aucune compétence rattachée au poste.");
+-    if (autres) autres.innerHTML = (data.autres || []).length ? data.autres.map(r => compRow(r, false)).join("") : P.itemEmpty("Aucune compétence complémentaire déclarée.");
+-  }
+-
+-  function openModal() {
+-    selectedComp = "";
+-    byId("ppCompAdd").disabled = true;
+-    const m = byId("ppCompModal");
+-    if (m) m.style.display = "flex";
+-    loadCatalogue();
+-  }
+-  function closeModal() {
+-    const m = byId("ppCompModal");
+-    if (m) m.style.display = "none";
+-    const msg = byId("ppCompMsg");
+-    if (msg) msg.textContent = "";
+-  }
+-
+-  async function loadCatalogue() {
+-    const id = P.getEffectifId();
+-    const q = byId("ppCompSearch")?.value || "";
+-    const el = byId("ppCatalogueList");
+-    if (!el) return;
+-    el.innerHTML = P.itemEmpty("Recherche en cours...");
+-    const data = await P.api(`/people/demo/competences/${encodeURIComponent(id)}/catalogue?q=${encodeURIComponent(q)}`).catch(err => ({ error: err.message }));
+-    if (data.error) {
+-      el.innerHTML = P.itemEmpty(data.error);
+-      return;
+-    }
+-    const rows = data.items || [];
+-    if (!rows.length) {
+-      el.innerHTML = P.itemEmpty("Aucune compétence disponible avec ces critères.");
+-      return;
+-    }
+-    el.innerHTML = rows.map(r => `<button type="button" class="pp-select-row" data-id="${P.escapeHtml(r.id_comp)}"><span><strong>${P.escapeHtml(r.intitule)}</strong><small>${P.escapeHtml(r.code || "")} · ${P.escapeHtml(r.domaine || "Domaine non renseigné")}</small></span></button>`).join("");
+-    el.querySelectorAll("[data-id]").forEach(btn => {
+-      btn.onclick = () => {
+-        selectedComp = btn.getAttribute("data-id") || "";
+-        el.querySelectorAll(".pp-select-row").forEach(b => b.classList.remove("is-selected"));
+-        btn.classList.add("is-selected");
+-        byId("ppCompAdd").disabled = !selectedComp;
+-      };
+-    });
+-  }
+-
+-  async function addComp() {
+-    if (!selectedComp) return;
+-    const id = P.getEffectifId();
+-    const msg = byId("ppCompMsg");
+-    if (msg) msg.textContent = "Ajout en cours…";
+-    const res = await P.api(`/people/demo/competences/${encodeURIComponent(id)}/add`, {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ id_comp: selectedComp, niveau_actuel: byId("ppCompLevel")?.value || "" })
+-    }).catch(err => ({ error: err.message }));
+-    if (res.error) {
+-      if (msg) msg.textContent = res.error;
+-      return;
+-    }
+-    closeModal();
+-    load();
+-  }
+-
+-  byId("ppBtnOpenCompModal")?.addEventListener("click", openModal);
+-  byId("ppCompClose")?.addEventListener("click", closeModal);
+-  byId("ppCompCancel")?.addEventListener("click", closeModal);
+-  byId("ppCompAdd")?.addEventListener("click", addComp);
+-  byId("ppCompSearch")?.addEventListener("input", () => {
+-    clearTimeout(searchTimer);
+-    searchTimer = setTimeout(loadCatalogue, 250);
+-  });
+-  load();
+-})();
++(function () {
++  const P = window.PeoplePortal;
++  if (!P) return;
++  let selectedComp = "";
++  let searchTimer = null;
++  function byId(id){ return document.getElementById(id); }
++
++  function compRow(r, required) {
++    return `<div class="pp-list-row">
++      <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · ${P.escapeHtml(r.domaine || "Domaine non renseigné")}</div></div>
++      <div class="pp-row-badges">
++        ${required ? P.levelBadge(r.niveau_requis) : ""}
++        ${P.levelBadge(r.niveau_actuel)}
++      </div>
++    </div>`;
++  }
++
++  async function load() {
++    const id = P.getEffectifId();
++    if (!id) return;
++    const data = await P.api(`/people/competences/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++    if (data.error) {
++      const el = byId("ppPosteComps");
++      if (el) el.innerHTML = P.itemEmpty(data.error);
++      return;
++    }
++    const poste = byId("ppPosteComps");
++    const autres = byId("ppOtherComps");
++    if (poste) poste.innerHTML = (data.poste || []).length ? data.poste.map(r => compRow(r, true)).join("") : P.itemEmpty("Aucune compétence rattachée au poste.");
++    if (autres) autres.innerHTML = (data.autres || []).length ? data.autres.map(r => compRow(r, false)).join("") : P.itemEmpty("Aucune compétence complémentaire déclarée.");
++  }
++
++  function openModal() {
++    selectedComp = "";
++    byId("ppCompAdd").disabled = true;
++    const m = byId("ppCompModal");
++    if (m) m.style.display = "flex";
++    loadCatalogue();
++  }
++  function closeModal() {
++    const m = byId("ppCompModal");
++    if (m) m.style.display = "none";
++    const msg = byId("ppCompMsg");
++    if (msg) msg.textContent = "";
++  }
++
++  async function loadCatalogue() {
++    const id = P.getEffectifId();
++    const q = byId("ppCompSearch")?.value || "";
++    const el = byId("ppCatalogueList");
++    if (!el) return;
++    el.innerHTML = P.itemEmpty("Recherche en cours...");
++    const data = await P.api(`/people/competences/${encodeURIComponent(id)}/catalogue?q=${encodeURIComponent(q)}`).catch(err => ({ error: err.message }));
++    if (data.error) {
++      el.innerHTML = P.itemEmpty(data.error);
++      return;
++    }
++    const rows = data.items || [];
++    if (!rows.length) {
++      el.innerHTML = P.itemEmpty("Aucune compétence disponible avec ces critères.");
++      return;
++    }
++    el.innerHTML = rows.map(r => `<button type="button" class="pp-select-row" data-id="${P.escapeHtml(r.id_comp)}"><span><strong>${P.escapeHtml(r.intitule)}</strong><small>${P.escapeHtml(r.code || "")} · ${P.escapeHtml(r.domaine || "Domaine non renseigné")}</small></span></button>`).join("");
++    el.querySelectorAll("[data-id]").forEach(btn => {
++      btn.onclick = () => {
++        selectedComp = btn.getAttribute("data-id") || "";
++        el.querySelectorAll(".pp-select-row").forEach(b => b.classList.remove("is-selected"));
++        btn.classList.add("is-selected");
++        byId("ppCompAdd").disabled = !selectedComp;
++      };
++    });
++  }
++
++  async function addComp() {
++    if (!selectedComp) return;
++    const id = P.getEffectifId();
++    const msg = byId("ppCompMsg");
++    if (msg) msg.textContent = "Ajout en cours…";
++    const res = await P.api(`/people/competences/${encodeURIComponent(id)}/add`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ id_comp: selectedComp, niveau_actuel: byId("ppCompLevel")?.value || "" })
++    }).catch(err => ({ error: err.message }));
++    if (res.error) {
++      if (msg) msg.textContent = res.error;
++      return;
++    }
++    closeModal();
++    load();
++  }
++
++  byId("ppBtnOpenCompModal")?.addEventListener("click", openModal);
++  byId("ppCompClose")?.addEventListener("click", closeModal);
++  byId("ppCompCancel")?.addEventListener("click", closeModal);
++  byId("ppCompAdd")?.addEventListener("click", addComp);
++  byId("ppCompSearch")?.addEventListener("input", () => {
++    clearTimeout(searchTimer);
++    searchTimer = setTimeout(loadCatalogue, 250);
++  });
++  load();
++})();
+diff --git a/static/menu_people/people_dashboard.js b/static/menu_people/people_dashboard.js
+index 4e93bff..79542c8 100644
+--- a/static/menu_people/people_dashboard.js
++++ b/static/menu_people/people_dashboard.js
+@@ -1,132 +1,132 @@
+-(function () {
+-  const P = window.PeoplePortal;
+-  if (!P) return;
+-
+-  const RING_RADIUS = 62;
+-  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+-
+-  function byId(id){ return document.getElementById(id); }
+-
+-  function masteryLevel(score) {
+-    const value = Number(score);
+-    if (!Number.isFinite(value)) return "Non évalué";
+-    if (value <= 25) return "Débutant";
+-    if (value <= 50) return "Intermédiaire";
+-    if (value <= 75) return "Avancé";
+-    return "Expert";
+-  }
+-
+-  function setMasteryRing(score) {
+-    const value = Math.max(0, Math.min(100, Number(score) || 0));
+-    const ring = byId("ppDashMasteryRing");
+-    const pct = byId("ppDashMastery");
+-    const level = byId("ppDashMasteryLevel");
+-
+-    if (ring) {
+-      ring.style.strokeDasharray = `${RING_CIRCUMFERENCE}`;
+-      ring.style.strokeDashoffset = `${RING_CIRCUMFERENCE * (1 - value / 100)}`;
+-    }
+-    if (pct) pct.textContent = `${Math.round(value)}%`;
+-    if (level) level.textContent = masteryLevel(value);
+-  }
+-
+-  function eventDateValue(event) {
+-    const raw = event.date_debut_formation || event.date_debut || "";
+-    const value = new Date(String(raw).slice(0, 10) + "T00:00:00");
+-    return Number.isNaN(value.getTime()) ? null : value;
+-  }
+-
+-  function eventRow(event) {
+-    const isFormation = Boolean(event.id_action_formation);
+-    const date = event.date_debut_formation || event.date_debut;
+-    const title = isFormation ? (event.titre || "Formation programmée") : "Indisponibilité";
+-    const kind = isFormation ? "Formation" : "Calendrier";
+-
+-    return `<div class="people-dashboard-event-row">
+-      <div class="people-dashboard-event-date">${P.escapeHtml(P.fmtDate(date))}</div>
+-      <div>
+-        <div class="people-dashboard-event-title">${P.escapeHtml(title)}</div>
+-        <div class="people-dashboard-event-kind">${P.escapeHtml(kind)}</div>
+-      </div>
+-    </div>`;
+-  }
+-
+-  async function loadEvents(id) {
+-    const target = byId("ppDashEvents");
+-    if (!target) return;
+-
+-    const data = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}`).catch(() => null);
+-    if (!data) {
+-      target.innerHTML = P.itemEmpty("Les prochains événements sont indisponibles.");
+-      return;
+-    }
+-
+-    const today = new Date();
+-    today.setHours(0, 0, 0, 0);
+-
+-    const events = []
+-      .concat(Array.isArray(data.formations) ? data.formations : [])
+-      .concat(Array.isArray(data.indisponibilites) ? data.indisponibilites : [])
+-      .filter(event => {
+-        const date = eventDateValue(event);
+-        return date && date >= today;
+-      })
+-      .sort((a, b) => eventDateValue(a) - eventDateValue(b))
+-      .slice(0, 3);
+-
+-    target.innerHTML = events.length
+-      ? events.map(eventRow).join("")
+-      : P.itemEmpty("Aucun événement prochain dans votre calendrier.");
+-  }
+-
+-  function bindLinks() {
+-    document.querySelectorAll("#view-dashboard [data-people-view]").forEach(button => {
+-      button.addEventListener("click", () => {
+-        const view = String(button.dataset.peopleView || "").trim();
+-        const menuItem = view ? document.querySelector(`.menu-item[data-view="${view}"]`) : null;
+-        if (menuItem) menuItem.click();
+-      });
+-    });
+-  }
+-
+-  async function load() {
+-    bindLinks();
+-
+-    const id = P.getEffectifId();
+-    if (!id) return;
+-
+-    const data = await P.api(`/people/demo/dashboard/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+-    if (data.error) {
+-      const target = byId("ppDashProfile");
+-      if (target) target.innerHTML = P.itemEmpty(data.error);
+-      setMasteryRing(0);
+-      return;
+-    }
+-
+-    const profile = data.profile || {};
+-    const kpis = data.kpis || {};
+-
+-    const prenom = String(profile.prenom || "").trim();
+-    const prenomEl = byId("ppDashPrenom");
+-    if (prenomEl) prenomEl.textContent = prenom || "";
+-
+-    const posteEl = byId("ppDashPoste");
+-    if (posteEl) posteEl.textContent = profile.intitule_poste || "Poste non renseigné";
+-
+-    setMasteryRing(kpis.maitrise_poste);
+-
+-    const situation = byId("ppDashProfile");
+-    if (situation) {
+-      situation.innerHTML = [
+-        P.infoRow("Entreprise", profile.nom_owner),
+-        P.infoRow("Service", profile.nom_service),
+-        P.infoRow("Poste", profile.intitule_poste),
+-        P.infoRow("Dernière évaluation", kpis.derniere_evaluation ? P.fmtDate(kpis.derniere_evaluation) : "Non renseignée")
+-      ].join("");
+-    }
+-
+-    loadEvents(id);
+-  }
+-
+-  load();
+-})();
++(function () {
++  const P = window.PeoplePortal;
++  if (!P) return;
++
++  const RING_RADIUS = 62;
++  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
++
++  function byId(id){ return document.getElementById(id); }
++
++  function masteryLevel(score) {
++    const value = Number(score);
++    if (!Number.isFinite(value)) return "Non évalué";
++    if (value <= 25) return "Débutant";
++    if (value <= 50) return "Intermédiaire";
++    if (value <= 75) return "Avancé";
++    return "Expert";
++  }
++
++  function setMasteryRing(score) {
++    const value = Math.max(0, Math.min(100, Number(score) || 0));
++    const ring = byId("ppDashMasteryRing");
++    const pct = byId("ppDashMastery");
++    const level = byId("ppDashMasteryLevel");
++
++    if (ring) {
++      ring.style.strokeDasharray = `${RING_CIRCUMFERENCE}`;
++      ring.style.strokeDashoffset = `${RING_CIRCUMFERENCE * (1 - value / 100)}`;
++    }
++    if (pct) pct.textContent = `${Math.round(value)}%`;
++    if (level) level.textContent = masteryLevel(value);
++  }
++
++  function eventDateValue(event) {
++    const raw = event.date_debut_formation || event.date_debut || "";
++    const value = new Date(String(raw).slice(0, 10) + "T00:00:00");
++    return Number.isNaN(value.getTime()) ? null : value;
++  }
++
++  function eventRow(event) {
++    const isFormation = Boolean(event.id_action_formation);
++    const date = event.date_debut_formation || event.date_debut;
++    const title = isFormation ? (event.titre || "Formation programmée") : "Indisponibilité";
++    const kind = isFormation ? "Formation" : "Calendrier";
++
++    return `<div class="people-dashboard-event-row">
++      <div class="people-dashboard-event-date">${P.escapeHtml(P.fmtDate(date))}</div>
++      <div>
++        <div class="people-dashboard-event-title">${P.escapeHtml(title)}</div>
++        <div class="people-dashboard-event-kind">${P.escapeHtml(kind)}</div>
++      </div>
++    </div>`;
++  }
++
++  async function loadEvents(id) {
++    const target = byId("ppDashEvents");
++    if (!target) return;
++
++    const data = await P.api(`/people/calendrier/${encodeURIComponent(id)}`).catch(() => null);
++    if (!data) {
++      target.innerHTML = P.itemEmpty("Les prochains événements sont indisponibles.");
++      return;
++    }
++
++    const today = new Date();
++    today.setHours(0, 0, 0, 0);
++
++    const events = []
++      .concat(Array.isArray(data.formations) ? data.formations : [])
++      .concat(Array.isArray(data.indisponibilites) ? data.indisponibilites : [])
++      .filter(event => {
++        const date = eventDateValue(event);
++        return date && date >= today;
++      })
++      .sort((a, b) => eventDateValue(a) - eventDateValue(b))
++      .slice(0, 3);
++
++    target.innerHTML = events.length
++      ? events.map(eventRow).join("")
++      : P.itemEmpty("Aucun événement prochain dans votre calendrier.");
++  }
++
++  function bindLinks() {
++    document.querySelectorAll("#view-dashboard [data-people-view]").forEach(button => {
++      button.addEventListener("click", () => {
++        const view = String(button.dataset.peopleView || "").trim();
++        const menuItem = view ? document.querySelector(`.menu-item[data-view="${view}"]`) : null;
++        if (menuItem) menuItem.click();
++      });
++    });
++  }
++
++  async function load() {
++    bindLinks();
++
++    const id = P.getEffectifId();
++    if (!id) return;
++
++    const data = await P.api(`/people/dashboard/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++    if (data.error) {
++      const target = byId("ppDashProfile");
++      if (target) target.innerHTML = P.itemEmpty(data.error);
++      setMasteryRing(0);
++      return;
++    }
++
++    const profile = data.profile || {};
++    const kpis = data.kpis || {};
++
++    const prenom = String(profile.prenom || "").trim();
++    const prenomEl = byId("ppDashPrenom");
++    if (prenomEl) prenomEl.textContent = prenom || "";
++
++    const posteEl = byId("ppDashPoste");
++    if (posteEl) posteEl.textContent = profile.intitule_poste || "Poste non renseigné";
++
++    setMasteryRing(kpis.maitrise_poste);
++
++    const situation = byId("ppDashProfile");
++    if (situation) {
++      situation.innerHTML = [
++        P.infoRow("Entreprise", profile.nom_owner),
++        P.infoRow("Service", profile.nom_service),
++        P.infoRow("Poste", profile.intitule_poste),
++        P.infoRow("Dernière évaluation", kpis.derniere_evaluation ? P.fmtDate(kpis.derniere_evaluation) : "Non renseignée")
++      ].join("");
++    }
++
++    loadEvents(id);
++  }
++
++  load();
++})();
+diff --git a/static/menu_people/people_formations.js b/static/menu_people/people_formations.js
+index 48f91e5..41c7d22 100644
+--- a/static/menu_people/people_formations.js
++++ b/static/menu_people/people_formations.js
+@@ -1,32 +1,32 @@
+-(function () {
+-  const P = window.PeoplePortal;
+-  if (!P) return;
+-  function byId(id){ return document.getElementById(id); }
+-
+-  async function load() {
+-    const id = P.getEffectifId();
+-    if (!id) return;
+-    const cal = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+-    const par = await P.api(`/people/demo/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+-
+-    const up = byId("ppFormUpcoming");
+-    if (up) {
+-      if (cal.error) up.innerHTML = P.itemEmpty(cal.error);
+-      else {
+-        const rows = cal.formations || [];
+-        up.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} → ${P.fmtDate(r.date_fin_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.etat_action || "programmé", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation programmée.");
+-      }
+-    }
+-
+-    const hist = byId("ppFormHistory");
+-    if (hist) {
+-      if (par.error) hist.innerHTML = P.itemEmpty(par.error);
+-      else {
+-        const rows = par.formations || [];
+-        hist.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation réalisée dans l’historique.");
+-      }
+-    }
+-  }
+-
+-  load();
+-})();
++(function () {
++  const P = window.PeoplePortal;
++  if (!P) return;
++  function byId(id){ return document.getElementById(id); }
++
++  async function load() {
++    const id = P.getEffectifId();
++    if (!id) return;
++    const cal = await P.api(`/people/calendrier/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++    const par = await P.api(`/people/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++
++    const up = byId("ppFormUpcoming");
++    if (up) {
++      if (cal.error) up.innerHTML = P.itemEmpty(cal.error);
++      else {
++        const rows = cal.formations || [];
++        up.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.titre)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut_formation)} → ${P.fmtDate(r.date_fin_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.etat_action || "programmé", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation programmée.");
++      }
++    }
++
++    const hist = byId("ppFormHistory");
++    if (hist) {
++      if (par.error) hist.innerHTML = P.itemEmpty(par.error);
++      else {
++        const rows = par.formations || [];
++        hist.innerHTML = rows.length ? rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("") : P.itemEmpty("Aucune formation réalisée dans l’historique.");
++      }
++    }
++  }
++
++  load();
++})();
+diff --git a/static/menu_people/people_informations.html b/static/menu_people/people_informations.html
+index 570db58..43010cf 100644
+--- a/static/menu_people/people_informations.html
++++ b/static/menu_people/people_informations.html
+@@ -1,28 +1,58 @@
+ <section id="view-informations" class="people-informations">
+-  <div class="sb-dashboard-logo-wrap people-informations-logo-wrap">
+-    <img src="/Logo_NOVOSKILL.png" alt="Novoskill" class="sb-logo">
+-  </div>
+-
+-  <div class="card sb-dashboard-hero people-informations-hero">
+-    <div class="sb-dashboard-hero-main">
++  <div class="card people-page-hero">
++    <div class="people-page-hero__main">
++      <div class="people-page-hero__icon" aria-hidden="true">
++        <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-info"></use></svg>
++      </div>
+       <div>
+-        <div class="card-title">Vos informations</div>
+-        <div class="card-sub">Consultez les informations rattachées à votre profil et à votre situation professionnelle.</div>
++        <div class="card-title people-page-hero__title">Vos informations</div>
++        <div class="card-sub people-page-hero__sub">Consultez et mettez à jour vos informations personnelles.</div>
+       </div>
+     </div>
++    <button type="button" class="people-profile-photo" id="ppProfilePhotoButton" aria-label="Changer la photo de profil" title="Changer la photo de profil">
++      <img id="ppProfilePhoto" alt="Photo de profil" hidden>
++      <span id="ppProfileInitials" aria-hidden="true">–</span>
++      <span class="people-profile-photo__edit" aria-hidden="true">
++        <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
++      </span>
++    </button>
++    <input type="file" id="ppProfilePhotoInput" accept="image/jpeg,image/png,image/webp" hidden>
+   </div>
+ 
+   <div id="ppInfoError" class="sb-inline-msg people-informations-message" aria-live="polite"></div>
+ 
+   <div class="people-informations-grid people-informations-grid--main">
+     <article class="card people-information-card people-information-card--identity">
+-      <div class="people-information-card-title">
+-        <span class="people-information-card-title-icon" aria-hidden="true">
+-          <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>
+-        </span>
+-        <span>Identité et coordonnées</span>
++      <div class="people-information-card-head">
++        <div class="people-information-card-title">
++          <span class="people-information-card-title-icon" aria-hidden="true">
++            <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>
++          </span>
++          <span>Identité et coordonnées</span>
++        </div>
++        <button type="button" class="sb-icon-btn" id="ppIdentityEdit" aria-label="Modifier l’identité et les coordonnées" title="Modifier">
++          <svg viewBox="0 0 24 24" class="ns-icon-use" aria-hidden="true"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
++        </button>
+       </div>
+       <div class="people-information-summary-grid" id="ppInfoIdentity"></div>
++      <form id="ppIdentityForm" class="people-identity-form" hidden>
++        <div class="people-identity-form-grid">
++          <label class="sb-field"><span>Civilité</span><input id="ppIdentityCivilite" type="text"></label>
++          <label class="sb-field"><span>Prénom</span><input id="ppIdentityPrenom" type="text" required></label>
++          <label class="sb-field"><span>Nom</span><input id="ppIdentityNom" type="text" required></label>
++          <label class="sb-field"><span>Téléphone</span><input id="ppIdentityTelephone" type="tel"></label>
++          <label class="sb-field people-identity-form-grid__wide"><span>Adresse</span><input id="ppIdentityAdresse" type="text"></label>
++          <label class="sb-field"><span>Code postal</span><input id="ppIdentityCodePostal" type="text"></label>
++          <label class="sb-field"><span>Ville</span><input id="ppIdentityVille" type="text"></label>
++          <label class="sb-field"><span>Pays</span><input id="ppIdentityPays" type="text"></label>
++          <label class="sb-field"><span>Date de naissance</span><input id="ppIdentityDateNaissance" type="date"></label>
++        </div>
++        <div id="ppIdentityMessage" class="sb-inline-msg sb-modal-inline-msg" aria-live="polite"></div>
++        <div class="sb-actions sb-modal-edit-actions">
++          <button type="button" class="sb-btn sb-btn--soft" id="ppIdentityCancel">Annuler</button>
++          <button type="submit" class="sb-btn sb-btn--accent" id="ppIdentitySave">Enregistrer</button>
++        </div>
++      </form>
+     </article>
+ 
+     <article class="card people-information-card people-information-card--company">
+diff --git a/static/menu_people/people_informations.js b/static/menu_people/people_informations.js
+index 0d1391c..eaa019d 100644
+--- a/static/menu_people/people_informations.js
++++ b/static/menu_people/people_informations.js
+@@ -2,143 +2,106 @@
+   const P = window.PeoplePortal;
+   if (!P) return;
+ 
+-  function byId(id) {
+-    return document.getElementById(id);
+-  }
+-
+-  function valueOrDash(value) {
+-    const text = value == null ? "" : String(value).trim();
+-    return text || "–";
+-  }
+-
+-  function icon(symbol) {
+-    return `<svg viewBox="0 0 24 24" class="ns-icon-use" aria-hidden="true"><use href="/novoskill_icons.svg#${symbol}"></use></svg>`;
+-  }
++  let currentProfile = {};
+ 
++  function byId(id) { return document.getElementById(id); }
++  function valueOrDash(value) { const text = value == null ? "" : String(value).trim(); return text || "–"; }
++  function icon(symbol) { return `<svg viewBox="0 0 24 24" class="ns-icon-use" aria-hidden="true"><use href="/novoskill_icons.svg#${symbol}"></use></svg>`; }
+   function summaryItem(label, value, symbol) {
+-    return `
+-      <div class="people-information-summary-item">
+-        <span class="people-information-summary-icon" aria-hidden="true">${icon(symbol)}</span>
+-        <span class="people-information-summary-content">
+-          <span class="people-information-summary-label">${P.escapeHtml(label)}</span>
+-          <strong>${P.escapeHtml(valueOrDash(value))}</strong>
+-        </span>
+-      </div>`;
++    return `<div class="people-information-summary-item"><span class="people-information-summary-icon" aria-hidden="true">${icon(symbol)}</span><span class="people-information-summary-content"><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${P.escapeHtml(valueOrDash(value))}</strong></span></div>`;
+   }
+-
+-  function companyItem(label, value) {
+-    return `
+-      <div class="people-information-company-item">
+-        <span class="people-information-summary-label">${P.escapeHtml(label)}</span>
+-        <strong>${P.escapeHtml(valueOrDash(value))}</strong>
+-      </div>`;
+-  }
+-
+-  function projectionItem(label, value, wide) {
+-    return `
+-      <div class="people-information-projection-item${wide ? " people-information-projection-item--wide" : ""}">
+-        <span class="people-information-summary-label">${P.escapeHtml(label)}</span>
+-        <strong>${P.escapeHtml(valueOrDash(value))}</strong>
+-      </div>`;
+-  }
+-
+-  function roleItem(label, active, symbol) {
+-    return `
+-      <div class="people-information-role-item${active ? " is-active" : ""}">
+-        <span class="people-information-summary-icon" aria-hidden="true">${icon(symbol)}</span>
+-        <span>
+-          <span class="people-information-summary-label">${P.escapeHtml(label)}</span>
+-          <strong>${active ? "Oui" : "Non"}</strong>
+-        </span>
+-      </div>`;
++  function companyItem(label, value) { return `<div class="people-information-company-item"><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${P.escapeHtml(valueOrDash(value))}</strong></div>`; }
++  function projectionItem(label, value, wide) { return `<div class="people-information-projection-item${wide ? " people-information-projection-item--wide" : ""}"><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${P.escapeHtml(valueOrDash(value))}</strong></div>`; }
++  function roleItem(label, active, symbol) { return `<div class="people-information-role-item${active ? " is-active" : ""}"><span class="people-information-summary-icon" aria-hidden="true">${icon(symbol)}</span><span><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${active ? "Oui" : "Non"}</strong></span></div>`; }
++
++  function setMessage(host, text, isError) {
++    if (!host) return;
++    host.textContent = text || "";
++    host.classList.toggle("is-error", Boolean(isError));
++    host.classList.toggle("is-success", Boolean(text) && !isError);
+   }
+ 
+-  async function load() {
+-    const id = P.getEffectifId();
+-    const errorHost = byId("ppInfoError");
+-    if (!id) {
+-      if (errorHost) errorHost.textContent = "Profil People indisponible.";
+-      return;
+-    }
+-
+-    const data = await P.api(`/people/demo/profile/${encodeURIComponent(id)}`).catch((err) => ({ error: err.message }));
+-    const profile = data.profile || {};
+-
+-    if (data.error) {
+-      if (errorHost) {
+-        errorHost.textContent = data.error;
+-        errorHost.classList.add("is-error");
+-      }
+-      return;
+-    }
+-
+-    if (errorHost) {
+-      errorHost.textContent = "";
+-      errorHost.classList.remove("is-error");
+-    }
+-
++  function render(profile) {
++    currentProfile = profile || {};
+     const identity = byId("ppInfoIdentity");
+     if (identity) {
+       const fullName = [profile.civilite, profile.prenom, profile.nom].filter(Boolean).join(" ");
+-      const addressLine1 = valueOrDash(profile.adresse);
+       const addressLine2 = [profile.code_postal, profile.ville].filter(Boolean).join(" ");
+-      const address = addressLine2 ? `${addressLine1}\n${addressLine2}` : addressLine1;
++      const address = [profile.adresse, addressLine2].filter(Boolean).join("\n");
+       identity.innerHTML = [
+-        summaryItem("Nom", fullName, "ns-icon-user"),
+-        summaryItem("Email", profile.email, "ns-icon-comment"),
+-        summaryItem("Adresse", address, "ns-icon-organisation"),
+-        summaryItem("Pays", profile.pays, "ns-icon-globe"),
+-        summaryItem("Téléphone", profile.telephone, "ns-icon-info"),
+-        summaryItem("Date de naissance", P.fmtDate(profile.date_naissance), "ns-icon-calendar")
++        summaryItem("Nom", fullName, "ns-icon-user"), summaryItem("Email", profile.email, "ns-icon-comment"),
++        summaryItem("Adresse", address, "ns-icon-organisation"), summaryItem("Pays", profile.pays, "ns-icon-globe"),
++        summaryItem("Téléphone", profile.telephone, "ns-icon-info"), summaryItem("Date de naissance", P.fmtDate(profile.date_naissance), "ns-icon-calendar")
+       ].join("");
+     }
+-
+     const company = byId("ppInfoCompany");
+-    if (company) {
+-      company.innerHTML = [
+-        companyItem("Entreprise", profile.nom_owner),
+-        companyItem("Matricule", profile.matricule),
+-        companyItem("Service", profile.nom_service),
+-        companyItem("Poste actuel", profile.intitule_poste),
+-        companyItem("Type de contrat", profile.type_contrat),
+-        companyItem("Date d’entrée", P.fmtDate(profile.date_entree)),
+-        companyItem("Début dans le poste", P.fmtDate(profile.date_debut_poste))
+-      ].join("");
+-    }
+-
++    if (company) company.innerHTML = [companyItem("Entreprise", profile.nom_owner), companyItem("Matricule", profile.matricule), companyItem("Service", profile.nom_service), companyItem("Poste actuel", profile.intitule_poste), companyItem("Type de contrat", profile.type_contrat), companyItem("Date d’entrée", P.fmtDate(profile.date_entree)), companyItem("Début dans le poste", P.fmtDate(profile.date_debut_poste))].join("");
+     const projection = byId("ppInfoProjection");
+-    if (projection) {
+-      projection.innerHTML = `
+-        <section class="people-information-projection-zone">
+-          <div class="people-information-projection-zone-title">
+-            <span class="people-information-summary-icon" aria-hidden="true">${icon("ns-icon-checklist")}</span>
+-            <span>Formation</span>
+-          </div>
+-          <div class="people-information-projection-grid">
+-            ${projectionItem("Dernier diplôme obtenu", profile.niveau_education, false)}
+-            ${projectionItem("Domaine d’éducation", profile.domaine_education, true)}
+-          </div>
+-        </section>
+-        <section class="people-information-projection-zone">
+-          <div class="people-information-projection-zone-title">
+-            <span class="people-information-summary-icon" aria-hidden="true">${icon("ns-icon-job")}</span>
+-            <span>Poste et perspectives</span>
+-          </div>
+-          <div class="people-information-projection-grid">
+-            ${projectionItem("Mission principale", profile.mission_principale, true)}
+-            ${projectionItem("Perspectives d’évolution", profile.perspectives_evolution, true)}
+-          </div>
+-        </section>`;
+-    }
+-
++    if (projection) projection.innerHTML = `<section class="people-information-projection-zone"><div class="people-information-projection-zone-title"><span class="people-information-summary-icon" aria-hidden="true">${icon("ns-icon-checklist")}</span><span>Formation</span></div><div class="people-information-projection-grid">${projectionItem("Dernier diplôme obtenu", profile.niveau_education, false)}${projectionItem("Domaine d’éducation", profile.domaine_education, true)}</div></section><section class="people-information-projection-zone"><div class="people-information-projection-zone-title"><span class="people-information-summary-icon" aria-hidden="true">${icon("ns-icon-job")}</span><span>Poste et perspectives</span></div><div class="people-information-projection-grid">${projectionItem("Mission principale", profile.mission_principale, true)}${projectionItem("Perspectives d’évolution", profile.perspectives_evolution, true)}</div></section>`;
+     const roles = byId("ppInfoRoles");
+-    if (roles) {
+-      roles.innerHTML = [
+-        roleItem("Manager", Boolean(profile.ismanager), "ns-icon-user"),
+-        roleItem("Formateur", Boolean(profile.isformateur), "ns-icon-checklist")
+-      ].join("");
+-    }
++    if (roles) roles.innerHTML = [roleItem("Manager", Boolean(profile.ismanager), "ns-icon-user"), roleItem("Formateur", Boolean(profile.isformateur), "ns-icon-checklist")].join("");
++    const initials = byId("ppProfileInitials");
++    if (initials) initials.textContent = `${String(profile.prenom || "").charAt(0)}${String(profile.nom || "").charAt(0)}`.toUpperCase() || "–";
+   }
+ 
++  function fillForm() {
++    const map = { ppIdentityCivilite: "civilite", ppIdentityPrenom: "prenom", ppIdentityNom: "nom", ppIdentityTelephone: "telephone", ppIdentityAdresse: "adresse", ppIdentityCodePostal: "code_postal", ppIdentityVille: "ville", ppIdentityPays: "pays", ppIdentityDateNaissance: "date_naissance" };
++    Object.entries(map).forEach(([id, key]) => { const el = byId(id); if (el) el.value = currentProfile[key] || ""; });
++  }
++
++  function setEditMode(active) {
++    const summary = byId("ppInfoIdentity"); const form = byId("ppIdentityForm"); const edit = byId("ppIdentityEdit");
++    if (summary) summary.hidden = active; if (form) form.hidden = !active; if (edit) edit.hidden = active;
++    if (active) fillForm();
++  }
++
++  async function authToken() {
++    const session = await window.PortalAuthCommon?.getSession().catch(() => null);
++    return session?.access_token || "";
++  }
++
++  async function loadPhoto(id) {
++    if (!currentProfile.has_photo) return;
++    const token = await authToken(); if (!token) return;
++    const response = await fetch(`${P.API_BASE}/people/informations/${encodeURIComponent(id)}/photo`, { headers: { Authorization: `Bearer ${token}` } });
++    if (!response.ok) return;
++    const blob = await response.blob(); const url = URL.createObjectURL(blob);
++    const img = byId("ppProfilePhoto"); const initials = byId("ppProfileInitials");
++    if (img) { img.src = url; img.hidden = false; img.onload = () => URL.revokeObjectURL(url); }
++    if (initials) initials.hidden = true;
++  }
++
++  async function load() {
++    const id = P.getEffectifId(); const errorHost = byId("ppInfoError");
++    if (!id) { setMessage(errorHost, "Profil People indisponible.", true); return; }
++    const data = await P.api(`/people/informations/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++    if (data.error) { setMessage(errorHost, data.error, true); return; }
++    setMessage(errorHost, "", false); render(data.profile || {}); await loadPhoto(id);
++  }
++
++  byId("ppIdentityEdit")?.addEventListener("click", () => setEditMode(true));
++  byId("ppIdentityCancel")?.addEventListener("click", () => { setMessage(byId("ppIdentityMessage"), "", false); setEditMode(false); });
++  byId("ppIdentityForm")?.addEventListener("submit", async (event) => {
++    event.preventDefault(); const id = P.getEffectifId(); const msg = byId("ppIdentityMessage"); const save = byId("ppIdentitySave");
++    if (save) save.disabled = true;
++    const payload = { civilite: byId("ppIdentityCivilite")?.value || "", prenom: byId("ppIdentityPrenom")?.value || "", nom: byId("ppIdentityNom")?.value || "", telephone: byId("ppIdentityTelephone")?.value || "", adresse: byId("ppIdentityAdresse")?.value || "", code_postal: byId("ppIdentityCodePostal")?.value || "", ville: byId("ppIdentityVille")?.value || "", pays: byId("ppIdentityPays")?.value || "", date_naissance: byId("ppIdentityDateNaissance")?.value || null };
++    const result = await P.api(`/people/informations/${encodeURIComponent(id)}/identity`, { method: "PATCH", body: JSON.stringify(payload) }).catch(err => ({ error: err.message }));
++    if (save) save.disabled = false;
++    if (result.error) { setMessage(msg, result.error, true); return; }
++    render(result.profile || payload); setEditMode(false); setMessage(byId("ppInfoError"), "Informations enregistrées.", false);
++  });
++  byId("ppProfilePhotoButton")?.addEventListener("click", () => byId("ppProfilePhotoInput")?.click());
++  byId("ppProfilePhotoInput")?.addEventListener("change", async (event) => {
++    const file = event.target.files?.[0]; const id = P.getEffectifId(); const host = byId("ppInfoError"); if (!file || !id) return;
++    const formData = new FormData(); formData.append("photo", file);
++    const token = await authToken();
++    const response = await fetch(`${P.API_BASE}/people/informations/${encodeURIComponent(id)}/photo`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
++    const data = await response.json().catch(() => ({}));
++    if (!response.ok) { setMessage(host, data.detail || "Impossible d’enregistrer la photo.", true); return; }
++    currentProfile.has_photo = true; const img = byId("ppProfilePhoto"); const initials = byId("ppProfileInitials");
++    if (img) { img.src = URL.createObjectURL(file); img.hidden = false; } if (initials) initials.hidden = true;
++    setMessage(host, "Photo de profil enregistrée.", false); event.target.value = "";
++  });
++
+   load();
+ })();
+diff --git a/static/menu_people/people_parcours.js b/static/menu_people/people_parcours.js
+index 5adbeba..e6f4a31 100644
+--- a/static/menu_people/people_parcours.js
++++ b/static/menu_people/people_parcours.js
+@@ -1,77 +1,77 @@
+-(function () {
+-  const P = window.PeoplePortal;
+-  if (!P) return;
+-  function byId(id){ return document.getElementById(id); }
+-
+-  function renderPostes(rows, profile) {
+-    const el = byId("ppPosteTimeline");
+-    if (!el) return;
+-    if (!rows.length) {
+-      const title = profile?.intitule_poste || "Poste actuel";
+-      el.innerHTML = `<div class="pp-timeline-item"><div class="pp-dot"></div><div><div class="pp-row-title">${P.escapeHtml(title)}</div><div class="pp-row-sub">Poste actuel</div></div></div>`;
+-      return;
+-    }
+-    el.innerHTML = rows.map(r => `<div class="pp-timeline-item">
+-      <div class="pp-dot"></div>
+-      <div><div class="pp-row-title">${P.escapeHtml(r.intitule_poste)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut)} → ${r.date_fin ? P.fmtDate(r.date_fin) : "Aujourd’hui"}</div><div class="pp-row-sub">${P.escapeHtml(r.commentaire || "")}</div></div>
+-    </div>`).join("");
+-  }
+-
+-  function renderFormations(rows) {
+-    const el = byId("ppFormationHistory");
+-    if (!el) return;
+-    if (!rows.length) {
+-      el.innerHTML = P.itemEmpty("Aucune formation réalisée dans l’historique.");
+-      return;
+-    }
+-    el.innerHTML = rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("");
+-  }
+-
+-  function renderChart(rows) {
+-    const el = byId("ppSkillChart");
+-    if (!el) return;
+-    if (!rows.length) {
+-      el.innerHTML = P.itemEmpty("Aucune évaluation historisée pour générer une courbe.");
+-      return;
+-    }
+-
+-    const byComp = new Map();
+-    rows.forEach(r => {
+-      const k = r.id_comp || r.intitule;
+-      if (!byComp.has(k)) byComp.set(k, { label: r.intitule, points: [] });
+-      byComp.get(k).points.push({ date: String(r.date_audit || "").slice(0,10), value: Number(r.resultat_eval || 0) });
+-    });
+-    const series = Array.from(byComp.values()).filter(s => s.points.length).slice(0, 6);
+-    const allDates = Array.from(new Set(series.flatMap(s => s.points.map(p => p.date)))).sort();
+-    const maxVal = Math.max(1, ...series.flatMap(s => s.points.map(p => p.value)));
+-    const w = 860, h = 260, pad = 32;
+-    const x = d => pad + (allDates.indexOf(d) / Math.max(1, allDates.length - 1)) * (w - pad * 2);
+-    const y = v => h - pad - (v / maxVal) * (h - pad * 2);
+-    const colors = ["#284C8D", "#0d9488", "#7c3aed", "#f59e0b", "#dc2626", "#16a34a"];
+-
+-    const paths = series.map((s, idx) => {
+-      const pts = s.points.sort((a,b) => a.date.localeCompare(b.date)).map(p => `${x(p.date)},${y(p.value)}`).join(" ");
+-      return `<polyline points="${pts}" fill="none" stroke="${colors[idx % colors.length]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>` +
+-        s.points.map(p => `<circle cx="${x(p.date)}" cy="${y(p.value)}" r="4" fill="${colors[idx % colors.length]}"></circle>`).join("");
+-    }).join("");
+-
+-    const labels = series.map((s, idx) => `<span class="pp-legend"><i style="background:${colors[idx % colors.length]}"></i>${P.escapeHtml(s.label)}</span>`).join("");
+-    el.innerHTML = `<div class="pp-chart-scroll"><svg viewBox="0 0 ${w} ${h}" class="pp-svg-chart ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg></div><div class="pp-chart-legend">${labels}</div>`;
+-  }
+-
+-  async function load() {
+-    const id = P.getEffectifId();
+-    if (!id) return;
+-    const data = await P.api(`/people/demo/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+-    if (data.error) {
+-      const el = byId("ppPosteTimeline");
+-      if (el) el.innerHTML = P.itemEmpty(data.error);
+-      return;
+-    }
+-    renderPostes(data.postes || [], data.profile || {});
+-    renderFormations(data.formations || []);
+-    renderChart(data.audits || []);
+-  }
+-
+-  load();
+-})();
++(function () {
++  const P = window.PeoplePortal;
++  if (!P) return;
++  function byId(id){ return document.getElementById(id); }
++
++  function renderPostes(rows, profile) {
++    const el = byId("ppPosteTimeline");
++    if (!el) return;
++    if (!rows.length) {
++      const title = profile?.intitule_poste || "Poste actuel";
++      el.innerHTML = `<div class="pp-timeline-item"><div class="pp-dot"></div><div><div class="pp-row-title">${P.escapeHtml(title)}</div><div class="pp-row-sub">Poste actuel</div></div></div>`;
++      return;
++    }
++    el.innerHTML = rows.map(r => `<div class="pp-timeline-item">
++      <div class="pp-dot"></div>
++      <div><div class="pp-row-title">${P.escapeHtml(r.intitule_poste)}</div><div class="pp-row-sub">${P.fmtDate(r.date_debut)} → ${r.date_fin ? P.fmtDate(r.date_fin) : "Aujourd’hui"}</div><div class="pp-row-sub">${P.escapeHtml(r.commentaire || "")}</div></div>
++    </div>`).join("");
++  }
++
++  function renderFormations(rows) {
++    const el = byId("ppFormationHistory");
++    if (!el) return;
++    if (!rows.length) {
++      el.innerHTML = P.itemEmpty("Aucune formation réalisée dans l’historique.");
++      return;
++    }
++    el.innerHTML = rows.map(r => `<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.fmtDate(r.date_formation)} · ${P.escapeHtml(r.organisme || "Organisme non renseigné")}</div></div>${P.badge(r.source || "formation", "soft")}</div>`).join("");
++  }
++
++  function renderChart(rows) {
++    const el = byId("ppSkillChart");
++    if (!el) return;
++    if (!rows.length) {
++      el.innerHTML = P.itemEmpty("Aucune évaluation historisée pour générer une courbe.");
++      return;
++    }
++
++    const byComp = new Map();
++    rows.forEach(r => {
++      const k = r.id_comp || r.intitule;
++      if (!byComp.has(k)) byComp.set(k, { label: r.intitule, points: [] });
++      byComp.get(k).points.push({ date: String(r.date_audit || "").slice(0,10), value: Number(r.resultat_eval || 0) });
++    });
++    const series = Array.from(byComp.values()).filter(s => s.points.length).slice(0, 6);
++    const allDates = Array.from(new Set(series.flatMap(s => s.points.map(p => p.date)))).sort();
++    const maxVal = Math.max(1, ...series.flatMap(s => s.points.map(p => p.value)));
++    const w = 860, h = 260, pad = 32;
++    const x = d => pad + (allDates.indexOf(d) / Math.max(1, allDates.length - 1)) * (w - pad * 2);
++    const y = v => h - pad - (v / maxVal) * (h - pad * 2);
++    const colors = ["#284C8D", "#0d9488", "#7c3aed", "#f59e0b", "#dc2626", "#16a34a"];
++
++    const paths = series.map((s, idx) => {
++      const pts = s.points.sort((a,b) => a.date.localeCompare(b.date)).map(p => `${x(p.date)},${y(p.value)}`).join(" ");
++      return `<polyline points="${pts}" fill="none" stroke="${colors[idx % colors.length]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>` +
++        s.points.map(p => `<circle cx="${x(p.date)}" cy="${y(p.value)}" r="4" fill="${colors[idx % colors.length]}"></circle>`).join("");
++    }).join("");
++
++    const labels = series.map((s, idx) => `<span class="pp-legend"><i style="background:${colors[idx % colors.length]}"></i>${P.escapeHtml(s.label)}</span>`).join("");
++    el.innerHTML = `<div class="pp-chart-scroll"><svg viewBox="0 0 ${w} ${h}" class="pp-svg-chart ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-users"></use></svg></div><div class="pp-chart-legend">${labels}</div>`;
++  }
++
++  async function load() {
++    const id = P.getEffectifId();
++    if (!id) return;
++    const data = await P.api(`/people/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
++    if (data.error) {
++      const el = byId("ppPosteTimeline");
++      if (el) el.innerHTML = P.itemEmpty(data.error);
++      return;
++    }
++    renderPostes(data.postes || [], data.profile || {});
++    renderFormations(data.formations || []);
++    renderChart(data.audits || []);
++  }
++
++  load();
++})();
+diff --git a/static/people_portal_theme.css b/static/people_portal_theme.css
+index 5be35a9..17e9bea 100644
+--- a/static/people_portal_theme.css
++++ b/static/people_portal_theme.css
+@@ -1251,3 +1251,20 @@
+     border-bottom:0;
+   }
+ }
++
++.people-page-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 24px}
++.people-page-hero__main{display:flex;align-items:center;gap:16px;min-width:0}
++.people-page-hero__icon{width:48px;height:48px;display:grid;place-items:center;flex:0 0 48px;border-radius:14px;background:color-mix(in srgb,var(--accent) 14%,white);color:var(--accent)}
++.people-page-hero__icon .ns-icon-use{width:24px;height:24px}
++.people-page-hero__title{margin:0}
++.people-page-hero__sub{margin-top:4px}
++.people-profile-photo{position:relative;width:92px;height:92px;flex:0 0 92px;border:3px solid #fff;border-radius:50%;padding:0;overflow:hidden;background:color-mix(in srgb,var(--accent) 12%,white);color:var(--accent);font:inherit;font-size:var(--ns-title-md);font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(15,23,42,.12)}
++.people-profile-photo img{width:100%;height:100%;object-fit:cover}
++.people-profile-photo__edit{position:absolute;right:3px;bottom:3px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#fff}
++.people-profile-photo__edit .ns-icon-use{width:14px;height:14px}
++.people-information-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
++.people-identity-form{margin-top:18px}
++.people-identity-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
++.people-identity-form-grid__wide{grid-column:1/-1}
++.people-identity-form .sb-actions{margin-top:16px}
++@media(max-width:720px){.people-page-hero{align-items:flex-start}.people-profile-photo{width:72px;height:72px;flex-basis:72px}.people-identity-form-grid{grid-template-columns:1fr}}
+diff --git a/unified_api/app/routers/people_portal.py b/unified_api/app/routers/people_portal.py
+index b2fb9db..e216f5b 100644
+--- a/unified_api/app/routers/people_portal.py
++++ b/unified_api/app/routers/people_portal.py
+@@ -1,105 +1,120 @@
+-from fastapi import FastAPI, Request, HTTPException
+-from fastapi.middleware.cors import CORSMiddleware
+-from psycopg.rows import dict_row
+-
+-from app.routers import people_portal_auth, people_portal_dashboard, people_portal_demo
+-from app.routers.skills_portal_common import get_conn
+-from app.routers.people_portal_common import (
+-    people_require_user,
+-    people_list_profiles,
+-    people_get_default_effectif,
+-    people_fetch_profile,
+-)
+-
+-app_local = FastAPI(title="Novoskill - Portail People API")
+-
+-app_local.add_middleware(
+-    CORSMiddleware,
+-    allow_origins=[
+-        "https://skillboard.jmbconsultant.fr",
+-        "https://novoskill.jmbconsultant.fr",
+-        "https://skills.jmbconsultant.fr",
+-        "https://forms.jmbconsultant.fr",
+-        "https://skillboard-services.onrender.com",
+-        "http://localhost",
+-        "http://127.0.0.1:5500",
+-        "null",
+-    ],
+-    allow_credentials=True,
+-    allow_methods=["*"],
+-    allow_headers=["*"],
+-)
+-
+-
+-@app_local.api_route("/people/healthz", methods=["GET", "HEAD"])
+-def healthz():
+-    return {"status": "ok"}
+-
+-
+-@app_local.get("/people/me")
+-def people_me(request: Request):
+-    auth = request.headers.get("Authorization", "")
+-    u = people_require_user(auth)
+-
+-    prenom = None
+-
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                id_effectif = people_get_default_effectif(cur, u)
+-                if id_effectif:
+-                    profile = people_fetch_profile(
+-                        cur,
+-                        id_effectif=id_effectif,
+-                        email=(u.get("email") or ""),
+-                        is_super_admin=bool(u.get("is_super_admin")),
+-                    )
+-                    prenom = profile.get("prenom")
+-    except Exception:
+-        prenom = None
+-
+-    return {
+-        "id": u.get("id"),
+-        "email": u.get("email"),
+-        "prenom": (prenom or "").strip() or None,
+-        "is_super_admin": bool(u.get("is_super_admin")),
+-        "user_metadata": u.get("user_metadata") or {},
+-    }
+-
+-
+-@app_local.get("/people/me/scope")
+-def people_me_scope(request: Request):
+-    auth = request.headers.get("Authorization", "")
+-    u = people_require_user(auth)
+-
+-    with get_conn() as conn:
+-        with conn.cursor(row_factory=dict_row) as cur:
+-            profiles = people_list_profiles(
+-                cur,
+-                email=(u.get("email") or ""),
+-                is_super_admin=bool(u.get("is_super_admin")),
+-            )
+-
+-            if not profiles and not u.get("is_super_admin"):
+-                raise HTTPException(
+-                    status_code=403,
+-                    detail="Compte non rattaché à un profil People.",
+-                )
+-
+-            mode = "super_admin" if u.get("is_super_admin") else "standard"
+-            return {
+-                "mode": mode,
+-                "profiles": profiles,
+-            }
+-
+-
+-for route in people_portal_auth.router.routes:
+-    app_local.router.routes.append(route)
+-
+-for route in people_portal_dashboard.router.routes:
+-    app_local.router.routes.append(route)
+-
+-for route in people_portal_demo.router.routes:
+-    app_local.router.routes.append(route)
+-
++from fastapi import FastAPI, Request, HTTPException
++from fastapi.middleware.cors import CORSMiddleware
++from psycopg.rows import dict_row
++
++from app.routers import (
++    people_portal_auth,
++    people_portal_dashboard,
++    people_portal_informations,
++    people_portal_calendrier,
++    people_portal_parcours,
++    people_portal_competences,
++    people_portal_entretiens,
++)
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import (
++    people_require_user,
++    people_list_profiles,
++    people_get_default_effectif,
++    people_fetch_profile,
++)
++
++app_local = FastAPI(title="Novoskill - Portail People API")
++
++app_local.add_middleware(
++    CORSMiddleware,
++    allow_origins=[
++        "https://skillboard.jmbconsultant.fr",
++        "https://novoskill.jmbconsultant.fr",
++        "https://skills.jmbconsultant.fr",
++        "https://forms.jmbconsultant.fr",
++        "https://skillboard-services.onrender.com",
++        "http://localhost",
++        "http://127.0.0.1:5500",
++        "null",
++    ],
++    allow_credentials=True,
++    allow_methods=["*"],
++    allow_headers=["*"],
++)
++
++
++@app_local.api_route("/people/healthz", methods=["GET", "HEAD"])
++def healthz():
++    return {"status": "ok"}
++
++
++@app_local.get("/people/me")
++def people_me(request: Request):
++    auth = request.headers.get("Authorization", "")
++    u = people_require_user(auth)
++
++    prenom = None
++
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                id_effectif = people_get_default_effectif(cur, u)
++                if id_effectif:
++                    profile = people_fetch_profile(
++                        cur,
++                        id_effectif=id_effectif,
++                        email=(u.get("email") or ""),
++                        is_super_admin=bool(u.get("is_super_admin")),
++                    )
++                    prenom = profile.get("prenom")
++    except Exception:
++        prenom = None
++
++    return {
++        "id": u.get("id"),
++        "email": u.get("email"),
++        "prenom": (prenom or "").strip() or None,
++        "is_super_admin": bool(u.get("is_super_admin")),
++        "user_metadata": u.get("user_metadata") or {},
++    }
++
++
++@app_local.get("/people/me/scope")
++def people_me_scope(request: Request):
++    auth = request.headers.get("Authorization", "")
++    u = people_require_user(auth)
++
++    with get_conn() as conn:
++        with conn.cursor(row_factory=dict_row) as cur:
++            profiles = people_list_profiles(
++                cur,
++                email=(u.get("email") or ""),
++                is_super_admin=bool(u.get("is_super_admin")),
++            )
++
++            if not profiles and not u.get("is_super_admin"):
++                raise HTTPException(
++                    status_code=403,
++                    detail="Compte non rattaché à un profil People.",
++                )
++
++            mode = "super_admin" if u.get("is_super_admin") else "standard"
++            return {
++                "mode": mode,
++                "profiles": profiles,
++            }
++
++
++for route in people_portal_auth.router.routes:
++    app_local.router.routes.append(route)
++
++for route in people_portal_dashboard.router.routes:
++    app_local.router.routes.append(route)
++
++for module in (
++    people_portal_informations,
++    people_portal_calendrier,
++    people_portal_parcours,
++    people_portal_competences,
++    people_portal_entretiens,
++):
++    for route in module.router.routes:
++        app_local.router.routes.append(route)
++
+ router = app_local
+\ No newline at end of file
+diff --git a/unified_api/app/routers/people_portal_calendrier.py b/unified_api/app/routers/people_portal_calendrier.py
+new file mode 100644
+index 0000000..fa56c80
+--- /dev/null
++++ b/unified_api/app/routers/people_portal_calendrier.py
+@@ -0,0 +1,137 @@
++from datetime import date
++from uuid import uuid4
++from fastapi import APIRouter, HTTPException, Request
++from pydantic import BaseModel
++from psycopg.rows import dict_row
++
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import peoplepeople_fetch_profile_context, peoplepeople_clean
++
++router = APIRouter()
++
++class PeopleBreakPayload(BaseModel):
++    date_debut: str
++    date_fin: str
++
++def _parse_date(value: str, field_name: str) -> date:
++    raw = peoplepeople_clean(value)
++    if not raw:
++        raise HTTPException(status_code=400, detail=f"{field_name} manquant.")
++    try:
++        return date.fromisoformat(raw[:10])
++    except Exception:
++        raise HTTPException(status_code=400, detail=f"{field_name} invalide.")
++
++@router.get("/people/calendrier/{id_effectif}")
++def people_calendrier(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++
++                cur.execute(
++                    """
++                    SELECT id_break, date_debut, date_fin
++                    FROM public.tbl_effectif_client_break
++                    WHERE id_effectif = %s
++                      AND COALESCE(archive, FALSE) = FALSE
++                    ORDER BY date_debut DESC, date_fin DESC
++                    LIMIT 30
++                    """,
++                    (id_effectif,),
++                )
++                breaks = cur.fetchall() or []
++
++                cur.execute(
++                    """
++                    SELECT
++                      aef.id_action_formation_effectif,
++                      af.id_action_formation,
++                      COALESCE(ff.titre, 'Formation programmée') AS titre,
++                      COALESCE(ff.fournisseur_formation, '') AS organisme,
++                      af.date_debut_formation,
++                      af.date_fin_formation,
++                      COALESCE(af.etat_action, '') AS etat_action,
++                      COALESCE(aef.etat_invitation, '') AS etat_invitation,
++                      COALESCE(aef.etat_attestation, '') AS etat_attestation
++                    FROM public.tbl_action_formation_effectif aef
++                    JOIN public.tbl_action_formation af
++                      ON af.id_action_formation = aef.id_action_formation
++                     AND COALESCE(af.archive, FALSE) = FALSE
++                    LEFT JOIN public.tbl_fiche_formation ff
++                      ON ff.id_form = af.id_form
++                     AND ff.id_owner = %s
++                     AND COALESCE(ff.archive, FALSE) = FALSE
++                    WHERE aef.id_effectif = %s
++                      AND COALESCE(aef.archive, FALSE) = FALSE
++                    ORDER BY COALESCE(af.date_debut_formation, CURRENT_DATE) ASC
++                    LIMIT 40
++                    """,
++                    (profile.get("id_owner") or "", id_effectif),
++                )
++                formations = cur.fetchall() or []
++
++        return {"profile": profile, "indisponibilites": breaks, "formations": formations}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/calendar error: {e}")
++
++
++@router.post("/people/calendrier/{id_effectif}/breaks")
++def people_calendrier_add_break(id_effectif: str, payload: PeopleBreakPayload, request: Request):
++    date_debut = _parse_date(payload.date_debut, "date_debut")
++    date_fin = _parse_date(payload.date_fin, "date_fin")
++    if date_fin < date_debut:
++        raise HTTPException(status_code=400, detail="La date de fin doit être postérieure ou égale à la date de début.")
++
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_break = str(uuid4())
++                cur.execute(
++                    """
++                    INSERT INTO public.tbl_effectif_client_break
++                      (id_break, id_ent, id_effectif, date_debut, date_fin, archive, date_creation, dernier_update)
++                    VALUES
++                      (%s, %s, %s, %s, %s, FALSE, NOW(), NOW())
++                    RETURNING id_break, date_debut, date_fin
++                    """,
++                    (id_break, profile.get("id_owner") or "", id_effectif, date_debut, date_fin),
++                )
++                row = cur.fetchone() or {}
++            conn.commit()
++        return {"created": row}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/calendar/breaks error: {e}")
++
++
++@router.post("/people/calendrier/{id_effectif}/breaks/{id_break}/archive")
++def people_calendrier_archive_break(id_effectif: str, id_break: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                cur.execute(
++                    """
++                    UPDATE public.tbl_effectif_client_break
++                    SET archive = TRUE,
++                        dernier_update = NOW()
++                    WHERE id_break = %s
++                      AND id_effectif = %s
++                      AND id_ent = %s
++                      AND COALESCE(archive, FALSE) = FALSE
++                    RETURNING id_break
++                    """,
++                    (id_break, id_effectif, profile.get("id_owner") or ""),
++                )
++                row = cur.fetchone() or {}
++            conn.commit()
++        return {"archived": bool(row), "id_break": id_break}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/calendar/archive error: {e}")
+diff --git a/unified_api/app/routers/people_portal_common.py b/unified_api/app/routers/people_portal_common.py
+index 3b84f9d..27e8222 100644
+--- a/unified_api/app/routers/people_portal_common.py
++++ b/unified_api/app/routers/people_portal_common.py
+@@ -364,4 +364,194 @@ def people_get_default_effectif(cur, u: dict) -> str:
+     if profiles:
+         return (profiles[0].get("id_effectif") or "").strip()
+ 
+-    return ""
+\ No newline at end of file
++    return ""
++
++
++def people_clean(value) -> str:
++    return str(value).strip() if value is not None else ""
++
++
++def people_require_profile(cur, request, id_effectif: str) -> dict:
++    auth = request.headers.get("Authorization", "")
++    user = people_require_user(auth)
++    return people_fetch_profile(
++        cur,
++        id_effectif=id_effectif,
++        email=(user.get("email") or ""),
++        is_super_admin=bool(user.get("is_super_admin")),
++    )
++
++
++def people_fetch_effectif_row(cur, profile: dict) -> dict:
++    id_effectif = people_clean(profile.get("id_effectif"))
++    id_owner = people_clean(profile.get("id_owner"))
++    source_kind = people_clean(profile.get("source_row_kind"))
++
++    if source_kind == "utilisateur":
++        cur.execute(
++            """
++            SELECT
++              u.id_utilisateur AS id_effectif,
++              %s::text AS id_ent,
++              u.ut_prenom AS prenom_effectif,
++              u.ut_nom AS nom_effectif,
++              u.ut_civilite AS civilite_effectif,
++              u.ut_mail AS email_effectif,
++              u.ut_tel AS telephone_effectif,
++              u.ut_tel2 AS telephone2_effectif,
++              u.ut_adresse AS adresse_effectif,
++              u.ut_cp AS code_postal_effectif,
++              u.ut_ville AS ville_effectif,
++              u.ut_pays AS pays_effectif,
++              NULL::date AS date_naissance_effectif,
++              ec.date_entree_entreprise_effectif,
++              ec.date_debut_poste_actuel,
++              ec.niveau_education,
++              ec.domaine_education,
++              ec.type_contrat,
++              ec.matricule_interne,
++              ec.id_poste_actuel,
++              COALESCE(ec.statut_actif, u.actif, TRUE) AS statut_actif,
++              COALESCE(ec.ismanager, FALSE) AS ismanager,
++              COALESCE(ec.isformateur, FALSE) AS isformateur,
++              COALESCE(ec.is_temp, FALSE) AS is_temp,
++              u.photo_storage_path,
++              COALESCE(me.nom_ent, '') AS nom_owner,
++              COALESCE(org.nom_service, '') AS nom_service,
++              COALESCE(fp.intitule_poste, '') AS intitule_poste,
++              COALESCE(fp.codif_poste, '') AS codif_poste,
++              COALESCE(fp.mission_principale, '') AS mission_principale,
++              COALESCE(fp.perspectives_evolution, '') AS perspectives_evolution
++            FROM public.tbl_utilisateur u
++            LEFT JOIN public.tbl_mon_entreprise me
++              ON me.id_mon_ent = %s
++             AND COALESCE(me.archive, FALSE) = FALSE
++            LEFT JOIN public.tbl_effectif_client ec
++              ON ec.id_ent = %s
++             AND ec.id_effectif = u.id_utilisateur
++             AND COALESCE(ec.archive, FALSE) = FALSE
++            LEFT JOIN public.tbl_entreprise_organigramme org
++              ON org.id_ent = %s
++             AND org.id_service = ec.id_service
++             AND COALESCE(org.archive, FALSE) = FALSE
++            LEFT JOIN public.tbl_fiche_poste fp
++              ON fp.id_owner = %s
++             AND fp.id_ent = %s
++             AND fp.id_poste = COALESCE(ec.id_poste_actuel, u.ut_fonction)
++             AND COALESCE(fp.actif, TRUE) = TRUE
++            WHERE u.id_utilisateur = %s
++              AND COALESCE(u.archive, FALSE) = FALSE
++            LIMIT 1
++            """,
++            (id_owner, id_owner, id_owner, id_owner, id_owner, id_owner, id_effectif),
++        )
++    else:
++        cur.execute(
++            """
++            SELECT
++              ec.*,
++              COALESCE(ent.nom_ent, me.nom_ent, '') AS nom_owner,
++              COALESCE(org.nom_service, '') AS nom_service,
++              COALESCE(fp.intitule_poste, '') AS intitule_poste,
++              COALESCE(fp.codif_poste, '') AS codif_poste,
++              COALESCE(fp.mission_principale, '') AS mission_principale,
++              COALESCE(fp.perspectives_evolution, '') AS perspectives_evolution
++            FROM public.tbl_effectif_client ec
++            LEFT JOIN public.tbl_entreprise ent
++              ON ent.id_ent = ec.id_ent
++             AND COALESCE(ent.masque, FALSE) = FALSE
++            LEFT JOIN public.tbl_mon_entreprise me
++              ON me.id_mon_ent = ec.id_ent
++             AND COALESCE(me.archive, FALSE) = FALSE
++            LEFT JOIN public.tbl_entreprise_organigramme org
++              ON org.id_ent = ec.id_ent
++             AND org.id_service = ec.id_service
++             AND COALESCE(org.archive, FALSE) = FALSE
++            LEFT JOIN public.tbl_fiche_poste fp
++              ON fp.id_owner = ec.id_ent
++             AND fp.id_ent = ec.id_ent
++             AND fp.id_poste = ec.id_poste_actuel
++             AND COALESCE(fp.actif, TRUE) = TRUE
++            WHERE ec.id_effectif = %s
++              AND ec.id_ent = %s
++              AND COALESCE(ec.archive, FALSE) = FALSE
++            LIMIT 1
++            """,
++            (id_effectif, id_owner),
++        )
++
++    row = cur.fetchone() or {}
++    if row:
++        return row
++
++    return {
++        "id_effectif": id_effectif,
++        "id_ent": id_owner,
++        "prenom_effectif": profile.get("prenom") or "",
++        "nom_effectif": profile.get("nom") or "",
++        "email_effectif": profile.get("email") or "",
++        "nom_owner": profile.get("nom_owner") or "",
++        "nom_service": profile.get("nom_service") or "",
++        "intitule_poste": profile.get("intitule_poste") or "",
++        "source_light": True,
++    }
++
++
++def people_profile_payload(profile: dict, effectif: dict) -> dict:
++    return {
++        "id_owner": people_clean(profile.get("id_owner")),
++        "id_effectif": people_clean(profile.get("id_effectif")),
++        "source_row_kind": people_clean(profile.get("source_row_kind")),
++        "prenom": people_clean(effectif.get("prenom_effectif") or profile.get("prenom")),
++        "nom": people_clean(effectif.get("nom_effectif") or profile.get("nom")),
++        "civilite": people_clean(effectif.get("civilite_effectif")),
++        "email": people_clean(effectif.get("email_effectif") or profile.get("email")),
++        "telephone": people_clean(effectif.get("telephone_effectif")),
++        "telephone2": people_clean(effectif.get("telephone2_effectif")),
++        "adresse": people_clean(effectif.get("adresse_effectif")),
++        "code_postal": people_clean(effectif.get("code_postal_effectif")),
++        "ville": people_clean(effectif.get("ville_effectif")),
++        "pays": people_clean(effectif.get("pays_effectif")),
++        "date_naissance": people_clean(effectif.get("date_naissance_effectif")),
++        "date_entree": people_clean(effectif.get("date_entree_entreprise_effectif")),
++        "date_debut_poste": people_clean(effectif.get("date_debut_poste_actuel")),
++        "niveau_education": people_clean(effectif.get("niveau_education")),
++        "domaine_education": people_clean(effectif.get("domaine_education")),
++        "type_contrat": people_clean(effectif.get("type_contrat")),
++        "matricule": people_clean(effectif.get("matricule_interne")),
++        "nom_owner": people_clean(effectif.get("nom_owner") or profile.get("nom_owner")),
++        "nom_service": people_clean(effectif.get("nom_service") or profile.get("nom_service")),
++        "id_poste_actuel": people_clean(effectif.get("id_poste_actuel")),
++        "intitule_poste": people_clean(effectif.get("intitule_poste") or profile.get("intitule_poste")),
++        "codif_poste": people_clean(effectif.get("codif_poste")),
++        "mission_principale": people_clean(effectif.get("mission_principale")),
++        "perspectives_evolution": people_clean(effectif.get("perspectives_evolution")),
++        "statut_actif": bool(effectif.get("statut_actif", True)),
++        "ismanager": bool(effectif.get("ismanager", False)),
++        "isformateur": bool(effectif.get("isformateur", False)),
++        "is_temp": bool(effectif.get("is_temp", False)),
++        "has_photo": bool(people_clean(effectif.get("photo_storage_path"))),
++    }
++
++
++def people_fetch_profile_context(cur, request, id_effectif: str) -> tuple[dict, dict, dict]:
++    profile = people_require_profile(cur, request, id_effectif)
++    effectif = people_fetch_effectif_row(cur, profile)
++    return profile, effectif, people_profile_payload(profile, effectif)
++
++
++def people_level_rank(value: str) -> int:
++    v = people_clean(value).upper()
++    if v in ("A", "APP", "APPRENTI", "APPRENTISSAGE"):
++        return 1
++    if v in ("B", "I", "INTERMEDIAIRE", "INTERMÉDIAIRE"):
++        return 2
++    if v in ("C", "AV", "AVANCE", "AVANCÉ", "AUTONOME", "EXPERT"):
++        return 3
++    return 0
++
++
++def people_competence_score(current_level: str, required_level: str) -> int:
++    required = max(people_level_rank(required_level), 1)
++    current = people_level_rank(current_level)
++    return int(min(100, round((current / required) * 100))) if current else 0
+diff --git a/unified_api/app/routers/people_portal_competences.py b/unified_api/app/routers/people_portal_competences.py
+new file mode 100644
+index 0000000..434ecf1
+--- /dev/null
++++ b/unified_api/app/routers/people_portal_competences.py
+@@ -0,0 +1,226 @@
++from typing import Optional
++from uuid import uuid4
++from fastapi import APIRouter, HTTPException, Request
++from pydantic import BaseModel
++from psycopg.rows import dict_row
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import peoplepeople_fetch_profile_context
++router = APIRouter()
++
++class PeopleAddCompetencePayload(BaseModel):
++    id_comp: str
++    niveau_actuel: Optional[str] = None
++
++@router.get("/people/competences/{id_effectif}")
++def people_competences(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_poste = profile.get("id_poste_actuel") or ""
++
++                current = []
++                if id_poste:
++                    cur.execute(
++                        """
++                        SELECT
++                          c.id_comp,
++                          c.code,
++                          c.intitule,
++                          COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
++                          pc.niveau_requis,
++                          COALESCE(pc.poids_criticite, 0) AS criticite,
++                          COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
++                          ec.date_derniere_eval
++                        FROM public.tbl_fiche_poste_competence pc
++                        JOIN public.tbl_competence c
++                          ON c.id_comp = pc.id_competence
++                         AND COALESCE(c.masque, FALSE) = FALSE
++                        LEFT JOIN public.tbl_domaine_competence dc
++                          ON dc.id_domaine_competence = c.domaine
++                         AND COALESCE(dc.masque, FALSE) = FALSE
++                        LEFT JOIN public.tbl_effectif_client_competence ec
++                          ON ec.id_effectif_client = %s
++                         AND ec.id_comp = c.id_comp
++                         AND COALESCE(ec.archive, FALSE) = FALSE
++                         AND COALESCE(ec.actif, TRUE) = TRUE
++                        WHERE pc.id_poste = %s
++                          AND COALESCE(pc.masque, FALSE) = FALSE
++                        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
++                        """,
++                        (id_effectif, id_poste),
++                    )
++                    current = cur.fetchall() or []
++
++                cur.execute(
++                    """
++                    SELECT
++                      c.id_comp,
++                      c.code,
++                      c.intitule,
++                      COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
++                      COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
++                      ec.date_derniere_eval
++                    FROM public.tbl_effectif_client_competence ec
++                    JOIN public.tbl_competence c
++                      ON c.id_comp = ec.id_comp
++                     AND COALESCE(c.masque, FALSE) = FALSE
++                    LEFT JOIN public.tbl_domaine_competence dc
++                      ON dc.id_domaine_competence = c.domaine
++                     AND COALESCE(dc.masque, FALSE) = FALSE
++                    WHERE ec.id_effectif_client = %s
++                      AND COALESCE(ec.archive, FALSE) = FALSE
++                      AND COALESCE(ec.actif, TRUE) = TRUE
++                      AND NOT EXISTS (
++                        SELECT 1
++                        FROM public.tbl_fiche_poste_competence pc
++                        WHERE pc.id_poste = %s
++                          AND pc.id_competence = ec.id_comp
++                          AND COALESCE(pc.masque, FALSE) = FALSE
++                      )
++                    ORDER BY c.intitule
++                    """,
++                    (id_effectif, id_poste or ""),
++                )
++                autres = cur.fetchall() or []
++
++        return {"profile": profile, "poste": current, "autres": autres}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/competences error: {e}")
++
++
++@router.get("/people/competences/{id_effectif}/catalogue")
++def people_competences_catalogue(id_effectif: str, request: Request, q: str = ""):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_owner = profile.get("id_owner") or ""
++                id_poste = profile.get("id_poste_actuel") or ""
++                search = f"%{_clean(q).lower()}%"
++
++                cur.execute(
++                    """
++                    SELECT
++                      c.id_comp,
++                      c.code,
++                      c.intitule,
++                      COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
++                      COALESCE(c.description, '') AS description
++                    FROM public.tbl_competence c
++                    LEFT JOIN public.tbl_domaine_competence dc
++                      ON dc.id_domaine_competence = c.domaine
++                     AND COALESCE(dc.masque, FALSE) = FALSE
++                    WHERE c.id_owner = %s
++                      AND COALESCE(c.masque, FALSE) = FALSE
++                      AND COALESCE(c.etat, 'active') NOT IN ('archivée', 'archive', 'inactive')
++                      AND (
++                        %s = '%%'
++                        OR lower(COALESCE(c.code, '')) LIKE %s
++                        OR lower(COALESCE(c.intitule, '')) LIKE %s
++                        OR lower(COALESCE(c.description, '')) LIKE %s
++                      )
++                      AND NOT EXISTS (
++                        SELECT 1
++                        FROM public.tbl_effectif_client_competence ec
++                        WHERE ec.id_effectif_client = %s
++                          AND ec.id_comp = c.id_comp
++                          AND COALESCE(ec.archive, FALSE) = FALSE
++                          AND COALESCE(ec.actif, TRUE) = TRUE
++                      )
++                      AND NOT EXISTS (
++                        SELECT 1
++                        FROM public.tbl_fiche_poste_competence pc
++                        WHERE pc.id_poste = %s
++                          AND pc.id_competence = c.id_comp
++                          AND COALESCE(pc.masque, FALSE) = FALSE
++                      )
++                    ORDER BY c.intitule
++                    LIMIT 80
++                    """,
++                    (id_owner, search, search, search, search, id_effectif, id_poste or ""),
++                )
++                rows = cur.fetchall() or []
++        return {"items": rows}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/competences/catalogue error: {e}")
++
++
++@router.post("/people/competences/{id_effectif}/add")
++def people_competences_add(id_effectif: str, payload: PeopleAddCompetencePayload, request: Request):
++    id_comp = _clean(payload.id_comp)
++    if not id_comp:
++        raise HTTPException(status_code=400, detail="Compétence manquante.")
++
++    niveau = _clean(payload.niveau_actuel).upper()
++    if niveau not in ("", "A", "B", "C", "D"):
++        niveau = ""
++
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_owner = profile.get("id_owner") or ""
++
++                cur.execute(
++                    """
++                    SELECT id_comp
++                    FROM public.tbl_competence
++                    WHERE id_comp = %s
++                      AND id_owner = %s
++                      AND COALESCE(masque, FALSE) = FALSE
++                    LIMIT 1
++                    """,
++                    (id_comp, id_owner),
++                )
++                if not cur.fetchone():
++                    raise HTTPException(status_code=404, detail="Compétence introuvable dans le catalogue.")
++
++                cur.execute(
++                    """
++                    SELECT id_effectif_competence
++                    FROM public.tbl_effectif_client_competence
++                    WHERE id_effectif_client = %s
++                      AND id_comp = %s
++                    LIMIT 1
++                    """,
++                    (id_effectif, id_comp),
++                )
++                existing = cur.fetchone() or {}
++                if existing:
++                    cur.execute(
++                        """
++                        UPDATE public.tbl_effectif_client_competence
++                        SET actif = TRUE,
++                            archive = FALSE,
++                            niveau_actuel = COALESCE(NULLIF(%s, ''), niveau_actuel),
++                            date_derniere_eval = COALESCE(date_derniere_eval, CURRENT_DATE)
++                        WHERE id_effectif_competence = %s
++                        RETURNING id_effectif_competence
++                        """,
++                        (niveau, existing.get("id_effectif_competence")),
++                    )
++                    row = cur.fetchone() or {}
++                else:
++                    id_ec = str(uuid4())
++                    cur.execute(
++                        """
++                        INSERT INTO public.tbl_effectif_client_competence
++                          (id_effectif_competence, id_effectif_client, id_comp, niveau_actuel, date_derniere_eval, actif, archive)
++                        VALUES
++                          (%s, %s, %s, NULLIF(%s, ''), CURRENT_DATE, TRUE, FALSE)
++                        RETURNING id_effectif_competence
++                        """,
++                        (id_ec, id_effectif, id_comp, niveau),
++                    )
++                    row = cur.fetchone() or {}
++            conn.commit()
++        return {"added": row}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/competences/add error: {e}")
+diff --git a/unified_api/app/routers/people_portal_dashboard.py b/unified_api/app/routers/people_portal_dashboard.py
+index 2746e5d..db31d44 100644
+--- a/unified_api/app/routers/people_portal_dashboard.py
++++ b/unified_api/app/routers/people_portal_dashboard.py
+@@ -1,32 +1,134 @@
+-from fastapi import APIRouter, HTTPException, Request
+-from psycopg.rows import dict_row
+-
+-from app.routers.skills_portal_common import get_conn
+-from app.routers.people_portal_common import (
+-    people_require_user,
+-    people_fetch_profile,
+-)
+-
+-router = APIRouter()
+-
+-
+-@router.get("/people/context/{id_effectif}")
+-def people_context(id_effectif: str, request: Request):
+-    auth = request.headers.get("Authorization", "")
+-    u = people_require_user(auth)
+-
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                profile = people_fetch_profile(
+-                    cur,
+-                    id_effectif=id_effectif,
+-                    email=(u.get("email") or ""),
+-                    is_super_admin=bool(u.get("is_super_admin")),
+-                )
+-
+-        return profile
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/context error: {e}")
+\ No newline at end of file
++from fastapi import APIRouter, HTTPException, Request
++from psycopg.rows import dict_row
++
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import (
++    people_require_user,
++    people_fetch_profile,
++    peoplepeople_fetch_profile_context,
++    peoplepeople_competence_score,
++    peoplepeople_clean,
++)
++
++router = APIRouter()
++
++
++@router.get("/people/context/{id_effectif}")
++def people_context(id_effectif: str, request: Request):
++    auth = request.headers.get("Authorization", "")
++    u = people_require_user(auth)
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                profile = people_fetch_profile(cur, id_effectif=id_effectif, email=(u.get("email") or ""), is_super_admin=bool(u.get("is_super_admin")))
++        return profile
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/context error: {e}")
++
++def people_dashboard(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_owner = profile.get("id_owner") or ""
++                id_poste = profile.get("id_poste_actuel") or ""
++
++                cur.execute(
++                    """
++                    SELECT COUNT(*) AS nb
++                    FROM public.tbl_effectif_client_competence ec
++                    WHERE ec.id_effectif_client = %s
++                      AND COALESCE(ec.archive, FALSE) = FALSE
++                      AND COALESCE(ec.actif, TRUE) = TRUE
++                    """,
++                    (id_effectif,),
++                )
++                nb_comp = int((cur.fetchone() or {}).get("nb") or 0)
++
++                cur.execute(
++                    """
++                    SELECT COUNT(*) AS nb
++                    FROM public.tbl_action_formation_effectif aef
++                    JOIN public.tbl_action_formation af
++                      ON af.id_action_formation = aef.id_action_formation
++                     AND COALESCE(af.archive, FALSE) = FALSE
++                    WHERE aef.id_effectif = %s
++                      AND COALESCE(aef.archive, FALSE) = FALSE
++                      AND COALESCE(af.date_fin_formation, af.date_debut_formation, CURRENT_DATE) >= CURRENT_DATE
++                    """,
++                    (id_effectif,),
++                )
++                nb_form = int((cur.fetchone() or {}).get("nb") or 0)
++
++                cur.execute(
++                    """
++                    SELECT COUNT(*) AS nb
++                    FROM public.tbl_effectif_client_break b
++                    WHERE b.id_effectif = %s
++                      AND COALESCE(b.archive, FALSE) = FALSE
++                      AND b.date_fin >= CURRENT_DATE
++                    """,
++                    (id_effectif,),
++                )
++                nb_break = int((cur.fetchone() or {}).get("nb") or 0)
++
++                mastery = 0
++                current_poste_rows = []
++                if id_poste:
++                    cur.execute(
++                        """
++                        SELECT
++                          c.id_comp,
++                          c.code,
++                          c.intitule,
++                          pc.niveau_requis,
++                          COALESCE(ec.niveau_actuel, '') AS niveau_actuel
++                        FROM public.tbl_fiche_poste_competence pc
++                        JOIN public.tbl_competence c
++                          ON c.id_comp = pc.id_competence
++                         AND COALESCE(c.masque, FALSE) = FALSE
++                        LEFT JOIN public.tbl_effectif_client_competence ec
++                          ON ec.id_effectif_client = %s
++                         AND ec.id_comp = c.id_comp
++                         AND COALESCE(ec.archive, FALSE) = FALSE
++                         AND COALESCE(ec.actif, TRUE) = TRUE
++                        WHERE pc.id_poste = %s
++                          AND COALESCE(pc.masque, FALSE) = FALSE
++                        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
++                        LIMIT 8
++                        """,
++                        (id_effectif, id_poste),
++                    )
++                    current_poste_rows = cur.fetchall() or []
++                    scores = [people_competence_score(r.get("niveau_actuel"), r.get("niveau_requis")) for r in current_poste_rows]
++                    mastery = int(round(sum(scores) / len(scores))) if scores else 0
++
++                cur.execute(
++                    """
++                    SELECT MAX(a.date_audit) AS last_date
++                    FROM public.tbl_effectif_client_audit_competence a
++                    JOIN public.tbl_effectif_client_competence ec
++                      ON ec.id_effectif_competence = a.id_effectif_competence
++                    WHERE ec.id_effectif_client = %s
++                    """,
++                    (id_effectif,),
++                )
++                last_audit = people_clean((cur.fetchone() or {}).get("last_date"))
++
++        return {
++            "profile": profile,
++            "kpis": {
++                "nb_competences": nb_comp,
++                "nb_formations_programmees": nb_form,
++                "nb_indisponibilites": nb_break,
++                "maitrise_poste": mastery,
++                "derniere_evaluation": last_audit,
++            },
++            "competences_prioritaires": current_poste_rows,
++        }
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/dashboard error: {e}")
+diff --git a/unified_api/app/routers/people_portal_demo.py b/unified_api/app/routers/people_portal_demo.py
+deleted file mode 100644
+index bd7e838..0000000
+--- a/unified_api/app/routers/people_portal_demo.py
++++ /dev/null
+@@ -1,873 +0,0 @@
+-from datetime import date
+-from typing import Any, Dict, List, Optional
+-from uuid import uuid4
+-
+-from fastapi import APIRouter, HTTPException, Request
+-from pydantic import BaseModel
+-from psycopg.rows import dict_row
+-from psycopg.types.json import Json
+-
+-from app.routers.skills_portal_common import get_conn
+-from app.routers.people_portal_common import people_require_user, people_fetch_profile
+-
+-router = APIRouter()
+-
+-
+-class PeopleBreakPayload(BaseModel):
+-    date_debut: str
+-    date_fin: str
+-
+-
+-class PeopleAddCompetencePayload(BaseModel):
+-    id_comp: str
+-    niveau_actuel: Optional[str] = None
+-
+-
+-class PeopleAutoEvalItem(BaseModel):
+-    id_comp: str
+-    niveau_auto: Optional[str] = None
+-    commentaire: Optional[str] = None
+-    besoin_accompagnement: Optional[bool] = False
+-
+-
+-class PeopleAutoEvalPayload(BaseModel):
+-    items: List[PeopleAutoEvalItem] = []
+-    commentaire_general: Optional[str] = None
+-
+-
+-def _clean(v: Any) -> str:
+-    return (str(v).strip() if v is not None else "")
+-
+-
+-def _uuid() -> str:
+-    return str(uuid4())
+-
+-
+-def _parse_date(v: str, field_name: str) -> date:
+-    raw = _clean(v)
+-    if not raw:
+-        raise HTTPException(status_code=400, detail=f"{field_name} manquant.")
+-    try:
+-        return date.fromisoformat(raw[:10])
+-    except Exception:
+-        raise HTTPException(status_code=400, detail=f"{field_name} invalide.")
+-
+-
+-def _require_profile(cur, request: Request, id_effectif: str) -> dict:
+-    auth = request.headers.get("Authorization", "")
+-    u = people_require_user(auth)
+-    return people_fetch_profile(
+-        cur,
+-        id_effectif=id_effectif,
+-        email=(u.get("email") or ""),
+-        is_super_admin=bool(u.get("is_super_admin")),
+-    )
+-
+-
+-def _fetch_effectif_row(cur, profile: dict) -> dict:
+-    id_effectif = _clean(profile.get("id_effectif"))
+-    id_owner = _clean(profile.get("id_owner"))
+-
+-    cur.execute(
+-        """
+-        SELECT
+-          ec.*,
+-          COALESCE(ent.nom_ent, me.nom_ent, '') AS nom_owner,
+-          COALESCE(org.nom_service, '') AS nom_service,
+-          COALESCE(fp.intitule_poste, '') AS intitule_poste,
+-          COALESCE(fp.codif_poste, '') AS codif_poste,
+-          COALESCE(fp.mission_principale, '') AS mission_principale,
+-          COALESCE(fp.perspectives_evolution, '') AS perspectives_evolution
+-        FROM public.tbl_effectif_client ec
+-        LEFT JOIN public.tbl_entreprise ent
+-          ON ent.id_ent = ec.id_ent
+-         AND COALESCE(ent.masque, FALSE) = FALSE
+-        LEFT JOIN public.tbl_mon_entreprise me
+-          ON me.id_mon_ent = ec.id_ent
+-         AND COALESCE(me.archive, FALSE) = FALSE
+-        LEFT JOIN public.tbl_entreprise_organigramme org
+-          ON org.id_ent = ec.id_ent
+-         AND org.id_service = ec.id_service
+-         AND COALESCE(org.archive, FALSE) = FALSE
+-        LEFT JOIN public.tbl_fiche_poste fp
+-          ON fp.id_owner = ec.id_ent
+-         AND fp.id_ent = ec.id_ent
+-         AND fp.id_poste = ec.id_poste_actuel
+-         AND COALESCE(fp.actif, TRUE) = TRUE
+-        WHERE ec.id_effectif = %s
+-          AND ec.id_ent = %s
+-          AND COALESCE(ec.archive, FALSE) = FALSE
+-        LIMIT 1
+-        """,
+-        (id_effectif, id_owner),
+-    )
+-    row = cur.fetchone() or {}
+-    if row:
+-        return row
+-
+-    return {
+-        "id_effectif": id_effectif,
+-        "id_ent": id_owner,
+-        "prenom_effectif": profile.get("prenom") or "",
+-        "nom_effectif": profile.get("nom") or "",
+-        "email_effectif": profile.get("email") or "",
+-        "nom_owner": profile.get("nom_owner") or "",
+-        "nom_service": profile.get("nom_service") or "",
+-        "intitule_poste": profile.get("intitule_poste") or "",
+-        "source_light": True,
+-    }
+-
+-
+-def _profile_payload(profile: dict, effectif: dict) -> dict:
+-    return {
+-        "id_owner": _clean(profile.get("id_owner")),
+-        "id_effectif": _clean(profile.get("id_effectif")),
+-        "source_row_kind": _clean(profile.get("source_row_kind")),
+-        "prenom": _clean(effectif.get("prenom_effectif") or profile.get("prenom")),
+-        "nom": _clean(effectif.get("nom_effectif") or profile.get("nom")),
+-        "civilite": _clean(effectif.get("civilite_effectif")),
+-        "email": _clean(effectif.get("email_effectif") or profile.get("email")),
+-        "telephone": _clean(effectif.get("telephone_effectif")),
+-        "telephone2": _clean(effectif.get("telephone2_effectif")),
+-        "adresse": _clean(effectif.get("adresse_effectif")),
+-        "code_postal": _clean(effectif.get("code_postal_effectif")),
+-        "ville": _clean(effectif.get("ville_effectif")),
+-        "pays": _clean(effectif.get("pays_effectif")),
+-        "date_naissance": _clean(effectif.get("date_naissance_effectif")),
+-        "date_entree": _clean(effectif.get("date_entree_entreprise_effectif")),
+-        "date_debut_poste": _clean(effectif.get("date_debut_poste_actuel")),
+-        "niveau_education": _clean(effectif.get("niveau_education")),
+-        "domaine_education": _clean(effectif.get("domaine_education")),
+-        "type_contrat": _clean(effectif.get("type_contrat")),
+-        "matricule": _clean(effectif.get("matricule_interne")),
+-        "nom_owner": _clean(effectif.get("nom_owner") or profile.get("nom_owner")),
+-        "nom_service": _clean(effectif.get("nom_service") or profile.get("nom_service")),
+-        "id_poste_actuel": _clean(effectif.get("id_poste_actuel")),
+-        "intitule_poste": _clean(effectif.get("intitule_poste") or profile.get("intitule_poste")),
+-        "codif_poste": _clean(effectif.get("codif_poste")),
+-        "mission_principale": _clean(effectif.get("mission_principale")),
+-        "perspectives_evolution": _clean(effectif.get("perspectives_evolution")),
+-        "statut_actif": bool(effectif.get("statut_actif", True)),
+-        "ismanager": bool(effectif.get("ismanager", False)),
+-        "isformateur": bool(effectif.get("isformateur", False)),
+-        "is_temp": bool(effectif.get("is_temp", False)),
+-    }
+-
+-
+-def _fetch_profile_context(cur, request: Request, id_effectif: str) -> tuple[dict, dict, dict]:
+-    profile = _require_profile(cur, request, id_effectif)
+-    effectif = _fetch_effectif_row(cur, profile)
+-    return profile, effectif, _profile_payload(profile, effectif)
+-
+-
+-def _level_rank(value: str) -> int:
+-    v = _clean(value).upper()
+-    if v in ("A", "APP", "APPRENTI", "APPRENTISSAGE"):
+-        return 1
+-    if v in ("B", "I", "INTERMEDIAIRE", "INTERMÉDIAIRE"):
+-        return 2
+-    if v in ("C", "AV", "AVANCE", "AVANCÉ", "AUTONOME", "EXPERT"):
+-        return 3
+-    return 0
+-
+-
+-def _competence_score(current_level: str, required_level: str) -> int:
+-    req = max(_level_rank(required_level), 1)
+-    cur = _level_rank(current_level)
+-    return int(min(100, round((cur / req) * 100))) if cur else 0
+-
+-
+-@router.get("/people/demo/profile/{id_effectif}")
+-def people_demo_profile(id_effectif: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, payload = _fetch_profile_context(cur, request, id_effectif)
+-        return {"profile": payload}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/profile error: {e}")
+-
+-
+-@router.get("/people/demo/dashboard/{id_effectif}")
+-def people_demo_dashboard(id_effectif: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_owner = profile.get("id_owner") or ""
+-                id_poste = profile.get("id_poste_actuel") or ""
+-
+-                cur.execute(
+-                    """
+-                    SELECT COUNT(*) AS nb
+-                    FROM public.tbl_effectif_client_competence ec
+-                    WHERE ec.id_effectif_client = %s
+-                      AND COALESCE(ec.archive, FALSE) = FALSE
+-                      AND COALESCE(ec.actif, TRUE) = TRUE
+-                    """,
+-                    (id_effectif,),
+-                )
+-                nb_comp = int((cur.fetchone() or {}).get("nb") or 0)
+-
+-                cur.execute(
+-                    """
+-                    SELECT COUNT(*) AS nb
+-                    FROM public.tbl_action_formation_effectif aef
+-                    JOIN public.tbl_action_formation af
+-                      ON af.id_action_formation = aef.id_action_formation
+-                     AND COALESCE(af.archive, FALSE) = FALSE
+-                    WHERE aef.id_effectif = %s
+-                      AND COALESCE(aef.archive, FALSE) = FALSE
+-                      AND COALESCE(af.date_fin_formation, af.date_debut_formation, CURRENT_DATE) >= CURRENT_DATE
+-                    """,
+-                    (id_effectif,),
+-                )
+-                nb_form = int((cur.fetchone() or {}).get("nb") or 0)
+-
+-                cur.execute(
+-                    """
+-                    SELECT COUNT(*) AS nb
+-                    FROM public.tbl_effectif_client_break b
+-                    WHERE b.id_effectif = %s
+-                      AND COALESCE(b.archive, FALSE) = FALSE
+-                      AND b.date_fin >= CURRENT_DATE
+-                    """,
+-                    (id_effectif,),
+-                )
+-                nb_break = int((cur.fetchone() or {}).get("nb") or 0)
+-
+-                mastery = 0
+-                current_poste_rows = []
+-                if id_poste:
+-                    cur.execute(
+-                        """
+-                        SELECT
+-                          c.id_comp,
+-                          c.code,
+-                          c.intitule,
+-                          pc.niveau_requis,
+-                          COALESCE(ec.niveau_actuel, '') AS niveau_actuel
+-                        FROM public.tbl_fiche_poste_competence pc
+-                        JOIN public.tbl_competence c
+-                          ON c.id_comp = pc.id_competence
+-                         AND COALESCE(c.masque, FALSE) = FALSE
+-                        LEFT JOIN public.tbl_effectif_client_competence ec
+-                          ON ec.id_effectif_client = %s
+-                         AND ec.id_comp = c.id_comp
+-                         AND COALESCE(ec.archive, FALSE) = FALSE
+-                         AND COALESCE(ec.actif, TRUE) = TRUE
+-                        WHERE pc.id_poste = %s
+-                          AND COALESCE(pc.masque, FALSE) = FALSE
+-                        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
+-                        LIMIT 8
+-                        """,
+-                        (id_effectif, id_poste),
+-                    )
+-                    current_poste_rows = cur.fetchall() or []
+-                    scores = [_competence_score(r.get("niveau_actuel"), r.get("niveau_requis")) for r in current_poste_rows]
+-                    mastery = int(round(sum(scores) / len(scores))) if scores else 0
+-
+-                cur.execute(
+-                    """
+-                    SELECT MAX(a.date_audit) AS last_date
+-                    FROM public.tbl_effectif_client_audit_competence a
+-                    JOIN public.tbl_effectif_client_competence ec
+-                      ON ec.id_effectif_competence = a.id_effectif_competence
+-                    WHERE ec.id_effectif_client = %s
+-                    """,
+-                    (id_effectif,),
+-                )
+-                last_audit = _clean((cur.fetchone() or {}).get("last_date"))
+-
+-        return {
+-            "profile": profile,
+-            "kpis": {
+-                "nb_competences": nb_comp,
+-                "nb_formations_programmees": nb_form,
+-                "nb_indisponibilites": nb_break,
+-                "maitrise_poste": mastery,
+-                "derniere_evaluation": last_audit,
+-            },
+-            "competences_prioritaires": current_poste_rows,
+-        }
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/dashboard error: {e}")
+-
+-
+-@router.get("/people/demo/calendar/{id_effectif}")
+-def people_demo_calendar(id_effectif: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-
+-                cur.execute(
+-                    """
+-                    SELECT id_break, date_debut, date_fin
+-                    FROM public.tbl_effectif_client_break
+-                    WHERE id_effectif = %s
+-                      AND COALESCE(archive, FALSE) = FALSE
+-                    ORDER BY date_debut DESC, date_fin DESC
+-                    LIMIT 30
+-                    """,
+-                    (id_effectif,),
+-                )
+-                breaks = cur.fetchall() or []
+-
+-                cur.execute(
+-                    """
+-                    SELECT
+-                      aef.id_action_formation_effectif,
+-                      af.id_action_formation,
+-                      COALESCE(ff.titre, 'Formation programmée') AS titre,
+-                      COALESCE(ff.fournisseur_formation, '') AS organisme,
+-                      af.date_debut_formation,
+-                      af.date_fin_formation,
+-                      COALESCE(af.etat_action, '') AS etat_action,
+-                      COALESCE(aef.etat_invitation, '') AS etat_invitation,
+-                      COALESCE(aef.etat_attestation, '') AS etat_attestation
+-                    FROM public.tbl_action_formation_effectif aef
+-                    JOIN public.tbl_action_formation af
+-                      ON af.id_action_formation = aef.id_action_formation
+-                     AND COALESCE(af.archive, FALSE) = FALSE
+-                    LEFT JOIN public.tbl_fiche_formation ff
+-                      ON ff.id_form = af.id_form
+-                     AND ff.id_owner = %s
+-                     AND COALESCE(ff.archive, FALSE) = FALSE
+-                    WHERE aef.id_effectif = %s
+-                      AND COALESCE(aef.archive, FALSE) = FALSE
+-                    ORDER BY COALESCE(af.date_debut_formation, CURRENT_DATE) ASC
+-                    LIMIT 40
+-                    """,
+-                    (profile.get("id_owner") or "", id_effectif),
+-                )
+-                formations = cur.fetchall() or []
+-
+-        return {"profile": profile, "indisponibilites": breaks, "formations": formations}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/calendar error: {e}")
+-
+-
+-@router.post("/people/demo/calendar/{id_effectif}/breaks")
+-def people_demo_add_break(id_effectif: str, payload: PeopleBreakPayload, request: Request):
+-    date_debut = _parse_date(payload.date_debut, "date_debut")
+-    date_fin = _parse_date(payload.date_fin, "date_fin")
+-    if date_fin < date_debut:
+-        raise HTTPException(status_code=400, detail="La date de fin doit être postérieure ou égale à la date de début.")
+-
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_break = _uuid()
+-                cur.execute(
+-                    """
+-                    INSERT INTO public.tbl_effectif_client_break
+-                      (id_break, id_ent, id_effectif, date_debut, date_fin, archive, date_creation, dernier_update)
+-                    VALUES
+-                      (%s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+-                    RETURNING id_break, date_debut, date_fin
+-                    """,
+-                    (id_break, profile.get("id_owner") or "", id_effectif, date_debut, date_fin),
+-                )
+-                row = cur.fetchone() or {}
+-            conn.commit()
+-        return {"created": row}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/calendar/breaks error: {e}")
+-
+-
+-@router.post("/people/demo/calendar/{id_effectif}/breaks/{id_break}/archive")
+-def people_demo_archive_break(id_effectif: str, id_break: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                cur.execute(
+-                    """
+-                    UPDATE public.tbl_effectif_client_break
+-                    SET archive = TRUE,
+-                        dernier_update = NOW()
+-                    WHERE id_break = %s
+-                      AND id_effectif = %s
+-                      AND id_ent = %s
+-                      AND COALESCE(archive, FALSE) = FALSE
+-                    RETURNING id_break
+-                    """,
+-                    (id_break, id_effectif, profile.get("id_owner") or ""),
+-                )
+-                row = cur.fetchone() or {}
+-            conn.commit()
+-        return {"archived": bool(row), "id_break": id_break}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/calendar/archive error: {e}")
+-
+-
+-@router.get("/people/demo/parcours/{id_effectif}")
+-def people_demo_parcours(id_effectif: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_owner = profile.get("id_owner") or ""
+-
+-                cur.execute(
+-                    """
+-                    SELECT
+-                      hp.id_effectif_historique_poste,
+-                      hp.id_poste,
+-                      COALESCE(fp.intitule_poste, 'Poste') AS intitule_poste,
+-                      hp.date_debut,
+-                      hp.date_fin,
+-                      COALESCE(hp.commentaire, '') AS commentaire,
+-                      COALESCE(hp.source_changement, '') AS source_changement
+-                    FROM public.tbl_effectif_client_historique_poste hp
+-                    LEFT JOIN public.tbl_fiche_poste fp
+-                      ON fp.id_poste = hp.id_poste
+-                     AND fp.id_owner = %s
+-                     AND COALESCE(fp.actif, TRUE) = TRUE
+-                    WHERE hp.id_effectif = %s
+-                      AND COALESCE(hp.archive, FALSE) = FALSE
+-                    ORDER BY COALESCE(hp.date_debut, CURRENT_DATE) ASC, hp.date_creation ASC
+-                    """,
+-                    (id_owner, id_effectif),
+-                )
+-                postes = cur.fetchall() or []
+-
+-                cur.execute(
+-                    """
+-                    SELECT
+-                      c.id_comp,
+-                      c.intitule,
+-                      COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
+-                      a.date_audit,
+-                      a.resultat_eval,
+-                      COALESCE(a.methode_eval, '') AS methode_eval
+-                    FROM public.tbl_effectif_client_audit_competence a
+-                    JOIN public.tbl_effectif_client_competence ec
+-                      ON ec.id_effectif_competence = a.id_effectif_competence
+-                     AND ec.id_effectif_client = %s
+-                    JOIN public.tbl_competence c
+-                      ON c.id_comp = ec.id_comp
+-                     AND COALESCE(c.masque, FALSE) = FALSE
+-                    LEFT JOIN public.tbl_domaine_competence dc
+-                      ON dc.id_domaine_competence = c.domaine
+-                     AND COALESCE(dc.masque, FALSE) = FALSE
+-                    WHERE a.resultat_eval IS NOT NULL
+-                    ORDER BY a.date_audit ASC, c.intitule ASC
+-                    LIMIT 240
+-                    """,
+-                    (id_effectif,),
+-                )
+-                audits = cur.fetchall() or []
+-
+-                cur.execute(
+-                    """
+-                    SELECT
+-                      hf.id_historique_formation,
+-                      hf.date_formation,
+-                      hf.date_debut_formation,
+-                      hf.date_fin_formation,
+-                      hf.intitule,
+-                      COALESCE(hf.organisme, '') AS organisme,
+-                      COALESCE(hf.source, '') AS source
+-                    FROM public.tbl_effectif_client_historique_formation hf
+-                    WHERE hf.id_effectif = %s
+-                      AND hf.id_ent = %s
+-                      AND COALESCE(hf.archive, FALSE) = FALSE
+-                    ORDER BY hf.date_formation DESC
+-                    LIMIT 20
+-                    """,
+-                    (id_effectif, id_owner),
+-                )
+-                formations = cur.fetchall() or []
+-
+-        return {"profile": profile, "postes": postes, "audits": audits, "formations": formations}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/parcours error: {e}")
+-
+-
+-@router.get("/people/demo/competences/{id_effectif}")
+-def people_demo_competences(id_effectif: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_poste = profile.get("id_poste_actuel") or ""
+-
+-                current = []
+-                if id_poste:
+-                    cur.execute(
+-                        """
+-                        SELECT
+-                          c.id_comp,
+-                          c.code,
+-                          c.intitule,
+-                          COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
+-                          pc.niveau_requis,
+-                          COALESCE(pc.poids_criticite, 0) AS criticite,
+-                          COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
+-                          ec.date_derniere_eval
+-                        FROM public.tbl_fiche_poste_competence pc
+-                        JOIN public.tbl_competence c
+-                          ON c.id_comp = pc.id_competence
+-                         AND COALESCE(c.masque, FALSE) = FALSE
+-                        LEFT JOIN public.tbl_domaine_competence dc
+-                          ON dc.id_domaine_competence = c.domaine
+-                         AND COALESCE(dc.masque, FALSE) = FALSE
+-                        LEFT JOIN public.tbl_effectif_client_competence ec
+-                          ON ec.id_effectif_client = %s
+-                         AND ec.id_comp = c.id_comp
+-                         AND COALESCE(ec.archive, FALSE) = FALSE
+-                         AND COALESCE(ec.actif, TRUE) = TRUE
+-                        WHERE pc.id_poste = %s
+-                          AND COALESCE(pc.masque, FALSE) = FALSE
+-                        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
+-                        """,
+-                        (id_effectif, id_poste),
+-                    )
+-                    current = cur.fetchall() or []
+-
+-                cur.execute(
+-                    """
+-                    SELECT
+-                      c.id_comp,
+-                      c.code,
+-                      c.intitule,
+-                      COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
+-                      COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
+-                      ec.date_derniere_eval
+-                    FROM public.tbl_effectif_client_competence ec
+-                    JOIN public.tbl_competence c
+-                      ON c.id_comp = ec.id_comp
+-                     AND COALESCE(c.masque, FALSE) = FALSE
+-                    LEFT JOIN public.tbl_domaine_competence dc
+-                      ON dc.id_domaine_competence = c.domaine
+-                     AND COALESCE(dc.masque, FALSE) = FALSE
+-                    WHERE ec.id_effectif_client = %s
+-                      AND COALESCE(ec.archive, FALSE) = FALSE
+-                      AND COALESCE(ec.actif, TRUE) = TRUE
+-                      AND NOT EXISTS (
+-                        SELECT 1
+-                        FROM public.tbl_fiche_poste_competence pc
+-                        WHERE pc.id_poste = %s
+-                          AND pc.id_competence = ec.id_comp
+-                          AND COALESCE(pc.masque, FALSE) = FALSE
+-                      )
+-                    ORDER BY c.intitule
+-                    """,
+-                    (id_effectif, id_poste or ""),
+-                )
+-                autres = cur.fetchall() or []
+-
+-        return {"profile": profile, "poste": current, "autres": autres}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/competences error: {e}")
+-
+-
+-@router.get("/people/demo/competences/{id_effectif}/catalogue")
+-def people_demo_catalogue(id_effectif: str, request: Request, q: str = ""):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_owner = profile.get("id_owner") or ""
+-                id_poste = profile.get("id_poste_actuel") or ""
+-                search = f"%{_clean(q).lower()}%"
+-
+-                cur.execute(
+-                    """
+-                    SELECT
+-                      c.id_comp,
+-                      c.code,
+-                      c.intitule,
+-                      COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
+-                      COALESCE(c.description, '') AS description
+-                    FROM public.tbl_competence c
+-                    LEFT JOIN public.tbl_domaine_competence dc
+-                      ON dc.id_domaine_competence = c.domaine
+-                     AND COALESCE(dc.masque, FALSE) = FALSE
+-                    WHERE c.id_owner = %s
+-                      AND COALESCE(c.masque, FALSE) = FALSE
+-                      AND COALESCE(c.etat, 'active') NOT IN ('archivée', 'archive', 'inactive')
+-                      AND (
+-                        %s = '%%'
+-                        OR lower(COALESCE(c.code, '')) LIKE %s
+-                        OR lower(COALESCE(c.intitule, '')) LIKE %s
+-                        OR lower(COALESCE(c.description, '')) LIKE %s
+-                      )
+-                      AND NOT EXISTS (
+-                        SELECT 1
+-                        FROM public.tbl_effectif_client_competence ec
+-                        WHERE ec.id_effectif_client = %s
+-                          AND ec.id_comp = c.id_comp
+-                          AND COALESCE(ec.archive, FALSE) = FALSE
+-                          AND COALESCE(ec.actif, TRUE) = TRUE
+-                      )
+-                      AND NOT EXISTS (
+-                        SELECT 1
+-                        FROM public.tbl_fiche_poste_competence pc
+-                        WHERE pc.id_poste = %s
+-                          AND pc.id_competence = c.id_comp
+-                          AND COALESCE(pc.masque, FALSE) = FALSE
+-                      )
+-                    ORDER BY c.intitule
+-                    LIMIT 80
+-                    """,
+-                    (id_owner, search, search, search, search, id_effectif, id_poste or ""),
+-                )
+-                rows = cur.fetchall() or []
+-        return {"items": rows}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/competences/catalogue error: {e}")
+-
+-
+-@router.post("/people/demo/competences/{id_effectif}/add")
+-def people_demo_add_competence(id_effectif: str, payload: PeopleAddCompetencePayload, request: Request):
+-    id_comp = _clean(payload.id_comp)
+-    if not id_comp:
+-        raise HTTPException(status_code=400, detail="Compétence manquante.")
+-
+-    niveau = _clean(payload.niveau_actuel).upper()
+-    if niveau not in ("", "A", "B", "C", "D"):
+-        niveau = ""
+-
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_owner = profile.get("id_owner") or ""
+-
+-                cur.execute(
+-                    """
+-                    SELECT id_comp
+-                    FROM public.tbl_competence
+-                    WHERE id_comp = %s
+-                      AND id_owner = %s
+-                      AND COALESCE(masque, FALSE) = FALSE
+-                    LIMIT 1
+-                    """,
+-                    (id_comp, id_owner),
+-                )
+-                if not cur.fetchone():
+-                    raise HTTPException(status_code=404, detail="Compétence introuvable dans le catalogue.")
+-
+-                cur.execute(
+-                    """
+-                    SELECT id_effectif_competence
+-                    FROM public.tbl_effectif_client_competence
+-                    WHERE id_effectif_client = %s
+-                      AND id_comp = %s
+-                    LIMIT 1
+-                    """,
+-                    (id_effectif, id_comp),
+-                )
+-                existing = cur.fetchone() or {}
+-                if existing:
+-                    cur.execute(
+-                        """
+-                        UPDATE public.tbl_effectif_client_competence
+-                        SET actif = TRUE,
+-                            archive = FALSE,
+-                            niveau_actuel = COALESCE(NULLIF(%s, ''), niveau_actuel),
+-                            date_derniere_eval = COALESCE(date_derniere_eval, CURRENT_DATE)
+-                        WHERE id_effectif_competence = %s
+-                        RETURNING id_effectif_competence
+-                        """,
+-                        (niveau, existing.get("id_effectif_competence")),
+-                    )
+-                    row = cur.fetchone() or {}
+-                else:
+-                    id_ec = _uuid()
+-                    cur.execute(
+-                        """
+-                        INSERT INTO public.tbl_effectif_client_competence
+-                          (id_effectif_competence, id_effectif_client, id_comp, niveau_actuel, date_derniere_eval, actif, archive)
+-                        VALUES
+-                          (%s, %s, %s, NULLIF(%s, ''), CURRENT_DATE, TRUE, FALSE)
+-                        RETURNING id_effectif_competence
+-                        """,
+-                        (id_ec, id_effectif, id_comp, niveau),
+-                    )
+-                    row = cur.fetchone() or {}
+-            conn.commit()
+-        return {"added": row}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/competences/add error: {e}")
+-
+-
+-@router.get("/people/demo/auto-evaluation/{id_effectif}")
+-def people_demo_auto_eval(id_effectif: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_poste = profile.get("id_poste_actuel") or ""
+-
+-                cur.execute(
+-                    """
+-                    SELECT id_entretien, statut, date_prevue, preparation
+-                    FROM public.tbl_entretien_individuel
+-                    WHERE id_ent = %s
+-                      AND id_effectif_client = %s
+-                      AND COALESCE(archive, FALSE) = FALSE
+-                    ORDER BY
+-                      CASE
+-                        WHEN statut IN ('à réaliser', 'en cours', 'à signer 1/2') THEN 0
+-                        ELSE 1
+-                      END,
+-                      updated_at DESC,
+-                      created_at DESC
+-                    LIMIT 1
+-                    """,
+-                    (profile.get("id_owner") or "", id_effectif),
+-                )
+-                entretien = cur.fetchone() or {}
+-
+-                items = []
+-                if id_poste:
+-                    cur.execute(
+-                        """
+-                        SELECT
+-                          c.id_comp,
+-                          c.code,
+-                          c.intitule,
+-                          COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
+-                          pc.niveau_requis,
+-                          COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
+-                          COALESCE(c.description, '') AS description
+-                        FROM public.tbl_fiche_poste_competence pc
+-                        JOIN public.tbl_competence c
+-                          ON c.id_comp = pc.id_competence
+-                         AND COALESCE(c.masque, FALSE) = FALSE
+-                        LEFT JOIN public.tbl_domaine_competence dc
+-                          ON dc.id_domaine_competence = c.domaine
+-                         AND COALESCE(dc.masque, FALSE) = FALSE
+-                        LEFT JOIN public.tbl_effectif_client_competence ec
+-                          ON ec.id_effectif_client = %s
+-                         AND ec.id_comp = c.id_comp
+-                         AND COALESCE(ec.archive, FALSE) = FALSE
+-                         AND COALESCE(ec.actif, TRUE) = TRUE
+-                        WHERE pc.id_poste = %s
+-                          AND COALESCE(pc.masque, FALSE) = FALSE
+-                        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
+-                        """,
+-                        (id_effectif, id_poste),
+-                    )
+-                    items = cur.fetchall() or []
+-
+-        prep = entretien.get("preparation") or {}
+-        if not isinstance(prep, dict):
+-            prep = {}
+-        return {
+-            "profile": profile,
+-            "entretien": {
+-                "id_entretien": entretien.get("id_entretien") or "",
+-                "statut": entretien.get("statut") or "",
+-                "date_prevue": _clean(entretien.get("date_prevue")),
+-                "auto_evaluation_people": prep.get("auto_evaluation_people") or {},
+-            },
+-            "items": items,
+-        }
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/auto-evaluation error: {e}")
+-
+-
+-@router.post("/people/demo/auto-evaluation/{id_effectif}/save")
+-def people_demo_save_auto_eval(id_effectif: str, payload: PeopleAutoEvalPayload, request: Request):
+-    clean_items = []
+-    for item in payload.items or []:
+-        cid = _clean(item.id_comp)
+-        if not cid:
+-            continue
+-        niv = _clean(item.niveau_auto).upper()
+-        if niv not in ("A", "B", "C", ""):
+-            niv = ""
+-        clean_items.append({
+-            "id_comp": cid,
+-            "niveau_auto": niv,
+-            "commentaire": _clean(item.commentaire),
+-            "besoin_accompagnement": bool(item.besoin_accompagnement),
+-        })
+-
+-    auto_payload = {
+-        "date_saisie": date.today().isoformat(),
+-        "commentaire_general": _clean(payload.commentaire_general),
+-        "items": clean_items,
+-    }
+-
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = _fetch_profile_context(cur, request, id_effectif)
+-                id_ent = profile.get("id_owner") or ""
+-
+-                cur.execute(
+-                    """
+-                    SELECT id_entretien
+-                    FROM public.tbl_entretien_individuel
+-                    WHERE id_ent = %s
+-                      AND id_effectif_client = %s
+-                      AND COALESCE(archive, FALSE) = FALSE
+-                      AND statut IN ('à réaliser', 'en cours', 'à signer 1/2')
+-                    ORDER BY updated_at DESC, created_at DESC
+-                    LIMIT 1
+-                    """,
+-                    (id_ent, id_effectif),
+-                )
+-                ent = cur.fetchone() or {}
+-                if ent.get("id_entretien"):
+-                    id_entretien = ent.get("id_entretien")
+-                    cur.execute(
+-                        """
+-                        UPDATE public.tbl_entretien_individuel
+-                        SET preparation = COALESCE(preparation, '{}'::jsonb) || %s::jsonb,
+-                            updated_at = NOW()
+-                        WHERE id_entretien = %s
+-                        RETURNING id_entretien
+-                        """,
+-                        (Json({"auto_evaluation_people": auto_payload}), id_entretien),
+-                    )
+-                else:
+-                    id_entretien = _uuid()
+-                    cur.execute(
+-                        """
+-                        INSERT INTO public.tbl_entretien_individuel
+-                          (id_entretien, id_ent, id_effectif_client, type_entretien, statut, date_prevue,
+-                           bilan, objectifs, developpement, plan_actions, documents, synthese,
+-                           preparation, realisation, competences_entretien, archive, created_at, updated_at)
+-                        VALUES
+-                          (%s, %s, %s, 'Entretien individuel', 'à réaliser', CURRENT_DATE,
+-                           '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
+-                           %s::jsonb, '{}'::jsonb, '[]'::jsonb, FALSE, NOW(), NOW())
+-                        RETURNING id_entretien
+-                        """,
+-                        (id_entretien, id_ent, id_effectif, Json({"auto_evaluation_people": auto_payload})),
+-                    )
+-                row = cur.fetchone() or {}
+-            conn.commit()
+-        return {"saved": True, "id_entretien": row.get("id_entretien") or id_entretien}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/auto-evaluation/save error: {e}")
+diff --git a/unified_api/app/routers/people_portal_entretiens.py b/unified_api/app/routers/people_portal_entretiens.py
+new file mode 100644
+index 0000000..baf62ee
+--- /dev/null
++++ b/unified_api/app/routers/people_portal_entretiens.py
+@@ -0,0 +1,177 @@
++from typing import List, Optional
++from uuid import uuid4
++from fastapi import APIRouter, HTTPException, Request
++from pydantic import BaseModel
++from psycopg.rows import dict_row
++from psycopg.types.json import Json
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import peoplepeople_fetch_profile_context
++router = APIRouter()
++
++class PeopleAutoEvalItem(BaseModel):
++    id_comp: str
++    niveau_auto: Optional[str] = None
++    commentaire: Optional[str] = None
++    besoin_accompagnement: Optional[bool] = False
++
++class PeopleAutoEvalPayload(BaseModel):
++    items: List[PeopleAutoEvalItem] = []
++    commentaire_general: Optional[str] = None
++
++@router.get("/people/entretiens/auto-evaluation/{id_effectif}")
++def people_entretiens_auto_eval(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_poste = profile.get("id_poste_actuel") or ""
++
++                cur.execute(
++                    """
++                    SELECT id_entretien, statut, date_prevue, preparation
++                    FROM public.tbl_entretien_individuel
++                    WHERE id_ent = %s
++                      AND id_effectif_client = %s
++                      AND COALESCE(archive, FALSE) = FALSE
++                    ORDER BY
++                      CASE
++                        WHEN statut IN ('à réaliser', 'en cours', 'à signer 1/2') THEN 0
++                        ELSE 1
++                      END,
++                      updated_at DESC,
++                      created_at DESC
++                    LIMIT 1
++                    """,
++                    (profile.get("id_owner") or "", id_effectif),
++                )
++                entretien = cur.fetchone() or {}
++
++                items = []
++                if id_poste:
++                    cur.execute(
++                        """
++                        SELECT
++                          c.id_comp,
++                          c.code,
++                          c.intitule,
++                          COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
++                          pc.niveau_requis,
++                          COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
++                          COALESCE(c.description, '') AS description
++                        FROM public.tbl_fiche_poste_competence pc
++                        JOIN public.tbl_competence c
++                          ON c.id_comp = pc.id_competence
++                         AND COALESCE(c.masque, FALSE) = FALSE
++                        LEFT JOIN public.tbl_domaine_competence dc
++                          ON dc.id_domaine_competence = c.domaine
++                         AND COALESCE(dc.masque, FALSE) = FALSE
++                        LEFT JOIN public.tbl_effectif_client_competence ec
++                          ON ec.id_effectif_client = %s
++                         AND ec.id_comp = c.id_comp
++                         AND COALESCE(ec.archive, FALSE) = FALSE
++                         AND COALESCE(ec.actif, TRUE) = TRUE
++                        WHERE pc.id_poste = %s
++                          AND COALESCE(pc.masque, FALSE) = FALSE
++                        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
++                        """,
++                        (id_effectif, id_poste),
++                    )
++                    items = cur.fetchall() or []
++
++        prep = entretien.get("preparation") or {}
++        if not isinstance(prep, dict):
++            prep = {}
++        return {
++            "profile": profile,
++            "entretien": {
++                "id_entretien": entretien.get("id_entretien") or "",
++                "statut": entretien.get("statut") or "",
++                "date_prevue": _clean(entretien.get("date_prevue")),
++                "auto_evaluation_people": prep.get("auto_evaluation_people") or {},
++            },
++            "items": items,
++        }
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/auto-evaluation error: {e}")
++
++
++@router.post("/people/entretiens/auto-evaluation/{id_effectif}/save")
++def people_entretiens_save_auto_eval(id_effectif: str, payload: PeopleAutoEvalPayload, request: Request):
++    clean_items = []
++    for item in payload.items or []:
++        cid = _clean(item.id_comp)
++        if not cid:
++            continue
++        niv = _clean(item.niveau_auto).upper()
++        if niv not in ("A", "B", "C", ""):
++            niv = ""
++        clean_items.append({
++            "id_comp": cid,
++            "niveau_auto": niv,
++            "commentaire": _clean(item.commentaire),
++            "besoin_accompagnement": bool(item.besoin_accompagnement),
++        })
++
++    auto_payload = {
++        "date_saisie": date.today().isoformat(),
++        "commentaire_general": _clean(payload.commentaire_general),
++        "items": clean_items,
++    }
++
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_ent = profile.get("id_owner") or ""
++
++                cur.execute(
++                    """
++                    SELECT id_entretien
++                    FROM public.tbl_entretien_individuel
++                    WHERE id_ent = %s
++                      AND id_effectif_client = %s
++                      AND COALESCE(archive, FALSE) = FALSE
++                      AND statut IN ('à réaliser', 'en cours', 'à signer 1/2')
++                    ORDER BY updated_at DESC, created_at DESC
++                    LIMIT 1
++                    """,
++                    (id_ent, id_effectif),
++                )
++                ent = cur.fetchone() or {}
++                if ent.get("id_entretien"):
++                    id_entretien = ent.get("id_entretien")
++                    cur.execute(
++                        """
++                        UPDATE public.tbl_entretien_individuel
++                        SET preparation = COALESCE(preparation, '{}'::jsonb) || %s::jsonb,
++                            updated_at = NOW()
++                        WHERE id_entretien = %s
++                        RETURNING id_entretien
++                        """,
++                        (Json({"auto_evaluation_people": auto_payload}), id_entretien),
++                    )
++                else:
++                    id_entretien = str(uuid4())
++                    cur.execute(
++                        """
++                        INSERT INTO public.tbl_entretien_individuel
++                          (id_entretien, id_ent, id_effectif_client, type_entretien, statut, date_prevue,
++                           bilan, objectifs, developpement, plan_actions, documents, synthese,
++                           preparation, realisation, competences_entretien, archive, created_at, updated_at)
++                        VALUES
++                          (%s, %s, %s, 'Entretien individuel', 'à réaliser', CURRENT_DATE,
++                           '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
++                           %s::jsonb, '{}'::jsonb, '[]'::jsonb, FALSE, NOW(), NOW())
++                        RETURNING id_entretien
++                        """,
++                        (id_entretien, id_ent, id_effectif, Json({"auto_evaluation_people": auto_payload})),
++                    )
++                row = cur.fetchone() or {}
++            conn.commit()
++        return {"saved": True, "id_entretien": row.get("id_entretien") or id_entretien}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/auto-evaluation/save error: {e}")
+diff --git a/unified_api/app/routers/people_portal_informations.py b/unified_api/app/routers/people_portal_informations.py
+new file mode 100644
+index 0000000..ae09492
+--- /dev/null
++++ b/unified_api/app/routers/people_portal_informations.py
+@@ -0,0 +1,295 @@
++import os
++from datetime import date
++from typing import Optional
++from urllib.parse import quote
++
++import requests
++from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile
++from pydantic import BaseModel
++from psycopg.rows import dict_row
++
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import (
++    people_clean,
++    people_fetch_profile_context,
++)
++
++router = APIRouter()
++
++PEOPLE_SUPABASE_URL = os.getenv("SKILLS_SUPABASE_URL") or ""
++SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or ""
++PEOPLE_PROFILE_PHOTO_BUCKET = "people-profile-photos"
++MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024
++ALLOWED_PROFILE_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
++
++
++class PeopleIdentityPayload(BaseModel):
++    civilite: Optional[str] = None
++    prenom: str
++    nom: str
++    telephone: Optional[str] = None
++    adresse: Optional[str] = None
++    code_postal: Optional[str] = None
++    ville: Optional[str] = None
++    pays: Optional[str] = None
++    date_naissance: Optional[str] = None
++
++
++def _optional_date(value: Optional[str]) -> Optional[date]:
++    raw = people_clean(value)
++    if not raw:
++        return None
++    try:
++        return date.fromisoformat(raw[:10])
++    except Exception:
++        raise HTTPException(status_code=400, detail="Date de naissance invalide.")
++
++
++def _storage_headers(content_type: Optional[str] = None) -> dict:
++    if not PEOPLE_SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
++        raise HTTPException(status_code=500, detail="Configuration Supabase Storage manquante côté serveur.")
++    headers = {
++        "apikey": SUPABASE_SERVICE_ROLE_KEY,
++        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
++    }
++    if content_type:
++        headers["Content-Type"] = content_type
++    return headers
++
++
++def _storage_url(path: str) -> str:
++    safe_path = quote(path, safe="/")
++    return f"{PEOPLE_SUPABASE_URL.rstrip('/')}/storage/v1/object/{PEOPLE_PROFILE_PHOTO_BUCKET}/{safe_path}"
++
++
++def _photo_path(profile: dict, content_type: str) -> str:
++    extension = {
++        "image/jpeg": "jpg",
++        "image/png": "png",
++        "image/webp": "webp",
++    }[content_type]
++    return f"{people_clean(profile.get('id_owner'))}/{people_clean(profile.get('id_effectif'))}/profile.{extension}"
++
++
++def _read_photo_path(cur, profile: dict) -> str:
++    source_kind = people_clean(profile.get("source_row_kind"))
++    id_effectif = people_clean(profile.get("id_effectif"))
++    id_owner = people_clean(profile.get("id_owner"))
++    if source_kind == "utilisateur":
++        cur.execute(
++            """
++            SELECT photo_storage_path
++            FROM public.tbl_utilisateur
++            WHERE id_utilisateur = %s
++              AND COALESCE(archive, FALSE) = FALSE
++            LIMIT 1
++            """,
++            (id_effectif,),
++        )
++    else:
++        cur.execute(
++            """
++            SELECT photo_storage_path
++            FROM public.tbl_effectif_client
++            WHERE id_effectif = %s
++              AND id_ent = %s
++              AND COALESCE(archive, FALSE) = FALSE
++            LIMIT 1
++            """,
++            (id_effectif, id_owner),
++        )
++    return people_clean((cur.fetchone() or {}).get("photo_storage_path"))
++
++
++def _write_photo_path(cur, profile: dict, path: str) -> None:
++    source_kind = people_clean(profile.get("source_row_kind"))
++    id_effectif = people_clean(profile.get("id_effectif"))
++    id_owner = people_clean(profile.get("id_owner"))
++    if source_kind == "utilisateur":
++        cur.execute(
++            """
++            UPDATE public.tbl_utilisateur
++            SET photo_storage_path = %s,
++                dernier_update = NOW()
++            WHERE id_utilisateur = %s
++              AND COALESCE(archive, FALSE) = FALSE
++            RETURNING id_utilisateur
++            """,
++            (path, id_effectif),
++        )
++    else:
++        cur.execute(
++            """
++            UPDATE public.tbl_effectif_client
++            SET photo_storage_path = %s,
++                dernier_update = NOW()
++            WHERE id_effectif = %s
++              AND id_ent = %s
++              AND COALESCE(archive, FALSE) = FALSE
++            RETURNING id_effectif
++            """,
++            (path, id_effectif, id_owner),
++        )
++    if not cur.fetchone():
++        raise HTTPException(status_code=404, detail="Profil People introuvable.")
++
++
++@router.get("/people/informations/{id_effectif}")
++def people_informations(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, payload = people_fetch_profile_context(cur, request, id_effectif)
++        return {"profile": payload}
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/informations error: {exc}")
++
++
++@router.patch("/people/informations/{id_effectif}/identity")
++def people_update_identity(id_effectif: str, payload: PeopleIdentityPayload, request: Request):
++    prenom = people_clean(payload.prenom)
++    nom = people_clean(payload.nom)
++    if not prenom or not nom:
++        raise HTTPException(status_code=400, detail="Le prénom et le nom sont obligatoires.")
++
++    date_naissance = _optional_date(payload.date_naissance)
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                profile, _, _ = people_fetch_profile_context(cur, request, id_effectif)
++                source_kind = people_clean(profile.get("source_row_kind"))
++                id_owner = people_clean(profile.get("id_owner"))
++                values = (
++                    people_clean(payload.civilite) or None,
++                    prenom,
++                    nom,
++                    people_clean(payload.telephone) or None,
++                    people_clean(payload.adresse) or None,
++                    people_clean(payload.code_postal) or None,
++                    people_clean(payload.ville) or None,
++                    people_clean(payload.pays) or None,
++                )
++
++                if source_kind == "utilisateur":
++                    cur.execute(
++                        """
++                        UPDATE public.tbl_utilisateur
++                        SET ut_civilite = %s,
++                            ut_prenom = %s,
++                            ut_nom = %s,
++                            ut_tel = %s,
++                            ut_adresse = %s,
++                            ut_cp = %s,
++                            ut_ville = %s,
++                            ut_pays = %s,
++                            dernier_update = NOW()
++                        WHERE id_utilisateur = %s
++                          AND COALESCE(archive, FALSE) = FALSE
++                        RETURNING id_utilisateur
++                        """,
++                        (*values, id_effectif),
++                    )
++                else:
++                    cur.execute(
++                        """
++                        UPDATE public.tbl_effectif_client
++                        SET civilite_effectif = %s,
++                            prenom_effectif = %s,
++                            nom_effectif = %s,
++                            telephone_effectif = %s,
++                            adresse_effectif = %s,
++                            code_postal_effectif = %s,
++                            ville_effectif = %s,
++                            pays_effectif = %s,
++                            date_naissance_effectif = %s,
++                            dernier_update = NOW()
++                        WHERE id_effectif = %s
++                          AND id_ent = %s
++                          AND COALESCE(archive, FALSE) = FALSE
++                        RETURNING id_effectif
++                        """,
++                        (*values, date_naissance, id_effectif, id_owner),
++                    )
++
++                if not cur.fetchone():
++                    raise HTTPException(status_code=404, detail="Profil People introuvable.")
++            conn.commit()
++
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, updated = people_fetch_profile_context(cur, request, id_effectif)
++        return {"saved": True, "profile": updated}
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/informations/identity error: {exc}")
++
++
++@router.post("/people/informations/{id_effectif}/photo")
++async def people_upload_photo(id_effectif: str, request: Request, photo: UploadFile = File(...)):
++    content_type = people_clean(photo.content_type).lower()
++    if content_type not in ALLOWED_PROFILE_PHOTO_TYPES:
++        raise HTTPException(status_code=400, detail="Format accepté : JPEG, PNG ou WebP.")
++
++    content = await photo.read(MAX_PROFILE_PHOTO_BYTES + 1)
++    if not content:
++        raise HTTPException(status_code=400, detail="Le fichier est vide.")
++    if len(content) > MAX_PROFILE_PHOTO_BYTES:
++        raise HTTPException(status_code=400, detail="La photo ne doit pas dépasser 5 Mo.")
++
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                profile, _, _ = people_fetch_profile_context(cur, request, id_effectif)
++                previous_path = _read_photo_path(cur, profile)
++                path = _photo_path(profile, content_type)
++
++                response = requests.post(
++                    _storage_url(path),
++                    headers={**_storage_headers(content_type), "x-upsert": "true"},
++                    data=content,
++                    timeout=30,
++                )
++                if response.status_code >= 400:
++                    raise HTTPException(status_code=500, detail="Impossible d’enregistrer la photo de profil.")
++
++                _write_photo_path(cur, profile, path)
++            conn.commit()
++
++        if previous_path and previous_path != path:
++            requests.delete(_storage_url(previous_path), headers=_storage_headers(), timeout=15)
++
++        return {"saved": True, "has_photo": True}
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/informations/photo error: {exc}")
++
++
++@router.get("/people/informations/{id_effectif}/photo")
++def people_get_photo(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                profile, _, _ = people_fetch_profile_context(cur, request, id_effectif)
++                path = _read_photo_path(cur, profile)
++        if not path:
++            raise HTTPException(status_code=404, detail="Aucune photo de profil.")
++
++        response = requests.get(_storage_url(path), headers=_storage_headers(), timeout=20)
++        if response.status_code == 404:
++            raise HTTPException(status_code=404, detail="Aucune photo de profil.")
++        if response.status_code >= 400:
++            raise HTTPException(status_code=500, detail="Impossible de charger la photo de profil.")
++
++        return Response(
++            content=response.content,
++            media_type=response.headers.get("content-type") or "image/jpeg",
++            headers={"Cache-Control": "private, max-age=300"},
++        )
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/informations/photo error: {exc}")
+diff --git a/unified_api/app/routers/people_portal_parcours.py b/unified_api/app/routers/people_portal_parcours.py
+new file mode 100644
+index 0000000..f1d964d
+--- /dev/null
++++ b/unified_api/app/routers/people_portal_parcours.py
+@@ -0,0 +1,90 @@
++from fastapi import APIRouter, HTTPException, Request
++from psycopg.rows import dict_row
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import peoplepeople_fetch_profile_context
++router = APIRouter()
++
++@router.get("/people/parcours/{id_effectif}")
++def people_parcours(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_owner = profile.get("id_owner") or ""
++
++                cur.execute(
++                    """
++                    SELECT
++                      hp.id_effectif_historique_poste,
++                      hp.id_poste,
++                      COALESCE(fp.intitule_poste, 'Poste') AS intitule_poste,
++                      hp.date_debut,
++                      hp.date_fin,
++                      COALESCE(hp.commentaire, '') AS commentaire,
++                      COALESCE(hp.source_changement, '') AS source_changement
++                    FROM public.tbl_effectif_client_historique_poste hp
++                    LEFT JOIN public.tbl_fiche_poste fp
++                      ON fp.id_poste = hp.id_poste
++                     AND fp.id_owner = %s
++                     AND COALESCE(fp.actif, TRUE) = TRUE
++                    WHERE hp.id_effectif = %s
++                      AND COALESCE(hp.archive, FALSE) = FALSE
++                    ORDER BY COALESCE(hp.date_debut, CURRENT_DATE) ASC, hp.date_creation ASC
++                    """,
++                    (id_owner, id_effectif),
++                )
++                postes = cur.fetchall() or []
++
++                cur.execute(
++                    """
++                    SELECT
++                      c.id_comp,
++                      c.intitule,
++                      COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
++                      a.date_audit,
++                      a.resultat_eval,
++                      COALESCE(a.methode_eval, '') AS methode_eval
++                    FROM public.tbl_effectif_client_audit_competence a
++                    JOIN public.tbl_effectif_client_competence ec
++                      ON ec.id_effectif_competence = a.id_effectif_competence
++                     AND ec.id_effectif_client = %s
++                    JOIN public.tbl_competence c
++                      ON c.id_comp = ec.id_comp
++                     AND COALESCE(c.masque, FALSE) = FALSE
++                    LEFT JOIN public.tbl_domaine_competence dc
++                      ON dc.id_domaine_competence = c.domaine
++                     AND COALESCE(dc.masque, FALSE) = FALSE
++                    WHERE a.resultat_eval IS NOT NULL
++                    ORDER BY a.date_audit ASC, c.intitule ASC
++                    LIMIT 240
++                    """,
++                    (id_effectif,),
++                )
++                audits = cur.fetchall() or []
++
++                cur.execute(
++                    """
++                    SELECT
++                      hf.id_historique_formation,
++                      hf.date_formation,
++                      hf.date_debut_formation,
++                      hf.date_fin_formation,
++                      hf.intitule,
++                      COALESCE(hf.organisme, '') AS organisme,
++                      COALESCE(hf.source, '') AS source
++                    FROM public.tbl_effectif_client_historique_formation hf
++                    WHERE hf.id_effectif = %s
++                      AND hf.id_ent = %s
++                      AND COALESCE(hf.archive, FALSE) = FALSE
++                    ORDER BY hf.date_formation DESC
++                    LIMIT 20
++                    """,
++                    (id_effectif, id_owner),
++                )
++                formations = cur.fetchall() or []
++
++        return {"profile": profile, "postes": postes, "audits": audits, "formations": formations}
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=f"people/demo/parcours error: {e}")

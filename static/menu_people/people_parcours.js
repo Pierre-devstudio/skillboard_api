@@ -62,7 +62,7 @@
   async function load() {
     const id = P.getEffectifId();
     if (!id) return;
-    const data = await P.api(`/people/demo/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+    const data = await P.api(`/people/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
     if (data.error) {
       const el = byId("ppPosteTimeline");
       if (el) el.innerHTML = P.itemEmpty(data.error);

@@ -1,25 +1,90 @@
-<section id="view-informations">
-  <div class="pp-page-head">
-    <div>
-      <div class="pp-eyebrow">Profil salarié</div>
-      <h1>Vos informations</h1>
-      <p>Consultation des informations rattachées à votre profil People.</p>
+<section id="view-informations" class="people-informations">
+  <div class="card people-page-hero">
+    <div class="people-page-hero__main">
+      <div class="people-page-hero__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-info"></use></svg>
+      </div>
+      <div>
+        <div class="card-title people-page-hero__title">Vos informations</div>
+        <div class="card-sub people-page-hero__sub">Consultez et mettez à jour vos informations personnelles.</div>
+      </div>
     </div>
+    <button type="button" class="people-profile-photo" id="ppProfilePhotoButton" aria-label="Changer la photo de profil" title="Changer la photo de profil">
+      <img id="ppProfilePhoto" alt="Photo de profil" hidden>
+      <span id="ppProfileInitials" aria-hidden="true">–</span>
+      <span class="people-profile-photo__edit" aria-hidden="true">
+        <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
+      </span>
+    </button>
+    <input type="file" id="ppProfilePhotoInput" accept="image/jpeg,image/png,image/webp" hidden>
   </div>
 
-  <div class="pp-grid pp-grid-2">
-    <div class="card pp-card">
-      <div class="card-title">Identité</div>
-      <div class="pp-info-list" id="ppInfoIdentity"></div>
-    </div>
-    <div class="card pp-card">
-      <div class="card-title">Poste et rattachement</div>
-      <div class="pp-info-list" id="ppInfoPoste"></div>
-    </div>
+  <div id="ppInfoError" class="sb-inline-msg people-informations-message" aria-live="polite"></div>
+
+  <div class="people-informations-grid people-informations-grid--main">
+    <article class="card people-information-card people-information-card--identity">
+      <div class="people-information-card-head">
+        <div class="people-information-card-title">
+          <span class="people-information-card-title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-user"></use></svg>
+          </span>
+          <span>Identité et coordonnées</span>
+        </div>
+        <button type="button" class="sb-icon-btn" id="ppIdentityEdit" aria-label="Modifier l’identité et les coordonnées" title="Modifier">
+          <svg viewBox="0 0 24 24" class="ns-icon-use" aria-hidden="true"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
+        </button>
+      </div>
+      <div class="people-information-summary-grid" id="ppInfoIdentity"></div>
+      <form id="ppIdentityForm" class="people-identity-form" hidden>
+        <div class="people-identity-form-grid">
+          <label class="sb-field"><span>Civilité</span><input id="ppIdentityCivilite" type="text"></label>
+          <label class="sb-field"><span>Prénom</span><input id="ppIdentityPrenom" type="text" required></label>
+          <label class="sb-field"><span>Nom</span><input id="ppIdentityNom" type="text" required></label>
+          <label class="sb-field"><span>Téléphone</span><input id="ppIdentityTelephone" type="tel"></label>
+          <label class="sb-field people-identity-form-grid__wide"><span>Adresse</span><input id="ppIdentityAdresse" type="text"></label>
+          <label class="sb-field"><span>Code postal</span><input id="ppIdentityCodePostal" type="text"></label>
+          <label class="sb-field"><span>Ville</span><input id="ppIdentityVille" type="text"></label>
+          <label class="sb-field"><span>Pays</span><input id="ppIdentityPays" type="text"></label>
+          <label class="sb-field"><span>Date de naissance</span><input id="ppIdentityDateNaissance" type="date"></label>
+        </div>
+        <div id="ppIdentityMessage" class="sb-inline-msg sb-modal-inline-msg" aria-live="polite"></div>
+        <div class="sb-actions sb-modal-edit-actions">
+          <button type="button" class="sb-btn sb-btn--soft" id="ppIdentityCancel">Annuler</button>
+          <button type="submit" class="sb-btn sb-btn--accent" id="ppIdentitySave">Enregistrer</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="card people-information-card people-information-card--company">
+      <div class="people-information-card-title">
+        <span class="people-information-card-title-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-organisation"></use></svg>
+        </span>
+        <span>Situation dans l’entreprise</span>
+      </div>
+      <div class="people-information-company-list" id="ppInfoCompany"></div>
+    </article>
   </div>
 
-  <div class="card pp-card">
-    <div class="card-title">Mission et perspectives</div>
-    <div id="ppInfoMission" class="pp-text-block"></div>
+  <div class="people-informations-grid people-informations-grid--secondary">
+    <article class="card people-information-card people-information-card--projection">
+      <div class="people-information-card-title">
+        <span class="people-information-card-title-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-checklist"></use></svg>
+        </span>
+        <span>Parcours et projection</span>
+      </div>
+      <div class="people-information-projection-content" id="ppInfoProjection"></div>
+    </article>
+
+    <article class="card people-information-card people-information-card--roles">
+      <div class="people-information-card-title">
+        <span class="people-information-card-title-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-competence"></use></svg>
+        </span>
+        <span>Rôles et responsabilités</span>
+      </div>
+      <div class="people-information-roles-grid" id="ppInfoRoles"></div>
+    </article>
   </div>
 </section>

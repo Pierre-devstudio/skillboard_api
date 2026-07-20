@@ -32,7 +32,7 @@
     el.querySelectorAll("[data-break-archive]").forEach(btn => {
       btn.onclick = async () => {
         const idEffectif = P.getEffectifId();
-        await P.api(`/people/demo/calendar/${encodeURIComponent(idEffectif)}/breaks/${encodeURIComponent(btn.getAttribute("data-break-archive"))}/archive`, { method: "POST" }).catch(() => null);
+        await P.api(`/people/calendrier/${encodeURIComponent(idEffectif)}/breaks/${encodeURIComponent(btn.getAttribute("data-break-archive"))}/archive`, { method: "POST" }).catch(() => null);
         load();
       };
     });
@@ -54,7 +54,7 @@
   async function load() {
     const id = P.getEffectifId();
     if (!id) return;
-    cache = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+    cache = await P.api(`/people/calendrier/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
     if (cache.error) {
       const el = byId("ppBreakList");
       if (el) el.innerHTML = P.itemEmpty(cache.error);
@@ -70,7 +70,7 @@
     const start = byId("ppBreakStart")?.value || "";
     const end = byId("ppBreakEnd")?.value || "";
     if (msg) msg.textContent = "Enregistrement…";
-    const res = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}/breaks`, {
+    const res = await P.api(`/people/calendrier/${encodeURIComponent(id)}/breaks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date_debut: start, date_fin: end })

@@ -1,13 +1,18 @@
 (function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
+  const COMING_SOON = "/menu_people/people_coming_soon.html";
+
   window.portal.registerMenu({ view: "dashboard", htmlUrl: "/menu_people/people_dashboard.html" });
   window.portal.registerMenu({ view: "informations", htmlUrl: "/menu_people/people_informations.html" });
   window.portal.registerMenu({ view: "calendrier", htmlUrl: "/menu_people/people_calendrier.html" });
-  window.portal.registerMenu({ view: "parcours", htmlUrl: "/menu_people/people_parcours.html" });
-  window.portal.registerMenu({ view: "competences", htmlUrl: "/menu_people/people_competences.html" });
-  window.portal.registerMenu({ view: "auto_evaluation", htmlUrl: "/menu_people/people_auto_evaluation.html" });
+  window.portal.registerMenu({ view: "echanges", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "entretiens", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "formations", htmlUrl: "/menu_people/people_formations.html" });
+  window.portal.registerMenu({ view: "competences", htmlUrl: "/menu_people/people_competences.html" });
+  window.portal.registerMenu({ view: "parcours", htmlUrl: "/menu_people/people_parcours.html" });
+  window.portal.registerMenu({ view: "mobilite_interne", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });
 
   function byId(id){ return document.getElementById(id); }
 
@@ -84,12 +89,16 @@
   };
 
   async function tryFillTopbar() {
-    const info = byId("topbarInfo");
     const name = byId("topbarName");
+    const subtitle = byId("topbarSubtitle");
+    const userName = byId("topbarUserName");
+    const userRole = byId("topbarUserRole");
     const sel = byId("selPeopleProfile");
 
-    if (info) info.textContent = "Chargement…";
-    if (name) name.textContent = "People";
+    if (name) name.textContent = "Entreprise";
+    if (subtitle) subtitle.textContent = "Console People · Accès actif";
+    if (userName) userName.textContent = "Chargement…";
+    if (userRole) userRole.textContent = "";
 
     try {
       if (!window.PortalAuthCommon) return;
@@ -101,7 +110,15 @@
       const rMe = await fetch(`${API_BASE}/people/me`, { headers: { "Authorization": `Bearer ${token}` } });
       const me = await rMe.json().catch(() => null);
 
-      if (rMe.ok && me && info) info.textContent = (me.email || "");
+      if (rMe.ok && me) {
+        const metadata = me.user_metadata || {};
+        const metadataName = [
+          metadata.prenom || metadata.first_name || "",
+          metadata.nom || metadata.last_name || ""
+        ].join(" ").trim();
+        if (userName) userName.textContent = metadataName || me.prenom || me.email || "Utilisateur connecté";
+        if (userRole) userRole.textContent = me.is_super_admin ? "Super-administrateur" : "Collaborateur";
+      }
 
       const rScope = await fetch(`${API_BASE}/people/me/scope`, { headers: { "Authorization": `Bearer ${token}` } });
       const scope = await rScope.json().catch(() => null);
@@ -114,7 +131,10 @@
         currentProfile = currentProfile || scope.profiles[0] || null;
 
         const fullName = currentProfile ? [currentProfile.prenom || "", currentProfile.nom || ""].join(" ").trim() : "";
-        if (name) name.textContent = fullName || "People";
+        const ownerName = String(currentProfile?.nom_owner || "").trim();
+        if (name) name.textContent = ownerName || "Entreprise";
+        if (subtitle) subtitle.textContent = "Console People · Accès actif";
+        if (userName && fullName) userName.textContent = fullName;
 
         if (sel) {
           if (scope.profiles.length > 1) {
@@ -138,7 +158,7 @@
           }
         }
       } else {
-        if (name) name.textContent = "People";
+        if (name) name.textContent = "Entreprise";
         if (sel) sel.style.display = "none";
       }
     } catch (_) {}

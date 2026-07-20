@@ -6,8 +6,8 @@
   async function load() {
     const id = P.getEffectifId();
     if (!id) return;
-    const cal = await P.api(`/people/demo/calendar/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
-    const par = await P.api(`/people/demo/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+    const cal = await P.api(`/people/calendrier/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+    const par = await P.api(`/people/parcours/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
 
     const up = byId("ppFormUpcoming");
     if (up) {
