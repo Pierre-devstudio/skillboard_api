@@ -1197,6 +1197,10 @@
   grid-column:1 / -1;
 }
 
+#view-informations.people-informations .people-information-projection-value--regular{
+  font-weight:var(--ns-weight-regular, 400);
+}
+
 #view-informations.people-informations .people-information-roles-grid{
   display:grid;
   gap:12px;
@@ -1219,6 +1223,16 @@
 
 #view-informations.people-informations .people-information-role-item.is-active strong{
   color:var(--accent);
+}
+
+#view-informations.people-informations .people-information-role-item--manager .people-information-summary-icon{
+  background:rgba(2,132,199,.08);
+  color:#0284c7;
+}
+
+#view-informations.people-informations .people-information-role-item--formateur .people-information-summary-icon{
+  background:rgba(248,47,204,.08);
+  color:#f82fcc;
 }
 
 @media (max-width:980px){
@@ -1513,4 +1527,102 @@
   #view-informations.people-informations .people-education-actions{
     width:100%;
   }
+}
+
+/* People — Calendrier */
+#view-calendrier .pp-calendar-layout{
+  display:grid;
+  grid-template-columns:minmax(220px, 280px) minmax(0, 1fr);
+  gap:16px;
+  align-items:start;
+  margin-top:16px;
+}
+#view-calendrier .pp-calendar-filters{
+  display:grid;
+  gap:12px;
+  position:sticky;
+  top:14px;
+}
+#view-calendrier .pp-calendar-filter-reset{width:100%;justify-content:center}
+#view-calendrier .pp-calendar-filter-card{padding:0;overflow:hidden}
+#view-calendrier .pp-calendar-filter-head{
+  width:100%;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 14px;border:0;background:#fff;color:var(--text);text-align:left;cursor:pointer;
+}
+#view-calendrier .pp-calendar-filter-head span{display:grid;gap:3px;min-width:0}
+#view-calendrier .pp-calendar-filter-head strong{font-size:var(--ns-text-sm);font-weight:var(--ns-weight-semibold)}
+#view-calendrier .pp-calendar-filter-head small{color:var(--muted);font-size:var(--ns-text-xs);font-weight:var(--ns-weight-medium)}
+#view-calendrier .pp-calendar-filter-head svg{width:18px;height:18px;color:var(--accent);transition:transform .16s ease}
+#view-calendrier .pp-calendar-filter-card:not(.is-open) .pp-calendar-filter-head svg{transform:rotate(-90deg)}
+#view-calendrier .pp-calendar-filter-body{display:none;padding:0 12px 12px}
+#view-calendrier .pp-calendar-filter-card.is-open .pp-calendar-filter-body{display:grid;gap:4px}
+#view-calendrier .pp-calendar-check-item{
+  display:flex;align-items:center;gap:9px;min-height:32px;padding:6px 7px;border-radius:9px;cursor:pointer;
+  font-size:var(--ns-text-sm);font-weight:var(--ns-weight-semibold);
+}
+#view-calendrier .pp-calendar-check-item:hover{background:rgba(var(--pp-accent-rgb), .06)}
+#view-calendrier .pp-calendar-check-item input{width:auto;margin:0}
+#view-calendrier .pp-calendar-actions-card{display:grid;gap:10px;padding:14px}
+#view-calendrier .pp-calendar-actions-card .card-title{margin:0 0 2px}
+#view-calendrier .pp-calendar-actions-card .sb-btn{width:100%;justify-content:center}
+#view-calendrier .pp-calendar-card{min-width:0;padding:0;overflow:hidden}
+#view-calendrier .pp-calendar-head{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-bottom:1px solid var(--border);
+}
+#view-calendrier .pp-calendar-head .card-title{text-transform:capitalize}
+#view-calendrier .pp-calendar-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#view-calendrier .pp-calendar-nav-btn{min-width:38px;padding-inline:10px}
+#view-calendrier .pp-calendar-expand-btn{width:40px;padding:0;justify-content:center}
+#view-calendrier .pp-calendar-expand-btn svg{width:18px;height:18px}
+#view-calendrier .pp-calendar-weekdays,
+#view-calendrier .pp-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+#view-calendrier .pp-calendar-weekdays{border-bottom:1px solid var(--border);background:var(--bg)}
+#view-calendrier .pp-calendar-weekdays span{
+  padding:9px 8px;text-align:center;color:var(--muted);font-size:var(--ns-text-xs);font-weight:var(--ns-weight-semibold);
+}
+#view-calendrier .pp-calendar-day{
+  min-height:118px;padding:8px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:#fff;
+}
+#view-calendrier .pp-calendar-day:nth-child(7n){border-right:0}
+#view-calendrier .pp-calendar-day.is-outside{background:var(--bg);color:var(--muted)}
+#view-calendrier .pp-calendar-day.is-today{box-shadow:inset 0 0 0 2px rgba(var(--pp-accent-rgb), .34)}
+#view-calendrier .pp-calendar-day-number{font-size:var(--ns-text-sm);font-weight:var(--ns-weight-semibold);margin-bottom:6px}
+#view-calendrier .pp-calendar-day-events{display:grid;gap:4px}
+#view-calendrier .pp-calendar-event{
+  width:100%;min-width:0;padding:5px 7px;border:0;border-radius:8px;background:rgba(var(--pp-accent-rgb), .10);
+  color:var(--text);font-size:var(--ns-text-xs);font-weight:var(--ns-weight-semibold);text-align:left;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;
+}
+#view-calendrier .pp-calendar-event[data-event-source="people"],
+#view-calendrier .pp-calendar-event[data-event-source="break"]{cursor:pointer}
+#view-calendrier .pp-calendar-event--formation{background:var(--ns-success-bg);color:var(--ns-success-text)}
+#view-calendrier .pp-calendar-event--indisponibilite{background:var(--ns-neutral-bg);color:var(--ns-neutral-text)}
+#view-calendrier .pp-calendar-event--entretien_annuel,
+#view-calendrier .pp-calendar-event--entretien_competences,
+#view-calendrier .pp-calendar-event--suivi_post_formation{background:var(--ns-info-bg);color:var(--ns-info-text)}
+#view-calendrier .pp-calendar-event--demande_entretien_manager,
+#view-calendrier .pp-calendar-event--demande_entretien_rh{background:var(--ns-warning-bg);color:var(--ns-warning-text)}
+#view-calendrier .pp-calendar-backdrop{position:fixed;inset:0;z-index:1090;background:rgba(15,23,42,.48)}
+#view-calendrier .pp-calendar-card.is-expanded{
+  position:fixed;inset:18px;z-index:1100;display:flex;flex-direction:column;max-height:calc(100vh - 36px);background:#fff;
+}
+#view-calendrier .pp-calendar-card.is-expanded .pp-calendar-grid{flex:1;overflow:auto}
+#view-calendrier .pp-calendar-card.is-expanded .pp-calendar-day{min-height:130px}
+body.pp-calendar-open{overflow:hidden}
+#view-calendrier .pp-form-grid select,
+#view-calendrier .pp-form-grid textarea{
+  width:100%;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);padding:10px 12px;
+  font:inherit;box-sizing:border-box;
+}
+#view-calendrier .pp-form-grid textarea{resize:vertical}
+
+@media(max-width:980px){
+  #view-calendrier .pp-calendar-layout{grid-template-columns:1fr}
+  #view-calendrier .pp-calendar-filters{position:relative;top:auto}
+}
+@media(max-width:720px){
+  #view-calendrier .pp-calendar-head{align-items:flex-start;flex-direction:column}
+  #view-calendrier .pp-calendar-nav{justify-content:flex-start}
+  #view-calendrier .pp-calendar-day{min-height:92px;padding:5px}
+  #view-calendrier .pp-calendar-event{padding:4px;font-size:var(--ns-text-xs)}
 }

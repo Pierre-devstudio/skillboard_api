@@ -1,32 +1,80 @@
 <section id="view-calendrier">
-  <div class="pp-page-head pp-page-head-row">
-    <div>
-      <div class="pp-eyebrow">Planning personnel</div>
-      <h1>Calendrier</h1>
-      <p>Indisponibilités déclarées et formations programmées.</p>
+  <div class="card people-page-hero">
+    <div class="people-page-hero__main">
+      <div class="people-page-hero__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg>
+      </div>
+      <div>
+        <div class="card-title people-page-hero__title">Votre calendrier</div>
+        <div class="card-sub people-page-hero__sub">Retrouvez vos événements, vos formations et vos indisponibilités.</div>
+      </div>
     </div>
-    <button class="sb-btn sb-btn--accent" id="ppBtnOpenBreak">Ajouter une indisponibilité</button>
   </div>
 
-  <div class="pp-grid pp-grid-2">
-    <div class="card pp-card">
-      <div class="card-title">Indisponibilités</div>
-      <div class="pp-list" id="ppBreakList"></div>
-    </div>
-    <div class="card pp-card">
-      <div class="card-title">Formations programmées</div>
-      <div class="pp-list" id="ppTrainingList"></div>
-    </div>
+  <div id="ppCalendarMsg" class="pp-inline-msg" aria-live="polite"></div>
+
+  <div class="pp-calendar-layout">
+    <aside class="pp-calendar-filters" aria-label="Filtres du calendrier">
+      <button type="button" class="sb-btn sb-btn--soft pp-calendar-filter-reset" id="ppCalendarResetFilters">
+        Réinitialiser les filtres
+      </button>
+
+      <section class="card pp-calendar-filter-card is-open">
+        <button type="button" class="pp-calendar-filter-head" data-pp-filter-toggle aria-expanded="true">
+          <span>
+            <strong>Types d’événements</strong>
+            <small>Afficher ou masquer plusieurs catégories.</small>
+          </span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-constraints"></use></svg>
+        </button>
+        <div class="pp-calendar-filter-body" id="ppCalendarTypeFilters"></div>
+      </section>
+
+      <section class="card pp-calendar-actions-card">
+        <div class="card-title">Mes actions</div>
+        <button type="button" class="sb-btn sb-btn--accent" id="ppBtnOpenEvent">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-plus"></use></svg></span>
+          <span>Ajouter un événement</span>
+        </button>
+        <button type="button" class="sb-btn sb-btn--soft" id="ppBtnOpenBreak">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg></span>
+          <span>Ajouter une indisponibilité</span>
+        </button>
+      </section>
+    </aside>
+
+    <main class="card pp-calendar-card" id="ppCalendarCard">
+      <div class="pp-calendar-head">
+        <div>
+          <div class="card-title" id="ppCalendarMonth">Calendrier</div>
+          <div class="card-sub" id="ppCalendarSub">Chargement…</div>
+        </div>
+        <div class="pp-calendar-nav">
+          <button type="button" class="sb-btn sb-btn--soft pp-calendar-nav-btn" id="ppCalendarPrev" aria-label="Mois précédent">‹</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="ppCalendarToday">Aujourd’hui</button>
+          <button type="button" class="sb-btn sb-btn--soft pp-calendar-nav-btn" id="ppCalendarNext" aria-label="Mois suivant">›</button>
+          <button type="button" class="sb-btn sb-btn--soft pp-calendar-expand-btn" id="ppCalendarExpand" aria-label="Agrandir le calendrier" title="Agrandir le calendrier" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-calendar"></use></svg>
+          </button>
+        </div>
+      </div>
+      <div class="pp-calendar-weekdays" aria-hidden="true">
+        <span>Lun.</span><span>Mar.</span><span>Mer.</span><span>Jeu.</span><span>Ven.</span><span>Sam.</span><span>Dim.</span>
+      </div>
+      <div id="ppCalendarGrid" class="pp-calendar-grid"></div>
+    </main>
   </div>
+
+  <div id="ppCalendarBackdrop" class="pp-calendar-backdrop" hidden></div>
 
   <div class="pp-modal-backdrop" id="ppBreakModal" style="display:none;">
     <div class="pp-modal-card pp-modal-sm">
       <div class="pp-modal-head">
         <div>
-          <div class="pp-modal-title">Ajouter une indisponibilité</div>
+          <div class="pp-modal-title" id="ppBreakModalTitle">Ajouter une indisponibilité</div>
           <div class="pp-modal-sub">Absence, indisponibilité ou période non disponible.</div>
         </div>
-        <button class="pp-modal-x" id="ppBreakClose">×</button>
+        <button class="pp-modal-x" id="ppBreakClose" aria-label="Fermer">×</button>
       </div>
       <div class="pp-form-grid">
         <label>Date de début<input type="date" id="ppBreakStart"></label>
@@ -34,8 +82,43 @@
       </div>
       <div class="pp-modal-foot">
         <span class="pp-inline-msg" id="ppBreakMsg"></span>
+        <button class="sb-btn sb-btn--soft" id="ppBreakDelete" style="display:none;">Supprimer</button>
         <button class="sb-btn sb-btn--soft" id="ppBreakCancel">Annuler</button>
         <button class="sb-btn sb-btn--accent" id="ppBreakSave">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pp-modal-backdrop" id="ppEventModal" style="display:none;">
+    <div class="pp-modal-card pp-modal-sm">
+      <div class="pp-modal-head">
+        <div>
+          <div class="pp-modal-title" id="ppEventModalTitle">Ajouter un événement</div>
+          <div class="pp-modal-sub">Planifiez une demande, une préparation ou un événement professionnel personnel.</div>
+        </div>
+        <button class="pp-modal-x" id="ppEventClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="pp-modal-body">
+        <div class="pp-form-grid">
+          <label>Type
+            <select id="ppEventType">
+              <option value="demande_entretien_manager">Demande d’entretien manager</option>
+              <option value="demande_entretien_rh">Demande d’entretien RH</option>
+              <option value="preparation_entretien">Préparation d’entretien</option>
+              <option value="evenement_personnel">Autre événement professionnel</option>
+            </select>
+          </label>
+          <label>Titre<input type="text" id="ppEventTitle"></label>
+          <label>Date et heure de début<input type="datetime-local" id="ppEventStart"></label>
+          <label>Date et heure de fin<input type="datetime-local" id="ppEventEnd"></label>
+          <label class="pp-span-2">Description<textarea id="ppEventDescription" rows="4"></textarea></label>
+        </div>
+      </div>
+      <div class="pp-modal-foot">
+        <span class="pp-inline-msg" id="ppEventMsg"></span>
+        <button class="sb-btn sb-btn--soft" id="ppEventDelete" style="display:none;">Supprimer</button>
+        <button class="sb-btn sb-btn--soft" id="ppEventCancel">Annuler</button>
+        <button class="sb-btn sb-btn--accent" id="ppEventSave">Enregistrer</button>
       </div>
     </div>
   </div>

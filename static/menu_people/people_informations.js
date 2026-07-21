@@ -33,7 +33,19 @@
   }
 
   function companyItem(label, value) { return `<div class="people-information-company-item"><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${P.escapeHtml(valueOrDash(value))}</strong></div>`; }
-  function projectionItem(label, value, wide) { return `<div class="people-information-projection-item${wide ? " people-information-projection-item--wide" : ""}"><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${P.escapeHtml(valueOrDash(value))}</strong></div>`; }
+  function projectionItem(label, value, wide, valueClass) {
+    return `<div class="people-information-projection-item${wide ? " people-information-projection-item--wide" : ""}"><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong${valueClass ? ` class="${valueClass}"` : ""}>${P.escapeHtml(valueOrDash(value))}</strong></div>`;
+  }
+
+  function postePerspectiveLabel(value) {
+    const raw = String(value || "").trim();
+    const normalized = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (!raw || normalized === "aucune") return "Aucune évolution formalisée pour ce poste";
+    if (normalized === "faible") return "Évolution limitée dans le cadre actuel du poste";
+    if (normalized === "moderee") return "Évolution possible avec élargissement progressif des responsabilités";
+    if (normalized === "forte") return "Évolution importante possible vers des responsabilités élargies";
+    return raw;
+  }
 
   function selectOptions(items, selectedValue) {
     const selected = String(selectedValue || "").trim();
@@ -85,7 +97,7 @@
       ${read}${edit}
     </section>`;
   }
-  function roleItem(label, active, symbol) { return `<div class="people-information-role-item${active ? " is-active" : ""}"><span class="people-information-summary-icon" aria-hidden="true">${icon(symbol)}</span><span><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${active ? "Oui" : "Non"}</strong></span></div>`; }
+  function roleItem(label, active, symbol, roleClass) { return `<div class="people-information-role-item${active ? " is-active" : ""}${roleClass ? ` ${roleClass}` : ""}"><span class="people-information-summary-icon" aria-hidden="true">${icon(symbol)}</span><span><span class="people-information-summary-label">${P.escapeHtml(label)}</span><strong>${active ? "Oui" : "Non"}</strong></span></div>`; }
 
   function setMessage(host, text, isError) {
     if (!host) return;
@@ -180,13 +192,13 @@
 
     const projection = byId("ppInfoProjection");
     if (projection) {
-      projection.innerHTML = `${renderEducation(profile)}<section class="people-information-projection-zone"><div class="people-information-projection-zone-title"><span class="people-information-summary-icon" aria-hidden="true">${icon("ns-icon-job")}</span><span>Poste et perspectives</span></div><div class="people-information-projection-grid">${projectionItem("Mission principale", profile.mission_principale, true)}${projectionItem("Perspectives d’évolution", profile.perspectives_evolution, true)}</div></section>`;
+      projection.innerHTML = `${renderEducation(profile)}<section class="people-information-projection-zone"><div class="people-information-projection-zone-title"><span class="people-information-summary-icon" aria-hidden="true">${icon("ns-icon-job")}</span><span>Poste et perspectives</span></div><div class="people-information-projection-grid">${projectionItem("Mission principale", profile.mission_principale, true, "people-information-projection-value--regular")}${projectionItem("Perspectives d’évolution du poste", postePerspectiveLabel(profile.perspectives_evolution), true)}</div></section>`;
       bindEducationActions();
       setEducationEditMode(educationEditing, false);
     }
 
     const roles = byId("ppInfoRoles");
-    if (roles) roles.innerHTML = [roleItem("Manager", Boolean(profile.ismanager), "ns-icon-user"), roleItem("Formateur", Boolean(profile.isformateur), "ns-icon-checklist")].join("");
+    if (roles) roles.innerHTML = [roleItem("Manager", Boolean(profile.ismanager), "ns-icon-users", "people-information-role-item--manager"), roleItem("Formateur", Boolean(profile.isformateur), "ns-icon-legacy-05d2e7645abd", "people-information-role-item--formateur")].join("");
 
     const initials = byId("ppProfileInitials");
     if (initials) initials.textContent = `${String(profile.prenom || "").charAt(0)}${String(profile.nom || "").charAt(0)}`.toUpperCase() || "–";
