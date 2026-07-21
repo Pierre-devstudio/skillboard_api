@@ -89,67 +89,38 @@ def _photo_path(profile: dict, content_type: str) -> str:
 
 
 def _read_photo_path(cur, profile: dict) -> str:
-    source_kind = people_clean(profile.get("source_row_kind"))
     id_effectif = people_clean(profile.get("id_effectif"))
     id_owner = people_clean(profile.get("id_owner"))
-    if source_kind == "utilisateur":
-        cur.execute(
-            """
-            SELECT photo_storage_path
-            FROM public.tbl_utilisateur
-            WHERE id_utilisateur = %s
-              AND COALESCE(archive, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (id_effectif,),
-        )
-    else:
-        cur.execute(
-            """
-            SELECT photo_storage_path
-            FROM public.tbl_effectif_client
-            WHERE id_effectif = %s
-              AND id_ent = %s
-              AND COALESCE(archive, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (id_effectif, id_owner),
-        )
+    cur.execute(
+        """
+        SELECT photo_storage_path
+        FROM public.tbl_effectif_client
+        WHERE id_effectif = %s
+          AND id_ent = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_effectif, id_owner),
+    )
     return people_clean((cur.fetchone() or {}).get("photo_storage_path"))
 
-
 def _write_photo_path(cur, profile: dict, path: str) -> None:
-    source_kind = people_clean(profile.get("source_row_kind"))
     id_effectif = people_clean(profile.get("id_effectif"))
     id_owner = people_clean(profile.get("id_owner"))
-    if source_kind == "utilisateur":
-        cur.execute(
-            """
-            UPDATE public.tbl_utilisateur
-            SET photo_storage_path = %s,
-                dernier_update = NOW()
-            WHERE id_utilisateur = %s
-              AND COALESCE(archive, FALSE) = FALSE
-            RETURNING id_utilisateur
-            """,
-            (path, id_effectif),
-        )
-    else:
-        cur.execute(
-            """
-            UPDATE public.tbl_effectif_client
-            SET photo_storage_path = %s,
-                dernier_update = NOW()
-            WHERE id_effectif = %s
-              AND id_ent = %s
-              AND COALESCE(archive, FALSE) = FALSE
-            RETURNING id_effectif
-            """,
-            (path, id_effectif, id_owner),
-        )
+    cur.execute(
+        """
+        UPDATE public.tbl_effectif_client
+        SET photo_storage_path = %s,
+            dernier_update = NOW()
+        WHERE id_effectif = %s
+          AND id_ent = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        RETURNING id_effectif
+        """,
+        (path, id_effectif, id_owner),
+    )
     if not cur.fetchone():
         raise HTTPException(status_code=404, detail="Profil People introuvable.")
-
 
 def _education_domains(cur) -> list[dict]:
     cur.execute(
@@ -222,7 +193,6 @@ def people_update_identity(id_effectif: str, payload: PeopleIdentityPayload, req
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 profile, _, _ = people_fetch_profile_context(cur, request, id_effectif)
-                source_kind = people_clean(profile.get("source_row_kind"))
                 id_owner = people_clean(profile.get("id_owner"))
                 values = (
                     people_clean(payload.civilite) or None,
@@ -235,46 +205,26 @@ def people_update_identity(id_effectif: str, payload: PeopleIdentityPayload, req
                     people_clean(payload.pays) or None,
                 )
 
-                if source_kind == "utilisateur":
-                    cur.execute(
-                        """
-                        UPDATE public.tbl_utilisateur
-                        SET ut_civilite = %s,
-                            ut_prenom = %s,
-                            ut_nom = %s,
-                            ut_tel = %s,
-                            ut_adresse = %s,
-                            ut_cp = %s,
-                            ut_ville = %s,
-                            ut_pays = %s,
-                            dernier_update = NOW()
-                        WHERE id_utilisateur = %s
-                          AND COALESCE(archive, FALSE) = FALSE
-                        RETURNING id_utilisateur
-                        """,
-                        (*values, id_effectif),
-                    )
-                else:
-                    cur.execute(
-                        """
-                        UPDATE public.tbl_effectif_client
-                        SET civilite_effectif = %s,
-                            prenom_effectif = %s,
-                            nom_effectif = %s,
-                            telephone_effectif = %s,
-                            adresse_effectif = %s,
-                            code_postal_effectif = %s,
-                            ville_effectif = %s,
-                            pays_effectif = %s,
-                            date_naissance_effectif = %s,
-                            dernier_update = NOW()
-                        WHERE id_effectif = %s
-                          AND id_ent = %s
-                          AND COALESCE(archive, FALSE) = FALSE
-                        RETURNING id_effectif
-                        """,
-                        (*values, date_naissance, id_effectif, id_owner),
-                    )
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client
+                    SET civilite_effectif = %s,
+                        prenom_effectif = %s,
+                        nom_effectif = %s,
+                        telephone_effectif = %s,
+                        adresse_effectif = %s,
+                        code_postal_effectif = %s,
+                        ville_effectif = %s,
+                        pays_effectif = %s,
+                        date_naissance_effectif = %s,
+                        dernier_update = NOW()
+                    WHERE id_effectif = %s
+                      AND id_ent = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    RETURNING id_effectif
+                    """,
+                    (*values, date_naissance, id_effectif, id_owner),
+                )
 
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Profil People introuvable.")

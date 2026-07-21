@@ -6,6 +6,7 @@
   let identityEditing = false;
   let educationEditing = false;
   let educationOptions = { levels: [], domains: [] };
+  const saveSuccessTimers = {};
 
   function byId(id) { return document.getElementById(id); }
   function valueOrDash(value) { const text = value == null ? "" : String(value).trim(); return text || "–"; }
@@ -66,18 +67,18 @@
           <span class="people-information-summary-icon" aria-hidden="true">${icon("ns-icon-checklist")}</span>
           <span>Formation</span>
         </div>
-        <div class="people-education-actions sb-modal-edit-actions">
-          <span id="ppEducationMessage" class="sb-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
-          <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="ppEducationCancel" hidden>
-            <span class="sb-btn-icon" aria-hidden="true">${icon("ns-icon-close")}</span>
-            Annuler
+        <div class="people-education-actions sb-actions">
+          <span id="ppEducationMessage" class="sb-save-success" aria-live="polite"></span>
+          <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="ppEducationEdit" aria-label="Modifier la formation" title="Modifier">
+            ${icon("ns-icon-edit")}
           </button>
           <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="ppEducationSave" hidden>
             <span class="sb-btn-icon" aria-hidden="true">${icon("ns-icon-save")}</span>
             Enregistrer
           </button>
-          <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="ppEducationEdit" aria-label="Modifier la formation" title="Modifier">
-            ${icon("ns-icon-edit")}
+          <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="ppEducationCancel" hidden>
+            <span class="sb-btn-icon" aria-hidden="true">${icon("ns-icon-close")}</span>
+            Annuler
           </button>
         </div>
       </div>
@@ -92,6 +93,45 @@
     host.classList.toggle("is-error", Boolean(isError));
     host.classList.toggle("is-success", Boolean(text) && !isError);
     host.classList.toggle("is-visible", Boolean(text));
+  }
+
+
+  function hideSaveSuccess(id) {
+    const el = byId(id);
+    if (!el) return;
+    if (saveSuccessTimers[id]) {
+      clearTimeout(saveSuccessTimers[id]);
+      delete saveSuccessTimers[id];
+    }
+    el.textContent = "";
+    el.style.display = "none";
+    el.classList.remove("is-error");
+  }
+
+  function showSaveSuccess(id) {
+    const el = byId(id);
+    if (!el) return;
+    hideSaveSuccess(id);
+    el.textContent = "Enregistré avec succès";
+    el.style.display = "inline-flex";
+    saveSuccessTimers[id] = setTimeout(() => {
+      el.textContent = "";
+      el.style.display = "none";
+      delete saveSuccessTimers[id];
+    }, 5000);
+  }
+
+  function showInlineError(id, message) {
+    const el = byId(id);
+    if (!el) return;
+    hideSaveSuccess(id);
+    el.textContent = message || "Une erreur est survenue.";
+    el.classList.add("is-error");
+    el.style.display = "inline-flex";
+  }
+
+  function normalizeComparable(value) {
+    return value == null ? "" : String(value).trim();
   }
 
   function renderIdentity(profile) {
@@ -168,7 +208,7 @@
     if (edit) edit.hidden = identityEditing;
     if (cancel) cancel.hidden = !identityEditing;
     if (save) save.hidden = !identityEditing;
-    if (clearMessage) setMessage(byId("ppIdentityMessage"), "", false);
+    if (clearMessage) hideSaveSuccess("ppIdentityMessage");
   }
 
   function setEducationEditMode(active, clearMessage = true) {
@@ -184,12 +224,13 @@
     if (edit) edit.hidden = educationEditing;
     if (cancel) cancel.hidden = !educationEditing;
     if (save) save.hidden = !educationEditing;
-    if (clearMessage) setMessage(byId("ppEducationMessage"), "", false);
+    if (clearMessage) hideSaveSuccess("ppEducationMessage");
   }
 
   function bindEducationActions() {
     byId("ppEducationEdit")?.addEventListener("click", () => setEducationEditMode(true));
     byId("ppEducationCancel")?.addEventListener("click", () => {
+      hideSaveSuccess("ppEducationMessage");
       educationEditing = false;
       render(currentProfile);
     });
@@ -198,21 +239,38 @@
 
   async function saveEducation() {
     const id = P.getEffectifId();
-    const msg = byId("ppEducationMessage");
     const save = byId("ppEducationSave");
-    if (!id) { setMessage(msg, "Profil People indisponible.", true); return; }
-    if (save) save.disabled = true;
+    if (!id) { showInlineError("ppEducationMessage", "Profil People indisponible."); return; }
+
+    hideSaveSuccess("ppEducationMessage");
     const payload = {
       niveau_education: byId("ppEducationLevel")?.value || "",
       domaine_education: byId("ppEducationDomain")?.value || ""
     };
-    const result = await P.api(`/people/informations/${encodeURIComponent(id)}/education`, { method: "PATCH", body: JSON.stringify(payload) }).catch(err => ({ error: err.message }));
+    const hasChanges =
+      normalizeComparable(payload.niveau_education) !== normalizeComparable(currentProfile.niveau_education) ||
+      normalizeComparable(payload.domaine_education) !== normalizeComparable(currentProfile.domaine_education);
+
+    if (!hasChanges) {
+      setEducationEditMode(false, false);
+      return;
+    }
+
+    if (save) save.disabled = true;
+    const result = await P.api(
+      `/people/informations/${encodeURIComponent(id)}/education`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    ).catch(err => ({ error: err.message }));
     if (save) save.disabled = false;
-    if (result.error) { setMessage(msg, result.error, true); return; }
+    if (result.error) { showInlineError("ppEducationMessage", result.error); return; }
     currentProfile = result.profile || { ...currentProfile, ...payload };
     educationEditing = false;
     render(currentProfile);
-    setMessage(byId("ppEducationMessage"), "Formation enregistrée.", false);
+    showSaveSuccess("ppEducationMessage");
   }
 
   async function authToken() {
@@ -241,13 +299,16 @@
 
   byId("ppIdentityEdit")?.addEventListener("click", () => setIdentityEditMode(true));
   byId("ppIdentityCancel")?.addEventListener("click", () => {
+    hideSaveSuccess("ppIdentityMessage");
     renderIdentity(currentProfile);
-    setIdentityEditMode(false);
+    setIdentityEditMode(false, false);
   });
   byId("ppIdentitySave")?.addEventListener("click", async () => {
-    const id = P.getEffectifId(); const msg = byId("ppIdentityMessage"); const save = byId("ppIdentitySave");
-    if (!id) { setMessage(msg, "Profil People indisponible.", true); return; }
-    if (save) save.disabled = true;
+    const id = P.getEffectifId();
+    const save = byId("ppIdentitySave");
+    if (!id) { showInlineError("ppIdentityMessage", "Profil People indisponible."); return; }
+
+    hideSaveSuccess("ppIdentityMessage");
     const payload = {
       civilite: byId("ppIdentityCivilite")?.value || "",
       prenom: byId("ppIdentityPrenom")?.value || "",
@@ -259,14 +320,31 @@
       pays: byId("ppIdentityPays")?.value || "",
       date_naissance: byId("ppIdentityDateNaissance")?.value || null
     };
-    const result = await P.api(`/people/informations/${encodeURIComponent(id)}/identity`, { method: "PATCH", body: JSON.stringify(payload) }).catch(err => ({ error: err.message }));
+    const identityFields = ["civilite", "prenom", "nom", "telephone", "adresse", "code_postal", "ville", "pays", "date_naissance"];
+    const hasChanges = identityFields.some((key) => normalizeComparable(payload[key]) !== normalizeComparable(currentProfile[key]));
+
+    if (!hasChanges) {
+      setIdentityEditMode(false, false);
+      renderIdentity(currentProfile);
+      return;
+    }
+
+    if (save) save.disabled = true;
+    const result = await P.api(
+      `/people/informations/${encodeURIComponent(id)}/identity`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    ).catch(err => ({ error: err.message }));
     if (save) save.disabled = false;
-    if (result.error) { setMessage(msg, result.error, true); return; }
+    if (result.error) { showInlineError("ppIdentityMessage", result.error); return; }
     currentProfile = result.profile || { ...currentProfile, ...payload };
     identityEditing = false;
     renderIdentity(currentProfile);
     setIdentityEditMode(false, false);
-    setMessage(byId("ppIdentityMessage"), "Informations enregistrées.", false);
+    showSaveSuccess("ppIdentityMessage");
   });
 
   byId("ppProfilePhotoButton")?.addEventListener("click", () => byId("ppProfilePhotoInput")?.click());

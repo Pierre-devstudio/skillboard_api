@@ -93,10 +93,6 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
 
     where_sql = " AND ".join(where)
 
-    # --------------------------------------------------
-    # 1) Profils People rattachés à une entreprise cliente
-    #    => source métier = tbl_effectif_client
-    # --------------------------------------------------
     cur.execute(
         f"""
         SELECT DISTINCT ON (a.id_owner, a.id_user_ref)
@@ -106,18 +102,21 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
           COALESCE(NULLIF(BTRIM(COALESCE(ec.email_effectif, '')), ''), a.email) AS email_effectif,
           ec.prenom_effectif AS prenom,
           ec.nom_effectif AS nom,
-          COALESCE(ent.nom_ent, '') AS nom_owner,
+          COALESCE(ent.nom_ent, me.nom_ent, '') AS nom_owner,
           COALESCE(org.nom_service, '') AS nom_service,
           COALESCE(fp.intitule_poste, '') AS intitule_poste,
           'effectif_client' AS source_row_kind
         FROM public.tbl_novoskill_user_access a
-        JOIN public.tbl_entreprise ent
-          ON ent.id_ent = a.id_owner
-         AND COALESCE(ent.masque, FALSE) = FALSE
         JOIN public.tbl_effectif_client ec
           ON ec.id_ent = a.id_owner
          AND ec.id_effectif = a.id_user_ref
          AND COALESCE(ec.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise ent
+          ON ent.id_ent = ec.id_ent
+         AND COALESCE(ent.masque, FALSE) = FALSE
+        LEFT JOIN public.tbl_mon_entreprise me
+          ON me.id_mon_ent = ec.id_ent
+         AND COALESCE(me.archive, FALSE) = FALSE
         LEFT JOIN public.tbl_entreprise_organigramme org
           ON org.id_ent = ec.id_ent
          AND org.id_service = ec.id_service
@@ -137,58 +136,7 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
         """,
         tuple(params),
     )
-    rows_ent = cur.fetchall() or []
-
-    # --------------------------------------------------
-    # 2) Profils People rattachés à mon entreprise
-    #    => source métier = tbl_utilisateur
-    # --------------------------------------------------
-    cur.execute(
-        f"""
-        SELECT DISTINCT ON (a.id_owner, a.id_user_ref)
-          a.id_owner,
-          a.id_user_ref AS id_effectif,
-          a.role_code,
-          COALESCE(NULLIF(BTRIM(COALESCE(u.ut_mail, '')), ''), a.email) AS email_effectif,
-          u.ut_prenom AS prenom,
-          u.ut_nom AS nom,
-          COALESCE(me.nom_ent, '') AS nom_owner,
-          COALESCE(org.nom_service, '') AS nom_service,
-          COALESCE(fp.intitule_poste, '') AS intitule_poste,
-          'utilisateur' AS source_row_kind
-        FROM public.tbl_novoskill_user_access a
-        JOIN public.tbl_mon_entreprise me
-          ON me.id_mon_ent = a.id_owner
-         AND COALESCE(me.archive, FALSE) = FALSE
-        JOIN public.tbl_utilisateur u
-          ON u.id_utilisateur = a.id_user_ref
-         AND COALESCE(u.archive, FALSE) = FALSE
-        LEFT JOIN public.tbl_effectif_client ec
-          ON ec.id_ent = a.id_owner
-         AND ec.id_effectif = u.id_utilisateur
-         AND COALESCE(ec.archive, FALSE) = FALSE
-        LEFT JOIN public.tbl_entreprise_organigramme org
-          ON org.id_ent = a.id_owner
-         AND org.id_service = ec.id_service
-         AND COALESCE(org.archive, FALSE) = FALSE
-        LEFT JOIN public.tbl_fiche_poste fp
-          ON fp.id_owner = a.id_owner
-         AND fp.id_ent = a.id_owner
-         AND fp.id_poste = COALESCE(ec.id_poste_actuel, u.ut_fonction)
-         AND COALESCE(fp.actif, TRUE) = TRUE
-        WHERE {where_sql}
-        ORDER BY
-          a.id_owner,
-          a.id_user_ref,
-          a.updated_at DESC NULLS LAST,
-          a.created_at DESC NULLS LAST,
-          a.id_access DESC
-        """,
-        tuple(params),
-    )
-    rows_mon = cur.fetchall() or []
-
-    rows = list(rows_ent) + list(rows_mon)
+    rows = cur.fetchall() or []
 
     out = []
     seen = set()
@@ -220,12 +168,11 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
                 "intitule_poste": (r.get("intitule_poste") or "").strip(),
                 "role_code": role_code,
                 "role_label": _role_label(role_code),
-                "source_row_kind": (r.get("source_row_kind") or "").strip(),
+                "source_row_kind": "effectif_client",
             }
         )
 
     return out
-
 
 def people_fetch_profile(cur, id_effectif: str, email: str = "", is_super_admin: bool = False) -> dict:
     eid = (id_effectif or "").strip()
@@ -285,56 +232,6 @@ def people_fetch_profile(cur, id_effectif: str, email: str = "", is_super_admin:
                 "source_row_kind": "effectif_client",
             }
 
-        # Fallback super admin : accès direct mon entreprise / utilisateur
-        cur.execute(
-            """
-            SELECT
-              me.id_mon_ent AS id_owner,
-              COALESCE(me.nom_ent, '') AS nom_owner,
-              u.id_utilisateur AS id_effectif,
-              u.ut_prenom AS prenom,
-              u.ut_nom AS nom,
-              COALESCE(NULLIF(BTRIM(COALESCE(u.ut_mail, '')), ''), '') AS email_effectif,
-              COALESCE(org.nom_service, '') AS nom_service,
-              COALESCE(fp.intitule_poste, '') AS intitule_poste,
-              'utilisateur' AS source_row_kind
-            FROM public.tbl_utilisateur u
-            JOIN public.tbl_mon_entreprise me
-              ON COALESCE(me.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_effectif_client ec
-              ON ec.id_ent = me.id_mon_ent
-             AND ec.id_effectif = u.id_utilisateur
-             AND COALESCE(ec.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_entreprise_organigramme org
-              ON org.id_ent = me.id_mon_ent
-             AND org.id_service = ec.id_service
-             AND COALESCE(org.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_fiche_poste fp
-              ON fp.id_owner = me.id_mon_ent
-             AND fp.id_ent = me.id_mon_ent
-             AND fp.id_poste = COALESCE(ec.id_poste_actuel, u.ut_fonction)
-             AND COALESCE(fp.actif, TRUE) = TRUE
-            WHERE u.id_utilisateur = %s
-              AND COALESCE(u.archive, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (eid,),
-        )
-        r = cur.fetchone() or {}
-        if r:
-            return {
-                "id_owner": (r.get("id_owner") or "").strip(),
-                "nom_owner": (r.get("nom_owner") or "").strip(),
-                "id_effectif": (r.get("id_effectif") or "").strip(),
-                "prenom": (r.get("prenom") or "").strip(),
-                "nom": (r.get("nom") or "").strip(),
-                "email": (r.get("email_effectif") or "").strip(),
-                "nom_service": (r.get("nom_service") or "").strip(),
-                "intitule_poste": (r.get("intitule_poste") or "").strip(),
-                "role_code": "admin",
-                "role_label": "Administrateur",
-                "source_row_kind": "utilisateur",
-            }
 
     raise HTTPException(status_code=403, detail="Accès refusé à ce profil People.")
 
@@ -385,100 +282,40 @@ def people_require_profile(cur, request, id_effectif: str) -> dict:
 def people_fetch_effectif_row(cur, profile: dict) -> dict:
     id_effectif = people_clean(profile.get("id_effectif"))
     id_owner = people_clean(profile.get("id_owner"))
-    source_kind = people_clean(profile.get("source_row_kind"))
 
-    if source_kind == "utilisateur":
-        cur.execute(
-            """
-            SELECT
-              u.id_utilisateur AS id_effectif,
-              %s::text AS id_ent,
-              u.ut_prenom AS prenom_effectif,
-              u.ut_nom AS nom_effectif,
-              u.ut_civilite AS civilite_effectif,
-              u.ut_mail AS email_effectif,
-              u.ut_tel AS telephone_effectif,
-              u.ut_tel2 AS telephone2_effectif,
-              u.ut_adresse AS adresse_effectif,
-              u.ut_cp AS code_postal_effectif,
-              u.ut_ville AS ville_effectif,
-              u.ut_pays AS pays_effectif,
-              NULL::date AS date_naissance_effectif,
-              ec.date_entree_entreprise_effectif,
-              ec.date_debut_poste_actuel,
-              ec.niveau_education,
-              ec.domaine_education,
-              ec.type_contrat,
-              ec.matricule_interne,
-              ec.id_poste_actuel,
-              COALESCE(ec.statut_actif, u.actif, TRUE) AS statut_actif,
-              COALESCE(ec.ismanager, FALSE) AS ismanager,
-              COALESCE(ec.isformateur, FALSE) AS isformateur,
-              COALESCE(ec.is_temp, FALSE) AS is_temp,
-              u.photo_storage_path,
-              COALESCE(me.nom_ent, '') AS nom_owner,
-              COALESCE(org.nom_service, '') AS nom_service,
-              COALESCE(fp.intitule_poste, '') AS intitule_poste,
-              COALESCE(fp.codif_poste, '') AS codif_poste,
-              COALESCE(fp.mission_principale, '') AS mission_principale,
-              COALESCE(fp.perspectives_evolution, '') AS perspectives_evolution
-            FROM public.tbl_utilisateur u
-            LEFT JOIN public.tbl_mon_entreprise me
-              ON me.id_mon_ent = %s
-             AND COALESCE(me.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_effectif_client ec
-              ON ec.id_ent = %s
-             AND ec.id_effectif = u.id_utilisateur
-             AND COALESCE(ec.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_entreprise_organigramme org
-              ON org.id_ent = %s
-             AND org.id_service = ec.id_service
-             AND COALESCE(org.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_fiche_poste fp
-              ON fp.id_owner = %s
-             AND fp.id_ent = %s
-             AND fp.id_poste = COALESCE(ec.id_poste_actuel, u.ut_fonction)
-             AND COALESCE(fp.actif, TRUE) = TRUE
-            WHERE u.id_utilisateur = %s
-              AND COALESCE(u.archive, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (id_owner, id_owner, id_owner, id_owner, id_owner, id_owner, id_effectif),
-        )
-    else:
-        cur.execute(
-            """
-            SELECT
-              ec.*,
-              COALESCE(ent.nom_ent, me.nom_ent, '') AS nom_owner,
-              COALESCE(org.nom_service, '') AS nom_service,
-              COALESCE(fp.intitule_poste, '') AS intitule_poste,
-              COALESCE(fp.codif_poste, '') AS codif_poste,
-              COALESCE(fp.mission_principale, '') AS mission_principale,
-              COALESCE(fp.perspectives_evolution, '') AS perspectives_evolution
-            FROM public.tbl_effectif_client ec
-            LEFT JOIN public.tbl_entreprise ent
-              ON ent.id_ent = ec.id_ent
-             AND COALESCE(ent.masque, FALSE) = FALSE
-            LEFT JOIN public.tbl_mon_entreprise me
-              ON me.id_mon_ent = ec.id_ent
-             AND COALESCE(me.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_entreprise_organigramme org
-              ON org.id_ent = ec.id_ent
-             AND org.id_service = ec.id_service
-             AND COALESCE(org.archive, FALSE) = FALSE
-            LEFT JOIN public.tbl_fiche_poste fp
-              ON fp.id_owner = ec.id_ent
-             AND fp.id_ent = ec.id_ent
-             AND fp.id_poste = ec.id_poste_actuel
-             AND COALESCE(fp.actif, TRUE) = TRUE
-            WHERE ec.id_effectif = %s
-              AND ec.id_ent = %s
-              AND COALESCE(ec.archive, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (id_effectif, id_owner),
-        )
+    cur.execute(
+        """
+        SELECT
+          ec.*,
+          COALESCE(ent.nom_ent, me.nom_ent, '') AS nom_owner,
+          COALESCE(org.nom_service, '') AS nom_service,
+          COALESCE(fp.intitule_poste, '') AS intitule_poste,
+          COALESCE(fp.codif_poste, '') AS codif_poste,
+          COALESCE(fp.mission_principale, '') AS mission_principale,
+          COALESCE(fp.perspectives_evolution, '') AS perspectives_evolution
+        FROM public.tbl_effectif_client ec
+        LEFT JOIN public.tbl_entreprise ent
+          ON ent.id_ent = ec.id_ent
+         AND COALESCE(ent.masque, FALSE) = FALSE
+        LEFT JOIN public.tbl_mon_entreprise me
+          ON me.id_mon_ent = ec.id_ent
+         AND COALESCE(me.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise_organigramme org
+          ON org.id_ent = ec.id_ent
+         AND org.id_service = ec.id_service
+         AND COALESCE(org.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_fiche_poste fp
+          ON fp.id_owner = ec.id_ent
+         AND fp.id_ent = ec.id_ent
+         AND fp.id_poste = ec.id_poste_actuel
+         AND COALESCE(fp.actif, TRUE) = TRUE
+        WHERE ec.id_effectif = %s
+          AND ec.id_ent = %s
+          AND COALESCE(ec.archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_effectif, id_owner),
+    )
 
     row = cur.fetchone() or {}
     if row:
@@ -495,7 +332,6 @@ def people_fetch_effectif_row(cur, profile: dict) -> dict:
         "intitule_poste": profile.get("intitule_poste") or "",
         "source_light": True,
     }
-
 
 def people_profile_payload(profile: dict, effectif: dict) -> dict:
     return {

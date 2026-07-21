@@ -1322,6 +1322,23 @@
   flex:0 0 auto;
 }
 
+#view-informations.people-informations .sb-save-success{
+  display:none;
+  align-items:center;
+  min-height:32px;
+  max-width:360px;
+  margin:0 4px 0 0;
+  color:#15803d;
+  font-size:var(--ns-text-xs, 0.75rem);
+  font-weight:var(--ns-weight-semibold, 600);
+  line-height:var(--ns-leading-tight, 1.15);
+  white-space:normal;
+}
+
+#view-informations.people-informations .sb-save-success.is-error{
+  color:#b91c1c;
+}
+
 #view-informations.people-informations .people-identity-actions [hidden]{
   display:none;
 }
