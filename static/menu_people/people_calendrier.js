@@ -122,6 +122,7 @@
     host.innerHTML = TYPE_DEFS.map(x => `
       <label class="pp-calendar-check-item">
         <input type="checkbox" value="${esc(x.id)}" checked>
+        <span class="ns-calendar-color-dot ns-calendar-type--${esc(x.id)}" aria-hidden="true"></span>
         <span>${esc(x.label)}</span>
       </label>`).join("");
     host.querySelectorAll('input[type="checkbox"]').forEach(input => input.addEventListener("change", renderCalendar));
@@ -156,7 +157,7 @@
         <div class="pp-calendar-day${day.getMonth() !== month.getMonth() ? " is-outside" : ""}${dayKey === today ? " is-today" : ""}">
           <div class="pp-calendar-day-number">${day.getDate()}</div>
           <div class="pp-calendar-day-events">
-            ${dayEvents.map(e => `<button type="button" class="pp-calendar-event pp-calendar-event--${esc(e.type)}" data-event-source="${esc(e.source)}" data-event-id="${esc(e.id)}" title="${esc(e.title)}">${esc(e.title)}</button>`).join("")}
+            ${dayEvents.map(e => `<button type="button" class="pp-calendar-event ns-calendar-event ns-calendar-type--${esc(e.type)}" data-event-source="${esc(e.source)}" data-event-id="${esc(e.id)}" title="${esc(e.title)}">${esc(e.title)}</button>`).join("")}
           </div>
         </div>`);
     }

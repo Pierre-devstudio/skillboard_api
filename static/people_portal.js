@@ -7,7 +7,7 @@
   window.portal.registerMenu({ view: "informations", htmlUrl: "/menu_people/people_informations.html" });
   window.portal.registerMenu({ view: "calendrier", htmlUrl: "/menu_people/people_calendrier.html" });
   window.portal.registerMenu({ view: "echanges", htmlUrl: COMING_SOON });
-  window.portal.registerMenu({ view: "entretiens", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "entretiens", htmlUrl: "/menu_people/people_entretiens.html" });
   window.portal.registerMenu({ view: "formations", htmlUrl: "/menu_people/people_formations.html" });
   window.portal.registerMenu({ view: "competences", htmlUrl: "/menu_people/people_competences.html" });
   window.portal.registerMenu({ view: "parcours", htmlUrl: "/menu_people/people_parcours.html" });

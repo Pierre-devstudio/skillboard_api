@@ -71,20 +71,34 @@
     <div class="pp-modal-card pp-modal-sm">
       <div class="pp-modal-head">
         <div>
-          <div class="pp-modal-title" id="ppBreakModalTitle">Ajouter une indisponibilité</div>
+          <div class="pp-modal-title pp-modal-titleline">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-constraints"></use></svg>
+            <span id="ppBreakModalTitle">Ajouter une indisponibilité</span>
+          </div>
           <div class="pp-modal-sub">Absence, indisponibilité ou période non disponible.</div>
         </div>
-        <button class="pp-modal-x" id="ppBreakClose" aria-label="Fermer">×</button>
+        <button type="button" class="pp-modal-x" id="ppBreakClose" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg>
+        </button>
       </div>
       <div class="pp-form-grid">
-        <label>Date de début<input type="date" id="ppBreakStart"></label>
-        <label>Date de fin<input type="date" id="ppBreakEnd"></label>
+        <label>Date de début<input type="date" class="sb-ctrl people-calendar-date" id="ppBreakStart"></label>
+        <label>Date de fin<input type="date" class="sb-ctrl people-calendar-date" id="ppBreakEnd"></label>
       </div>
       <div class="pp-modal-foot">
         <span class="pp-inline-msg" id="ppBreakMsg"></span>
-        <button class="sb-btn sb-btn--soft" id="ppBreakDelete" style="display:none;">Supprimer</button>
-        <button class="sb-btn sb-btn--soft" id="ppBreakCancel">Annuler</button>
-        <button class="sb-btn sb-btn--accent" id="ppBreakSave">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="ppBreakDelete" style="display:none;">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg></span>
+          <span>Supprimer</span>
+        </button>
+        <button type="button" class="sb-btn sb-btn--soft" id="ppBreakCancel">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></span>
+          <span>Annuler</span>
+        </button>
+        <button type="button" class="sb-btn sb-btn--accent" id="ppBreakSave">
+          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-save"></use></svg></span>
+          <span>Enregistrer</span>
+        </button>
       </div>
     </div>
   </div>

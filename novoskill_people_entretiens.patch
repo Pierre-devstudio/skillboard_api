@@ -1,0 +1,1184 @@
+diff --git a/sql/20260721_people_entretiens.sql b/sql/20260721_people_entretiens.sql
+new file mode 100644
+index 0000000..de336f5
+--- /dev/null
++++ b/sql/20260721_people_entretiens.sql
+@@ -0,0 +1,102 @@
++BEGIN;
++
++CREATE TABLE IF NOT EXISTS public.tbl_people_entretien_preparation (
++  id_preparation text PRIMARY KEY,
++  id_entretien text NOT NULL,
++  id_effectif_client text NOT NULL,
++  statut_preparation text NOT NULL DEFAULT 'brouillon',
++  bilan_periode text,
++  reussites text,
++  difficultes text,
++  changements_poste text,
++  sujets_a_aborder text,
++  souhaits_evolution text,
++  souhaits_mobilite text,
++  besoins_formation text,
++  accompagnement_souhaite text,
++  elements_partageables text,
++  notes_privees text,
++  date_transmission timestamp without time zone,
++  archive boolean NOT NULL DEFAULT false,
++  created_at timestamp without time zone NOT NULL DEFAULT now(),
++  updated_at timestamp without time zone NOT NULL DEFAULT now(),
++  CONSTRAINT fk_people_preparation_entretien
++    FOREIGN KEY (id_entretien)
++    REFERENCES public.tbl_entretien_individuel(id_entretien)
++    ON UPDATE NO ACTION
++    ON DELETE RESTRICT,
++  CONSTRAINT fk_people_preparation_effectif
++    FOREIGN KEY (id_effectif_client)
++    REFERENCES public.tbl_effectif_client(id_effectif)
++    ON UPDATE NO ACTION
++    ON DELETE RESTRICT,
++  CONSTRAINT ck_people_preparation_statut
++    CHECK (statut_preparation IN ('brouillon', 'terminee', 'transmise')),
++  CONSTRAINT uq_people_preparation_entretien_effectif
++    UNIQUE (id_entretien, id_effectif_client)
++);
++
++CREATE INDEX IF NOT EXISTS idx_people_preparation_effectif
++  ON public.tbl_people_entretien_preparation (id_effectif_client, archive, updated_at DESC);
++
++CREATE INDEX IF NOT EXISTS idx_people_preparation_entretien
++  ON public.tbl_people_entretien_preparation (id_entretien, archive);
++
++COMMENT ON TABLE public.tbl_people_entretien_preparation IS
++  'Préparation individuelle People liée à un entretien officiel. Les notes_privees ne sont jamais exposées aux API employeur.';
++
++COMMENT ON COLUMN public.tbl_people_entretien_preparation.notes_privees IS
++  'Notes visibles exclusivement par le collaborateur dans People.';
++
++CREATE TABLE IF NOT EXISTS public.tbl_people_entretien_auto_evaluation (
++  id_auto_evaluation text PRIMARY KEY,
++  id_preparation text NOT NULL,
++  id_entretien text NOT NULL,
++  id_effectif_client text NOT NULL,
++  id_comp text NOT NULL,
++  niveau_auto_evalue text,
++  commentaire_partageable text,
++  besoin_accompagnement boolean NOT NULL DEFAULT false,
++  statut text NOT NULL DEFAULT 'brouillon',
++  date_transmission timestamp without time zone,
++  archive boolean NOT NULL DEFAULT false,
++  created_at timestamp without time zone NOT NULL DEFAULT now(),
++  updated_at timestamp without time zone NOT NULL DEFAULT now(),
++  CONSTRAINT fk_people_auto_eval_preparation
++    FOREIGN KEY (id_preparation)
++    REFERENCES public.tbl_people_entretien_preparation(id_preparation)
++    ON UPDATE NO ACTION
++    ON DELETE RESTRICT,
++  CONSTRAINT fk_people_auto_eval_entretien
++    FOREIGN KEY (id_entretien)
++    REFERENCES public.tbl_entretien_individuel(id_entretien)
++    ON UPDATE NO ACTION
++    ON DELETE RESTRICT,
++  CONSTRAINT fk_people_auto_eval_effectif
++    FOREIGN KEY (id_effectif_client)
++    REFERENCES public.tbl_effectif_client(id_effectif)
++    ON UPDATE NO ACTION
++    ON DELETE RESTRICT,
++  CONSTRAINT fk_people_auto_eval_competence
++    FOREIGN KEY (id_comp)
++    REFERENCES public.tbl_competence(id_comp)
++    ON UPDATE NO ACTION
++    ON DELETE RESTRICT,
++  CONSTRAINT ck_people_auto_eval_niveau
++    CHECK (niveau_auto_evalue IS NULL OR niveau_auto_evalue IN ('', 'A', 'B', 'C', 'D')),
++  CONSTRAINT ck_people_auto_eval_statut
++    CHECK (statut IN ('brouillon', 'transmise')),
++  CONSTRAINT uq_people_auto_eval_entretien_competence
++    UNIQUE (id_entretien, id_effectif_client, id_comp)
++);
++
++CREATE INDEX IF NOT EXISTS idx_people_auto_eval_preparation
++  ON public.tbl_people_entretien_auto_evaluation (id_preparation, archive);
++
++CREATE INDEX IF NOT EXISTS idx_people_auto_eval_effectif
++  ON public.tbl_people_entretien_auto_evaluation (id_effectif_client, archive, updated_at DESC);
++
++COMMENT ON TABLE public.tbl_people_entretien_auto_evaluation IS
++  'Auto-évaluations déclarées par le collaborateur dans People, distinctes des audits manager.';
++
++COMMIT;
+diff --git a/static/menu_people/people_entretiens.html b/static/menu_people/people_entretiens.html
+new file mode 100644
+index 0000000..f889b93
+--- /dev/null
++++ b/static/menu_people/people_entretiens.html
+@@ -0,0 +1,34 @@
++<section id="view-entretiens" class="people-entretiens">
++  <div class="card people-page-hero">
++    <div class="people-page-hero__main">
++      <div class="people-page-hero__icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-comment"></use></svg></div>
++      <div><div class="card-title people-page-hero__title">Vos entretiens</div><div class="card-sub people-page-hero__sub">Préparez vos échanges, consultez vos comptes rendus et suivez les actions décidées.</div></div>
++    </div>
++    <button type="button" class="sb-btn sb-btn--accent" id="peRequestOpen"><span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-comment"></use></svg></span>Demander un entretien</button>
++  </div>
++  <div id="peMessage" class="sb-inline-msg" aria-live="polite"></div>
++
++  <article class="card pe-current-card" id="peCurrentCard">
++    <div class="pe-card-head"><div><div class="card-title">Votre prochain entretien</div><div class="card-sub" id="peCurrentSub">Chargement…</div></div><span class="ns-badge ns-badge-status ns-badge-status--neutral" id="peCurrentStatus">—</span></div>
++    <div id="peCurrentContent"></div>
++    <div class="pe-process" id="peProcess"></div>
++  </article>
++
++  <div class="pe-grid">
++    <article class="card"><div class="pe-card-head"><div><div class="card-title">Actions issues de vos entretiens</div><div class="card-sub">Décisions et engagements encore à suivre.</div></div></div><div id="peActions"></div></article>
++    <article class="card"><div class="pe-card-head"><div><div class="card-title">Vos demandes</div><div class="card-sub">Demandes d’entretien en cours de traitement.</div></div></div><div id="peRequests"></div></article>
++  </div>
++
++  <article class="card"><div class="pe-card-head"><div><div class="card-title">Historique de vos entretiens</div><div class="card-sub">Consultez les entretiens réalisés et leurs documents.</div></div><div class="pe-filters"><select id="peFilterYear"><option value="">Toutes les années</option></select><select id="peFilterType"><option value="">Tous les types</option></select><select id="peFilterStatus"><option value="">Tous les statuts</option></select></div></div><div id="peHistory"></div></article>
++
++  <div class="pp-modal-backdrop" id="pePrepModal" style="display:none;"><div class="pp-modal-card pe-modal-large"><div class="pp-modal-head"><div><div class="pp-modal-title">Préparer votre entretien</div><div class="pp-modal-sub">Votre brouillon reste dans People jusqu’à sa transmission.</div></div><button class="pp-modal-x" id="pePrepClose" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></button></div><div class="pp-modal-body pe-prep-body">
++    <section><div class="people-information-card-title"><span>Votre bilan</span></div><div class="pp-form-grid"><label>Réussites<textarea id="peSuccess" rows="3"></textarea></label><label>Difficultés<textarea id="peDifficulties" rows="3"></textarea></label><label>Faits marquants<textarea id="peReview" rows="3"></textarea></label><label>Changements rencontrés<textarea id="peChanges" rows="3"></textarea></label><label class="pp-span-2">Sujets à aborder<textarea id="peTopics" rows="3"></textarea></label></div></section>
++    <section><div class="people-information-card-title"><span>Vos compétences</span></div><div id="peCompetencies"></div></section>
++    <section><div class="people-information-card-title"><span>Votre développement</span></div><div class="pp-form-grid"><label>Évolution souhaitée<textarea id="peEvolution" rows="3"></textarea></label><label>Mobilité<textarea id="peMobility" rows="3"></textarea></label><label>Formation<textarea id="peTraining" rows="3"></textarea></label><label>Accompagnement<textarea id="peSupport" rows="3"></textarea></label></div></section>
++    <section><div class="people-information-card-title"><span>Vos notes</span></div><div class="pp-form-grid"><label>Éléments à partager<textarea id="peShared" rows="4"></textarea></label><label>Notes personnelles privées<textarea id="pePrivate" rows="4"></textarea><small>Ces notes restent visibles uniquement dans votre espace People.</small></label></div></section>
++  </div><div class="pp-modal-foot"><span class="pp-inline-msg" id="pePrepMessage"></span><button class="sb-btn sb-btn--soft" id="pePrepCancel">Annuler</button><button class="sb-btn sb-btn--soft" id="pePrepSave"><span class="sb-btn-icon"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-save"></use></svg></span>Enregistrer le brouillon</button><button class="sb-btn sb-btn--accent" id="pePrepTransmit">Transmettre</button></div></div></div>
++
++  <div class="pp-modal-backdrop" id="peDetailModal" style="display:none;"><div class="pp-modal-card pe-modal-large"><div class="pp-modal-head"><div><div class="pp-modal-title" id="peDetailTitle">Entretien</div><div class="pp-modal-sub" id="peDetailSub"></div></div><button class="pp-modal-x" id="peDetailClose" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></button></div><div class="pp-modal-body" id="peDetailBody"></div></div></div>
++
++  <div class="pp-modal-backdrop" id="peRequestModal" style="display:none;"><div class="pp-modal-card pp-modal-sm"><div class="pp-modal-head"><div><div class="pp-modal-title">Demander un entretien</div><div class="pp-modal-sub">La demande sera qualifiée par votre manager ou les RH.</div></div><button class="pp-modal-x" id="peRequestClose" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></button></div><div class="pp-modal-body"><div class="pp-form-grid"><label>Destinataire<select id="peRequestTarget"><option value="manager">Manager</option><option value="rh">Ressources humaines</option></select></label><label>Motif<select id="peRequestReason"><option value="competences">Compétences</option><option value="evolution">Évolution professionnelle</option><option value="formation">Formation</option><option value="organisation">Organisation du travail</option><option value="accompagnement">Accompagnement</option><option value="autre">Autre</option></select></label><label class="pp-span-2">Objet<input type="text" id="peRequestObject"></label><label class="pp-span-2">Précisions<textarea id="peRequestDescription" rows="4"></textarea></label></div></div><div class="pp-modal-foot"><span class="pp-inline-msg" id="peRequestMessage"></span><button class="sb-btn sb-btn--soft" id="peRequestCancel">Annuler</button><button class="sb-btn sb-btn--accent" id="peRequestSave">Envoyer la demande</button></div></div></div>
++</section>
+diff --git a/static/menu_people/people_entretiens.js b/static/menu_people/people_entretiens.js
+new file mode 100644
+index 0000000..92820ea
+--- /dev/null
++++ b/static/menu_people/people_entretiens.js
+@@ -0,0 +1,17 @@
++(function(){
++  const P=window.PeoplePortal;if(!P)return;let state={overview:null,currentDetail:null};const $=id=>document.getElementById(id);
++  const open=id=>{const e=$(id);if(e)e.style.display='flex'};const close=id=>{const e=$(id);if(e)e.style.display='none'};
++  const statusKind=s=>/termin|réalis|valide|sign/i.test(s||'')?'success':/cours|prépar|plan/i.test(s||'')?'info':'neutral';
++  function rows(items,empty){return items?.length?items.map(x=>`<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(x.title||x.objet||'-')}</div><div class="pp-row-sub">${P.escapeHtml(x.sub||x.statut||'')}</div></div>${x.action||''}</div>`).join(''):P.itemEmpty(empty)}
++  function processHtml(c){const prep=c.preparation_people||{};const steps=[['1. Préparation',prep.statut==='transmise'?'Transmise':prep.statut==='brouillon'?'En cours':'À démarrer'],['2. Entretien',c.date_realisee?'Réalisé':c.date_prevue?'Planifié':'À planifier'],['3. Validation',c.employee_validated?'Validée':'En attente'],['4. Rapport',c.has_document?'Disponible':'À venir']];return steps.map((s,i)=>`<div class="pe-process-step"><span class="pe-process-index">${i+1}</span><div><strong>${s[0].replace(/^\d+\. /,'')}</strong><small>${s[1]}</small></div></div>`).join('')}
++  function render(){const o=state.overview||{},c=o.current; if(!c){$('peCurrentSub').textContent='Aucun entretien planifié.';$('peCurrentStatus').textContent='Aucun';$('peCurrentContent').innerHTML=P.itemEmpty('Aucun entretien à préparer actuellement.');$('peProcess').innerHTML='';}else{$('peCurrentSub').textContent=`${c.type_entretien} · ${P.fmtDate(c.date_prevue)}${c.manager?' · '+c.manager:''}`;$('peCurrentStatus').textContent=c.statut;$('peCurrentStatus').className=`ns-badge ns-badge-status ns-badge-status--${statusKind(c.statut)}`;$('peCurrentContent').innerHTML=`<div class="pe-current-summary"><div><strong>${P.escapeHtml(c.type_entretien)}</strong><span>${P.fmtDate(c.date_prevue)}</span></div><div class="sb-actions"><button class="sb-btn sb-btn--accent" id="pePrepareOpen">${c.preparation_people?.statut==='non_commencee'?'Préparer':'Reprendre la préparation'}</button><button class="sb-btn sb-btn--soft" id="peCurrentDetail">Consulter</button></div></div>`;$('peProcess').innerHTML=processHtml(c);$('pePrepareOpen').onclick=()=>loadDetail(c.id_entretien,true);$('peCurrentDetail').onclick=()=>loadDetail(c.id_entretien,false)}
++    const actions=[];if(c){const pa=c.plan_actions;if(Array.isArray(pa))pa.forEach(a=>actions.push({title:a.titre||a.action||'Action',sub:[a.statut,a.echeance].filter(Boolean).join(' · ')}));else if(pa&&typeof pa==='object')Object.values(pa).forEach(a=>{if(a&&typeof a==='object')actions.push({title:a.titre||a.action||'Action',sub:[a.statut,a.echeance].filter(Boolean).join(' · ')})})}$('peActions').innerHTML=rows(actions,'Aucune action active issue de vos entretiens.');$('peRequests').innerHTML=rows((o.requests||[]).map(r=>({objet:r.objet,statut:r.statut})),'Aucune demande en cours.');renderHistory(o.history||[])}
++  function renderHistory(list){const fy=$('peFilterYear').value,ft=$('peFilterType').value,fs=$('peFilterStatus').value;const filtered=list.filter(r=>(!fy||String(r.date_prevue||r.date_realisee||'').startsWith(fy))&&(!ft||r.type_entretien===ft)&&(!fs||r.statut===fs));$('peHistory').innerHTML=filtered.length?filtered.map(r=>`<div class="pp-list-row"><div><div class="pp-row-title">${P.escapeHtml(r.type_entretien)}</div><div class="pp-row-sub">${P.fmtDate(r.date_realisee||r.date_prevue)} · ${P.escapeHtml(r.manager||'Interlocuteur non renseigné')}</div></div><div class="sb-actions"><span class="ns-badge ns-badge-status ns-badge-status--${statusKind(r.statut)}">${P.escapeHtml(r.statut)}</span><button class="sb-icon-btn" data-detail="${P.escapeHtml(r.id_entretien)}" aria-label="Consulter"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-eye"></use></svg></button></div></div>`).join(''):P.itemEmpty('Aucun entretien ne correspond aux filtres.');$('peHistory').querySelectorAll('[data-detail]').forEach(b=>b.onclick=()=>loadDetail(b.dataset.detail,false))}
++  function fillFilters(list){const years=[...new Set(list.map(r=>String(r.date_prevue||r.date_realisee||'').slice(0,4)).filter(Boolean))].sort().reverse(),types=[...new Set(list.map(r=>r.type_entretien).filter(Boolean))],statuses=[...new Set(list.map(r=>r.statut).filter(Boolean))];years.forEach(v=>$('peFilterYear').insertAdjacentHTML('beforeend',`<option>${P.escapeHtml(v)}</option>`));types.forEach(v=>$('peFilterType').insertAdjacentHTML('beforeend',`<option>${P.escapeHtml(v)}</option>`));statuses.forEach(v=>$('peFilterStatus').insertAdjacentHTML('beforeend',`<option>${P.escapeHtml(v)}</option>`))}
++  async function load(){const id=P.getEffectifId();state.overview=await P.api(`/people/entretiens/${encodeURIComponent(id)}`).catch(e=>({error:e.message}));if(state.overview.error){$('peMessage').textContent=state.overview.error;return}fillFilters(state.overview.history||[]);render()}
++  function prepPayload(){return {bilan_periode:$('peReview').value,reussites:$('peSuccess').value,difficultes:$('peDifficulties').value,changements_poste:$('peChanges').value,sujets_a_aborder:$('peTopics').value,souhaits_evolution:$('peEvolution').value,souhaits_mobilite:$('peMobility').value,besoins_formation:$('peTraining').value,accompagnement_souhaite:$('peSupport').value,elements_partageables:$('peShared').value,notes_privees:$('pePrivate').value,items:[...document.querySelectorAll('[data-comp-row]')].map(r=>({id_comp:r.dataset.compRow,niveau_auto:r.querySelector('[data-level]').value,commentaire:r.querySelector('[data-comment]').value,besoin_accompagnement:r.querySelector('[data-support]').checked}))}}
++  async function loadDetail(idEnt,prep){const id=P.getEffectifId(),d=await P.api(`/people/entretiens/${encodeURIComponent(id)}/${encodeURIComponent(idEnt)}`).catch(e=>({error:e.message}));if(d.error){$('peMessage').textContent=d.error;return}state.currentDetail=d;if(prep){const p=d.preparation||{};[['peReview','bilan_periode'],['peSuccess','reussites'],['peDifficulties','difficultes'],['peChanges','changements_poste'],['peTopics','sujets_a_aborder'],['peEvolution','souhaits_evolution'],['peMobility','souhaits_mobilite'],['peTraining','besoins_formation'],['peSupport','accompagnement_souhaite'],['peShared','elements_partageables'],['pePrivate','notes_privees']].forEach(([a,b])=>$(a).value=p[b]||'');$('peCompetencies').innerHTML=(d.competences||[]).map(c=>`<div class="pe-competency-row" data-comp-row="${P.escapeHtml(c.id_comp)}"><div><strong>${P.escapeHtml(c.code)} · ${P.escapeHtml(c.intitule)}</strong><small>Attendu : ${P.levelLabel(c.niveau_requis)} · Actuel : ${P.levelLabel(c.niveau_actuel)}</small></div><select data-level><option value="">Non renseigné</option>${['A','B','C','D'].map(v=>`<option value="${v}" ${c.niveau_auto_evalue===v?'selected':''}>${P.levelLabel(v)}</option>`).join('')}</select><input data-comment value="${P.escapeHtml(c.commentaire_partageable||'')}" placeholder="Commentaire partageable"><label><input type="checkbox" data-support ${c.besoin_accompagnement?'checked':''}> Accompagnement</label></div>`).join('')||P.itemEmpty('Aucune compétence liée au poste.');open('pePrepModal')}else{$('peDetailTitle').textContent=d.entretien.type_entretien;$('peDetailSub').textContent=[P.fmtDate(d.entretien.date_realisee||d.entretien.date_prevue),d.entretien.manager].filter(Boolean).join(' · ');const docs=(d.documents||[]).map(x=>`<button class="sb-btn sb-btn--doc" data-doc="${P.escapeHtml(x.id_document)}">${P.escapeHtml(x.nom_fichier)}</button>`).join('');$('peDetailBody').innerHTML=`<div class="pe-detail-grid"><section><div class="card-title">Synthèse</div><pre>${P.escapeHtml(JSON.stringify(d.entretien.synthese||{},null,2))}</pre></section><section><div class="card-title">Objectifs</div><pre>${P.escapeHtml(JSON.stringify(d.entretien.objectifs||{},null,2))}</pre></section><section><div class="card-title">Plan d’actions</div><pre>${P.escapeHtml(JSON.stringify(d.entretien.plan_actions||{},null,2))}</pre></section><section><div class="card-title">Documents</div><div class="sb-actions">${docs||'Aucun document disponible.'}</div></section></div>`;open('peDetailModal');$('peDetailBody').querySelectorAll('[data-doc]').forEach(b=>b.onclick=async()=>{const w=window.open('','_blank');try{await(window.__peopleAuthReady||Promise.resolve());const s=await window.PortalAuthCommon.getSession();const r=await fetch(`${P.API_BASE}/people/entretiens/${encodeURIComponent(id)}/${encodeURIComponent(idEnt)}/documents/${encodeURIComponent(b.dataset.doc)}`,{headers:{Authorization:`Bearer ${s.access_token}`}});if(!r.ok)throw new Error('Document indisponible');const blob=await r.blob();w.location=URL.createObjectURL(blob)}catch(e){w.close();$('peMessage').textContent=e.message}})}}
++  async function savePrep(transmit){const d=state.currentDetail;if(!d)return;const id=P.getEffectifId(),eid=d.entretien.id_entretien;$('pePrepMessage').textContent='Enregistrement…';const r=await P.api(`/people/entretiens/${encodeURIComponent(id)}/${encodeURIComponent(eid)}/preparation`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(prepPayload())}).catch(e=>({error:e.message}));if(r.error){$('pePrepMessage').textContent=r.error;return}if(transmit){const t=await P.api(`/people/entretiens/${encodeURIComponent(id)}/${encodeURIComponent(eid)}/preparation/transmit`,{method:'POST'}).catch(e=>({error:e.message}));if(t.error){$('pePrepMessage').textContent=t.error;return}}close('pePrepModal');load()}
++  async function sendRequest(){const id=P.getEffectifId(),payload={destinataire:$('peRequestTarget').value,motif:$('peRequestReason').value,objet:$('peRequestObject').value,description:$('peRequestDescription').value};const r=await P.api(`/people/entretiens/${encodeURIComponent(id)}/request`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(e=>({error:e.message}));if(r.error){$('peRequestMessage').textContent=r.error;return}close('peRequestModal');load()}
++  window.addEventListener('DOMContentLoaded',()=>{load();$('peRequestOpen').onclick=()=>open('peRequestModal');$('peRequestClose').onclick=$('peRequestCancel').onclick=()=>close('peRequestModal');$('peRequestSave').onclick=sendRequest;$('pePrepClose').onclick=$('pePrepCancel').onclick=()=>close('pePrepModal');$('pePrepSave').onclick=()=>savePrep(false);$('pePrepTransmit').onclick=()=>savePrep(true);$('peDetailClose').onclick=()=>close('peDetailModal');['peFilterYear','peFilterType','peFilterStatus'].forEach(id=>$(id).onchange=()=>renderHistory(state.overview?.history||[]))});
++})();
+diff --git a/static/people_portal.js b/static/people_portal.js
+index 1631791..a892750 100644
+--- a/static/people_portal.js
++++ b/static/people_portal.js
+@@ -1,171 +1,171 @@
+-(function () {
+-  const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
+-
+-  const COMING_SOON = "/menu_people/people_coming_soon.html";
+-
+-  window.portal.registerMenu({ view: "dashboard", htmlUrl: "/menu_people/people_dashboard.html" });
+-  window.portal.registerMenu({ view: "informations", htmlUrl: "/menu_people/people_informations.html" });
+-  window.portal.registerMenu({ view: "calendrier", htmlUrl: "/menu_people/people_calendrier.html" });
+-  window.portal.registerMenu({ view: "echanges", htmlUrl: COMING_SOON });
+-  window.portal.registerMenu({ view: "entretiens", htmlUrl: COMING_SOON });
+-  window.portal.registerMenu({ view: "formations", htmlUrl: "/menu_people/people_formations.html" });
+-  window.portal.registerMenu({ view: "competences", htmlUrl: "/menu_people/people_competences.html" });
+-  window.portal.registerMenu({ view: "parcours", htmlUrl: "/menu_people/people_parcours.html" });
+-  window.portal.registerMenu({ view: "mobilite_interne", htmlUrl: COMING_SOON });
+-  window.portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });
+-
+-  function byId(id){ return document.getElementById(id); }
+-
+-  function buildPortalUrlWithId(effectifId) {
+-    return `/people/?id=${encodeURIComponent(effectifId)}`;
+-  }
+-
+-  function formatProfileLabel(p) {
+-    const fullName = [p?.prenom || "", p?.nom || ""].join(" ").trim();
+-    const ent = (p?.nom_owner || "").trim();
+-    if (fullName && ent) return `${fullName} - ${ent}`;
+-    return fullName || ent || "Profil";
+-  }
+-
+-  function getEffectifId() {
+-    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
+-    if (pid) return pid;
+-    const qid = new URL(window.location.href).searchParams.get("id");
+-    return (qid || "").trim();
+-  }
+-
+-  function escapeHtml(v) {
+-    return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+-  }
+-
+-  function fmtDate(v) {
+-    const s = String(v || "").slice(0, 10);
+-    if (!s) return "-";
+-    const parts = s.split("-");
+-    if (parts.length !== 3) return escapeHtml(s);
+-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+-  }
+-
+-  function levelLabel(v) {
+-    if (window.NovoskillLevels) return window.NovoskillLevels.label(v);
+-    const s = String(v || "").trim();
+-    return s || "-";
+-  }
+-
+-  function levelBadge(v) {
+-    const label = levelLabel(v);
+-    const cls = window.NovoskillLevels ? window.NovoskillLevels.cssClass(v) : "";
+-    return `<span class="ns-badge pp-badge pp-badge--niv ${cls}">${escapeHtml(label)}</span>`;
+-  }
+-
+-  function itemEmpty(text) {
+-    return `<div class="pp-empty">${escapeHtml(text || "Aucune donnée disponible.")}</div>`;
+-  }
+-
+-  async function api(path, options) {
+-    await (window.__peopleAuthReady || Promise.resolve(null));
+-    return window.portal.apiJson(`${API_BASE}${path}`, options || {});
+-  }
+-
+-  function infoRow(label, value) {
+-    return `<div class="pp-info-row"><div class="pp-info-label">${escapeHtml(label)}</div><div class="pp-info-value">${escapeHtml(value || "-")}</div></div>`;
+-  }
+-
+-  function badge(text, kind) {
+-    return `<span class="ns-badge pp-badge ${kind ? `pp-badge--${kind}` :""}">${escapeHtml(text || "-")}</span>`;
+-  }
+-
+-  window.PeoplePortal = {
+-    API_BASE,
+-    getEffectifId,
+-    api,
+-    escapeHtml,
+-    fmtDate,
+-    levelLabel,
+-    levelBadge,
+-    itemEmpty,
+-    infoRow,
+-    badge
+-  };
+-
+-  async function tryFillTopbar() {
+-    const name = byId("topbarName");
+-    const subtitle = byId("topbarSubtitle");
+-    const userName = byId("topbarUserName");
+-    const userRole = byId("topbarUserRole");
+-    const sel = byId("selPeopleProfile");
+-
+-    if (name) name.textContent = "Entreprise";
+-    if (subtitle) subtitle.textContent = "Console People · Accès actif";
+-    if (userName) userName.textContent = "Chargement…";
+-    if (userRole) userRole.textContent = "";
+-
+-    try {
+-      if (!window.PortalAuthCommon) return;
+-
+-      const session = await window.PortalAuthCommon.getSession().catch(() => null);
+-      const token = session?.access_token || "";
+-      if (!token) return;
+-
+-      const rMe = await fetch(`${API_BASE}/people/me`, { headers: { "Authorization": `Bearer ${token}` } });
+-      const me = await rMe.json().catch(() => null);
+-
+-      if (rMe.ok && me) {
+-        const metadata = me.user_metadata || {};
+-        const metadataName = [
+-          metadata.prenom || metadata.first_name || "",
+-          metadata.nom || metadata.last_name || ""
+-        ].join(" ").trim();
+-        if (userName) userName.textContent = metadataName || me.prenom || me.email || "Utilisateur connecté";
+-        if (userRole) userRole.textContent = me.is_super_admin ? "Super-administrateur" : "Collaborateur";
+-      }
+-
+-      const rScope = await fetch(`${API_BASE}/people/me/scope`, { headers: { "Authorization": `Bearer ${token}` } });
+-      const scope = await rScope.json().catch(() => null);
+-
+-      let currentProfile = null;
+-
+-      if (rScope.ok && scope && Array.isArray(scope.profiles) && scope.profiles.length) {
+-        const currentId = getEffectifId();
+-        currentProfile = currentId ? scope.profiles.find(p => p && p.id_effectif === currentId) : null;
+-        currentProfile = currentProfile || scope.profiles[0] || null;
+-
+-        const fullName = currentProfile ? [currentProfile.prenom || "", currentProfile.nom || ""].join(" ").trim() : "";
+-        const ownerName = String(currentProfile?.nom_owner || "").trim();
+-        if (name) name.textContent = ownerName || "Entreprise";
+-        if (subtitle) subtitle.textContent = "Console People · Accès actif";
+-        if (userName && fullName) userName.textContent = fullName;
+-
+-        if (sel) {
+-          if (scope.profiles.length > 1) {
+-            sel.innerHTML = `<option value="">Profil…</option>`;
+-            scope.profiles.forEach(p => {
+-              const opt = document.createElement("option");
+-              opt.value = p.id_effectif || "";
+-              opt.textContent = formatProfileLabel(p);
+-              if ((p.id_effectif || "") === (currentProfile?.id_effectif || "")) opt.selected = true;
+-              sel.appendChild(opt);
+-            });
+-
+-            sel.style.display = "inline-flex";
+-            sel.onchange = () => {
+-              const v = (sel.value || "").trim();
+-              if (!v) return;
+-              window.location.href = buildPortalUrlWithId(v);
+-            };
+-          } else {
+-            sel.style.display = "none";
+-          }
+-        }
+-      } else {
+-        if (name) name.textContent = "Entreprise";
+-        if (sel) sel.style.display = "none";
+-      }
+-    } catch (_) {}
+-  }
+-
+-  window.addEventListener("DOMContentLoaded", async () => {
+-    try { await (window.__peopleAuthReady || Promise.resolve(null)); } catch (_) {}
+-    tryFillTopbar();
+-  });
+-})();
++(function () {
++  const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
++
++  const COMING_SOON = "/menu_people/people_coming_soon.html";
++
++  window.portal.registerMenu({ view: "dashboard", htmlUrl: "/menu_people/people_dashboard.html" });
++  window.portal.registerMenu({ view: "informations", htmlUrl: "/menu_people/people_informations.html" });
++  window.portal.registerMenu({ view: "calendrier", htmlUrl: "/menu_people/people_calendrier.html" });
++  window.portal.registerMenu({ view: "echanges", htmlUrl: COMING_SOON });
++  window.portal.registerMenu({ view: "entretiens", htmlUrl: "/menu_people/people_entretiens.html" });
++  window.portal.registerMenu({ view: "formations", htmlUrl: "/menu_people/people_formations.html" });
++  window.portal.registerMenu({ view: "competences", htmlUrl: "/menu_people/people_competences.html" });
++  window.portal.registerMenu({ view: "parcours", htmlUrl: "/menu_people/people_parcours.html" });
++  window.portal.registerMenu({ view: "mobilite_interne", htmlUrl: COMING_SOON });
++  window.portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });
++
++  function byId(id){ return document.getElementById(id); }
++
++  function buildPortalUrlWithId(effectifId) {
++    return `/people/?id=${encodeURIComponent(effectifId)}`;
++  }
++
++  function formatProfileLabel(p) {
++    const fullName = [p?.prenom || "", p?.nom || ""].join(" ").trim();
++    const ent = (p?.nom_owner || "").trim();
++    if (fullName && ent) return `${fullName} - ${ent}`;
++    return fullName || ent || "Profil";
++  }
++
++  function getEffectifId() {
++    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
++    if (pid) return pid;
++    const qid = new URL(window.location.href).searchParams.get("id");
++    return (qid || "").trim();
++  }
++
++  function escapeHtml(v) {
++    return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
++  }
++
++  function fmtDate(v) {
++    const s = String(v || "").slice(0, 10);
++    if (!s) return "-";
++    const parts = s.split("-");
++    if (parts.length !== 3) return escapeHtml(s);
++    return `${parts[2]}/${parts[1]}/${parts[0]}`;
++  }
++
++  function levelLabel(v) {
++    if (window.NovoskillLevels) return window.NovoskillLevels.label(v);
++    const s = String(v || "").trim();
++    return s || "-";
++  }
++
++  function levelBadge(v) {
++    const label = levelLabel(v);
++    const cls = window.NovoskillLevels ? window.NovoskillLevels.cssClass(v) : "";
++    return `<span class="ns-badge pp-badge pp-badge--niv ${cls}">${escapeHtml(label)}</span>`;
++  }
++
++  function itemEmpty(text) {
++    return `<div class="pp-empty">${escapeHtml(text || "Aucune donnée disponible.")}</div>`;
++  }
++
++  async function api(path, options) {
++    await (window.__peopleAuthReady || Promise.resolve(null));
++    return window.portal.apiJson(`${API_BASE}${path}`, options || {});
++  }
++
++  function infoRow(label, value) {
++    return `<div class="pp-info-row"><div class="pp-info-label">${escapeHtml(label)}</div><div class="pp-info-value">${escapeHtml(value || "-")}</div></div>`;
++  }
++
++  function badge(text, kind) {
++    return `<span class="ns-badge pp-badge ${kind ? `pp-badge--${kind}` :""}">${escapeHtml(text || "-")}</span>`;
++  }
++
++  window.PeoplePortal = {
++    API_BASE,
++    getEffectifId,
++    api,
++    escapeHtml,
++    fmtDate,
++    levelLabel,
++    levelBadge,
++    itemEmpty,
++    infoRow,
++    badge
++  };
++
++  async function tryFillTopbar() {
++    const name = byId("topbarName");
++    const subtitle = byId("topbarSubtitle");
++    const userName = byId("topbarUserName");
++    const userRole = byId("topbarUserRole");
++    const sel = byId("selPeopleProfile");
++
++    if (name) name.textContent = "Entreprise";
++    if (subtitle) subtitle.textContent = "Console People · Accès actif";
++    if (userName) userName.textContent = "Chargement…";
++    if (userRole) userRole.textContent = "";
++
++    try {
++      if (!window.PortalAuthCommon) return;
++
++      const session = await window.PortalAuthCommon.getSession().catch(() => null);
++      const token = session?.access_token || "";
++      if (!token) return;
++
++      const rMe = await fetch(`${API_BASE}/people/me`, { headers: { "Authorization": `Bearer ${token}` } });
++      const me = await rMe.json().catch(() => null);
++
++      if (rMe.ok && me) {
++        const metadata = me.user_metadata || {};
++        const metadataName = [
++          metadata.prenom || metadata.first_name || "",
++          metadata.nom || metadata.last_name || ""
++        ].join(" ").trim();
++        if (userName) userName.textContent = metadataName || me.prenom || me.email || "Utilisateur connecté";
++        if (userRole) userRole.textContent = me.is_super_admin ? "Super-administrateur" : "Collaborateur";
++      }
++
++      const rScope = await fetch(`${API_BASE}/people/me/scope`, { headers: { "Authorization": `Bearer ${token}` } });
++      const scope = await rScope.json().catch(() => null);
++
++      let currentProfile = null;
++
++      if (rScope.ok && scope && Array.isArray(scope.profiles) && scope.profiles.length) {
++        const currentId = getEffectifId();
++        currentProfile = currentId ? scope.profiles.find(p => p && p.id_effectif === currentId) : null;
++        currentProfile = currentProfile || scope.profiles[0] || null;
++
++        const fullName = currentProfile ? [currentProfile.prenom || "", currentProfile.nom || ""].join(" ").trim() : "";
++        const ownerName = String(currentProfile?.nom_owner || "").trim();
++        if (name) name.textContent = ownerName || "Entreprise";
++        if (subtitle) subtitle.textContent = "Console People · Accès actif";
++        if (userName && fullName) userName.textContent = fullName;
++
++        if (sel) {
++          if (scope.profiles.length > 1) {
++            sel.innerHTML = `<option value="">Profil…</option>`;
++            scope.profiles.forEach(p => {
++              const opt = document.createElement("option");
++              opt.value = p.id_effectif || "";
++              opt.textContent = formatProfileLabel(p);
++              if ((p.id_effectif || "") === (currentProfile?.id_effectif || "")) opt.selected = true;
++              sel.appendChild(opt);
++            });
++
++            sel.style.display = "inline-flex";
++            sel.onchange = () => {
++              const v = (sel.value || "").trim();
++              if (!v) return;
++              window.location.href = buildPortalUrlWithId(v);
++            };
++          } else {
++            sel.style.display = "none";
++          }
++        }
++      } else {
++        if (name) name.textContent = "Entreprise";
++        if (sel) sel.style.display = "none";
++      }
++    } catch (_) {}
++  }
++
++  window.addEventListener("DOMContentLoaded", async () => {
++    try { await (window.__peopleAuthReady || Promise.resolve(null)); } catch (_) {}
++    tryFillTopbar();
++  });
++})();
+diff --git a/static/people_portal_theme.css b/static/people_portal_theme.css
+index 6aea90c..5e8f63c 100644
+--- a/static/people_portal_theme.css
++++ b/static/people_portal_theme.css
+@@ -1678,3 +1678,6 @@ body.pp-calendar-open{overflow:hidden}
+   #view-calendrier .pp-calendar-day{min-height:92px;padding:5px}
+   #view-calendrier .pp-calendar-event{padding:4px;font-size:var(--ns-text-xs)}
+ }
++
++/* People - Vos entretiens */
++.people-entretiens{display:grid;gap:16px}.pe-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}.pe-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.pe-current-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0}.pe-current-summary>div:first-child{display:grid;gap:4px}.pe-process{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}.pe-process-step{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--ns-border-soft);border-radius:12px;background:var(--ns-surface-soft)}.pe-process-step div{display:grid;gap:3px}.pe-process-step small{color:var(--ns-text-muted)}.pe-process-index{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ns-accent-soft);color:var(--ns-accent);font-weight:600}.pe-filters{display:flex;gap:8px;flex-wrap:wrap}.pe-filters select{min-width:150px}.pe-modal-large{width:min(1180px,94vw);max-height:92vh}.pe-prep-body{display:grid;gap:22px;overflow:auto}.pe-prep-body section{display:grid;gap:12px}.pe-competency-row{display:grid;grid-template-columns:minmax(240px,1.4fr) 160px minmax(220px,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--ns-border-soft)}.pe-competency-row>div{display:grid;gap:4px}.pe-competency-row small{color:var(--ns-text-muted)}.pe-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.pe-detail-grid section{padding:14px;border:1px solid var(--ns-border-soft);border-radius:12px}.pe-detail-grid pre{white-space:pre-wrap;font-family:var(--ns-font-ui);margin:10px 0 0}.people-entretiens select,.people-entretiens input,.people-entretiens textarea{border:1px solid var(--ns-border);border-radius:10px;background:var(--ns-surface);color:var(--ns-text);padding:10px 12px;font:inherit}.people-entretiens label{font-weight:500}.people-entretiens label small{display:block;margin-top:5px;color:var(--ns-text-muted);font-weight:400}@media(max-width:900px){.pe-grid,.pe-detail-grid{grid-template-columns:1fr}.pe-process{grid-template-columns:1fr 1fr}.pe-competency-row{grid-template-columns:1fr}.pe-card-head,.pe-current-summary{align-items:stretch;flex-direction:column}}
+diff --git a/unified_api/app/routers/people_portal_entretiens.py b/unified_api/app/routers/people_portal_entretiens.py
+index 78c30a4..f2d1fec 100644
+--- a/unified_api/app/routers/people_portal_entretiens.py
++++ b/unified_api/app/routers/people_portal_entretiens.py
+@@ -1,181 +1,469 @@
+-from datetime import date
+-from typing import List, Optional
+-from uuid import uuid4
+-from fastapi import APIRouter, HTTPException, Request
+-from pydantic import BaseModel
+-from psycopg.rows import dict_row
+-from psycopg.types.json import Json
+-from app.routers.skills_portal_common import get_conn
+-from app.routers.people_portal_common import (
+-    people_clean,
+-    people_fetch_profile_context,
+-)
+-router = APIRouter()
+-
+-class PeopleAutoEvalItem(BaseModel):
+-    id_comp: str
+-    niveau_auto: Optional[str] = None
+-    commentaire: Optional[str] = None
+-    besoin_accompagnement: Optional[bool] = False
+-
+-class PeopleAutoEvalPayload(BaseModel):
+-    items: List[PeopleAutoEvalItem] = []
+-    commentaire_general: Optional[str] = None
+-
+-@router.get("/people/entretiens/auto-evaluation/{id_effectif}")
+-def people_entretiens_auto_eval(id_effectif: str, request: Request):
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
+-                id_poste = profile.get("id_poste_actuel") or ""
+-
+-                cur.execute(
+-                    """
+-                    SELECT id_entretien, statut, date_prevue, preparation
+-                    FROM public.tbl_entretien_individuel
+-                    WHERE id_ent = %s
+-                      AND id_effectif_client = %s
+-                      AND COALESCE(archive, FALSE) = FALSE
+-                    ORDER BY
+-                      CASE
+-                        WHEN statut IN ('à réaliser', 'en cours', 'à signer 1/2') THEN 0
+-                        ELSE 1
+-                      END,
+-                      updated_at DESC,
+-                      created_at DESC
+-                    LIMIT 1
+-                    """,
+-                    (profile.get("id_owner") or "", id_effectif),
+-                )
+-                entretien = cur.fetchone() or {}
+-
+-                items = []
+-                if id_poste:
+-                    cur.execute(
+-                        """
+-                        SELECT
+-                          c.id_comp,
+-                          c.code,
+-                          c.intitule,
+-                          COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
+-                          pc.niveau_requis,
+-                          COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
+-                          COALESCE(c.description, '') AS description
+-                        FROM public.tbl_fiche_poste_competence pc
+-                        JOIN public.tbl_competence c
+-                          ON c.id_comp = pc.id_competence
+-                         AND COALESCE(c.masque, FALSE) = FALSE
+-                        LEFT JOIN public.tbl_domaine_competence dc
+-                          ON dc.id_domaine_competence = c.domaine
+-                         AND COALESCE(dc.masque, FALSE) = FALSE
+-                        LEFT JOIN public.tbl_effectif_client_competence ec
+-                          ON ec.id_effectif_client = %s
+-                         AND ec.id_comp = c.id_comp
+-                         AND COALESCE(ec.archive, FALSE) = FALSE
+-                         AND COALESCE(ec.actif, TRUE) = TRUE
+-                        WHERE pc.id_poste = %s
+-                          AND COALESCE(pc.masque, FALSE) = FALSE
+-                        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
+-                        """,
+-                        (id_effectif, id_poste),
+-                    )
+-                    items = cur.fetchall() or []
+-
+-        prep = entretien.get("preparation") or {}
+-        if not isinstance(prep, dict):
+-            prep = {}
+-        return {
+-            "profile": profile,
+-            "entretien": {
+-                "id_entretien": entretien.get("id_entretien") or "",
+-                "statut": entretien.get("statut") or "",
+-                "date_prevue": people_clean(entretien.get("date_prevue")),
+-                "auto_evaluation_people": prep.get("auto_evaluation_people") or {},
+-            },
+-            "items": items,
+-        }
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/auto-evaluation error: {e}")
+-
+-
+-@router.post("/people/entretiens/auto-evaluation/{id_effectif}/save")
+-def people_entretiens_save_auto_eval(id_effectif: str, payload: PeopleAutoEvalPayload, request: Request):
+-    clean_items = []
+-    for item in payload.items or []:
+-        cid = people_clean(item.id_comp)
+-        if not cid:
+-            continue
+-        niv = people_clean(item.niveau_auto).upper()
+-        if niv not in ("A", "B", "C", ""):
+-            niv = ""
+-        clean_items.append({
+-            "id_comp": cid,
+-            "niveau_auto": niv,
+-            "commentaire": people_clean(item.commentaire),
+-            "besoin_accompagnement": bool(item.besoin_accompagnement),
+-        })
+-
+-    auto_payload = {
+-        "date_saisie": date.today().isoformat(),
+-        "commentaire_general": people_clean(payload.commentaire_general),
+-        "items": clean_items,
+-    }
+-
+-    try:
+-        with get_conn() as conn:
+-            with conn.cursor(row_factory=dict_row) as cur:
+-                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
+-                id_ent = profile.get("id_owner") or ""
+-
+-                cur.execute(
+-                    """
+-                    SELECT id_entretien
+-                    FROM public.tbl_entretien_individuel
+-                    WHERE id_ent = %s
+-                      AND id_effectif_client = %s
+-                      AND COALESCE(archive, FALSE) = FALSE
+-                      AND statut IN ('à réaliser', 'en cours', 'à signer 1/2')
+-                    ORDER BY updated_at DESC, created_at DESC
+-                    LIMIT 1
+-                    """,
+-                    (id_ent, id_effectif),
+-                )
+-                ent = cur.fetchone() or {}
+-                if ent.get("id_entretien"):
+-                    id_entretien = ent.get("id_entretien")
+-                    cur.execute(
+-                        """
+-                        UPDATE public.tbl_entretien_individuel
+-                        SET preparation = COALESCE(preparation, '{}'::jsonb) || %s::jsonb,
+-                            updated_at = NOW()
+-                        WHERE id_entretien = %s
+-                        RETURNING id_entretien
+-                        """,
+-                        (Json({"auto_evaluation_people": auto_payload}), id_entretien),
+-                    )
+-                else:
+-                    id_entretien = str(uuid4())
+-                    cur.execute(
+-                        """
+-                        INSERT INTO public.tbl_entretien_individuel
+-                          (id_entretien, id_ent, id_effectif_client, type_entretien, statut, date_prevue,
+-                           bilan, objectifs, developpement, plan_actions, documents, synthese,
+-                           preparation, realisation, competences_entretien, archive, created_at, updated_at)
+-                        VALUES
+-                          (%s, %s, %s, 'Entretien individuel', 'à réaliser', CURRENT_DATE,
+-                           '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
+-                           %s::jsonb, '{}'::jsonb, '[]'::jsonb, FALSE, NOW(), NOW())
+-                        RETURNING id_entretien
+-                        """,
+-                        (id_entretien, id_ent, id_effectif, Json({"auto_evaluation_people": auto_payload})),
+-                    )
+-                row = cur.fetchone() or {}
+-            conn.commit()
+-        return {"saved": True, "id_entretien": row.get("id_entretien") or id_entretien}
+-    except HTTPException:
+-        raise
+-    except Exception as e:
+-        raise HTTPException(status_code=500, detail=f"people/demo/auto-evaluation/save error: {e}")
++from datetime import date
++from typing import List, Optional
++from uuid import uuid4
++
++from fastapi import APIRouter, HTTPException, Request, Response
++from pydantic import BaseModel, Field
++from psycopg.rows import dict_row
++from psycopg.types.json import Json
++
++from app.routers.skills_portal_common import get_conn
++from app.routers.people_portal_common import people_clean, people_fetch_profile_context
++
++router = APIRouter()
++
++OPEN_STATUSES = ("à réaliser", "en cours", "à signer 1/2", "à signer 2/2", "planifié", "planifie")
++
++
++class PeopleAutoEvalItem(BaseModel):
++    id_comp: str
++    niveau_auto: Optional[str] = None
++    commentaire: Optional[str] = None
++    besoin_accompagnement: bool = False
++
++
++class PeoplePreparationPayload(BaseModel):
++    bilan_periode: Optional[str] = None
++    reussites: Optional[str] = None
++    difficultes: Optional[str] = None
++    changements_poste: Optional[str] = None
++    sujets_a_aborder: Optional[str] = None
++    souhaits_evolution: Optional[str] = None
++    souhaits_mobilite: Optional[str] = None
++    besoins_formation: Optional[str] = None
++    accompagnement_souhaite: Optional[str] = None
++    elements_partageables: Optional[str] = None
++    notes_privees: Optional[str] = None
++    items: List[PeopleAutoEvalItem] = Field(default_factory=list)
++
++
++class PeopleRequestPayload(BaseModel):
++    destinataire: str
++    motif: str
++    objet: Optional[str] = None
++    description: Optional[str] = None
++
++
++def _clean_level(value: Optional[str]) -> str:
++    level = people_clean(value).upper()
++    return level if level in ("A", "B", "C", "D") else ""
++
++
++def _fetch_interview(cur, id_entretien: str, id_ent: str, id_effectif: str):
++    cur.execute(
++        """
++        SELECT
++          e.*,
++          COALESCE(m.prenom_effectif, '') AS manager_prenom,
++          COALESCE(m.nom_effectif, '') AS manager_nom
++        FROM public.tbl_entretien_individuel e
++        LEFT JOIN public.tbl_effectif_client m
++          ON m.id_effectif = e.id_manager
++         AND COALESCE(m.archive, FALSE) = FALSE
++        WHERE e.id_entretien = %s
++          AND e.id_ent = %s
++          AND e.id_effectif_client = %s
++          AND COALESCE(e.archive, FALSE) = FALSE
++        LIMIT 1
++        """,
++        (id_entretien, id_ent, id_effectif),
++    )
++    row = cur.fetchone()
++    if not row:
++        raise HTTPException(status_code=404, detail="Entretien introuvable pour ce profil People.")
++    return row
++
++
++def _serialize_interview(row):
++    return {
++        "id_entretien": row.get("id_entretien") or "",
++        "type_entretien": row.get("type_entretien") or "Entretien",
++        "statut": row.get("statut") or "",
++        "date_prevue": people_clean(row.get("date_prevue")),
++        "date_realisee": people_clean(row.get("date_realisee")),
++        "periode_debut": people_clean(row.get("periode_debut")),
++        "periode_fin": people_clean(row.get("periode_fin")),
++        "manager": " ".join(filter(None, [row.get("manager_prenom"), row.get("manager_nom")])).strip(),
++        "preparation_officielle": row.get("preparation") if isinstance(row.get("preparation"), dict) else {},
++        "realisation": row.get("realisation") if isinstance(row.get("realisation"), dict) else {},
++        "bilan": row.get("bilan") if isinstance(row.get("bilan"), dict) else {},
++        "objectifs": row.get("objectifs") if isinstance(row.get("objectifs"), dict) else {},
++        "developpement": row.get("developpement") if isinstance(row.get("developpement"), dict) else {},
++        "plan_actions": row.get("plan_actions") if isinstance(row.get("plan_actions"), (dict, list)) else {},
++        "synthese": row.get("synthese") if isinstance(row.get("synthese"), dict) else {},
++        "competences_entretien": row.get("competences_entretien") if isinstance(row.get("competences_entretien"), list) else [],
++    }
++
++
++def _fetch_preparation(cur, id_entretien: str, id_effectif: str):
++    cur.execute(
++        """
++        SELECT *
++        FROM public.tbl_people_entretien_preparation
++        WHERE id_entretien = %s
++          AND id_effectif_client = %s
++          AND COALESCE(archive, FALSE) = FALSE
++        ORDER BY updated_at DESC
++        LIMIT 1
++        """,
++        (id_entretien, id_effectif),
++    )
++    return cur.fetchone() or {}
++
++
++def _fetch_competencies(cur, id_entretien: str, id_effectif: str, id_poste: str):
++    if not id_poste:
++        return []
++    cur.execute(
++        """
++        SELECT
++          c.id_comp,
++          c.code,
++          c.intitule,
++          COALESCE(dc.titre_court, dc.titre, c.domaine, '') AS domaine,
++          pc.niveau_requis,
++          COALESCE(ec.niveau_actuel, '') AS niveau_actuel,
++          COALESCE(ae.niveau_auto_evalue, '') AS niveau_auto_evalue,
++          COALESCE(ae.commentaire_partageable, '') AS commentaire_partageable,
++          COALESCE(ae.besoin_accompagnement, FALSE) AS besoin_accompagnement
++        FROM public.tbl_fiche_poste_competence pc
++        JOIN public.tbl_competence c
++          ON c.id_comp = pc.id_competence
++         AND COALESCE(c.masque, FALSE) = FALSE
++        LEFT JOIN public.tbl_domaine_competence dc
++          ON dc.id_domaine_competence = c.domaine
++         AND COALESCE(dc.masque, FALSE) = FALSE
++        LEFT JOIN public.tbl_effectif_client_competence ec
++          ON ec.id_effectif_client = %s
++         AND ec.id_comp = c.id_comp
++         AND COALESCE(ec.archive, FALSE) = FALSE
++         AND COALESCE(ec.actif, TRUE) = TRUE
++        LEFT JOIN public.tbl_people_entretien_auto_evaluation ae
++          ON ae.id_entretien = %s
++         AND ae.id_effectif_client = %s
++         AND ae.id_comp = c.id_comp
++         AND COALESCE(ae.archive, FALSE) = FALSE
++        WHERE pc.id_poste = %s
++          AND COALESCE(pc.masque, FALSE) = FALSE
++        ORDER BY COALESCE(pc.poids_criticite, 0) DESC, c.intitule
++        """,
++        (id_effectif, id_entretien, id_effectif, id_poste),
++    )
++    return cur.fetchall() or []
++
++
++@router.get("/people/entretiens/{id_effectif}")
++def people_entretiens_overview(id_effectif: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_ent = profile.get("id_owner") or profile.get("id_ent") or ""
++                cur.execute(
++                    """
++                    SELECT
++                      e.*,
++                      COALESCE(m.prenom_effectif, '') AS manager_prenom,
++                      COALESCE(m.nom_effectif, '') AS manager_nom,
++                      EXISTS (
++                        SELECT 1 FROM public.tbl_entretien_individuel_document d
++                        WHERE d.id_entretien = e.id_entretien
++                          AND COALESCE(d.archive, FALSE) = FALSE
++                      ) AS has_document,
++                      EXISTS (
++                        SELECT 1 FROM public.tbl_validations_electroniques v
++                        WHERE v.id_document_ref = e.id_entretien
++                          AND v.id_signataire = %s
++                          AND COALESCE(v.archive, FALSE) = FALSE
++                      ) AS employee_validated
++                    FROM public.tbl_entretien_individuel e
++                    LEFT JOIN public.tbl_effectif_client m
++                      ON m.id_effectif = e.id_manager
++                     AND COALESCE(m.archive, FALSE) = FALSE
++                    WHERE e.id_ent = %s
++                      AND e.id_effectif_client = %s
++                      AND COALESCE(e.archive, FALSE) = FALSE
++                    ORDER BY COALESCE(e.date_prevue, e.date_realisee, e.created_at::date) DESC, e.updated_at DESC
++                    """,
++                    (id_effectif, id_ent, id_effectif),
++                )
++                rows = cur.fetchall() or []
++                current = None
++                history = []
++                for row in rows:
++                    item = _serialize_interview(row)
++                    item["has_document"] = bool(row.get("has_document"))
++                    item["employee_validated"] = bool(row.get("employee_validated"))
++                    if current is None and people_clean(row.get("statut")).lower() in OPEN_STATUSES:
++                        current = item
++                    else:
++                        history.append(item)
++                if current:
++                    prep = _fetch_preparation(cur, current["id_entretien"], id_effectif)
++                    current["preparation_people"] = {
++                        "id_preparation": prep.get("id_preparation") or "",
++                        "statut": prep.get("statut_preparation") or "non_commencee",
++                        "date_transmission": people_clean(prep.get("date_transmission")),
++                    }
++                cur.execute(
++                    """
++                    SELECT id_demande_rh, type_demande, objet, statut, created_at
++                    FROM public.tbl_insights_demande_rh
++                    WHERE id_ent = %s
++                      AND id_effectif_concerne = %s
++                      AND origine = 'people'
++                      AND COALESCE(archive, FALSE) = FALSE
++                    ORDER BY created_at DESC
++                    LIMIT 10
++                    """,
++                    (id_ent, id_effectif),
++                )
++                requests = cur.fetchall() or []
++        return {"profile": profile, "current": current, "history": history, "requests": requests}
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/entretiens error: {exc}")
++
++
++@router.get("/people/entretiens/{id_effectif}/{id_entretien}")
++def people_entretien_detail(id_effectif: str, id_entretien: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_ent = profile.get("id_owner") or profile.get("id_ent") or ""
++                row = _fetch_interview(cur, id_entretien, id_ent, id_effectif)
++                interview = _serialize_interview(row)
++                prep = _fetch_preparation(cur, id_entretien, id_effectif)
++                competencies = _fetch_competencies(cur, id_entretien, id_effectif, profile.get("id_poste_actuel") or "")
++                cur.execute(
++                    """
++                    SELECT id_document, type_document, nom_fichier, mime_type, taille_octets, created_at
++                    FROM public.tbl_entretien_individuel_document
++                    WHERE id_entretien = %s
++                      AND id_ent = %s
++                      AND COALESCE(archive, FALSE) = FALSE
++                    ORDER BY created_at DESC
++                    """,
++                    (id_entretien, id_ent),
++                )
++                documents = cur.fetchall() or []
++                cur.execute(
++                    """
++                    SELECT type_signataire, mode_validation, date_validation, payload_validation
++                    FROM public.tbl_validations_electroniques
++                    WHERE id_document_ref = %s
++                      AND COALESCE(archive, FALSE) = FALSE
++                    ORDER BY date_validation ASC
++                    """,
++                    (id_entretien,),
++                )
++                validations = cur.fetchall() or []
++        return {
++            "profile": profile,
++            "entretien": interview,
++            "preparation": prep,
++            "competences": competencies,
++            "documents": documents,
++            "validations": validations,
++        }
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/entretiens/detail error: {exc}")
++
++
++@router.put("/people/entretiens/{id_effectif}/{id_entretien}/preparation")
++def people_entretien_save_preparation(id_effectif: str, id_entretien: str, payload: PeoplePreparationPayload, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_ent = profile.get("id_owner") or profile.get("id_ent") or ""
++                _fetch_interview(cur, id_entretien, id_ent, id_effectif)
++                prep = _fetch_preparation(cur, id_entretien, id_effectif)
++                id_preparation = prep.get("id_preparation") or str(uuid4())
++                values = tuple(people_clean(getattr(payload, field)) for field in (
++                    "bilan_periode", "reussites", "difficultes", "changements_poste", "sujets_a_aborder",
++                    "souhaits_evolution", "souhaits_mobilite", "besoins_formation", "accompagnement_souhaite",
++                    "elements_partageables", "notes_privees",
++                ))
++                cur.execute(
++                    """
++                    INSERT INTO public.tbl_people_entretien_preparation (
++                      id_preparation, id_entretien, id_effectif_client, statut_preparation,
++                      bilan_periode, reussites, difficultes, changements_poste, sujets_a_aborder,
++                      souhaits_evolution, souhaits_mobilite, besoins_formation, accompagnement_souhaite,
++                      elements_partageables, notes_privees, archive, created_at, updated_at
++                    ) VALUES (
++                      %s, %s, %s, 'brouillon', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW()
++                    )
++                    ON CONFLICT (id_entretien, id_effectif_client)
++                    DO UPDATE SET
++                      bilan_periode = EXCLUDED.bilan_periode,
++                      reussites = EXCLUDED.reussites,
++                      difficultes = EXCLUDED.difficultes,
++                      changements_poste = EXCLUDED.changements_poste,
++                      sujets_a_aborder = EXCLUDED.sujets_a_aborder,
++                      souhaits_evolution = EXCLUDED.souhaits_evolution,
++                      souhaits_mobilite = EXCLUDED.souhaits_mobilite,
++                      besoins_formation = EXCLUDED.besoins_formation,
++                      accompagnement_souhaite = EXCLUDED.accompagnement_souhaite,
++                      elements_partageables = EXCLUDED.elements_partageables,
++                      notes_privees = EXCLUDED.notes_privees,
++                      statut_preparation = CASE WHEN tbl_people_entretien_preparation.statut_preparation = 'transmise' THEN 'transmise' ELSE 'brouillon' END,
++                      updated_at = NOW()
++                    RETURNING id_preparation, statut_preparation
++                    """,
++                    (id_preparation, id_entretien, id_effectif, *values),
++                )
++                saved = cur.fetchone() or {}
++                for item in payload.items:
++                    id_comp = people_clean(item.id_comp)
++                    if not id_comp:
++                        continue
++                    cur.execute(
++                        """
++                        INSERT INTO public.tbl_people_entretien_auto_evaluation (
++                          id_auto_evaluation, id_preparation, id_entretien, id_effectif_client, id_comp,
++                          niveau_auto_evalue, commentaire_partageable, besoin_accompagnement,
++                          statut, archive, created_at, updated_at
++                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'brouillon', FALSE, NOW(), NOW())
++                        ON CONFLICT (id_entretien, id_effectif_client, id_comp)
++                        DO UPDATE SET
++                          id_preparation = EXCLUDED.id_preparation,
++                          niveau_auto_evalue = EXCLUDED.niveau_auto_evalue,
++                          commentaire_partageable = EXCLUDED.commentaire_partageable,
++                          besoin_accompagnement = EXCLUDED.besoin_accompagnement,
++                          statut = CASE WHEN tbl_people_entretien_auto_evaluation.statut = 'transmise' THEN 'transmise' ELSE 'brouillon' END,
++                          updated_at = NOW(),
++                          archive = FALSE
++                        """,
++                        (
++                            str(uuid4()), saved.get("id_preparation") or id_preparation, id_entretien, id_effectif, id_comp,
++                            _clean_level(item.niveau_auto), people_clean(item.commentaire), bool(item.besoin_accompagnement),
++                        ),
++                    )
++            conn.commit()
++        return {"saved": True, "id_preparation": saved.get("id_preparation") or id_preparation, "statut": saved.get("statut_preparation") or "brouillon"}
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/entretiens/preparation/save error: {exc}")
++
++
++@router.post("/people/entretiens/{id_effectif}/{id_entretien}/preparation/transmit")
++def people_entretien_transmit_preparation(id_effectif: str, id_entretien: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_ent = profile.get("id_owner") or profile.get("id_ent") or ""
++                _fetch_interview(cur, id_entretien, id_ent, id_effectif)
++                cur.execute(
++                    """
++                    UPDATE public.tbl_people_entretien_preparation
++                    SET statut_preparation = 'transmise', date_transmission = NOW(), updated_at = NOW()
++                    WHERE id_entretien = %s AND id_effectif_client = %s AND COALESCE(archive, FALSE) = FALSE
++                    RETURNING id_preparation, date_transmission
++                    """,
++                    (id_entretien, id_effectif),
++                )
++                row = cur.fetchone()
++                if not row:
++                    raise HTTPException(status_code=400, detail="Enregistrez la préparation avant de la transmettre.")
++                cur.execute(
++                    """
++                    UPDATE public.tbl_people_entretien_auto_evaluation
++                    SET statut = 'transmise', date_transmission = NOW(), updated_at = NOW()
++                    WHERE id_entretien = %s AND id_effectif_client = %s AND COALESCE(archive, FALSE) = FALSE
++                    """,
++                    (id_entretien, id_effectif),
++                )
++            conn.commit()
++        return {"transmitted": True, "date_transmission": people_clean(row.get("date_transmission"))}
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/entretiens/preparation/transmit error: {exc}")
++
++
++@router.post("/people/entretiens/{id_effectif}/request")
++def people_entretien_request(id_effectif: str, payload: PeopleRequestPayload, request: Request):
++    destinataire = people_clean(payload.destinataire).lower()
++    if destinataire not in ("manager", "rh"):
++        raise HTTPException(status_code=400, detail="Destinataire invalide.")
++    motif = people_clean(payload.motif).lower()
++    allowed = {"competences", "evolution", "formation", "organisation", "accompagnement", "autre"}
++    if motif not in allowed:
++        raise HTTPException(status_code=400, detail="Motif invalide.")
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_ent = profile.get("id_owner") or profile.get("id_ent") or ""
++                request_id = str(uuid4())
++                object_text = people_clean(payload.objet) or f"Demande d'entretien {destinataire.upper()}"
++                cur.execute(
++                    """
++                    INSERT INTO public.tbl_insights_demande_rh (
++                      id_demande_rh, id_ent, id_demandeur, id_effectif_concerne,
++                      nom_effectif, prenom_effectif, id_poste, id_service,
++                      origine, source_type, source_ref, type_demande, objet, description,
++                      statut, priorite, commentaire_salarie, payload_signal, archive, created_at, updated_at
++                    ) VALUES (
++                      %s, %s, %s, %s, %s, %s, %s, %s,
++                      'people', 'demande_entretien', %s, 'entretien', %s, %s,
++                      'a_qualifier', 'normale', %s, %s::jsonb, FALSE, NOW(), NOW()
++                    )
++                    RETURNING id_demande_rh
++                    """,
++                    (
++                        request_id, id_ent, id_effectif, id_effectif,
++                        profile.get("nom") or profile.get("nom_effectif") or "",
++                        profile.get("prenom") or profile.get("prenom_effectif") or "",
++                        profile.get("id_poste_actuel") or None, profile.get("id_service") or None,
++                        request_id, object_text, people_clean(payload.description), people_clean(payload.description),
++                        Json({"destinataire": destinataire, "motif": motif}),
++                    ),
++                )
++            conn.commit()
++        return {"created": True, "id_demande_rh": request_id}
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/entretiens/request error: {exc}")
++
++
++@router.get("/people/entretiens/{id_effectif}/{id_entretien}/documents/{id_document}")
++def people_entretien_document(id_effectif: str, id_entretien: str, id_document: str, request: Request):
++    try:
++        with get_conn() as conn:
++            with conn.cursor(row_factory=dict_row) as cur:
++                _, _, profile = people_fetch_profile_context(cur, request, id_effectif)
++                id_ent = profile.get("id_owner") or profile.get("id_ent") or ""
++                _fetch_interview(cur, id_entretien, id_ent, id_effectif)
++                cur.execute(
++                    """
++                    SELECT nom_fichier, COALESCE(mime_type, 'application/octet-stream') AS mime_type, fichier
++                    FROM public.tbl_entretien_individuel_document
++                    WHERE id_document = %s AND id_entretien = %s AND id_ent = %s
++                      AND COALESCE(archive, FALSE) = FALSE
++                    LIMIT 1
++                    """,
++                    (id_document, id_entretien, id_ent),
++                )
++                row = cur.fetchone()
++                if not row:
++                    raise HTTPException(status_code=404, detail="Document introuvable.")
++        filename = str(row.get("nom_fichier") or "document-entretien").replace('"', "")
++        return Response(
++            content=bytes(row.get("fichier") or b""),
++            media_type=row.get("mime_type") or "application/octet-stream",
++            headers={"Content-Disposition": f'inline; filename="{filename}"', "Cache-Control": "no-store"},
++        )
++    except HTTPException:
++        raise
++    except Exception as exc:
++        raise HTTPException(status_code=500, detail=f"people/entretiens/document error: {exc}")

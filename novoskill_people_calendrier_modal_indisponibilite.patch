@@ -1,0 +1,130 @@
+diff --git a/static/menu_people/people_calendrier.html b/static/menu_people/people_calendrier.html
+index e4a28db..985d74a 100644
+--- a/static/menu_people/people_calendrier.html
++++ b/static/menu_people/people_calendrier.html
+@@ -71,20 +71,34 @@
+     <div class="pp-modal-card pp-modal-sm">
+       <div class="pp-modal-head">
+         <div>
+-          <div class="pp-modal-title" id="ppBreakModalTitle">Ajouter une indisponibilité</div>
++          <div class="pp-modal-title pp-modal-titleline">
++            <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-constraints"></use></svg>
++            <span id="ppBreakModalTitle">Ajouter une indisponibilité</span>
++          </div>
+           <div class="pp-modal-sub">Absence, indisponibilité ou période non disponible.</div>
+         </div>
+-        <button class="pp-modal-x" id="ppBreakClose" aria-label="Fermer">×</button>
++        <button type="button" class="pp-modal-x" id="ppBreakClose" aria-label="Fermer">
++          <svg viewBox="0 0 24 24" aria-hidden="true" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg>
++        </button>
+       </div>
+       <div class="pp-form-grid">
+-        <label>Date de début<input type="date" id="ppBreakStart"></label>
+-        <label>Date de fin<input type="date" id="ppBreakEnd"></label>
++        <label>Date de début<input type="date" class="sb-ctrl people-calendar-date" id="ppBreakStart"></label>
++        <label>Date de fin<input type="date" class="sb-ctrl people-calendar-date" id="ppBreakEnd"></label>
+       </div>
+       <div class="pp-modal-foot">
+         <span class="pp-inline-msg" id="ppBreakMsg"></span>
+-        <button class="sb-btn sb-btn--soft" id="ppBreakDelete" style="display:none;">Supprimer</button>
+-        <button class="sb-btn sb-btn--soft" id="ppBreakCancel">Annuler</button>
+-        <button class="sb-btn sb-btn--accent" id="ppBreakSave">Enregistrer</button>
++        <button type="button" class="sb-btn sb-btn--soft" id="ppBreakDelete" style="display:none;">
++          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-archive"></use></svg></span>
++          <span>Supprimer</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--soft" id="ppBreakCancel">
++          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></span>
++          <span>Annuler</span>
++        </button>
++        <button type="button" class="sb-btn sb-btn--accent" id="ppBreakSave">
++          <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-save"></use></svg></span>
++          <span>Enregistrer</span>
++        </button>
+       </div>
+     </div>
+   </div>
+diff --git a/static/people_portal_theme.css b/static/people_portal_theme.css
+index 86f80c3..517da23 100644
+--- a/static/people_portal_theme.css
++++ b/static/people_portal_theme.css
+@@ -357,6 +357,20 @@
+   font-weight:var(--ns-weight-bold, 700);
+   color:#111827;
+ }
++#ppBreakModal .pp-modal-title{
++  font-weight:var(--ns-weight-semibold, 600);
++}
++#ppBreakModal .pp-modal-titleline{
++  display:flex;
++  align-items:center;
++  gap:8px;
++}
++#ppBreakModal .pp-modal-titleline .ns-icon-use{
++  width:var(--ns-icon-md, 20px);
++  height:var(--ns-icon-md, 20px);
++  color:var(--accent);
++  flex:0 0 auto;
++}
+ .pp-modal-sub{
+   font-size:var(--ns-text-xs, 0.75rem);
+   color:#6b7280;
+@@ -370,6 +384,18 @@
+   cursor:pointer;
+   color:#6b7280;
+ }
++#ppBreakModal .pp-modal-x{
++  width:32px;
++  height:32px;
++  display:inline-flex;
++  align-items:center;
++  justify-content:center;
++  border-radius:10px;
++}
++#ppBreakModal .pp-modal-x .ns-icon-use{
++  width:var(--ns-icon-sm, 16px);
++  height:var(--ns-icon-sm, 16px);
++}
+ .pp-modal-body{ padding:16px 18px; }
+ .pp-modal-foot{
+   display:flex;
+@@ -400,6 +426,39 @@
+   color:#374151;
+   font-weight:var(--ns-weight-semibold, 600);
+ }
++#ppBreakModal .pp-form-grid label{
++  font-weight:var(--ns-weight-medium, 500);
++}
++#ppBreakModal .sb-ctrl{
++  width:100%;
++  min-height:34px;
++  box-sizing:border-box;
++  border:1px solid #d1d5db;
++  border-radius:10px;
++  background:#fff;
++  padding:8px 10px;
++  color:#111827;
++  font-family:inherit;
++  font-size:var(--ns-text-sm, .8125rem);
++  line-height:var(--ns-leading-tight, 1.15);
++  text-align:left;
++  outline:none;
++  box-shadow:none;
++}
++#ppBreakModal .sb-ctrl:focus{
++  border-color:color-mix(in srgb, var(--accent) 55%, #d1d5db);
++  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
++}
++#ppBreakModal .people-calendar-date{
++  min-width:0;
++  width:100%;
++  padding:8px 10px;
++  color-scheme:light;
++}
++#ppBreakModal .people-calendar-date::-webkit-calendar-picker-indicator{
++  opacity:.85;
++  cursor:pointer;
++}
+ @media (max-width:760px){
+   .pp-form-grid,
+   .pp-form-grid-3{ grid-template-columns:1fr; }

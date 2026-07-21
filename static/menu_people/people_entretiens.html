@@ -1,0 +1,34 @@
+<section id="view-entretiens" class="people-entretiens">
+  <div class="card people-page-hero">
+    <div class="people-page-hero__main">
+      <div class="people-page-hero__icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-comment"></use></svg></div>
+      <div><div class="card-title people-page-hero__title">Vos entretiens</div><div class="card-sub people-page-hero__sub">Préparez vos échanges, consultez vos comptes rendus et suivez les actions décidées.</div></div>
+    </div>
+    <button type="button" class="sb-btn sb-btn--accent" id="peRequestOpen"><span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-comment"></use></svg></span>Demander un entretien</button>
+  </div>
+  <div id="peMessage" class="sb-inline-msg" aria-live="polite"></div>
+
+  <article class="card pe-current-card" id="peCurrentCard">
+    <div class="pe-card-head"><div><div class="card-title">Votre prochain entretien</div><div class="card-sub" id="peCurrentSub">Chargement…</div></div><span class="ns-badge ns-badge-status ns-badge-status--neutral" id="peCurrentStatus">—</span></div>
+    <div id="peCurrentContent"></div>
+    <div class="pe-process" id="peProcess"></div>
+  </article>
+
+  <div class="pe-grid">
+    <article class="card"><div class="pe-card-head"><div><div class="card-title">Actions issues de vos entretiens</div><div class="card-sub">Décisions et engagements encore à suivre.</div></div></div><div id="peActions"></div></article>
+    <article class="card"><div class="pe-card-head"><div><div class="card-title">Vos demandes</div><div class="card-sub">Demandes d’entretien en cours de traitement.</div></div></div><div id="peRequests"></div></article>
+  </div>
+
+  <article class="card"><div class="pe-card-head"><div><div class="card-title">Historique de vos entretiens</div><div class="card-sub">Consultez les entretiens réalisés et leurs documents.</div></div><div class="pe-filters"><select id="peFilterYear"><option value="">Toutes les années</option></select><select id="peFilterType"><option value="">Tous les types</option></select><select id="peFilterStatus"><option value="">Tous les statuts</option></select></div></div><div id="peHistory"></div></article>
+
+  <div class="pp-modal-backdrop" id="pePrepModal" style="display:none;"><div class="pp-modal-card pe-modal-large"><div class="pp-modal-head"><div><div class="pp-modal-title">Préparer votre entretien</div><div class="pp-modal-sub">Votre brouillon reste dans People jusqu’à sa transmission.</div></div><button class="pp-modal-x" id="pePrepClose" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></button></div><div class="pp-modal-body pe-prep-body">
+    <section><div class="people-information-card-title"><span>Votre bilan</span></div><div class="pp-form-grid"><label>Réussites<textarea id="peSuccess" rows="3"></textarea></label><label>Difficultés<textarea id="peDifficulties" rows="3"></textarea></label><label>Faits marquants<textarea id="peReview" rows="3"></textarea></label><label>Changements rencontrés<textarea id="peChanges" rows="3"></textarea></label><label class="pp-span-2">Sujets à aborder<textarea id="peTopics" rows="3"></textarea></label></div></section>
+    <section><div class="people-information-card-title"><span>Vos compétences</span></div><div id="peCompetencies"></div></section>
+    <section><div class="people-information-card-title"><span>Votre développement</span></div><div class="pp-form-grid"><label>Évolution souhaitée<textarea id="peEvolution" rows="3"></textarea></label><label>Mobilité<textarea id="peMobility" rows="3"></textarea></label><label>Formation<textarea id="peTraining" rows="3"></textarea></label><label>Accompagnement<textarea id="peSupport" rows="3"></textarea></label></div></section>
+    <section><div class="people-information-card-title"><span>Vos notes</span></div><div class="pp-form-grid"><label>Éléments à partager<textarea id="peShared" rows="4"></textarea></label><label>Notes personnelles privées<textarea id="pePrivate" rows="4"></textarea><small>Ces notes restent visibles uniquement dans votre espace People.</small></label></div></section>
+  </div><div class="pp-modal-foot"><span class="pp-inline-msg" id="pePrepMessage"></span><button class="sb-btn sb-btn--soft" id="pePrepCancel">Annuler</button><button class="sb-btn sb-btn--soft" id="pePrepSave"><span class="sb-btn-icon"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-save"></use></svg></span>Enregistrer le brouillon</button><button class="sb-btn sb-btn--accent" id="pePrepTransmit">Transmettre</button></div></div></div>
+
+  <div class="pp-modal-backdrop" id="peDetailModal" style="display:none;"><div class="pp-modal-card pe-modal-large"><div class="pp-modal-head"><div><div class="pp-modal-title" id="peDetailTitle">Entretien</div><div class="pp-modal-sub" id="peDetailSub"></div></div><button class="pp-modal-x" id="peDetailClose" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></button></div><div class="pp-modal-body" id="peDetailBody"></div></div></div>
+
+  <div class="pp-modal-backdrop" id="peRequestModal" style="display:none;"><div class="pp-modal-card pp-modal-sm"><div class="pp-modal-head"><div><div class="pp-modal-title">Demander un entretien</div><div class="pp-modal-sub">La demande sera qualifiée par votre manager ou les RH.</div></div><button class="pp-modal-x" id="peRequestClose" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></button></div><div class="pp-modal-body"><div class="pp-form-grid"><label>Destinataire<select id="peRequestTarget"><option value="manager">Manager</option><option value="rh">Ressources humaines</option></select></label><label>Motif<select id="peRequestReason"><option value="competences">Compétences</option><option value="evolution">Évolution professionnelle</option><option value="formation">Formation</option><option value="organisation">Organisation du travail</option><option value="accompagnement">Accompagnement</option><option value="autre">Autre</option></select></label><label class="pp-span-2">Objet<input type="text" id="peRequestObject"></label><label class="pp-span-2">Précisions<textarea id="peRequestDescription" rows="4"></textarea></label></div></div><div class="pp-modal-foot"><span class="pp-inline-msg" id="peRequestMessage"></span><button class="sb-btn sb-btn--soft" id="peRequestCancel">Annuler</button><button class="sb-btn sb-btn--accent" id="peRequestSave">Envoyer la demande</button></div></div></div>
+</section>

@@ -357,6 +357,20 @@
   font-weight:var(--ns-weight-bold, 700);
   color:#111827;
 }
+#ppBreakModal .pp-modal-title{
+  font-weight:var(--ns-weight-semibold, 600);
+}
+#ppBreakModal .pp-modal-titleline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+#ppBreakModal .pp-modal-titleline .ns-icon-use{
+  width:var(--ns-icon-md, 20px);
+  height:var(--ns-icon-md, 20px);
+  color:var(--accent);
+  flex:0 0 auto;
+}
 .pp-modal-sub{
   font-size:var(--ns-text-xs, 0.75rem);
   color:#6b7280;
@@ -369,6 +383,18 @@
   line-height:var(--ns-leading-tight, 1.15);
   cursor:pointer;
   color:#6b7280;
+}
+#ppBreakModal .pp-modal-x{
+  width:32px;
+  height:32px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+}
+#ppBreakModal .pp-modal-x .ns-icon-use{
+  width:var(--ns-icon-sm, 16px);
+  height:var(--ns-icon-sm, 16px);
 }
 .pp-modal-body{ padding:16px 18px; }
 .pp-modal-foot{
@@ -399,6 +425,39 @@
   font-size:var(--ns-text-xs, 0.75rem);
   color:#374151;
   font-weight:var(--ns-weight-semibold, 600);
+}
+#ppBreakModal .pp-form-grid label{
+  font-weight:var(--ns-weight-medium, 500);
+}
+#ppBreakModal .sb-ctrl{
+  width:100%;
+  min-height:34px;
+  box-sizing:border-box;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#fff;
+  padding:8px 10px;
+  color:#111827;
+  font-family:inherit;
+  font-size:var(--ns-text-sm, .8125rem);
+  line-height:var(--ns-leading-tight, 1.15);
+  text-align:left;
+  outline:none;
+  box-shadow:none;
+}
+#ppBreakModal .sb-ctrl:focus{
+  border-color:color-mix(in srgb, var(--accent) 55%, #d1d5db);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+#ppBreakModal .people-calendar-date{
+  min-width:0;
+  width:100%;
+  padding:8px 10px;
+  color-scheme:light;
+}
+#ppBreakModal .people-calendar-date::-webkit-calendar-picker-indicator{
+  opacity:.85;
+  cursor:pointer;
 }
 @media (max-width:760px){
   .pp-form-grid,
@@ -1589,19 +1648,12 @@
 #view-calendrier .pp-calendar-day-number{font-size:var(--ns-text-sm);font-weight:var(--ns-weight-semibold);margin-bottom:6px}
 #view-calendrier .pp-calendar-day-events{display:grid;gap:4px}
 #view-calendrier .pp-calendar-event{
-  width:100%;min-width:0;padding:5px 7px;border:0;border-radius:8px;background:rgba(var(--pp-accent-rgb), .10);
-  color:var(--text);font-size:var(--ns-text-xs);font-weight:var(--ns-weight-semibold);text-align:left;
+  width:100%;min-width:0;padding:5px 7px;border:1px solid transparent;border-radius:8px;
+  font-size:var(--ns-text-xs);font-weight:var(--ns-weight-semibold);text-align:left;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;
 }
 #view-calendrier .pp-calendar-event[data-event-source="people"],
 #view-calendrier .pp-calendar-event[data-event-source="break"]{cursor:pointer}
-#view-calendrier .pp-calendar-event--formation{background:var(--ns-success-bg);color:var(--ns-success-text)}
-#view-calendrier .pp-calendar-event--indisponibilite{background:var(--ns-neutral-bg);color:var(--ns-neutral-text)}
-#view-calendrier .pp-calendar-event--entretien_annuel,
-#view-calendrier .pp-calendar-event--entretien_competences,
-#view-calendrier .pp-calendar-event--suivi_post_formation{background:var(--ns-info-bg);color:var(--ns-info-text)}
-#view-calendrier .pp-calendar-event--demande_entretien_manager,
-#view-calendrier .pp-calendar-event--demande_entretien_rh{background:var(--ns-warning-bg);color:var(--ns-warning-text)}
 #view-calendrier .pp-calendar-backdrop{position:fixed;inset:0;z-index:1090;background:rgba(15,23,42,.48)}
 #view-calendrier .pp-calendar-card.is-expanded{
   position:fixed;inset:18px;z-index:1100;display:flex;flex-direction:column;max-height:calc(100vh - 36px);background:#fff;
@@ -1626,3 +1678,6 @@ body.pp-calendar-open{overflow:hidden}
   #view-calendrier .pp-calendar-day{min-height:92px;padding:5px}
   #view-calendrier .pp-calendar-event{padding:4px;font-size:var(--ns-text-xs)}
 }
+
+/* People - Vos entretiens */
+.people-entretiens{display:grid;gap:16px}.pe-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}.pe-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.pe-current-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0}.pe-current-summary>div:first-child{display:grid;gap:4px}.pe-process{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}.pe-process-step{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--ns-border-soft);border-radius:12px;background:var(--ns-surface-soft)}.pe-process-step div{display:grid;gap:3px}.pe-process-step small{color:var(--ns-text-muted)}.pe-process-index{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ns-accent-soft);color:var(--ns-accent);font-weight:600}.pe-filters{display:flex;gap:8px;flex-wrap:wrap}.pe-filters select{min-width:150px}.pe-modal-large{width:min(1180px,94vw);max-height:92vh}.pe-prep-body{display:grid;gap:22px;overflow:auto}.pe-prep-body section{display:grid;gap:12px}.pe-competency-row{display:grid;grid-template-columns:minmax(240px,1.4fr) 160px minmax(220px,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--ns-border-soft)}.pe-competency-row>div{display:grid;gap:4px}.pe-competency-row small{color:var(--ns-text-muted)}.pe-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.pe-detail-grid section{padding:14px;border:1px solid var(--ns-border-soft);border-radius:12px}.pe-detail-grid pre{white-space:pre-wrap;font-family:var(--ns-font-ui);margin:10px 0 0}.people-entretiens select,.people-entretiens input,.people-entretiens textarea{border:1px solid var(--ns-border);border-radius:10px;background:var(--ns-surface);color:var(--ns-text);padding:10px 12px;font:inherit}.people-entretiens label{font-weight:500}.people-entretiens label small{display:block;margin-top:5px;color:var(--ns-text-muted);font-weight:400}@media(max-width:900px){.pe-grid,.pe-detail-grid{grid-template-columns:1fr}.pe-process{grid-template-columns:1fr 1fr}.pe-competency-row{grid-template-columns:1fr}.pe-card-head,.pe-current-summary{align-items:stretch;flex-direction:column}}

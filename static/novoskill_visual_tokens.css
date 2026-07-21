@@ -52,3 +52,81 @@
 .ns-badge-role--formateur { --ns-role-text:var(--ns-role-formateur-text); --ns-role-bg:var(--ns-role-formateur-bg); --ns-role-border:var(--ns-role-formateur-border); }
 .ns-badge-requirement { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }
 .ns-badge-category { color:var(--ns-neutral-text); background:var(--ns-neutral-bg); border-color:var(--ns-neutral-border); }
+
+
+/* Référentiel central Novoskill des couleurs de calendrier */
+.ns-calendar-event,
+.ns-calendar-color-dot{
+  --ns-calendar-event-text:var(--ns-neutral-text);
+  --ns-calendar-event-bg:var(--ns-neutral-bg);
+  --ns-calendar-event-border:var(--ns-neutral-border);
+  --ns-calendar-event-dot:var(--ns-neutral-text);
+}
+.ns-calendar-event{
+  color:var(--ns-calendar-event-text);
+  background:var(--ns-calendar-event-bg);
+  border-color:var(--ns-calendar-event-border);
+}
+.ns-calendar-color-dot{
+  display:inline-block;
+  width:8px;
+  height:8px;
+  flex:0 0 8px;
+  border-radius:999px;
+  background:var(--ns-calendar-event-dot);
+}
+.ns-calendar-type--indisponibilite{
+  --ns-calendar-event-text:#c2410c;
+  --ns-calendar-event-bg:#fff7ed;
+  --ns-calendar-event-border:#fed7aa;
+  --ns-calendar-event-dot:#f97316;
+}
+.ns-calendar-type--entretien_annuel{
+  --ns-calendar-event-text:#1d4ed8;
+  --ns-calendar-event-bg:#eff6ff;
+  --ns-calendar-event-border:#bfdbfe;
+  --ns-calendar-event-dot:#2563eb;
+}
+.ns-calendar-type--entretien_competences,
+.ns-calendar-type--evaluation_competence,
+.ns-calendar-type--entretien_competence{
+  --ns-calendar-event-text:#6d28d9;
+  --ns-calendar-event-bg:#f5f3ff;
+  --ns-calendar-event-border:#ddd6fe;
+  --ns-calendar-event-dot:#7c3aed;
+}
+.ns-calendar-type--suivi_post_formation{
+  --ns-calendar-event-text:#15803d;
+  --ns-calendar-event-bg:#ecfdf3;
+  --ns-calendar-event-border:#bbf7d0;
+  --ns-calendar-event-dot:#16a34a;
+}
+.ns-calendar-type--formation,
+.ns-calendar-type--campagne_rh{
+  --ns-calendar-event-text:#4338ca;
+  --ns-calendar-event-bg:#eef2ff;
+  --ns-calendar-event-border:#c7d2fe;
+  --ns-calendar-event-dot:#4f46e5;
+}
+.ns-calendar-type--preparation_entretien{
+  --ns-calendar-event-text:#0e7490;
+  --ns-calendar-event-bg:#ecfeff;
+  --ns-calendar-event-border:#a5f3fc;
+  --ns-calendar-event-dot:#0891b2;
+}
+.ns-calendar-type--demande_entretien_manager,
+.ns-calendar-type--demande_entretien_rh,
+.ns-calendar-type--signature{
+  --ns-calendar-event-text:#b45309;
+  --ns-calendar-event-bg:#fffbeb;
+  --ns-calendar-event-border:#fde68a;
+  --ns-calendar-event-dot:#d97706;
+}
+.ns-calendar-type--action_rh,
+.ns-calendar-type--evenement_personnel,
+.ns-calendar-type--evenement_rh{
+  --ns-calendar-event-text:#334155;
+  --ns-calendar-event-bg:#f1f5f9;
+  --ns-calendar-event-border:#cbd5e1;
+  --ns-calendar-event-dot:#64748b;
+}

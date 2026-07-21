@@ -1,0 +1,133 @@
+diff --git a/static/menu_people/people_calendrier.js b/static/menu_people/people_calendrier.js
+index 218915c..8bea7ac 100644
+--- a/static/menu_people/people_calendrier.js
++++ b/static/menu_people/people_calendrier.js
+@@ -122,6 +122,7 @@
+     host.innerHTML = TYPE_DEFS.map(x => `
+       <label class="pp-calendar-check-item">
+         <input type="checkbox" value="${esc(x.id)}" checked>
++        <span class="ns-calendar-color-dot ns-calendar-type--${esc(x.id)}" aria-hidden="true"></span>
+         <span>${esc(x.label)}</span>
+       </label>`).join("");
+     host.querySelectorAll('input[type="checkbox"]').forEach(input => input.addEventListener("change", renderCalendar));
+@@ -156,7 +157,7 @@
+         <div class="pp-calendar-day${day.getMonth() !== month.getMonth() ? " is-outside" : ""}${dayKey === today ? " is-today" : ""}">
+           <div class="pp-calendar-day-number">${day.getDate()}</div>
+           <div class="pp-calendar-day-events">
+-            ${dayEvents.map(e => `<button type="button" class="pp-calendar-event pp-calendar-event--${esc(e.type)}" data-event-source="${esc(e.source)}" data-event-id="${esc(e.id)}" title="${esc(e.title)}">${esc(e.title)}</button>`).join("")}
++            ${dayEvents.map(e => `<button type="button" class="pp-calendar-event ns-calendar-event ns-calendar-type--${esc(e.type)}" data-event-source="${esc(e.source)}" data-event-id="${esc(e.id)}" title="${esc(e.title)}">${esc(e.title)}</button>`).join("")}
+           </div>
+         </div>`);
+     }
+diff --git a/static/novoskill_visual_tokens.css b/static/novoskill_visual_tokens.css
+index a69297c..43fd948 100644
+--- a/static/novoskill_visual_tokens.css
++++ b/static/novoskill_visual_tokens.css
+@@ -52,3 +52,81 @@
+ .ns-badge-role--formateur { --ns-role-text:var(--ns-role-formateur-text); --ns-role-bg:var(--ns-role-formateur-bg); --ns-role-border:var(--ns-role-formateur-border); }
+ .ns-badge-requirement { color:var(--ns-warning-text); background:var(--ns-warning-bg); border-color:var(--ns-warning-border); }
+ .ns-badge-category { color:var(--ns-neutral-text); background:var(--ns-neutral-bg); border-color:var(--ns-neutral-border); }
++
++
++/* Référentiel central Novoskill des couleurs de calendrier */
++.ns-calendar-event,
++.ns-calendar-color-dot{
++  --ns-calendar-event-text:var(--ns-neutral-text);
++  --ns-calendar-event-bg:var(--ns-neutral-bg);
++  --ns-calendar-event-border:var(--ns-neutral-border);
++  --ns-calendar-event-dot:var(--ns-neutral-text);
++}
++.ns-calendar-event{
++  color:var(--ns-calendar-event-text);
++  background:var(--ns-calendar-event-bg);
++  border-color:var(--ns-calendar-event-border);
++}
++.ns-calendar-color-dot{
++  display:inline-block;
++  width:8px;
++  height:8px;
++  flex:0 0 8px;
++  border-radius:999px;
++  background:var(--ns-calendar-event-dot);
++}
++.ns-calendar-type--indisponibilite{
++  --ns-calendar-event-text:#c2410c;
++  --ns-calendar-event-bg:#fff7ed;
++  --ns-calendar-event-border:#fed7aa;
++  --ns-calendar-event-dot:#f97316;
++}
++.ns-calendar-type--entretien_annuel{
++  --ns-calendar-event-text:#1d4ed8;
++  --ns-calendar-event-bg:#eff6ff;
++  --ns-calendar-event-border:#bfdbfe;
++  --ns-calendar-event-dot:#2563eb;
++}
++.ns-calendar-type--entretien_competences,
++.ns-calendar-type--evaluation_competence,
++.ns-calendar-type--entretien_competence{
++  --ns-calendar-event-text:#6d28d9;
++  --ns-calendar-event-bg:#f5f3ff;
++  --ns-calendar-event-border:#ddd6fe;
++  --ns-calendar-event-dot:#7c3aed;
++}
++.ns-calendar-type--suivi_post_formation{
++  --ns-calendar-event-text:#15803d;
++  --ns-calendar-event-bg:#ecfdf3;
++  --ns-calendar-event-border:#bbf7d0;
++  --ns-calendar-event-dot:#16a34a;
++}
++.ns-calendar-type--formation,
++.ns-calendar-type--campagne_rh{
++  --ns-calendar-event-text:#4338ca;
++  --ns-calendar-event-bg:#eef2ff;
++  --ns-calendar-event-border:#c7d2fe;
++  --ns-calendar-event-dot:#4f46e5;
++}
++.ns-calendar-type--preparation_entretien{
++  --ns-calendar-event-text:#0e7490;
++  --ns-calendar-event-bg:#ecfeff;
++  --ns-calendar-event-border:#a5f3fc;
++  --ns-calendar-event-dot:#0891b2;
++}
++.ns-calendar-type--demande_entretien_manager,
++.ns-calendar-type--demande_entretien_rh,
++.ns-calendar-type--signature{
++  --ns-calendar-event-text:#b45309;
++  --ns-calendar-event-bg:#fffbeb;
++  --ns-calendar-event-border:#fde68a;
++  --ns-calendar-event-dot:#d97706;
++}
++.ns-calendar-type--action_rh,
++.ns-calendar-type--evenement_personnel,
++.ns-calendar-type--evenement_rh{
++  --ns-calendar-event-text:#334155;
++  --ns-calendar-event-bg:#f1f5f9;
++  --ns-calendar-event-border:#cbd5e1;
++  --ns-calendar-event-dot:#64748b;
++}
+diff --git a/static/people_portal_theme.css b/static/people_portal_theme.css
+index 4f69812..a422d5f 100644
+--- a/static/people_portal_theme.css
++++ b/static/people_portal_theme.css
+@@ -1648,19 +1648,12 @@
+ #view-calendrier .pp-calendar-day-number{font-size:var(--ns-text-sm);font-weight:var(--ns-weight-semibold);margin-bottom:6px}
+ #view-calendrier .pp-calendar-day-events{display:grid;gap:4px}
+ #view-calendrier .pp-calendar-event{
+-  width:100%;min-width:0;padding:5px 7px;border:0;border-radius:8px;background:rgba(var(--pp-accent-rgb), .10);
+-  color:var(--text);font-size:var(--ns-text-xs);font-weight:var(--ns-weight-semibold);text-align:left;
++  width:100%;min-width:0;padding:5px 7px;border:1px solid transparent;border-radius:8px;
++  font-size:var(--ns-text-xs);font-weight:var(--ns-weight-semibold);text-align:left;
+   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;
+ }
+ #view-calendrier .pp-calendar-event[data-event-source="people"],
+ #view-calendrier .pp-calendar-event[data-event-source="break"]{cursor:pointer}
+-#view-calendrier .pp-calendar-event--formation{background:var(--ns-success-bg);color:var(--ns-success-text)}
+-#view-calendrier .pp-calendar-event--indisponibilite{background:var(--ns-neutral-bg);color:var(--ns-neutral-text)}
+-#view-calendrier .pp-calendar-event--entretien_annuel,
+-#view-calendrier .pp-calendar-event--entretien_competences,
+-#view-calendrier .pp-calendar-event--suivi_post_formation{background:var(--ns-info-bg);color:var(--ns-info-text)}
+-#view-calendrier .pp-calendar-event--demande_entretien_manager,
+-#view-calendrier .pp-calendar-event--demande_entretien_rh{background:var(--ns-warning-bg);color:var(--ns-warning-text)}
+ #view-calendrier .pp-calendar-backdrop{position:fixed;inset:0;z-index:1090;background:rgba(15,23,42,.48)}
+ #view-calendrier .pp-calendar-card.is-expanded{
+   position:fixed;inset:18px;z-index:1100;display:flex;flex-direction:column;max-height:calc(100vh - 36px);background:#fff;
