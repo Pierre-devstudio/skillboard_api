@@ -1263,8 +1263,237 @@
 .people-profile-photo__edit{position:absolute;right:3px;bottom:3px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#fff}
 .people-profile-photo__edit .ns-icon-use{width:14px;height:14px}
 .people-information-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.people-identity-form{margin-top:18px}
-.people-identity-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.people-identity-form-grid__wide{grid-column:1/-1}
-.people-identity-form .sb-actions{margin-top:16px}
-@media(max-width:720px){.people-page-hero{align-items:flex-start}.people-profile-photo{width:72px;height:72px;flex-basis:72px}.people-identity-form-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.people-page-hero{align-items:flex-start}.people-profile-photo{width:72px;height:72px;flex-basis:72px}}
+
+/* People - Vos informations : édition intégrée à la carte Identité */
+#view-informations.people-informations .sb-icon-btn{
+  width:30px;
+  height:30px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #d1d5db;
+  border-radius:6px;
+  background:#fff;
+  color:#334155;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+
+#view-informations.people-informations .sb-icon-btn:hover{
+  background:#f8fafc;
+  border-color:#94a3b8;
+  color:#111827;
+}
+
+#view-informations.people-informations .sb-icon-btn svg{
+  width:14px;
+  height:14px;
+  display:block;
+}
+
+#view-informations.people-informations .people-information-card-head{
+  min-height:34px;
+  margin-bottom:16px;
+}
+
+#view-informations.people-informations .people-information-card-head .people-information-card-title{
+  margin-bottom:0;
+}
+
+#view-informations.people-informations .people-identity-actions{
+  width:auto;
+  min-height:0;
+  margin-left:auto;
+}
+
+#view-informations.people-informations .sb-modal-edit-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+  min-height:34px;
+}
+
+#view-informations.people-informations .sb-modal-edit-actions .sb-modal-inline-msg{
+  margin:0 4px 0 0;
+  flex:0 0 auto;
+}
+
+#view-informations.people-informations .people-identity-actions [hidden]{
+  display:none;
+}
+
+#view-informations.people-informations .sb-modal-edit-actions .sb-modal-btn svg,
+#view-informations.people-informations .sb-modal-edit-actions .sb-btn-icon svg{
+  width:14px;
+  height:14px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#view-informations.people-informations .sb-modal-edit-actions .sb-modal-btn--edit,
+#view-informations.people-informations .sb-modal-edit-actions .sb-modal-btn--save,
+#view-informations.people-informations .sb-modal-edit-actions .sb-modal-btn--cancel{
+  height:32px;
+  min-height:32px;
+  border-radius:10px;
+  font-size:var(--ns-text-sm, .8125rem);
+  font-weight:var(--ns-weight-semibold, 600);
+}
+
+#view-informations.people-informations .people-information-card--identity.is-editing .people-information-summary-item--address{
+  grid-column:1 / -1;
+}
+
+#view-informations.people-informations .people-identity-edit{
+  width:100%;
+}
+
+#view-informations.people-informations .people-identity-name-fields{
+  display:grid;
+  grid-template-columns:72px minmax(0, 1fr) minmax(0, 1fr);
+  gap:6px;
+  width:100%;
+}
+
+#view-informations.people-informations .people-identity-address-fields{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  width:100%;
+}
+
+#view-informations.people-informations .people-identity-address-line{
+  display:grid;
+  grid-template-columns:110px minmax(0, 1fr);
+  gap:6px;
+  width:100%;
+}
+
+#view-informations.people-informations .people-identity-field{
+  display:block;
+  min-width:0;
+  margin:0;
+}
+
+#view-informations.people-informations .sb-label{
+  display:block;
+  margin:0 0 4px;
+  color:#374151;
+  font-size:var(--ns-text-xs, .75rem);
+  font-weight:var(--ns-weight-semibold, 600);
+}
+
+#view-informations.people-informations .sb-ctrl,
+#view-informations.people-informations .sb-select{
+  width:100%;
+  min-height:34px;
+  box-sizing:border-box;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#fff;
+  padding:8px 10px;
+  color:#111827;
+  font-family:inherit;
+  font-size:var(--ns-text-sm, .8125rem);
+  line-height:var(--ns-leading-tight, 1.15);
+  text-align:left;
+  outline:none;
+  box-shadow:none;
+}
+
+#view-informations.people-informations .sb-select:focus,
+#view-informations.people-informations .sb-ctrl:focus{
+  outline:none;
+  border-color:color-mix(in srgb, var(--accent) 55%, #d1d5db);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+#view-informations.people-informations .people-identity-date{
+  min-width:0;
+  width:100%;
+  padding:8px 10px;
+  color-scheme:light;
+}
+
+#view-informations.people-informations .people-identity-date::-webkit-calendar-picker-indicator{
+  opacity:.85;
+  cursor:pointer;
+}
+
+#view-informations.people-informations .people-identity-readonly-help{
+  display:block;
+  color:#64748b;
+  font-size:var(--ns-text-xs, .75rem);
+  font-weight:var(--ns-weight-regular, 400);
+  line-height:var(--ns-leading-normal, 1.35);
+}
+
+@media(max-width:720px){
+  #view-informations.people-informations .people-identity-name-fields,
+  #view-informations.people-informations .people-identity-address-line{
+    grid-template-columns:1fr;
+  }
+
+  #view-informations.people-informations .people-identity-actions{
+    width:100%;
+  }
+}
+
+/* People - Vos informations : édition de la formation */
+#view-informations.people-informations .people-information-projection-zone-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+#view-informations.people-informations .people-information-projection-zone-head .people-information-projection-zone-title{
+  margin-bottom:0;
+}
+
+#view-informations.people-informations .people-education-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+  min-height:34px;
+  margin-left:auto;
+}
+
+#view-informations.people-informations .people-education-actions [hidden],
+#view-informations.people-informations .people-education-edit[hidden],
+#view-informations.people-informations .people-education-read[hidden]{
+  display:none;
+}
+
+#view-informations.people-informations .people-education-actions .sb-modal-inline-msg{
+  margin:0 4px 0 0;
+  flex:0 0 auto;
+}
+
+#view-informations.people-informations .people-education-edit .sb-field{
+  display:block;
+  min-width:0;
+  margin:0;
+}
+
+@media(max-width:720px){
+  #view-informations.people-informations .people-information-projection-zone-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  #view-informations.people-informations .people-education-actions{
+    width:100%;
+  }
+}

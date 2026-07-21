@@ -22,6 +22,18 @@ PEOPLE_PROFILE_PHOTO_BUCKET = "people-profile-photos"
 MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024
 ALLOWED_PROFILE_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
+PEOPLE_EDUCATION_LEVELS = [
+    {"value": "", "label": "—"},
+    {"value": "0", "label": "Aucun diplôme"},
+    {"value": "3", "label": "Niveau 3 : CAP, BEP"},
+    {"value": "4", "label": "Niveau 4 : Bac"},
+    {"value": "5", "label": "Niveau 5 : Bac+2 (BTS, DUT)"},
+    {"value": "6", "label": "Niveau 6 : Bac+3 (Licence, BUT)"},
+    {"value": "7", "label": "Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)"},
+    {"value": "8", "label": "Niveau 8 : Bac+8 (Doctorat)"},
+]
+PEOPLE_EDUCATION_LEVEL_VALUES = {item["value"] for item in PEOPLE_EDUCATION_LEVELS}
+
 
 class PeopleIdentityPayload(BaseModel):
     civilite: Optional[str] = None
@@ -33,6 +45,11 @@ class PeopleIdentityPayload(BaseModel):
     ville: Optional[str] = None
     pays: Optional[str] = None
     date_naissance: Optional[str] = None
+
+
+class PeopleEducationPayload(BaseModel):
+    niveau_education: Optional[str] = None
+    domaine_education: Optional[str] = None
 
 
 def _optional_date(value: Optional[str]) -> Optional[date]:
@@ -134,13 +151,59 @@ def _write_photo_path(cur, profile: dict, path: str) -> None:
         raise HTTPException(status_code=404, detail="Profil People introuvable.")
 
 
+def _education_domains(cur) -> list[dict]:
+    cur.execute(
+        """
+        SELECT code, titre
+        FROM public.tbl_nsf_groupe
+        WHERE COALESCE(masque, FALSE) = FALSE
+        ORDER BY titre, code
+        """
+    )
+    return [
+        {
+            "value": people_clean(row.get("code")),
+            "label": (
+                f"{people_clean(row.get('titre'))} ({people_clean(row.get('code'))})"
+                if people_clean(row.get("titre")) and people_clean(row.get("code"))
+                else people_clean(row.get("titre") or row.get("code"))
+            ),
+            "titre": people_clean(row.get("titre")),
+        }
+        for row in (cur.fetchall() or [])
+        if people_clean(row.get("code"))
+    ]
+
+
+def _education_label(value: str, items: list[dict]) -> str:
+    raw = people_clean(value)
+    if not raw:
+        return ""
+    raw_lower = raw.lower()
+    for item in items:
+        if raw_lower in {people_clean(item.get("value")).lower(), people_clean(item.get("titre")).lower()}:
+            return people_clean(item.get("label"))
+    return raw
+
+
 @router.get("/people/informations/{id_effectif}")
 def people_informations(id_effectif: str, request: Request):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 _, _, payload = people_fetch_profile_context(cur, request, id_effectif)
-        return {"profile": payload}
+                domains = _education_domains(cur)
+
+        level_map = {item["value"]: item["label"] for item in PEOPLE_EDUCATION_LEVELS}
+        payload["niveau_education_label"] = level_map.get(people_clean(payload.get("niveau_education")), people_clean(payload.get("niveau_education")))
+        payload["domaine_education_label"] = _education_label(payload.get("domaine_education"), domains)
+        return {
+            "profile": payload,
+            "education_options": {
+                "levels": PEOPLE_EDUCATION_LEVELS,
+                "domains": [{"value": "", "label": "—", "titre": ""}, *domains],
+            },
+        }
     except HTTPException:
         raise
     except Exception as exc:
@@ -225,6 +288,56 @@ def people_update_identity(id_effectif: str, payload: PeopleIdentityPayload, req
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"people/informations/identity error: {exc}")
+
+
+@router.patch("/people/informations/{id_effectif}/education")
+def people_update_education(id_effectif: str, payload: PeopleEducationPayload, request: Request):
+    niveau = people_clean(payload.niveau_education)
+    domaine = people_clean(payload.domaine_education)
+    if niveau not in PEOPLE_EDUCATION_LEVEL_VALUES:
+        raise HTTPException(status_code=400, detail="Niveau de diplôme invalide.")
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile, _, _ = people_fetch_profile_context(cur, request, id_effectif)
+                id_owner = people_clean(profile.get("id_owner"))
+
+                domains = _education_domains(cur)
+                domain_values = {people_clean(item.get("value")) for item in domains}
+                if domaine and domaine not in domain_values:
+                    raise HTTPException(status_code=400, detail="Domaine d’éducation invalide.")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client
+                    SET niveau_education = %s,
+                        domaine_education = %s,
+                        dernier_update = NOW()
+                    WHERE id_effectif = %s
+                      AND id_ent = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    RETURNING id_effectif
+                    """,
+                    (niveau or None, domaine or None, id_effectif, id_owner),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Profil collaborateur People introuvable.")
+            conn.commit()
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                _, _, updated = people_fetch_profile_context(cur, request, id_effectif)
+                domains = _education_domains(cur)
+
+        level_map = {item["value"]: item["label"] for item in PEOPLE_EDUCATION_LEVELS}
+        updated["niveau_education_label"] = level_map.get(people_clean(updated.get("niveau_education")), people_clean(updated.get("niveau_education")))
+        updated["domaine_education_label"] = _education_label(updated.get("domaine_education"), domains)
+        return {"saved": True, "profile": updated}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"people/informations/education error: {exc}")
 
 
 @router.post("/people/informations/{id_effectif}/photo")

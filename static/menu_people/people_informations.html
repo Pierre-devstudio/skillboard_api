@@ -30,29 +30,22 @@
           </span>
           <span>Identité et coordonnées</span>
         </div>
-        <button type="button" class="sb-icon-btn" id="ppIdentityEdit" aria-label="Modifier l’identité et les coordonnées" title="Modifier">
-          <svg viewBox="0 0 24 24" class="ns-icon-use" aria-hidden="true"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
-        </button>
+        <div class="people-identity-actions sb-modal-edit-actions">
+          <span id="ppIdentityMessage" class="sb-inline-msg sb-modal-inline-msg" aria-live="polite"></span>
+          <button type="button" class="sb-btn sb-btn--soft sb-modal-btn sb-modal-btn--cancel" id="ppIdentityCancel" hidden>
+            <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-close"></use></svg></span>
+            Annuler
+          </button>
+          <button type="button" class="sb-btn sb-btn--accent sb-modal-btn sb-modal-btn--save" id="ppIdentitySave" hidden>
+            <span class="sb-btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" class="ns-icon-use"><use href="/novoskill_icons.svg#ns-icon-save"></use></svg></span>
+            Enregistrer
+          </button>
+          <button type="button" class="sb-icon-btn sb-modal-btn sb-modal-btn--edit" id="ppIdentityEdit" aria-label="Modifier l’identité et les coordonnées" title="Modifier">
+            <svg viewBox="0 0 24 24" class="ns-icon-use" aria-hidden="true"><use href="/novoskill_icons.svg#ns-icon-edit"></use></svg>
+          </button>
+        </div>
       </div>
       <div class="people-information-summary-grid" id="ppInfoIdentity"></div>
-      <form id="ppIdentityForm" class="people-identity-form" hidden>
-        <div class="people-identity-form-grid">
-          <label class="sb-field"><span>Civilité</span><input id="ppIdentityCivilite" type="text"></label>
-          <label class="sb-field"><span>Prénom</span><input id="ppIdentityPrenom" type="text" required></label>
-          <label class="sb-field"><span>Nom</span><input id="ppIdentityNom" type="text" required></label>
-          <label class="sb-field"><span>Téléphone</span><input id="ppIdentityTelephone" type="tel"></label>
-          <label class="sb-field people-identity-form-grid__wide"><span>Adresse</span><input id="ppIdentityAdresse" type="text"></label>
-          <label class="sb-field"><span>Code postal</span><input id="ppIdentityCodePostal" type="text"></label>
-          <label class="sb-field"><span>Ville</span><input id="ppIdentityVille" type="text"></label>
-          <label class="sb-field"><span>Pays</span><input id="ppIdentityPays" type="text"></label>
-          <label class="sb-field"><span>Date de naissance</span><input id="ppIdentityDateNaissance" type="date"></label>
-        </div>
-        <div id="ppIdentityMessage" class="sb-inline-msg sb-modal-inline-msg" aria-live="polite"></div>
-        <div class="sb-actions sb-modal-edit-actions">
-          <button type="button" class="sb-btn sb-btn--soft" id="ppIdentityCancel">Annuler</button>
-          <button type="submit" class="sb-btn sb-btn--accent" id="ppIdentitySave">Enregistrer</button>
-        </div>
-      </form>
     </article>
 
     <article class="card people-information-card people-information-card--company">
